@@ -187,13 +187,16 @@ ios_session_reexec_if_needed() {
 # alias and never needs a reason.
 ios_session_require_aux_reason() {
   ios_session_ci_truthy && return 0
-  if ! ios_session_helper_init; then
-    return 1
-  fi
-  if [[ "$(uname -s 2>/dev/null || echo unknown)" == "Darwin" \
-        && -n "$IOS_SESSION_HELPER" ]] \
-      && "$IOS_SESSION_HELPER" is-owner >/dev/null 2>&1; then
-    return 0
+  local platform
+  platform="$(uname -s 2>/dev/null || echo unknown)"
+  if [[ "$platform" == "Darwin" ]]; then
+    if ! ios_session_helper_init; then
+      return 1
+    fi
+    if [[ -n "$IOS_SESSION_HELPER" ]] \
+        && "$IOS_SESSION_HELPER" is-owner >/dev/null 2>&1; then
+      return 0
+    fi
   fi
   local profile
   profile="$(printf '%s' "${DEV_IOS_PROFILE:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"

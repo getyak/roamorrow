@@ -860,6 +860,19 @@ class ScriptPolicyTests(unittest.TestCase):
         self.assertIn("DEV_IOS_REASON", proc.stderr)
         self.assertEqual(self._log(self.xcrun_log), "")
 
+    def test_non_macos_invalid_helper_config_uses_portable_fallback(self):
+        self._write_exec(self.bin_dir / "uname", "#!/usr/bin/env bash\nprintf 'Linux\\n'\n")
+        self._write_simctl([device("iPhone SE (3rd generation)", SE_UDID)])
+        env = self.base_env(
+            DEV_IOS_PROFILE="compact",
+            DEV_IOS_REASON="small-screen regression",
+            DEV_IOS_SESSION_BIN=str(self.tmp / "missing-helper"),
+            IOS_SIMULATOR_ID=SE_UDID,
+        )
+        proc = self._session_bash("ios_select_simulator_json 'iPhone 17 Pro'", env)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["udid"], SE_UDID)
+
     def test_non_macos_evaluator_rejects_aux_profile_without_reason(self):
         self.helper.unlink()
         self._write_exec(self.bin_dir / "uname", "#!/usr/bin/env bash\nprintf 'Linux\\n'\n")
