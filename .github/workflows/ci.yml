@@ -32,6 +32,9 @@ jobs:
       - name: install
         run: pnpm install --frozen-lockfile
 
+      - name: dependency patch regressions
+        run: pnpm security:patch-check
+
       - name: dependency audit
         run: pnpm audit --audit-level=low
 
@@ -56,6 +59,22 @@ jobs:
 
       - name: parity check
         run: pnpm parity:check
+
+      # Portable subset of the local iOS simulator policy tests. Every
+      # simulator command is a fake on PATH, so this never touches Xcode or a
+      # real simulator. The macOS-only tests (dev-ios-session reexec,
+      # /usr/bin/shlock reservation) skip here with explicit reasons and are
+      # executed with skips disallowed by the SwiftLint job in ios-ci.yml.
+      - name: iOS policy tests (portable, fake tools)
+        run: python3 -m unittest discover -s scripts/ios -p 'test_*.py' -v
+
+      - name: iOS policy script syntax
+        run: |
+          bash -n scripts/ios/session.sh
+          bash -n scripts/sc-evaluator/run.sh
+          bash -n scripts/sc-executor/run.sh
+          bash -n scripts/user-story-rubric/run.sh
+          bash -n scripts/qa/two-sim-friend-loop.sh
 
   go-security:
     name: Go test + vulnerability scan

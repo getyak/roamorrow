@@ -32,9 +32,10 @@
 # devices. It takes the SAME machine-wide shlock as dev-ios-session
 # (/tmp/ios-automation.xcodebuild.lock, override IOS_AUTOMATION_LOCK_FILE)
 # before any Simulator mutation and fails busy rather than racing another
-# project. It refuses to run inside an owned single-device session, validates
-# both devices against the shared allowlist, and only shuts down devices this
-# run actually booted. See docs/development/ios-testing.md.
+# project. It refuses to run inside an owned single-device session, requires
+# the shared allowlist to exist (a missing or empty allowlist FAILS CLOSED —
+# it is never silently skipped), validates both devices against it, and only
+# shuts down devices this run actually booted. See docs/development/ios-testing.md.
 #
 # Required env (both modes):
 #   SIM_B                             explicit second device (no default)
@@ -92,6 +93,37 @@ if [[ -z "${DEV_IOS_REASON:-}" ]]; then
   err "Example: DEV_IOS_REASON=\"US-027 friend loop manual regression\" $0"
   exit 1
 fi
+
+# The allowlist is mandatory. A missing or empty allowlist fails closed here,
+# before the lock or any simulator interaction, instead of silently skipping
+# membership validation later.
+allowlist_path() {
+  printf '%s' "${DEV_IOS_ALLOWLIST:-${HOME:-}/.config/dev-storage-guard/simulator-allowlist.tsv}"
+}
+
+allowlist_udids() {
+  # $1 = allowlist path; echoes the non-comment UDID column.
+  awk -F'\t' '!/^[[:space:]]*(#|$)/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); if ($1 != "") print $1}' "$1"
+}
+
+check_allowlist() {
+  local path allowed
+  path="$(allowlist_path)"
+  if [[ ! -f "$path" ]]; then
+    err "simulator allowlist not found: $path"
+    err "set DEV_IOS_ALLOWLIST or create the shared allowlist (UDID<TAB>label per line)."
+    err "this two-device exception never runs without allowlist validation."
+    return 1
+  fi
+  allowed="$(allowlist_udids "$path")"
+  if [[ -z "$allowed" ]]; then
+    err "simulator allowlist is empty: $path"
+    return 1
+  fi
+  return 0
+}
+
+check_allowlist || exit 1
 
 # ---------------------------------------------------------------------------
 # Exclusive machine-wide reservation
@@ -210,23 +242,14 @@ state_for() {
     | head -n1
 }
 
-allowlist_path() {
-  printf '%s' "${DEV_IOS_ALLOWLIST:-${HOME:-}/.config/dev-storage-guard/simulator-allowlist.tsv}"
-}
-
 validate_allowlist() {
-  # Both selected devices must be in the shared allowlist when it is present.
+  # Both selected devices must be in the shared allowlist. The allowlist is
+  # never optional: check_allowlist fails closed in pre-flight when the file
+  # is missing or empty.
   local path allowed udid missing=0
+  check_allowlist || return 1
   path="$(allowlist_path)"
-  if [[ ! -f "$path" ]]; then
-    warn "simulator allowlist not found at $path — skipping membership check"
-    return 0
-  fi
-  allowed="$(awk -F'\t' '!/^[[:space:]]*(#|$)/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); if ($1 != "") print $1}' "$path")"
-  if [[ -z "$allowed" ]]; then
-    err "simulator allowlist is empty: $path"
-    return 1
-  fi
+  allowed="$(allowlist_udids "$path")"
   for udid in "$UDID_A" "$UDID_B"; do
     if ! grep -qxF "$udid" <<<"$allowed"; then
       err "selected device $udid is not in the allowlist ($path)"
@@ -382,8 +405,14 @@ ensure_no_foreign_active || exit 1
 
 boot_sim "$UDID_A" "$SIM_A" "A"
 boot_sim "$UDID_B" "$SIM_B" "B"
-xcrun simctl bootstatus "$UDID_A" -b >/dev/null 2>&1 || true
-xcrun simctl bootstatus "$UDID_B" -b >/dev/null 2>&1 || true
+for _ready in "$UDID_A" "$UDID_B"; do
+  # Readiness gate: a bootstatus failure must abort (with cleanup), never be
+  # hidden while the run keeps installing/launching against a dead device.
+  if ! xcrun simctl bootstatus "$_ready" -b >/dev/null 2>&1; then
+    err "simulator $_ready never became ready (simctl bootstatus failed)"
+    exit 1
+  fi
+done
 
 install_app "$UDID_A"
 install_app "$UDID_B"

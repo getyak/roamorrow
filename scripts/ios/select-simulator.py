@@ -17,11 +17,13 @@ Policy (see ``docs/development/ios-testing.md``):
   available iOS device of the profile's family, the selector fails closed --
   it never substitutes another device. When both are present they must agree.
 * Names are canonicalized to UDIDs; the caller always receives a UDID.
-* iPads are only selected for the ``ipad`` profile (which requires an explicit
-  ID in this portable fallback); watchOS/tvOS devices are rejected.
-* Auto-selection only considers available iPhones: the preferred name (default
-  ``iPhone 17 Pro``) when present, else the newest numbered iPhone, else any
-  other iPhone, with iPhone SE strictly last. Boot state is irrelevant.
+* Auxiliary profiles (``compact`` and ``ipad``) require an explicit ID in
+  this portable fallback. iPads are only selected for ``ipad``; watchOS/tvOS
+  devices are rejected.
+* Auto-selection only considers available iPhones **on iOS runtimes**: the
+  preferred name (default ``iPhone 17 Pro``) when present, else the newest
+  numbered iPhone, else any other iPhone, with iPhone SE strictly last.
+  Boot state is irrelevant.
 
 Input is the JSON produced by ``xcrun simctl list devices available --json``
 (read from stdin by default). Output is a single JSON object on stdout.
@@ -235,12 +237,21 @@ def main(argv: list[str] | None = None) -> int:
         emit(resolved[0], "explicit")
         return 0
 
-    if profile == "ipad":
-        _fail("profile 'ipad' requires an explicit IOS_SIMULATOR_ID")
+    if profile in ("compact", "ipad"):
+        _fail(f"profile '{profile}' requires an explicit IOS_SIMULATOR_ID")
 
-    iphones = [d for d in devices if device_family(str(d.get("name", ""))) == "iphone"]
+    # iOS runtimes only: an iPhone-named entry under a non-iOS runtime must
+    # never be auto-selected (same rule the explicit path enforces).
+    iphones = [
+        d
+        for d in devices
+        if device_family(str(d.get("name", ""))) == "iphone" and d.get("ios_version")
+    ]
     if not iphones:
-        _fail("no available iPhone simulator; SE/iPad/watch/TV are not auto-selected")
+        _fail(
+            "no available iPhone simulator on an iOS runtime; "
+            "SE/iPad/watch/TV and non-iOS runtimes are not auto-selected"
+        )
 
     best = max(iphones, key=lambda d: auto_key(d, args.preferred))
     emit(best, "auto")

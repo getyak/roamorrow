@@ -416,15 +416,26 @@ else
 fi
 
 echo "  selected $SIMULATOR_NAME ($UDID, iOS $IOS_VERSION, $SELECT_SOURCE)"
-if [[ "$SEL_STATE" != "Booted" ]]; then
+if [[ "$SEL_STATE" == "Shutdown" ]]; then
   echo "  booting ${UDID}…"
-  xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
+  if ! xcrun simctl boot "$UDID" >/dev/null 2>&1; then
+    emit_step FAIL "simulator.boot" "simctl boot $UDID failed"
+    echo "FAILED: could not boot $UDID" >&2
+    flush_findings_file FAIL "(setup)"
+    exit 2
+  fi
 fi
 
 # Open Simulator.app so the runner is visible (best-effort, never blocks).
 # Other already-booted devices are left untouched; we never shut them down.
 open -gja Simulator >/dev/null 2>&1 || true
-xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+# Readiness gate: a bootstatus failure must fail the run, never hide it.
+if ! xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1; then
+  emit_step FAIL "simulator.boot" "simctl bootstatus $UDID failed — simulator never became ready"
+  echo "FAILED: simulator $UDID not ready" >&2
+  flush_findings_file FAIL "(setup)"
+  exit 2
+fi
 emit_step PASS "simulator.resolve" "udid=$UDID name=$SIMULATOR_NAME ios=$IOS_VERSION source=$SELECT_SOURCE"
 
 [[ -z "$SIMULATOR_NAME" ]] && SIMULATOR_NAME="$PREFERRED_DEVICE"
@@ -457,14 +468,20 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
 fi
 
 APP_PATH=""
-# Honor IOS_DERIVED_DATA_PATH when the host registers a custom location; fall
-# back to the default Xcode DerivedData search otherwise.
+# An explicit IOS_DERIVED_DATA_PATH is authoritative: the app must live there.
+# We never fall back to the unrelated global DerivedData, which could hand the
+# run a stale binary built from different sources.
 if [[ -n "${IOS_DERIVED_DATA_PATH:-}" ]]; then
   APP_PATH="$(find "$IOS_DERIVED_DATA_PATH" -name SoloCompass.app \
     -path '*/Debug-iphonesimulator/*' -type d 2>/dev/null \
     | head -1 || true)"
-fi
-if [[ -z "$APP_PATH" ]]; then
+  if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
+    emit_step FAIL "app.locate" "SoloCompass.app not found under explicit IOS_DERIVED_DATA_PATH=$IOS_DERIVED_DATA_PATH (no global DerivedData fallback)"
+    emit_fix_anchor "scripts/sc-evaluator/run.sh" "build into IOS_DERIVED_DATA_PATH (run without --no-build) or unset it to search the default DerivedData"
+    flush_findings_file FAIL "(setup)"
+    exit 2
+  fi
+else
   APP_PATH="$(find ~/Library/Developer/Xcode/DerivedData -name SoloCompass.app \
     -path '*/Debug-iphonesimulator/*' -type d 2>/dev/null \
     | xargs -I{} stat -f '%m %N' {} 2>/dev/null \

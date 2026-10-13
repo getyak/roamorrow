@@ -63,12 +63,18 @@ log "using simulator $SIM_NAME ($UDID)"
 
 if [[ "$SIM_STATE" != "Booted" ]]; then
   log "booting $UDID"
-  xcrun simctl boot "$UDID" || true
+  if [[ "$SIM_STATE" == "Shutdown" ]]; then
+    xcrun simctl boot "$UDID" || die "could not boot simulator $UDID ($SIM_NAME)"
+  fi
+  # Readiness gate: hidden boot failures previously let the run continue
+  # against a device that never became ready.
+  state=""
   for _ in {1..30}; do
     state="$(xcrun simctl list devices -j | jq -r --arg u "$UDID" '.devices | to_entries[] | .value[] | select(.udid==$u) | .state')"
     [[ "$state" == "Booted" ]] && break
     sleep 1
   done
+  [[ "$state" == "Booted" ]] || die "simulator $UDID never reached Booted state (last: ${state:-unknown})"
 fi
 
 # Pre-grant location permission so the CLLocationManager prompt does not gate

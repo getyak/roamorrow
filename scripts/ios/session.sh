@@ -98,6 +98,36 @@ ios_session_reexec_if_needed() {
   exec "$IOS_SESSION_HELPER" run -- "$entrypoint" "$@"
 }
 
+# Enforce a nonempty DEV_IOS_REASON for auxiliary profiles in the portable
+# fallback.
+#
+# The host helper enforces this itself (dev-ios-session refuses compact|ipad
+# without a nonempty --reason/DEV_IOS_REASON). When the helper is absent and
+# we are outside CI, the portable fallback applies the same rule instead of
+# silently running a secondary device without a recorded reason. `daily` is
+# the primary alias and never needs a reason.
+ios_session_require_aux_reason() {
+  ios_session_ci_truthy && return 0
+  if ! ios_session_helper_init; then
+    return 1
+  fi
+  [[ -n "$IOS_SESSION_HELPER" ]] && return 0
+  local profile
+  profile="$(printf '%s' "${DEV_IOS_PROFILE:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+  [[ "$profile" == "daily" ]] && profile="primary"
+  case "$profile" in
+    compact | ipad)
+      if [[ -z "${DEV_IOS_REASON:-}" || -z "${DEV_IOS_REASON//[[:space:]]/}" ]]; then
+        printf 'error: DEV_IOS_PROFILE=%s selects a secondary simulator and requires\n' "$profile" >&2
+        printf '       a nonempty DEV_IOS_REASON (the host helper enforces this;\n' >&2
+        printf '       the portable fallback does too when the helper is absent)\n' >&2
+        return 1
+      fi
+      ;;
+  esac
+  return 0
+}
+
 # Echo one field of a selector JSON object.
 ios_json_field() {
   # ios_json_field <json> <key>
@@ -113,9 +143,11 @@ print("" if v is None else v)' "$1" "$2"
 #
 # Uses `xcrun simctl list devices available --json`; explicit IOS_SIMULATOR_ID,
 # SIMULATOR_UDID and DEV_IOS_PROFILE are forwarded so the selector validates
-# both the caller-selected and helper-owned device.
+# both the caller-selected and helper-owned device. Auxiliary profiles are
+# reason-checked first (see ios_session_require_aux_reason).
 ios_select_simulator_json() {
   local preferred="${1:-iPhone 17 Pro}"
+  ios_session_require_aux_reason || return 1
   local selector="${REPO_ROOT:-$(pwd)}/scripts/ios/select-simulator.py"
   if [[ ! -f "$selector" ]]; then
     printf 'error: simulator selector missing at %s\n' "$selector" >&2

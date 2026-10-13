@@ -185,6 +185,32 @@ jobs:
             echo "⚠️ SwiftLint found issues (non-blocking for MVP)"
           fi
 
+      # Full local iOS policy suite with fake subprocesses only — no Xcode
+      # build, no simulator, no heavy runner. This macOS job is where the
+      # macOS-only tests (dev-ios-session reexec, /usr/bin/shlock reservation)
+      # actually run: any skip here is an error, so a skipped test can never
+      # be read as a passed one.
+      - name: Local iOS policy tests (native fakes, no skips allowed)
+        run: |
+          python3 - <<'PY'
+          import sys
+          import unittest
+
+          suite = unittest.defaultTestLoader.discover("scripts/ios", pattern="test_*.py")
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          for test, reason in result.skipped:
+              print(f"skipped: {test.id()} — {reason}", file=sys.stderr)
+          if result.skipped:
+              print(
+                  f"error: {len(result.skipped)} tests skipped on the macOS runner; "
+                  "the native policy tests must run here",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          if not result.wasSuccessful():
+              raise SystemExit(1)
+          PY
+
       - name: Upload Lint Report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
