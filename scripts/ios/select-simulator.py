@@ -185,6 +185,16 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="SIMULATOR_UDID exported by an owned dev-ios-session.",
     )
+    parser.add_argument(
+        "--resolve",
+        default=None,
+        metavar="IDENT",
+        help=(
+            "Canonicalize IDENT (UDID or exact device name) to its UDID and "
+            "exit. Used by the helper reexec path so dev-ios-session only ever "
+            "sees UDIDs."
+        ),
+    )
     parser.add_argument("--profile", default=None)
     args = parser.parse_args(argv)
 
@@ -207,6 +217,21 @@ def main(argv: list[str] | None = None) -> int:
     devices = [d for d in flatten(data) if d.get("isAvailable", True)]
     if not devices:
         _fail("no available simulators reported by simctl")
+
+    if args.resolve is not None:
+        # Canonicalization mode for the helper reexec path: one ident -> one
+        # UDID. No profile policy here; the host helper keeps allowlist,
+        # family, and availability validation.
+        device = match_explicit(devices, args.resolve)
+        if device is None:
+            _fail(
+                f"'{args.resolve}' (IOS_SIMULATOR_ID/SIMULATOR_UDID) does not match "
+                "any available simulator; refusing to substitute another device"
+            )
+        if not device.get("ios_version"):
+            _fail(f"'{device.get('name')}' is not available on an iOS runtime")
+        print(str(device.get("udid", "")))
+        return 0
 
     idents = [x.strip() for x in (args.explicit, args.owner_udid) if x and x.strip()]
     resolved: list[dict] = []

@@ -95,6 +95,15 @@ scripts/sc-evaluator/run.sh home-screen-cold-start --no-build
 
 Rules:
 
+- Before invoking the helper, entrypoints normalize the selection to the
+  helper's strict contract (`ios_session_prepare_helper_selection`):
+  `DEV_IOS_PROFILE` aliases are resolved (`daily` → `primary`, unknown values
+  fail closed) and explicit `IOS_SIMULATOR_ID` / `SIMULATOR_UDID` names are
+  canonicalized to UDIDs via one **read-only** inventory read. Both IDs must
+  agree; mismatched or bogus selections fail **before** `is-owner`/`run`.
+  With no explicit selection nothing is injected — the helper's allowlist
+  selection stays authoritative (never an automatic inventory pick). Allowlist
+  validation itself stays in the host helper.
 - Nesting is decided by `dev-ios-session is-owner` (a **true ancestor** owns
   the lock and the selected device matches). We never trust `SIMULATOR_UDID`
   being present in the environment as proof of ownership.
@@ -132,7 +141,10 @@ IOS_ARTIFACT_DIR="$ARTIFACT_ROOT/evaluator" \
 An explicit `IOS_DERIVED_DATA_PATH` is **authoritative**: the evaluator fails
 `app.locate` when the app is not under it and never falls back to the global
 `~/Library/Developer/Xcode/DerivedData`, so a stale binary from an unrelated
-build cannot satisfy the run.
+build cannot satisfy the run. A **relative** `IOS_DERIVED_DATA_PATH` resolves
+against the caller's working directory at entry; the evaluator resolves it
+once to an absolute path and reuses that single value for both `xcodebuild
+-derivedDataPath` and the app lookup.
 
 ## Two-device exception (manual, exclusive)
 
@@ -187,9 +199,10 @@ A skipped test is never counted as passed: on Linux the macOS-only tests
 requirement and must be green on the macOS job.
 
 These runs verify the policy scripts only. They do **not** verify the
-SoloCompass app or its UI: journey taps/asserts are recorded as unfulfilled
-(no XCUITest backend yet) and screenshots are evidence for human review, not
-an automated app/UI verdict.
+SoloCompass app or its UI: journey taps/asserts are only queued
+(no XCUITest backend yet), so their recorded `PASS` is not proof that an
+interaction ran or an assertion held. Screenshots require human review;
+these reports are not an automated app/UI verdict.
 
 ## Related
 

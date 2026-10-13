@@ -11,7 +11,11 @@
 #      device reexecs itself via `dev-ios-session run -- <entrypoint>
 #      <args...>` so the helper acquires /tmp/ios-automation.xcodebuild.lock
 #      (override IOS_AUTOMATION_LOCK_FILE) and exports IOS_SIMULATOR_ID /
-#      SIMULATOR_UDID / DEV_IOS_PROFILE=primary|compact|ipad. Nesting is
+#      SIMULATOR_UDID / DEV_IOS_PROFILE=primary|compact|ipad. Before the
+#      helper is invoked, the selection env is normalized to the helper's
+#      strict contract (ios_session_prepare_helper_selection): profile
+#      aliases (daily -> primary) resolved and explicit device names
+#      canonicalized to UDIDs via one read-only inventory read. Nesting is
 #      decided by `is-owner` (a true ancestor owns the lock), never by
 #      trusting env alone.
 #
@@ -76,6 +80,66 @@ ios_session_helper_init() {
   return 0
 }
 
+# Prepare the selection env for the host helper's strict resolve_selection
+# contract before is-owner/run. Read-only: the only host touch is one
+# `simctl list` inventory read used to canonicalize explicit names to UDIDs.
+# Device policy (allowlist membership, family, availability) stays with the
+# host helper.
+#
+#   * DEV_IOS_PROFILE is normalized (case/whitespace; daily -> primary) and
+#     must resolve to primary|compact|ipad.
+#   * Explicit IOS_SIMULATOR_ID / SIMULATOR_UDID (UDID or exact device name)
+#     are canonicalized to UDIDs, must agree with each other, and are both
+#     exported as UDIDs so the helper can validate them against its allowlist.
+#   * With no explicit selection nothing is exported: the helper's allowlist
+#     selection stays authoritative — we never pre-pick an inventory device.
+ios_session_prepare_helper_selection() {
+  local profile raw_id raw_owner
+  profile="$(printf '%s' "${DEV_IOS_PROFILE:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+  case "$profile" in
+    "") profile="primary" ;;
+    daily) profile="primary" ;;
+    primary | compact | ipad) ;;
+    *)
+      printf "error: unknown profile '%s' (expected one of primary, compact, ipad; daily is an alias for primary)\n" "${DEV_IOS_PROFILE:-}" >&2
+      return 1
+      ;;
+  esac
+  export DEV_IOS_PROFILE="$profile"
+
+  raw_id="${IOS_SIMULATOR_ID:-}"
+  raw_owner="${SIMULATOR_UDID:-}"
+  if [[ -z "$raw_id" && -z "$raw_owner" ]]; then
+    return 0
+  fi
+
+  local selector="${REPO_ROOT:-$(pwd)}/scripts/ios/select-simulator.py"
+  if [[ ! -f "$selector" ]]; then
+    printf 'error: simulator selector missing at %s\n' "$selector" >&2
+    return 1
+  fi
+  local inventory
+  if ! inventory="$(xcrun simctl list devices available --json 2>/dev/null)"; then
+    printf 'error: could not read the simulator inventory to canonicalize IOS_SIMULATOR_ID/SIMULATOR_UDID\n' >&2
+    return 1
+  fi
+  local udid_id="" udid_owner=""
+  if [[ -n "$raw_id" ]]; then
+    udid_id="$(printf '%s' "$inventory" | python3 "$selector" --resolve "$raw_id")" || return 1
+  fi
+  if [[ -n "$raw_owner" ]]; then
+    udid_owner="$(printf '%s' "$inventory" | python3 "$selector" --resolve "$raw_owner")" || return 1
+  fi
+  if [[ -n "$udid_id" && -n "$udid_owner" && "$udid_id" != "$udid_owner" ]]; then
+    printf 'error: IOS_SIMULATOR_ID and SIMULATOR_UDID disagree; refusing to substitute a device\n' >&2
+    return 1
+  fi
+  local resolved="${udid_id:-$udid_owner}"
+  export IOS_SIMULATOR_ID="$resolved"
+  export SIMULATOR_UDID="$resolved"
+  return 0
+}
+
 # Reexec the entrypoint inside the owned helper session when required.
 #
 # Usage: ios_session_reexec_if_needed <absolute-entrypoint> [args...]
@@ -91,6 +155,15 @@ ios_session_reexec_if_needed() {
     exit 2
   fi
   [[ -n "$IOS_SESSION_HELPER" ]] || return 0
+  # Speak the helper's strict selection contract before touching it: profile
+  # aliases normalized and explicit names canonicalized to UDIDs (one
+  # read-only inventory read), IOS_SIMULATOR_ID/SIMULATOR_UDID agreement
+  # enforced. Mismatched or bogus selections fail here — before is-owner or
+  # run — and an empty selection keeps the helper's authoritative allowlist
+  # selection. No mutation happens before the helper session is acquired.
+  if ! ios_session_prepare_helper_selection; then
+    exit 2
+  fi
   if "$IOS_SESSION_HELPER" is-owner >/dev/null 2>&1; then
     return 0
   fi

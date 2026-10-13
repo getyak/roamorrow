@@ -33,6 +33,17 @@ SKIP_BUILD=0
 
 mkdir -p "$FINDINGS_DIR"
 
+# IOS_DERIVED_DATA_PATH is resolved ONCE to an absolute path right here —
+# relative paths resolve against the caller's working directory at entry (the
+# documented base) — and the same absolute value is reused for `xcodebuild
+# -derivedDataPath` and the app lookup below. A relative path previously
+# resolved against apps/ios in the build but against the entry cwd in the
+# lookup, so a successful build could never be located.
+if [[ -n "${IOS_DERIVED_DATA_PATH:-}" ]]; then
+  IOS_DERIVED_DATA_PATH="$(python3 -c 'import os, sys
+print(os.path.abspath(os.path.join(sys.argv[1], sys.argv[2])))' "$PWD" "$IOS_DERIVED_DATA_PATH")"
+fi
+
 # ---------- args ----------
 # Preserve the exact original argv so a helper reexec keeps the journey name
 # (the positional parsing below shifts $1 off).
