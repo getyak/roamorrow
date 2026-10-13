@@ -104,6 +104,15 @@ cd scripts/ralph && ./ralph.sh --tool Codex 12
 
 **iOS**: XCTest target `SoloCompassTests` (default sim: iPhone 17 Pro, iOS latest).
 
+Local simulator policy — [docs/development/ios-testing.md](docs/development/ios-testing.md).
+Daily runs use one `primary` affected device (iPhone 17 Pro) with the shared
+`dev-ios-session` helper owning `/tmp/ios-automation.xcodebuild.lock`;
+`compact`/`ipad` are secondary profiles and iPads are never auto-selected.
+Booted SE/iPad devices are ignored. Web/backend changes need no simulator.
+`scripts/qa/two-sim-friend-loop.sh` is the explicit manual two-device
+exception: it takes the same machine-wide lock, fails busy, and is not a
+daily gate.
+
 **TS**: per-package `pnpm test` via turbo.
 
 ## Code Review Rules

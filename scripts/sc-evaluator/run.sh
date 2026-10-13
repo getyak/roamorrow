@@ -19,10 +19,13 @@ set -o pipefail
 # ---------- locate repo ----------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 IOS_DIR="$REPO_ROOT/apps/ios"
-JOURNEYS_DIR="$SCRIPT_DIR/journeys"
-FINDINGS_DIR="$SCRIPT_DIR/findings"
-SCREENSHOTS_DIR="$SCRIPT_DIR/screenshots"
+JOURNEYS_DIR="${SC_EVALUATOR_JOURNEYS_DIR:-$SCRIPT_DIR/journeys}"
+# Evidence paths default to the repo locations; env overrides exist so isolated
+# test runs never write into the shared registered directories.
+FINDINGS_DIR="${SC_EVALUATOR_FINDINGS_DIR:-$SCRIPT_DIR/findings}"
+SCREENSHOTS_DIR="${SC_EVALUATOR_SCREENSHOTS_DIR:-$SCRIPT_DIR/screenshots}"
 BUNDLE_ID="com.solocompass.app"
 PREFERRED_DEVICE="iPhone 17 Pro"
 PREFERRED_OS="iOS 26.4"
@@ -31,6 +34,9 @@ SKIP_BUILD=0
 mkdir -p "$FINDINGS_DIR"
 
 # ---------- args ----------
+# Preserve the exact original argv so a helper reexec keeps the journey name
+# (the positional parsing below shifts $1 off).
+ORIG_ARGS=("$@")
 JOURNEY="${1:-}"
 if [[ -z "$JOURNEY" ]]; then
   echo "error: journey name required" >&2
@@ -87,6 +93,23 @@ if [[ "$JOURNEY_MODE" == "yml" ]]; then
   fi
 fi
 
+# ---------- shared local simulator session policy ----------
+# Reexec inside the shared host helper BEFORE any simulator interaction or
+# costly xcodebuild. On local macOS (outside CI) with the helper installed and
+# no validated ownership of the shared lock, this replaces the process with
+# `dev-ios-session run -- <entrypoint> <args...>`. `is-owner` (true ancestor
+# owns the lock) decides nesting, never env alone. CI and non-macOS hosts fall
+# back to the deterministic selector. An explicit but unusable
+# DEV_IOS_SESSION_BIN fails closed.
+# shellcheck source=../ios/session.sh
+if [[ ! -f "$REPO_ROOT/scripts/ios/session.sh" ]]; then
+  echo "error: shared session library missing at $REPO_ROOT/scripts/ios/session.sh" >&2
+  exit 2
+fi
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/ios/session.sh"
+ios_session_reexec_if_needed "$SCRIPT_PATH" "${ORIG_ARGS[@]}"
+
 # ---------- run id + findings file ----------
 RUN_ID="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 # ISO-8601 UTC timestamp with colons. RUN_ID is filesystem-safe (hyphens),
@@ -95,9 +118,16 @@ RUN_ID="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 RUN_TIMESTAMP_ISO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 FINDINGS_FILE="$FINDINGS_DIR/${RUN_ID}.md"
 FINDINGS_JSON="$FINDINGS_DIR/${RUN_ID}.json"
-ARTIFACTS_DIR="$FINDINGS_DIR/${RUN_ID}_artifacts"
-RUN_SCREENSHOTS_DIR="$SCREENSHOTS_DIR/${RUN_ID}"
+# Output locations default to the registered evidence paths. IOS_ARTIFACT_DIR
+# relocates this run's transient artifacts AND screenshots under one root while
+# keeping the findings file itself in place; relative links are recomputed so
+# they stay valid either way.
+ARTIFACTS_DIR="${IOS_ARTIFACT_DIR:-$FINDINGS_DIR}/${RUN_ID}_artifacts"
+RUN_SCREENSHOTS_DIR="${IOS_ARTIFACT_DIR:-$SCREENSHOTS_DIR}/${RUN_ID}"
 mkdir -p "$ARTIFACTS_DIR" "$RUN_SCREENSHOTS_DIR"
+ARTIFACTS_REL="$(python3 -c 'import os, sys
+p = os.path.relpath(sys.argv[1], sys.argv[2])
+print(p if p.startswith(".") else "./" + p)' "$ARTIFACTS_DIR" "$FINDINGS_DIR")"
 
 # Append-only safety: never overwrite existing outputs.
 if [[ -e "$FINDINGS_FILE" ]]; then
@@ -115,6 +145,7 @@ COMMIT_SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unk
 # Populated after simulator resolution; emitted into frontmatter at flush time.
 SIMULATOR_NAME=""
 IOS_VERSION=""
+SELECT_SOURCE=""
 
 # ---------- findings helpers ----------
 FINDINGS_COUNT=0
@@ -285,7 +316,7 @@ flush_findings_file() {
     printf -- '\n## Summary\n'
     printf -- '- steps: %d/%d passed\n' "$pass_steps" "$total_steps"
     printf -- '- findings: %d\n' "$FINDINGS_COUNT"
-    printf -- '- artifacts: ./%s_artifacts/\n' "$RUN_ID"
+    printf -- '- artifacts: %s/\n' "$ARTIFACTS_REL"
     if [[ -n "$reason" ]]; then
       printf -- '- result: **%s** %s\n' "$result" "$reason"
     else
@@ -357,72 +388,45 @@ PY
 }
 
 # ---------- simulator detection / boot ----------
+# Deterministic selection via the shared selector: an explicit
+# IOS_SIMULATOR_ID is honored and validated, otherwise the best available
+# numbered iPhone wins. A booted SE/iPad never overrides the declared
+# preference.
 echo "→ resolving simulator…"
 UDID=""
+SELECTOR_ERR="$(mktemp)"
+if SEL_JSON="$(ios_select_simulator_json "$PREFERRED_DEVICE" 2>"$SELECTOR_ERR")" \
+  && [[ -n "$SEL_JSON" ]]; then
+  UDID="$(ios_json_field "$SEL_JSON" udid)"
+  SIMULATOR_NAME="$(ios_json_field "$SEL_JSON" name)"
+  IOS_VERSION="$(ios_json_field "$SEL_JSON" ios_version)"
+  SELECT_SOURCE="$(ios_json_field "$SEL_JSON" source)"
+  SEL_STATE="$(ios_json_field "$SEL_JSON" state)"
+  rm -f "$SELECTOR_ERR"
+else
+  cat "$SELECTOR_ERR" >&2 || true
+  rm -f "$SELECTOR_ERR"
+  emit_step FAIL "simulator.resolve" "no available iPhone simulator (need ${PREFERRED_DEVICE} on ${PREFERRED_OS})"
+  echo "FAILED: no simulator" >&2
+  # Defaults populate frontmatter when simulator detection never ran.
+  SIMULATOR_NAME="$PREFERRED_DEVICE"
+  IOS_VERSION="${PREFERRED_OS#iOS }"
+  flush_findings_file FAIL "(setup)"
+  exit 2
+fi
 
-# Already-booted simulator wins.
-UDID="$(xcrun simctl list devices booted 2>/dev/null \
-  | grep -Eo '\([A-F0-9-]{36}\)' | head -1 | tr -d '()' || true)"
-
-if [[ -z "$UDID" ]]; then
-  # Prefer the configured device name in any available runtime.
-  UDID="$(xcrun simctl list devices available 2>/dev/null \
-    | awk -v dev="$PREFERRED_DEVICE" '
-        $0 ~ dev {
-          match($0, /\([A-F0-9-]{36}\)/);
-          if (RSTART) print substr($0, RSTART+1, 36);
-        }' | head -1 || true)"
-
-  if [[ -z "$UDID" ]]; then
-    # Fallback: any iPhone simulator.
-    UDID="$(xcrun simctl list devices available 2>/dev/null \
-      | grep -Eo 'iPhone[^(]*\([A-F0-9-]{36}\)' \
-      | grep -Eo '\([A-F0-9-]{36}\)' | head -1 | tr -d '()' || true)"
-  fi
-
-  if [[ -z "$UDID" ]]; then
-    emit_step FAIL "simulator.resolve" "no available iPhone simulator (need ${PREFERRED_DEVICE} on ${PREFERRED_OS})"
-    echo "FAILED: no simulator" >&2
-    # Defaults populate frontmatter when simulator detection never ran.
-    SIMULATOR_NAME="$PREFERRED_DEVICE"
-    IOS_VERSION="${PREFERRED_OS#iOS }"
-    flush_findings_file FAIL "(setup)"
-    exit 2
-  fi
-
-  echo "  booting $UDID…"
+echo "  selected $SIMULATOR_NAME ($UDID, iOS $IOS_VERSION, $SELECT_SOURCE)"
+if [[ "$SEL_STATE" != "Booted" ]]; then
+  echo "  booting ${UDID}…"
   xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
 fi
 
 # Open Simulator.app so the runner is visible (best-effort, never blocks).
+# Other already-booted devices are left untouched; we never shut them down.
 open -gja Simulator >/dev/null 2>&1 || true
 xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
-emit_step PASS "simulator.resolve" "udid=$UDID"
+emit_step PASS "simulator.resolve" "udid=$UDID name=$SIMULATOR_NAME ios=$IOS_VERSION source=$SELECT_SOURCE"
 
-# Resolve the human-readable device name and iOS version for the UDID we
-# locked onto. `simctl list devices --json` is the most reliable source.
-# Falls back to the configured defaults if the lookup fails so frontmatter
-# is always populated with non-empty values.
-SIM_LOOKUP="$(xcrun simctl list devices --json 2>/dev/null \
-  | python3 - "$UDID" <<'PY' 2>/dev/null || true
-import json, sys
-udid = sys.argv[1]
-data = json.load(sys.stdin)
-for runtime, devs in (data.get("devices") or {}).items():
-    for d in devs:
-        if d.get("udid") == udid:
-            # runtime looks like "com.apple.CoreSimulator.SimRuntime.iOS-26-4"
-            ios = runtime.rsplit(".", 1)[-1]
-            if ios.lower().startswith("ios-"):
-                ios = ios[4:].replace("-", ".")
-            print(f"{d.get('name','')}\t{ios}")
-            sys.exit(0)
-PY
-)"
-if [[ -n "$SIM_LOOKUP" ]]; then
-  SIMULATOR_NAME="${SIM_LOOKUP%%	*}"
-  IOS_VERSION="${SIM_LOOKUP##*	}"
-fi
 [[ -z "$SIMULATOR_NAME" ]] && SIMULATOR_NAME="$PREFERRED_DEVICE"
 [[ -z "$IOS_VERSION" ]] && IOS_VERSION="${PREFERRED_OS#iOS }"
 
@@ -431,15 +435,19 @@ APP_PATH=""
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
   echo "→ building SoloCompass.app…"
   BUILD_LOG="$ARTIFACTS_DIR/xcodebuild.log"
-  if ( cd "$IOS_DIR" && xcodebuild \
-        -project SoloCompass.xcodeproj \
-        -scheme SoloCompass \
-        -destination "id=$UDID" \
-        -configuration Debug \
-        build ) >"$BUILD_LOG" 2>&1; then
+  BUILD_ARGS=(
+    -project SoloCompass.xcodeproj
+    -scheme SoloCompass
+    -destination "id=$UDID"
+    -configuration Debug
+  )
+  if [[ -n "${IOS_DERIVED_DATA_PATH:-}" ]]; then
+    BUILD_ARGS+=(-derivedDataPath "$IOS_DERIVED_DATA_PATH")
+  fi
+  if ( cd "$IOS_DIR" && xcodebuild "${BUILD_ARGS[@]}" build ) >"$BUILD_LOG" 2>&1; then
     emit_step PASS "build" "Debug build OK"
   else
-    emit_step FAIL "build" "xcodebuild failed — see ${RUN_ID}_artifacts/xcodebuild.log"
+    emit_step FAIL "build" "xcodebuild failed — see ${ARTIFACTS_REL}/xcodebuild.log"
     emit_fix_anchor "apps/ios/SoloCompass" "inspect xcodebuild.log tail for first error"
     # Echo a short tail into the findings buffer so the file is self-contained.
     tail -5 "$BUILD_LOG" 2>/dev/null | sed 's/^/    /' >> "$FINDINGS_BUFFER" || true
@@ -448,10 +456,20 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
   fi
 fi
 
-APP_PATH="$(find ~/Library/Developer/Xcode/DerivedData -name SoloCompass.app \
-  -path '*/Debug-iphonesimulator/*' -type d 2>/dev/null \
-  | xargs -I{} stat -f '%m %N' {} 2>/dev/null \
-  | sort -rn | head -1 | awk '{print $2}')"
+APP_PATH=""
+# Honor IOS_DERIVED_DATA_PATH when the host registers a custom location; fall
+# back to the default Xcode DerivedData search otherwise.
+if [[ -n "${IOS_DERIVED_DATA_PATH:-}" ]]; then
+  APP_PATH="$(find "$IOS_DERIVED_DATA_PATH" -name SoloCompass.app \
+    -path '*/Debug-iphonesimulator/*' -type d 2>/dev/null \
+    | head -1 || true)"
+fi
+if [[ -z "$APP_PATH" ]]; then
+  APP_PATH="$(find ~/Library/Developer/Xcode/DerivedData -name SoloCompass.app \
+    -path '*/Debug-iphonesimulator/*' -type d 2>/dev/null \
+    | xargs -I{} stat -f '%m %N' {} 2>/dev/null \
+    | sort -rn | head -1 | awk '{print $2}')"
+fi
 
 if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
   emit_step FAIL "app.locate" "SoloCompass.app not found in DerivedData"
@@ -498,8 +516,10 @@ sc_screenshot() {
   local path="$RUN_SCREENSHOTS_DIR/${filename}"
   xcrun simctl io "$UDID" screenshot "$path" >/dev/null 2>&1 || return 1
   # Path relative to FINDINGS_FILE (which lives in findings/) so markdown
-  # links resolve when the findings file is viewed in place.
-  echo "../screenshots/${RUN_ID}/${filename}"
+  # links resolve when the findings file is viewed in place, even when
+  # IOS_ARTIFACT_DIR relocates the screenshots.
+  python3 -c 'import os, sys
+print(os.path.relpath(sys.argv[1], sys.argv[2]))' "$path" "$FINDINGS_DIR"
 }
 export -f sc_screenshot
 export -f emit_step
