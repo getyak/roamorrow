@@ -36,12 +36,13 @@ Selecting `compact` or `ipad` requires a nonempty `DEV_IOS_REASON`; `primary`
 always resolves the `Primary iPhone` entry even when another simulator is
 booted. The helper enforces the reason when it owns the session, and the
 portable fallback (below) enforces the same rule **outside CI whenever the
-helper is absent**, so an unreasoned `compact`/`ipad` run cannot slip through
-on a helper-less host. The `daily` alias (i.e. `primary`) never needs a reason.
+helper is not in play on a non-macOS host**, so an unreasoned `compact`/`ipad`
+run cannot slip through. The `daily` alias (i.e. `primary`) never needs a
+reason.
 
 ## Device selection (deterministic fallback)
 
-When the helper is not in play (CI, non-macOS, or no helper installed),
+When the helper is not in play (CI or a non-macOS host),
 selection is shared by `scripts/ios/session.sh` and
 `scripts/ios/select-simulator.py`:
 
@@ -109,8 +110,9 @@ Rules:
   being present in the environment as proof of ownership.
 - `CI=true` and `CI=1` skip the helper and use the portable selector, so CI
   needs no helper installed.
-- If an explicitly configured helper is not executable, entrypoints **fail
-  closed** rather than silently falling back.
+- Local macOS entrypoints **fail closed** when the helper is missing or an
+  explicitly configured helper is not executable. They never perform
+  Simulator or `xcodebuild` work outside the machine-wide lock.
 - An explicit `IOS_SIMULATOR_ID` passed by a runner is forwarded and validated,
   so a helper-selected device and a caller-selected device stay consistent.
 
@@ -138,8 +140,10 @@ IOS_ARTIFACT_DIR="$ARTIFACT_ROOT/evaluator" \
 #   dev-storage-guard remove-artifact "$ARTIFACT_ROOT"
 ```
 
-An explicit `IOS_DERIVED_DATA_PATH` is **authoritative**: the evaluator fails
-`app.locate` when the app is not under it and never falls back to the global
+An explicit `IOS_DERIVED_DATA_PATH` is **authoritative** and is anchored to the
+caller's working directory before any helper reexec or `apps/ios` build
+subshell. The evaluator fails `app.locate` when the app is not under that one
+resolved path and never falls back to the global
 `~/Library/Developer/Xcode/DerivedData`, so a stale binary from an unrelated
 build cannot satisfy the run. A **relative** `IOS_DERIVED_DATA_PATH` resolves
 against the caller's working directory at entry; the evaluator resolves it
@@ -161,7 +165,9 @@ Friends/Companion social graph. It is an explicit manual integration exception,
   an owned single-device session.
 - It requires the shared allowlist to exist: a missing or empty allowlist
   **fails closed** before the lock or any simulator interaction — it is never
-  silently skipped. Both selected devices must be members.
+  silently skipped. Both selected devices must be members. When multiple iOS
+  runtimes contain the same device name, resolution considers only allowlisted
+  matches and chooses the newest runtime deterministically.
 - It rejects any other active simulator instead of shutting it down.
 - A `simctl bootstatus` failure aborts the run (after cleanup) instead of
   continuing against a device that never became ready.

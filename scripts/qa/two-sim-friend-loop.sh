@@ -229,10 +229,30 @@ command -v jq >/dev/null 2>&1 || { err "missing dependency: jq"; exit 1; }
 SIMCTL_JSON="$(xcrun simctl list devices available -j 2>/dev/null || printf '{}')"
 
 udid_for() {
-  # $1 = device name; echoes the first matching available UDID.
-  printf '%s' "$SIMCTL_JSON" | jq -r --arg n "$1" '
-    .devices | to_entries[] | .value[] | select(.name == $n) | .udid' \
-    | head -n1
+  # $1 = device name. Prefer allowlisted matches; when the same name exists on
+  # multiple runtimes, choose the newest iOS version. If no match is
+  # allowlisted, return the newest candidate so validate_allowlist emits the
+  # precise policy failure before any simulator mutation.
+  local allowed
+  allowed="$(allowlist_udids "$(allowlist_path)")"
+  printf '%s' "$SIMCTL_JSON" | jq -r --arg n "$1" --arg allowed "$allowed" '
+    ($allowed | split("\n") | map(select(length > 0))) as $allowed_ids
+    | [
+        .devices | to_entries[]
+        | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-"))
+        | .key as $runtime
+        | .value[]
+        | .udid as $udid
+        | select(.name == $n and .isAvailable != false)
+        | {
+            udid: $udid,
+            allowlisted: (($allowed_ids | index($udid)) != null),
+            version: ($runtime | sub("^.*iOS-"; "") | split("-") | map(tonumber))
+          }
+      ]
+    | sort_by([.allowlisted, .version])
+    | last
+    | .udid // empty'
 }
 
 state_for() {

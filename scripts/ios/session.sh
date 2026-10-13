@@ -24,7 +24,8 @@
 #      the live inventory; otherwise the best available numbered iPhone is
 #      chosen. Booted SE/iPad devices are ignored.
 #
-#   3. Fail-closed handling of an explicitly configured but unusable helper.
+#   3. Fail-closed handling when the required local macOS helper is missing or
+#      unusable. Only CI and non-macOS hosts use the portable fallback.
 #
 # See docs/development/ios-testing.md for the policy and examples.
 
@@ -145,7 +146,8 @@ ios_session_prepare_helper_selection() {
 # Usage: ios_session_reexec_if_needed <absolute-entrypoint> [args...]
 #
 # CI (true/1) and non-macOS hosts never resolve or run the helper. Outside CI,
-# an explicitly configured helper that is not executable fails clearly.
+# local macOS requires the helper so no Simulator or xcodebuild operation can
+# bypass the machine-wide lock.
 ios_session_reexec_if_needed() {
   local entrypoint="$1"
   shift
@@ -154,7 +156,11 @@ ios_session_reexec_if_needed() {
   if ! ios_session_helper_init; then
     exit 2
   fi
-  [[ -n "$IOS_SESSION_HELPER" ]] || return 0
+  if [[ -z "$IOS_SESSION_HELPER" ]]; then
+    printf 'error: dev-ios-session is required for local macOS iOS work\n' >&2
+    printf '       install it at ~/.local/bin/dev-ios-session or set DEV_IOS_SESSION_BIN\n' >&2
+    exit 2
+  fi
   # Speak the helper's strict selection contract before touching it: profile
   # aliases normalized and explicit names canonicalized to UDIDs (one
   # read-only inventory read), IOS_SIMULATOR_ID/SIMULATOR_UDID agreement
@@ -174,17 +180,21 @@ ios_session_reexec_if_needed() {
 # Enforce a nonempty DEV_IOS_REASON for auxiliary profiles in the portable
 # fallback.
 #
-# The host helper enforces this itself (dev-ios-session refuses compact|ipad
-# without a nonempty --reason/DEV_IOS_REASON). When the helper is absent and
-# we are outside CI, the portable fallback applies the same rule instead of
-# silently running a secondary device without a recorded reason. `daily` is
-# the primary alias and never needs a reason.
+# An owned host-helper session enforces this itself (dev-ios-session refuses
+# compact|ipad without a nonempty --reason/DEV_IOS_REASON). In every other
+# non-CI path, including non-macOS hosts where a helper binary merely happens
+# to exist, the portable fallback applies the same rule. `daily` is the primary
+# alias and never needs a reason.
 ios_session_require_aux_reason() {
   ios_session_ci_truthy && return 0
   if ! ios_session_helper_init; then
     return 1
   fi
-  [[ -n "$IOS_SESSION_HELPER" ]] && return 0
+  if [[ "$(uname -s 2>/dev/null || echo unknown)" == "Darwin" \
+        && -n "$IOS_SESSION_HELPER" ]] \
+      && "$IOS_SESSION_HELPER" is-owner >/dev/null 2>&1; then
+    return 0
+  fi
   local profile
   profile="$(printf '%s' "${DEV_IOS_PROFILE:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
   [[ "$profile" == "daily" ]] && profile="primary"

@@ -777,6 +777,16 @@ class ScriptPolicyTests(unittest.TestCase):
         self.assertIn("DEV_IOS_SESSION_BIN is set but not executable", proc.stderr)
         self.assertEqual(self._log(self.xcrun_log), "")
 
+    @unittest.skipUnless(sys.platform == "darwin", "helper reexec is local macOS only")
+    def test_missing_local_macos_helper_fails_closed(self):
+        self.helper.unlink()
+        self._write_simctl([device("iPhone 17 Pro", PRO_UDID)])
+        env = self.base_env()
+        proc = self._run([EVALUATOR, "tiny", "--no-build"], env)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("dev-ios-session is required for local macOS iOS work", proc.stderr)
+        self.assertEqual(self._log(self.xcrun_log), "")
+
     # ------------------------------------------------------------------
     # auxiliary-profile reason enforcement (portable fallback)
     # ------------------------------------------------------------------
@@ -824,19 +834,35 @@ class ScriptPolicyTests(unittest.TestCase):
         proc = self._session_bash("ios_select_simulator_json 'iPhone 17 Pro'", env)
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
-    def test_aux_profile_reason_enforced_by_helper_when_present(self):
-        # With the helper resolvable the helper owns enforcement (interface
-        # evidence: dev-ios-session resolve_selection dies for compact|ipad
-        # without a nonempty --reason/DEV_IOS_REASON). The portable fallback
-        # only enforces when the helper is absent.
+    def test_aux_profile_reason_enforced_by_owned_helper(self):
+        # A verified owner delegates enforcement to dev-ios-session. A helper
+        # binary that merely exists must not bypass portable enforcement.
         self._write_simctl([device("iPhone SE (3rd generation)", SE_UDID)])
-        env = self.base_env(DEV_IOS_PROFILE="compact", SIMULATOR_UDID=SE_UDID)
+        env = self.base_env(
+            DEV_IOS_PROFILE="compact",
+            SIMULATOR_UDID=SE_UDID,
+            FAKE_IS_OWNER="1",
+            IOS_AUTOMATION_LOCK_HELD="true",
+        )
         proc = self._session_bash("ios_select_simulator_json 'iPhone 17 Pro'", env)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(json.loads(proc.stdout)["udid"], SE_UDID)
 
-    def test_evaluator_rejects_aux_profile_without_reason_helper_absent(self):
+    def test_non_macos_helper_presence_does_not_bypass_reason(self):
+        self._write_exec(self.bin_dir / "uname", "#!/usr/bin/env bash\nprintf 'Linux\\n'\n")
+        self._write_simctl([device("iPhone SE (3rd generation)", SE_UDID)])
+        env = self.base_env(
+            DEV_IOS_PROFILE="compact",
+            IOS_SIMULATOR_ID=SE_UDID,
+        )
+        proc = self._session_bash("ios_select_simulator_json 'iPhone 17 Pro'", env)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("DEV_IOS_REASON", proc.stderr)
+        self.assertEqual(self._log(self.xcrun_log), "")
+
+    def test_non_macos_evaluator_rejects_aux_profile_without_reason(self):
         self.helper.unlink()
+        self._write_exec(self.bin_dir / "uname", "#!/usr/bin/env bash\nprintf 'Linux\\n'\n")
         env = self.base_env(DEV_IOS_PROFILE="compact")
         proc = self._run([EVALUATOR, "tiny", "--no-build"], env)
         self.assertEqual(proc.returncode, 2, proc.stderr + proc.stdout)
@@ -1094,6 +1120,19 @@ class ScriptPolicyTests(unittest.TestCase):
         self.assertIn("simctl install", self._log(self.xcrun_log))
         self.assertIn("-derivedDataPath", self._log(self.xcodebuild_log))
 
+    def test_relative_derived_data_uses_one_caller_anchored_path(self):
+        custom = self.tmp / "relative-dd"
+        app = custom / "Build/Products/Debug-iphonesimulator/SoloCompass.app"
+        app.mkdir(parents=True)
+        relative = os.path.relpath(custom, REPO_ROOT)
+        self._write_simctl([device("iPhone 17 Pro", PRO_UDID)])
+        env = self.base_env(CI="true", IOS_DERIVED_DATA_PATH=relative)
+        proc = self._run([EVALUATOR, "tiny", "--no-build"], env)
+        self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
+        report = sorted(self.findings_dir.glob("*.md"))[0].read_text(encoding="utf-8")
+        self.assertIn(str(app), report)
+        self.assertIn("simctl install", self._log(self.xcrun_log))
+
     # ------------------------------------------------------------------
     # boot/bootstatus failures are never hidden
     # ------------------------------------------------------------------
@@ -1307,6 +1346,28 @@ class ScriptPolicyTests(unittest.TestCase):
         self.assertNotIn(f"simctl boot {PRO_UDID}", log)
         self.assertIn(f"simctl shutdown {IP16_UDID}", log)
         self.assertNotIn(f"simctl shutdown {PRO_UDID}", log)
+        self.assertFalse(self.lock_file.exists())
+
+    @requires_shlock
+    def test_two_sim_same_name_selects_allowlisted_runtime_deterministically(self):
+        self._write_simctl(
+            [
+                device(
+                    "iPhone 17 Pro",
+                    BOGUS_UDID,
+                    runtime="com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+                ),
+                device("iPhone 17 Pro", PRO_UDID),
+                device("iPhone 16", IP16_UDID),
+            ]
+        )
+        self._write_allowlist([PRO_UDID, IP16_UDID])
+        env = self._two_sim_env()
+        proc = self._run([TWO_SIM], env, stdin="\n")
+        self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
+        log = self._log(self.xcrun_log)
+        self.assertIn(f"simctl boot {PRO_UDID}", log)
+        self.assertNotIn(BOGUS_UDID, log)
         self.assertFalse(self.lock_file.exists())
 
     @requires_shlock

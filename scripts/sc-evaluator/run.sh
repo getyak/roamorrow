@@ -21,6 +21,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 IOS_DIR="$REPO_ROOT/apps/ios"
+# Keep an explicit DerivedData override stable across the caller cwd, helper
+# reexec, and the apps/ios build subshell. xcodebuild and the later app lookup
+# must resolve the same directory even when the caller supplied a relative
+# path such as `build`.
+if [[ -n "${IOS_DERIVED_DATA_PATH:-}" && "$IOS_DERIVED_DATA_PATH" != /* ]]; then
+  if ! IOS_DERIVED_DATA_PATH="$(python3 -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$IOS_DERIVED_DATA_PATH")"; then
+    echo "error: python3 is required to resolve IOS_DERIVED_DATA_PATH" >&2
+    exit 2
+  fi
+  export IOS_DERIVED_DATA_PATH
+fi
 JOURNEYS_DIR="${SC_EVALUATOR_JOURNEYS_DIR:-$SCRIPT_DIR/journeys}"
 # Evidence paths default to the repo locations; env overrides exist so isolated
 # test runs never write into the shared registered directories.
