@@ -62,3 +62,18 @@ References: [pnpm audit](https://pnpm.io/cli/audit),
 [versioned patches](https://pnpm.io/cli/patch),
 [Next.js advisory](https://github.com/advisories/GHSA-4jqv-mc3x-m676),
 [sharp advisory](https://github.com/advisories/GHSA-wq5f-xc86-pv6w).
+
+## Go security remediation
+
+The same delivery's `govulncheck` failed on nine reachable advisories in Go
+1.27.0 and `golang.org/x/net@v0.58.0`. The scanner identifies Go 1.27.2 and
+`x/net@v0.60.0` as the fixes. See the
+[official Go release](https://go.dev/doc/devel/release#go1.27.2) and
+[HTTP/2 vulnerability record](https://pkg.go.dev/vuln/GO-2026-6603).
+
+`apps/api/go.mod` now requires Go 1.27.2 and x/net 0.60.0, including the
+crypto/sys/text versions required by that module. `go.sum` records the public
+Go checksum database entries. The Docker builder uses the official
+`golang:1.27.2-alpine` image, pinned to its registry-verified OCI index digest.
+CI continues to verify module checksums, run `go test ./...`, and run
+`govulncheck`; no Go advisory exceptions are introduced.
