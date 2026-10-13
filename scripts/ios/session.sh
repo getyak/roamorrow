@@ -81,6 +81,24 @@ ios_session_helper_init() {
   return 0
 }
 
+# Echo the UDID assigned to a helper profile in the shared tab-separated
+# allowlist. A missing entry is left empty: unique names can still be
+# canonicalized, while duplicate names fail closed in the selector.
+ios_session_profile_allowlisted_udid() {
+  local profile="$1" label path
+  case "$profile" in
+    primary) label="Primary iPhone" ;;
+    compact) label="Compact iPhone" ;;
+    ipad) label="iPad" ;;
+    *) return 0 ;;
+  esac
+  path="${DEV_IOS_ALLOWLIST:-${HOME:-}/.config/dev-storage-guard/simulator-allowlist.tsv}"
+  [[ -r "$path" ]] || return 0
+  awk -F '\t' -v label="$label" '
+    $2 == label && $1 !~ /^[[:space:]]*#/ && $1 != "" { print $1; exit }
+  ' "$path"
+}
+
 # Prepare the selection env for the host helper's strict resolve_selection
 # contract before is-owner/run. Read-only: the only host touch is one
 # `simctl list` inventory read used to canonicalize explicit names to UDIDs.
@@ -124,12 +142,17 @@ ios_session_prepare_helper_selection() {
     printf 'error: could not read the simulator inventory to canonicalize IOS_SIMULATOR_ID/SIMULATOR_UDID\n' >&2
     return 1
   fi
-  local udid_id="" udid_owner=""
+  local allowlisted_udid="" udid_id="" udid_owner=""
+  allowlisted_udid="$(ios_session_profile_allowlisted_udid "$profile")" || return 1
   if [[ -n "$raw_id" ]]; then
-    udid_id="$(printf '%s' "$inventory" | python3 "$selector" --resolve "$raw_id")" || return 1
+    local -a id_args=(--resolve "$raw_id")
+    [[ -n "$allowlisted_udid" ]] && id_args+=(--allowlisted-udid "$allowlisted_udid")
+    udid_id="$(printf '%s' "$inventory" | python3 "$selector" "${id_args[@]}")" || return 1
   fi
   if [[ -n "$raw_owner" ]]; then
-    udid_owner="$(printf '%s' "$inventory" | python3 "$selector" --resolve "$raw_owner")" || return 1
+    local -a owner_args=(--resolve "$raw_owner")
+    [[ -n "$allowlisted_udid" ]] && owner_args+=(--allowlisted-udid "$allowlisted_udid")
+    udid_owner="$(printf '%s' "$inventory" | python3 "$selector" "${owner_args[@]}")" || return 1
   fi
   if [[ -n "$udid_id" && -n "$udid_owner" && "$udid_id" != "$udid_owner" ]]; then
     printf 'error: IOS_SIMULATOR_ID and SIMULATOR_UDID disagree; refusing to substitute a device\n' >&2

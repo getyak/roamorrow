@@ -150,6 +150,41 @@ def match_explicit(devices: list[dict], ident: str) -> dict | None:
     return named[0] if named else None
 
 
+def resolve_for_helper(
+    devices: list[dict], ident: str, allowlisted_udid: str | None
+) -> dict | None:
+    """Resolve a helper-bound identifier without crossing the allowlist.
+
+    Exact UDIDs remain authoritative. Exact names prefer the current profile's
+    allowlisted UDID; without that hint, duplicate names across runtimes fail
+    closed instead of silently selecting a different simulator.
+    """
+    lowered = ident.strip().lower()
+    for device in devices:
+        if str(device.get("udid", "")).lower() == lowered:
+            return device
+
+    named = [d for d in devices if str(d.get("name", "")).lower() == lowered]
+    ios_named = [d for d in named if d.get("ios_version")]
+    candidates = ios_named or named
+    allowed = (allowlisted_udid or "").strip().lower()
+    if allowed:
+        for device in candidates:
+            if str(device.get("udid", "")).lower() == allowed:
+                return device
+        _fail(
+            f"'{ident}' does not match the profile's allowlisted simulator "
+            f"({allowlisted_udid}); refusing to select a same-name device "
+            "from another runtime"
+        )
+    if len(candidates) > 1:
+        _fail(
+            f"'{ident}' matches multiple available iOS runtimes; use an "
+            "explicit UDID or configure the profile allowlist"
+        )
+    return candidates[0] if candidates else None
+
+
 def emit(device: dict, source: str) -> None:
     print(
         json.dumps(
@@ -195,6 +230,14 @@ def main(argv: list[str] | None = None) -> int:
             "sees UDIDs."
         ),
     )
+    parser.add_argument(
+        "--allowlisted-udid",
+        default=None,
+        help=(
+            "Profile allowlist UDID used to disambiguate an exact device name "
+            "during --resolve."
+        ),
+    )
     parser.add_argument("--profile", default=None)
     args = parser.parse_args(argv)
 
@@ -222,7 +265,7 @@ def main(argv: list[str] | None = None) -> int:
         # Canonicalization mode for the helper reexec path: one ident -> one
         # UDID. No profile policy here; the host helper keeps allowlist,
         # family, and availability validation.
-        device = match_explicit(devices, args.resolve)
+        device = resolve_for_helper(devices, args.resolve, args.allowlisted_udid)
         if device is None:
             _fail(
                 f"'{args.resolve}' (IOS_SIMULATOR_ID/SIMULATOR_UDID) does not match "

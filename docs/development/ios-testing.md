@@ -100,8 +100,11 @@ Rules:
   helper's strict contract (`ios_session_prepare_helper_selection`):
   `DEV_IOS_PROFILE` aliases are resolved (`daily` → `primary`, unknown values
   fail closed) and explicit `IOS_SIMULATOR_ID` / `SIMULATOR_UDID` names are
-  canonicalized to UDIDs via one **read-only** inventory read. Both IDs must
-  agree; mismatched or bogus selections fail **before** `is-owner`/`run`.
+  canonicalized to UDIDs via one **read-only** inventory read. If multiple iOS
+  runtimes contain the same name, the current profile's allowlisted UDID wins;
+  without an allowlist match the ambiguous name fails closed and requires an
+  explicit UDID. Both IDs must agree; mismatched or bogus selections fail
+  **before** `is-owner`/`run`.
   With no explicit selection nothing is injected — the helper's allowlist
   selection stays authoritative (never an automatic inventory pick). Allowlist
   validation itself stays in the host helper.

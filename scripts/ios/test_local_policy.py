@@ -338,6 +338,40 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(json.loads(proc.stdout)["udid"], SE_UDID)
 
+    def test_helper_resolve_prefers_allowlisted_duplicate_name(self):
+        proc = run_selector(
+            [
+                device("iPhone 17 Pro", PRO_UDID, runtime=RT),
+                device(
+                    "iPhone 17 Pro",
+                    IP16_UDID,
+                    runtime="com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+                ),
+            ],
+            "--resolve",
+            "iPhone 17 Pro",
+            "--allowlisted-udid",
+            PRO_UDID,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(proc.stdout.strip(), PRO_UDID)
+
+    def test_helper_resolve_rejects_ambiguous_name_without_allowlist(self):
+        proc = run_selector(
+            [
+                device("iPhone 17 Pro", PRO_UDID, runtime=RT),
+                device(
+                    "iPhone 17 Pro",
+                    IP16_UDID,
+                    runtime="com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+                ),
+            ],
+            "--resolve",
+            "iPhone 17 Pro",
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("multiple available iOS runtimes", proc.stderr)
+
     def test_profile_primary_rejects_explicit_ipad(self):
         proc = run_selector(
             [device("iPad Pro 11-inch (M4)", IPAD_UDID)],
@@ -996,6 +1030,32 @@ class ScriptPolicyTests(unittest.TestCase):
         self.assertNotIn("simctl boot", log)
         self.assertNotIn("simctl install", log)
         self.assertNotIn("simctl launch", log)
+
+    @unittest.skipUnless(sys.platform == "darwin", "helper reexec is local macOS only")
+    def test_reexec_duplicate_name_prefers_profile_allowlist(self):
+        self._write_simctl(
+            [
+                device("iPhone 17 Pro", PRO_UDID, runtime=RT),
+                device(
+                    "iPhone 17 Pro",
+                    IP16_UDID,
+                    runtime="com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+                ),
+            ]
+        )
+        self._write_allowlist([PRO_UDID])
+        env = self._strict_env(
+            IOS_SIMULATOR_ID="iPhone 17 Pro",
+            DEV_IOS_ALLOWLIST=str(self.allowlist_file),
+            FAKE_HELPER_ALLOWLIST_UDID=PRO_UDID,
+        )
+        proc = self._session_bash("ios_session_reexec_if_needed /usr/bin/true", env)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn(
+            f"run profile=primary udid={PRO_UDID} sim_udid={PRO_UDID}",
+            self._log(self.helper_env_log),
+        )
+        self.assertNotIn(IP16_UDID, self._log(self.helper_env_log))
 
     @unittest.skipUnless(sys.platform == "darwin", "helper reexec is local macOS only")
     def test_reexec_mismatched_ids_fail_before_helper(self):
