@@ -868,6 +868,7 @@ class ScriptPolicyTests(unittest.TestCase):
         proc = self._session_bash("ios_select_simulator_json 'iPhone 17 Pro'", env)
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
+    @unittest.skipUnless(sys.platform == "darwin", "owned helper sessions are local macOS only")
     def test_aux_profile_reason_enforced_by_owned_helper(self):
         # A verified owner delegates enforcement to dev-ios-session. A helper
         # binary that merely exists must not bypass portable enforcement.
