@@ -1,4 +1,5 @@
 import XCTest
+import Dispatch
 @testable import SoloCompass
 
 // MARK: - US-016: markerState(for:) call-count perf test
@@ -14,8 +15,10 @@ import XCTest
 ///
 /// This test reconstructs both shapes — the *cached* path (one call per
 /// iteration) and a *non-cached* baseline (two calls per iteration, mirroring
-/// the pre-fix code) — and asserts the cached path's p95 per-pass latency drops
-/// by ≥ 40% versus the baseline.
+/// the pre-fix code) — and asserts the cached path's p95 of amortized batch
+/// latency per pass drops by ≥ 40% versus the baseline. Each shape executes
+/// 1000 measured passes, sampled in alternating pairs of 10-pass batches to
+/// reduce shared-runner scheduling noise and measurement-order bias.
 ///
 /// Run with:
 ///   xcodebuild test -only-testing:SoloCompassTests/MarkerStatePerformanceTest
@@ -23,6 +26,7 @@ final class MarkerStatePerformanceTest: XCTestCase {
 
     private static let markerCount = 100
     private static let iterations = 1000
+    private static let passesPerBatch = 10
     private static let requiredImprovement = 0.40
 
     // Bounding box: ±0.15° around Chiang Mai old-city center.
@@ -34,19 +38,31 @@ final class MarkerStatePerformanceTest: XCTestCase {
     // MARK: - Fixture
 
     @MainActor
-    private func makeViewModel(with experiences: [Experience]) -> MapViewModel {
+    private func makeViewModel(with experiences: [Experience]) throws -> MapViewModel {
+        let suite = "marker-state.perf.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        addTeardownBlock {
+            UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        }
         let vm = MapViewModel(
             locationService: LocationService(),
             experienceService: ExperienceService(seed: experiences),
             aiService: AIService(),
-            preferences: UserPreferences()
+            preferences: UserPreferences(defaults: defaults)
         )
         vm.visibleExperiences = experiences
         return vm
     }
 
-    private func makeExperiences(count: Int) -> [Experience] {
-        let now = Date()
+    private func fixtureNow() throws -> Date {
+        // Pin the wall-clock workload without mutating the process time zone.
+        try XCTUnwrap(Calendar.current.date(from: DateComponents(
+            year: 2026, month: 1, day: 15, hour: 12, minute: 0, second: 0
+        )))
+    }
+
+    private func makeExperiences(count: Int, now: Date) -> [Experience] {
         return (0..<count).map { index in
             // Spread markers evenly across the bounding box using a grid layout.
             let cols = Int(Double(count).squareRoot().rounded(.up))
@@ -101,54 +117,70 @@ final class MarkerStatePerformanceTest: XCTestCase {
 
     // MARK: - Measurement helpers
 
+    private struct PassOutput: Equatable {
+        var markerCount = 0
+        var iconChecksum = 0
+        var badgeCount = 0
+    }
+
+    /// Consume the icon state as well as the badge decision. Unlike an iteration
+    /// counter, this checksum depends on every resolver result, including the
+    /// associated minutes in an upcoming state.
+    private func iconChecksum(for state: ExperienceMarkerState) -> Int {
+        switch state {
+        case .default: return 1
+        case .bestNow: return 2
+        case .completed: return 3
+        case .favorited: return 4
+        case .footprinted: return 5
+        case .upcoming(let minutes): return 6 + minutes
+        }
+    }
+
     /// Cached path: one `markerState(for:)` call per iteration, the value reused
     /// for both the icon and the `.footprinted` badge branch — matches the
     /// post-US-016 ForEach body in CompassMapView.
     @MainActor
-    private func cachedPassLatencies(_ vm: MapViewModel, now: Date) -> [TimeInterval] {
-        var latencies: [TimeInterval] = []
-        latencies.reserveCapacity(Self.iterations)
-        for _ in 0..<Self.iterations {
-            let start = Date()
-            var iconStates = 0
-            var badgeCount = 0
-            for exp in vm.visibleExperiences {
-                let state = vm.markerState(for: exp, now: now)
-                iconStates += 1                       // MarkerIconView consumes `state`
-                if case .footprinted = state {        // badge branch reuses `state`
-                    badgeCount += vm.footprintCount(for: exp)
-                }
+    private func cachedPass(_ vm: MapViewModel, experiences: [Experience], now: Date) -> PassOutput {
+        var output = PassOutput()
+        for exp in experiences {
+            let state = vm.markerState(for: exp, now: now)
+            output.markerCount += 1
+            output.iconChecksum += iconChecksum(for: state)
+            if case .footprinted = state {
+                output.badgeCount += vm.footprintCount(for: exp)
             }
-            latencies.append(Date().timeIntervalSince(start))
-            // Defeat dead-code elimination.
-            XCTAssertEqual(iconStates, Self.markerCount)
-            _ = badgeCount
         }
-        return latencies
+        return output
     }
 
     /// Non-cached baseline: two `markerState(for:)` calls per iteration — the
     /// pre-US-016 shape where the icon and the badge branch each recomputed it.
     @MainActor
-    private func nonCachedPassLatencies(_ vm: MapViewModel, now: Date) -> [TimeInterval] {
-        var latencies: [TimeInterval] = []
-        latencies.reserveCapacity(Self.iterations)
-        for _ in 0..<Self.iterations {
-            let start = Date()
-            var iconStates = 0
-            var badgeCount = 0
-            for exp in vm.visibleExperiences {
-                iconStates += 1
-                _ = vm.markerState(for: exp, now: now)          // icon call
-                if case .footprinted = vm.markerState(for: exp, now: now) {  // badge call (recomputed)
-                    badgeCount += vm.footprintCount(for: exp)
-                }
+    private func nonCachedPass(_ vm: MapViewModel, experiences: [Experience], now: Date) -> PassOutput {
+        var output = PassOutput()
+        for exp in experiences {
+            output.markerCount += 1
+            output.iconChecksum += iconChecksum(for: vm.markerState(for: exp, now: now))
+            if case .footprinted = vm.markerState(for: exp, now: now) {
+                output.badgeCount += vm.footprintCount(for: exp)
             }
-            latencies.append(Date().timeIntervalSince(start))
-            XCTAssertEqual(iconStates, Self.markerCount)
-            _ = badgeCount
         }
-        return latencies
+        return output
+    }
+
+    @MainActor
+    private func measureBatch(_ pass: () -> PassOutput) -> (latency: TimeInterval, output: PassOutput) {
+        var output = PassOutput()
+        let start = DispatchTime.now().uptimeNanoseconds
+        for _ in 0..<Self.passesPerBatch {
+            let result = pass()
+            output.markerCount += result.markerCount
+            output.iconChecksum += result.iconChecksum
+            output.badgeCount += result.badgeCount
+        }
+        let elapsed = DispatchTime.now().uptimeNanoseconds - start
+        return (Double(elapsed) / 1_000_000_000 / Double(Self.passesPerBatch), output)
     }
 
     private func p95(_ samples: [TimeInterval]) -> TimeInterval {
@@ -161,20 +193,43 @@ final class MarkerStatePerformanceTest: XCTestCase {
 
     @MainActor
     func testCachedMarkerStateP95DropsAtLeast40Percent() throws {
-        let experiences = makeExperiences(count: Self.markerCount)
-        let vm = makeViewModel(with: experiences)
-        let now = Date()
+        let now = try fixtureNow()
+        let experiences = makeExperiences(count: Self.markerCount, now: now)
+        let vm = try makeViewModel(with: experiences)
+        let visibleExperiences = vm.visibleExperiences
 
-        XCTAssertEqual(vm.visibleExperiences.count, Self.markerCount,
+        XCTAssertEqual(visibleExperiences.count, Self.markerCount,
                        "Precondition: visibleExperiences must hold exactly \(Self.markerCount) entries")
 
         // Warm-up so the first measured pass isn't penalised by cold caches.
-        _ = cachedPassLatencies(vm, now: now)
-        _ = nonCachedPassLatencies(vm, now: now)
+        XCTAssertEqual(
+            cachedPass(vm, experiences: visibleExperiences, now: now),
+            nonCachedPass(vm, experiences: visibleExperiences, now: now)
+        )
 
-        // Interleave-free: measure baseline then cached.
-        let baseline = nonCachedPassLatencies(vm, now: now)
-        let cached = cachedPassLatencies(vm, now: now)
+        let batchCount = Self.iterations / Self.passesPerBatch
+        var baseline: [TimeInterval] = []
+        var cached: [TimeInterval] = []
+        baseline.reserveCapacity(batchCount)
+        cached.reserveCapacity(batchCount)
+
+        for batch in 0..<batchCount {
+            let baselineSample: (latency: TimeInterval, output: PassOutput)
+            let cachedSample: (latency: TimeInterval, output: PassOutput)
+            if batch.isMultiple(of: 2) {
+                baselineSample = measureBatch { nonCachedPass(vm, experiences: visibleExperiences, now: now) }
+                cachedSample = measureBatch { cachedPass(vm, experiences: visibleExperiences, now: now) }
+            } else {
+                cachedSample = measureBatch { cachedPass(vm, experiences: visibleExperiences, now: now) }
+                baselineSample = measureBatch { nonCachedPass(vm, experiences: visibleExperiences, now: now) }
+            }
+            // Assertions and sample storage stay outside both timed batches.
+            XCTAssertEqual(baselineSample.output, cachedSample.output,
+                           "Both computation shapes must produce the same icon and badge results")
+            XCTAssertEqual(cachedSample.output.markerCount, Self.markerCount * Self.passesPerBatch)
+            baseline.append(baselineSample.latency)
+            cached.append(cachedSample.latency)
+        }
 
         let baselineP95 = p95(baseline)
         let cachedP95 = p95(cached)
@@ -186,9 +241,10 @@ final class MarkerStatePerformanceTest: XCTestCase {
             improvement,
             Self.requiredImprovement,
             """
-            Cached marker-state pass should be ≥ \(Int(Self.requiredImprovement * 100))% faster at p95. \
-            baseline p95 = \(String(format: "%.6f", baselineP95))s, \
-            cached p95 = \(String(format: "%.6f", cachedP95))s, \
+            Cached marker-state amortized batch latency per pass should be \
+            ≥ \(Int(Self.requiredImprovement * 100))% faster at p95 (\(Self.passesPerBatch) passes/batch). \
+            baseline amortized p95 = \(String(format: "%.6f", baselineP95))s, \
+            cached amortized p95 = \(String(format: "%.6f", cachedP95))s, \
             improvement = \(String(format: "%.1f", improvement * 100))%
             """
         )
@@ -200,11 +256,12 @@ final class MarkerStatePerformanceTest: XCTestCase {
     /// single hoisted call equals what two separate calls would have produced.
     @MainActor
     func testCachedAndNonCachedProduceIdenticalStates() throws {
-        let experiences = makeExperiences(count: Self.markerCount)
-        let vm = makeViewModel(with: experiences)
-        let now = Date()
+        let now = try fixtureNow()
+        let experiences = makeExperiences(count: Self.markerCount, now: now)
+        let vm = try makeViewModel(with: experiences)
+        let visibleExperiences = vm.visibleExperiences
 
-        for exp in vm.visibleExperiences {
+        for exp in visibleExperiences {
             let cached = vm.markerState(for: exp, now: now)
             let recomputed = vm.markerState(for: exp, now: now)
             XCTAssertEqual(cached, recomputed,

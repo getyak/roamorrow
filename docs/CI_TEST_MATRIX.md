@@ -1,7 +1,21 @@
 # CI Test Matrix — Phase 2 + Phase 3 (#290 / #390)
 
 Owner: infra
-Target CI: `.github/workflows/ios-ci.yml` (`macos-latest`)
+Target CI: `.github/workflows/ios-ci.yml` (`macos-latest`) and
+`.github/workflows/ci.yml` (`ubuntu-latest`).
+
+## Simulator policy and dependency gates
+
+| Workflow/job                     | Required checks                                                                                                                                          |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml` / build (Linux)         | Portable `scripts/ios/test_local_policy.py` suite, explicit skips for macOS-only tests, and `bash -n` for all five simulator entrypoint/library scripts. |
+| `ios-ci.yml` / SwiftLint (macOS) | Full fake-tool simulator policy suite; any skipped test fails this step.                                                                                 |
+| `ci.yml` / build (Linux)         | `pnpm security:patch-check` against real Tailwind dependency paths before `pnpm audit --audit-level=low`.                                                |
+
+The policy suite uses fake subprocess tools and never runs a real Simulator.
+It verifies script behavior, not app/UI acceptance. See
+[local iOS testing](development/ios-testing.md) and
+[dependency security gates](development/dependency-security.md).
 
 ## Suites CI must run
 
@@ -20,6 +34,9 @@ them regresses.
 - `ArchiveSnapshotTests` — 2 cases
 - `VisitedMarkerStateTests` — 6 cases
 - `LiveActivityServiceTests` — 6 cases
+- `MarkerStatePerformanceTest` — identical marker outputs and ≥40% lower cached
+  p95 amortized per-pass latency, using 100 paired batches of 10 full
+  100-marker passes for each path.
 
 ### Phase 2 P2.0 (must stay green)
 

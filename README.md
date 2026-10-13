@@ -54,11 +54,11 @@ solo-compass/
 
 ## Quickstart
 
-> Requires Node 20+, pnpm 9+. iOS app requires Xcode 15+ (added in Phase 3).
+> Requires Node 22.13+, pnpm 11.24.0 (pinned in `package.json`). iOS app requires Xcode.
 
 ```bash
 # Clone
-git clone https://github.com/kubbot/solo-compass.git
+git clone https://github.com/getyak/solo-compass.git
 cd solo-compass
 
 # Install all workspaces
@@ -76,6 +76,11 @@ pnpm --filter @solo-compass/bot dev
 ```
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow.
+
+- [`docs/development/ios-testing.md`](./docs/development/ios-testing.md): local simulator selection, shared session ownership and registered test artifacts.
+- [`docs/CI_TEST_MATRIX.md`](./docs/CI_TEST_MATRIX.md): native test suites and portable/macOS simulator policy gates.
+- [`docs/development/dependency-security.md`](./docs/development/dependency-security.md): dependency updates, the braces mitigation and its mandatory audit checks.
+- [`docs/design/2026-10-08-core-flow-refinement.md`](./docs/design/2026-10-08-core-flow-refinement.md): core flow design evidence and remaining native validation.
 
 ---
 

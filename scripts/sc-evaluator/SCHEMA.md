@@ -20,6 +20,13 @@ or a required argument is missing.
 Journeys live at `scripts/sc-evaluator/journeys/<name>.yml` and are selected by
 their bare name: `scripts/sc-evaluator/run.sh <name>`.
 
+The DSL accepts interaction and assertion steps, but the current runtime has
+no XCUITest backend for `tap`, `longPress`, `assertVisible` or `assertText`.
+Those steps are recorded as `queued (no XCUITest backend)` without executing
+the interaction or checking the assertion. A report's `PASS` therefore does
+not prove those actions succeeded. Launches and screenshots provide evidence;
+they do not constitute an automated app/UI acceptance verdict.
+
 ## File shape
 
 ```yaml
@@ -132,9 +139,22 @@ so the offending step index and name are always visible.
 ## Running
 
 ```bash
-scripts/sc-evaluator/run.sh home-screen-cold-start
-scripts/sc-evaluator/run.sh pro-chat-roundtrip --no-build
+dev-storage-guard audit
+dev-storage-guard resources
+ARTIFACT_ROOT="$(dev-storage-guard new-artifact solo-compass-evaluator)"
+IOS_DERIVED_DATA_PATH="$ARTIFACT_ROOT/DerivedData" \
+IOS_ARTIFACT_DIR="$ARTIFACT_ROOT/evaluator" \
+  scripts/sc-evaluator/run.sh home-screen-cold-start
+# Reuse this same build for a second journey:
+IOS_DERIVED_DATA_PATH="$ARTIFACT_ROOT/DerivedData" \
+IOS_ARTIFACT_DIR="$ARTIFACT_ROOT/evaluator" \
+  scripts/sc-evaluator/run.sh pro-chat-roundtrip --no-build
 ```
+
+Entrypoints automatically acquire the shared `dev-ios-session` on configured
+local macOS hosts. An explicit `IOS_DERIVED_DATA_PATH` is authoritative:
+`--no-build` fails `app.locate` if the app is absent there, without searching
+global DerivedData. See [local iOS testing](../../docs/development/ios-testing.md).
 
 Findings are written to `scripts/sc-evaluator/findings/<run-id>.md`. Build
 logs and other run artifacts live under `findings/<run-id>_artifacts/`.
@@ -142,6 +162,10 @@ Screenshots are written to `scripts/sc-evaluator/screenshots/<run-id>/` —
 this directory is git-ignored by default, but a run with
 `SC_EVALUATOR_KEEP_SCREENSHOTS=1` force-stages that run's directory so the
 PNGs can be committed alongside the findings file.
+With `IOS_ARTIFACT_DIR` set, transient artifacts and screenshots instead live
+under that registered root; findings remain in place and their relative links
+are recomputed. Preserve the referenced evidence before running
+`dev-storage-guard remove-artifact "$ARTIFACT_ROOT"`.
 
 ---
 

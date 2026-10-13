@@ -29,7 +29,8 @@
     "seed:city-brief": "tsx scripts/seed-city-brief.ts",
     "data:worker": "pnpm --filter @solo-compass/worker start -- --once",
     "parity:check": "tsx scripts/check-swift-parity.ts",
-    "localization:check": "tsx scripts/check-localization.ts"
+    "localization:check": "tsx scripts/check-localization.ts",
+    "security:patch-check": "node --test scripts/security/braces.test.cjs"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",

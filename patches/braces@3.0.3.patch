@@ -1,0 +1,16 @@
+diff --git a/lib/parse.js b/lib/parse.js
+index 3a6988e629f52aee6609dc5ec290a5e9ff47cecb..cacbd8f440dfa101db8bfcf4b99136e2f92101df 100644
+--- a/lib/parse.js
++++ b/lib/parse.js
+@@ -3 +3,3 @@
+-const stringify = require('./stringify');
++const stringify = require('./stringify');
++// Bound recursive AST walkers (GHSA-vfj7-8cjw-p6xm), including parentheses.
++const MAX_NESTING = 100;
+@@ -57 +59,5 @@ const parse = (input, options = {}) => {
+-  const push = node => {
++  const push = node => {
++    if ((node.type === 'brace' || node.type === 'paren') && stack.length > MAX_NESTING) {
++      throw new SyntaxError(`Input exceeds maximum nesting depth (${MAX_NESTING})`);
++    }
++
