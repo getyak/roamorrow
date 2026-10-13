@@ -82,12 +82,20 @@ pnpm parity:check        # verify TS↔Swift schema parity
 # iOS
 cd apps/ios
 xcodegen                 # regenerate SoloCompass.xcodeproj from project.yml
-xcodebuild build \
+dev-storage-guard audit
+dev-storage-guard resources
+ARTIFACT_ROOT="$(dev-storage-guard new-artifact solo-compass-ios)"
+export IOS_DERIVED_DATA_PATH="$ARTIFACT_ROOT/DerivedData"
+dev-ios-session run -- bash -c 'xcodebuild build \
   -project SoloCompass.xcodeproj -scheme SoloCompass \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest'
-xcodebuild test \
+  -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
+  -derivedDataPath "$IOS_DERIVED_DATA_PATH"'
+dev-ios-session run -- bash -c 'xcodebuild test \
   -project SoloCompass.xcodeproj -scheme SoloCompass \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest'
+  -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
+  -derivedDataPath "$IOS_DERIVED_DATA_PATH" \
+  -resultBundlePath "$IOS_DERIVED_DATA_PATH/../Tests.xcresult"'
+# Preserve delivery evidence, then dev-storage-guard remove-artifact "$ARTIFACT_ROOT"
 
 # Ralph autonomous dev
 cd scripts/ralph && ./ralph.sh --tool Codex 12
@@ -95,9 +103,9 @@ cd scripts/ralph && ./ralph.sh --tool Codex 12
 
 ## CI
 
-- `.github/workflows/ios-ci.yml` — schema parity → build → test on `macos-latest`
-- `.github/workflows/ci.yml` — TS lint / typecheck / test
-- `.github/workflows/testflight.yml` — TestFlight upload on tagged release
+- `.github/workflows/ios-ci.yml` — schema parity → build → test on `macos-latest`; full fake-tool simulator policy suite with no skips in the SwiftLint job
+- `.github/workflows/ci.yml` — dependency patch regression / audit, TS typecheck / test / build / format, portable simulator policy tests and shell syntax, Go test / vulnerability scan
+- `.github/workflows/testflight.yml` — TestFlight upload on qualifying `main` pushes or manual dispatch; ignores docs, Markdown, Ralph scripts and `.gitignore`, and owns release version/tag creation
 - `.github/workflows/update-changelog.yml` — auto changelog
 
 ## Testing
@@ -114,6 +122,9 @@ exception: it takes the same machine-wide lock, fails busy, and is not a
 daily gate.
 
 **TS**: per-package `pnpm test` via turbo.
+
+CI policy gates — [docs/CI_TEST_MATRIX.md](docs/CI_TEST_MATRIX.md).
+Dependency patch and audit policy — [docs/development/dependency-security.md](docs/development/dependency-security.md).
 
 ## Code Review Rules
 
