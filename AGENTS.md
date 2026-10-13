@@ -86,11 +86,11 @@ dev-storage-guard audit
 dev-storage-guard resources
 ARTIFACT_ROOT="$(dev-storage-guard new-artifact solo-compass-ios)"
 export IOS_DERIVED_DATA_PATH="$ARTIFACT_ROOT/DerivedData"
-dev-ios-session run -- bash -c 'xcodebuild build \
+dev-ios-session run -- bash -c 'xcodebuild build-for-testing \
   -project SoloCompass.xcodeproj -scheme SoloCompass \
   -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
   -derivedDataPath "$IOS_DERIVED_DATA_PATH"'
-dev-ios-session run -- bash -c 'xcodebuild test \
+dev-ios-session run -- bash -c 'xcodebuild test-without-building \
   -project SoloCompass.xcodeproj -scheme SoloCompass \
   -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
   -derivedDataPath "$IOS_DERIVED_DATA_PATH" \
