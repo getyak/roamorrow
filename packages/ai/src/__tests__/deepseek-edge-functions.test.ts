@@ -208,6 +208,82 @@ function postRequest(url: string, body: unknown, withAuth = true): Request {
 // ─── synthesize-experiences: success + wire ──────────────────────────────────
 
 describe("synthesize-experiences handler", () => {
+  it("regenerates malformed cached facts rather than returning them", async () => {
+    const fake = makeFakeSupabase({
+      cachedPayload: [{ ...ITEM, durationMinMinutes: -5 }],
+      cachedModelName: "deepseek-flash",
+    });
+    let fetched = false;
+    const handler = loadEdgeHandler(SYNTH_PATH, {
+      env: ENV,
+      supabase: fake.admin,
+      fetchImpl: async () => {
+        fetched = true;
+        return chatResponse(JSON.stringify([ITEM]));
+      },
+    });
+    const response = await handler(postRequest("https://p.functions.supabase.co/x", SYNTH_BODY));
+    expect(response.status).toBe(200);
+    expect(fetched).toBe(true);
+    expect(await response.json()).toEqual({ experiences: [ITEM], cached: false });
+    expect(fake.upserts).toHaveLength(1);
+  });
+
+  it("accepts unknown optional facts without inventing defaults", async () => {
+    const unknown = {
+      ...ITEM,
+      bestStartHour: null,
+      bestEndHour: null,
+      durationMinMinutes: null,
+      durationMaxMinutes: null,
+      soloOverall: null,
+      howTo: null,
+      soloHint: null,
+    };
+    const fake = makeFakeSupabase();
+    const handler = loadEdgeHandler(SYNTH_PATH, {
+      env: ENV,
+      supabase: fake.admin,
+      fetchImpl: async () => chatResponse(JSON.stringify([unknown])),
+    });
+    const response = await handler(postRequest("https://p.functions.supabase.co/x", SYNTH_BODY));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ experiences: [unknown], cached: false });
+    expect(fake.upserts).toHaveLength(1);
+  });
+
+  it.each([
+    ["negative duration", { durationMinMinutes: -5 }],
+    ["reversed duration", { durationMinMinutes: 90, durationMaxMinutes: 10 }],
+    ["invalid hour", { bestStartHour: 27, bestEndHour: 20 }],
+    ["invalid score", { soloOverall: 25 }],
+    ["non-text instructions", { howTo: [42] }],
+    ["empty title", { title: "   " }],
+  ])("rejects malformed model facts before cache write: %s", async (_label, overrides) => {
+    const fake = makeFakeSupabase();
+    const handler = loadEdgeHandler(SYNTH_PATH, {
+      env: ENV,
+      supabase: fake.admin,
+      fetchImpl: async () => chatResponse(JSON.stringify([{ ...ITEM, ...overrides }])),
+    });
+    const response = await handler(postRequest("https://p.functions.supabase.co/x", SYNTH_BODY));
+    expect(response.status).toBe(502);
+    expect(fake.upserts).toHaveLength(0);
+  });
+
+  it.each([null, [], 42])("rejects non-object request body %s with 400", async (body) => {
+    const fake = makeFakeSupabase();
+    const handler = loadEdgeHandler(SYNTH_PATH, {
+      env: ENV,
+      supabase: fake.admin,
+      fetchImpl: async () => {
+        throw new Error("should not call model");
+      },
+    });
+    const response = await handler(postRequest("https://p.functions.supabase.co/x", body));
+    expect(response.status).toBe(400);
+  });
+
   it("rejects a model response that silently omits a requested place", async () => {
     const fake = makeFakeSupabase();
     const handler = loadEdgeHandler(SYNTH_PATH, {

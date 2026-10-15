@@ -12,7 +12,7 @@ from pathlib import Path
 import sys, shutil
 root, out = map(Path, sys.argv[1:])
 parts = [(root / 'scripts/qa/map-accuracy-host.swift').read_text()]
-for name in ['Geo/MainlandChinaBoundary.swift', 'Geo/CoordinateConverter.swift', 'POIRating.swift', 'POIMerger.swift']:
+for name in ['Geo/MainlandChinaBoundary.swift', 'Geo/CoordinateConverter.swift', 'POIRating.swift', 'POIMerger.swift', 'AmapPOIService.swift']:
     p = root / 'apps/ios/SoloCompass/Services' / name
     if p.exists(): parts.append(p.read_text())
 parts.append((root / 'scripts/qa/map-accuracy-cases.swift').read_text())

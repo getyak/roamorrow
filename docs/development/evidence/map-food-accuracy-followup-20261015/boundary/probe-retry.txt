@@ -1,0 +1,24 @@
+CoordinateBoundary.app: replacing existing signature
+Monitoring boot status for iPhone 17 Pro (02B4F0C1-A92F-469D-9DCC-5ED13F119507).
+[2026-10-15 11:06:47 +0000] Status=1, isTerminal=NO, Elapsed=00:05.
+	Waiting on BackBoard
+
+[2026-10-15 11:07:03 +0000] Status=4, isTerminal=NO, Elapsed=00:21.
+	Waiting on System App
+
+[2026-10-15 11:07:07 +0000] Status=4294967295, isTerminal=YES, Elapsed=00:25.
+	Finished
+
+com.solocompass.accuracyprobe: 47523
+Detected file type from extension: PNG
+Note: No display specified. Defaulting to display: EE86B409-FAEA-4BAD-B3F2-685853CEC71F (screenID: 1, name: LCD)
+Wrote screenshot to: /private/tmp/ai-test-solo-map-accuracy-followup.EKqFN8/haodian.png
+com.solocompass.accuracyprobe: 47637
+Detected file type from extension: PNG
+Note: No display specified. Defaulting to display: EE86B409-FAEA-4BAD-B3F2-685853CEC71F (screenID: 1, name: LCD)
+Wrote screenshot to: /private/tmp/ai-test-solo-map-accuracy-followup.EKqFN8/hongkong.png
+com.solocompass.accuracyprobe: 47783
+Detected file type from extension: PNG
+Note: No display specified. Defaulting to display: EE86B409-FAEA-4BAD-B3F2-685853CEC71F (screenID: 1, name: LCD)
+Wrote screenshot to: /private/tmp/ai-test-solo-map-accuracy-followup.EKqFN8/empty.png
+Shutting down iPhone 17 Pro (02B4F0C1-A92F-469D-9DCC-5ED13F119507) because this session booted it.

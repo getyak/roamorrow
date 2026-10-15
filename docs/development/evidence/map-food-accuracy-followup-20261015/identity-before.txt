@@ -1,0 +1,5 @@
+different_provider_ids_count=1
+base_borrowed_neighbor_rating=9.6
+FAIL: distinct IDs from one authoritative provider must remain distinct
+FAIL: unlisted brand branches must not collapse by name
+Follow-up identity checks: 0/2

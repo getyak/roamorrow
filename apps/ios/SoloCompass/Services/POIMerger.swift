@@ -92,6 +92,14 @@ public enum POIMerger {
     /// In particular, colocated businesses with conflicting phones/addresses
     /// cannot borrow one another's scores or hours.
     public static func sameVenue(_ a: POI, _ b: POI) -> Bool {
+        // Stable IDs from the same provider establish identity before fuzzy
+        // matching. A shared brand, mall address or hotline cannot join two IDs.
+        if let source = a.tags["source"], source == b.tags["source"],
+           let key = ["amap": "amap_id", "foursquare": "fsq_id"][source],
+           let idA = a.tags[key], !idA.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let idB = b.tags[key], !idB.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return idA == idB
+        }
         let meters = distance(a, b)
         guard meters.isFinite, meters <= 100 else { return false }
         let phoneA = a.tags["phone"].map(normalizedPhone) ?? ""

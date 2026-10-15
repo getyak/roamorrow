@@ -1,0 +1,9 @@
+$ vitest run
+
+ RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/ai
+
+
+ Test Files  10 passed (10)
+      Tests  133 passed (133)
+   Start at  19:06:32
+   Duration  854ms (transform 943ms, setup 0ms, import 1.83s, tests 427ms, environment 1ms)

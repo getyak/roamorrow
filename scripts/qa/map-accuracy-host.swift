@@ -15,6 +15,11 @@ public enum OverpassService {
 }
 public typealias POI = OverpassService.POI
 
+// These adapter dependencies carry no logic under test. No network key is
+// available, and the host checks only call Amap's real POI mapping function.
+public enum ExperienceCategory: String { case culture, nature, food, coffee, work, wellness, nightlife, hidden }
+enum Secrets { static let resolvedAmapKey = "" }
+
 var failures = 0
 var checks = 0
 func check(_ condition: @autoclosure () -> Bool, _ label: String) {

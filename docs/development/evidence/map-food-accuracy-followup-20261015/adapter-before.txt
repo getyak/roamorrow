@@ -1,0 +1,6 @@
+FAIL: Amap adapter preserves a normalized provider identity
+FAIL: whitespace cannot fork provider identity
+FAIL: adapter identities protect distinct neighboring provider records end to end
+FAIL: blank IDs use the same synthetic fallback as absent IDs
+FAIL: blank IDs cannot collapse different venues
+Map accuracy host checks: 33/38 passed

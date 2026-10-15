@@ -99,11 +99,20 @@ Deno.serve(async (req: Request) => {
   // 4. Parse + cache check.
   let body: RequestBody;
   try {
-    body = await req.json();
+    const parsed = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return json({ error: "request body must be an object" }, 400);
+    }
+    body = parsed;
   } catch {
     return json({ error: "invalid json" }, 400);
   }
-  if (!body.cacheKey || !Array.isArray(body.pois) || body.pois.length === 0) {
+  if (
+    typeof body.cacheKey !== "string" ||
+    !body.cacheKey.trim() ||
+    !Array.isArray(body.pois) ||
+    body.pois.length === 0
+  ) {
     return json({ error: "cacheKey + non-empty pois required" }, 400);
   }
   if (body.pois.length > MAX_POIS_PER_CALL) {
@@ -262,6 +271,17 @@ function validPOI(value: unknown): value is POI {
   );
 }
 
+function nonEmptyText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function optionalInteger(value: unknown, min: number, max = Number.MAX_SAFE_INTEGER): boolean {
+  return (
+    value == null ||
+    (typeof value === "number" && Number.isSafeInteger(value) && value >= min && value <= max)
+  );
+}
+
 function validItems(value: unknown, pois: POI[]): value is Record<string, unknown>[] {
   if (!Array.isArray(value) || value.length === 0 || value.length !== pois.length) return false;
   const ids = new Set(pois.map((poi) => poi.osmId));
@@ -284,9 +304,23 @@ function validItems(value: unknown, pois: POI[]): value is Record<string, unknow
       !ids.has(item.osmId) ||
       seen.has(item.osmId) ||
       !categories.has(item.category) ||
-      typeof item.title !== "string" ||
-      typeof item.oneLiner !== "string" ||
-      typeof item.whyItMatters !== "string"
+      !nonEmptyText(item.title) ||
+      !nonEmptyText(item.oneLiner) ||
+      !nonEmptyText(item.whyItMatters) ||
+      !optionalInteger(item.bestStartHour, 0, 23) ||
+      !optionalInteger(item.bestEndHour, 0, 23) ||
+      !optionalInteger(item.durationMinMinutes, 1) ||
+      !optionalInteger(item.durationMaxMinutes, 1) ||
+      (item.durationMinMinutes != null &&
+        item.durationMaxMinutes != null &&
+        item.durationMaxMinutes < item.durationMinMinutes) ||
+      (item.soloOverall != null &&
+        (typeof item.soloOverall !== "number" ||
+          !Number.isFinite(item.soloOverall) ||
+          item.soloOverall < 0 ||
+          item.soloOverall > 10)) ||
+      (item.howTo != null && (!Array.isArray(item.howTo) || !item.howTo.every(nonEmptyText))) ||
+      (item.soloHint != null && typeof item.soloHint !== "string")
     )
       return false;
     seen.add(item.osmId);

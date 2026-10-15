@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-15",
+  "baseline": "56a769d51524bc412bfccaea52ab5fe05fab7944",
+  "branch": "codex/map-food-accuracy",
+  "overallAccuracyAcceptance": "NOT_PASSED",
+  "deployed": false,
+  "fixed": [
+    "distinct_provider_id_identity_and_blank_id_fallback",
+    "edge_invalid_model_facts_and_cache_validation"
+  ],
+  "unresolved": [
+    "mapkit_search_render_datum_contract_and_country_evidence",
+    "same_id_discovery_discards_updated_facts"
+  ],
+  "tests": {
+    "swiftProductionHost": {
+      "passed": 38,
+      "total": 38,
+      "log": "host-final.txt"
+    },
+    "ai": {
+      "passed": 133,
+      "total": 133,
+      "log": "ai-full.txt"
+    },
+    "web": {
+      "passed": 12,
+      "total": 12,
+      "log": "web-tests.txt"
+    },
+    "aiTypecheck": "passed",
+    "schemaParity": "passed",
+    "swiftTestSyntax": "passed",
+    "mainAppXCTestThisTurn": "NOT_RUN",
+    "priorNative79": "previous_commit_only"
+  },
+  "independentReview": {
+    "agent": "accuracy_independent_review",
+    "newDiffOpenP0P1P2": 0,
+    "closedFinding": "synthetic_ids_must_not_be_treated_as_authoritative",
+    "accuracyAcceptanceStillBlocked": true
+  },
+  "piReadOnlyAudit": {
+    "status": "deadline_exceeded",
+    "reportAccepted": false,
+    "retried": false
+  },
+  "nativeProbe": {
+    "sdk": "26.5",
+    "deviceProfile": "Primary iPhone",
+    "deviceModel": "iPhone 17 Pro",
+    "scope": "isolated_probe_not_main_app_e2e",
+    "publicSearchCount": 2,
+    "gpsCollected": false,
+    "cases": [
+      {
+        "status": "observed",
+        "country": "CN",
+        "differenceMeters": 602.2905858716114,
+        "query": "湖北省广水市郝店镇人民政府",
+        "name": "Haodianzhen People's Government",
+        "wgs84": [113.75357647552238, 31.7893693647173],
+        "raw": [113.759462, 31.787312]
+      },
+      {
+        "query": "香港大會堂 Hong Kong City Hall",
+        "name": "Hong Kong City Hall",
+        "raw": [114.16652, 22.279659],
+        "country": "CN",
+        "status": "observed",
+        "differenceMeters": 595.9135879416962,
+        "wgs84": [114.16153405222336, 22.282384434995393]
+      },
+      {
+        "query": "",
+        "status": "rejected-empty-input",
+        "error": "No network request issued"
+      }
+    ],
+    "renderCorrectness": "UNRESOLVED",
+    "hkNoConversionControlExpectation": "NOT_MET",
+    "probeUninstalled": true,
+    "sessionReleased": true
+  },
+  "sourceSha256": {
+    "apps/ios/SoloCompass/Services/AmapPOIService.swift": "1627c809cf5d547adc7b57cc9352c96f0766a089fffe07a54f339338d2df8cbf",
+    "apps/ios/SoloCompass/Services/POIMerger.swift": "3fc4d1e69957d7705cc25a9b9834c5c8f71b56e87881c09ef1494929d03a64a7",
+    "apps/ios/SoloCompass/Services/Geo/CoordinateConverter.swift": "a8fba169bdd82529cdbb1f1e6217fab0bd6169c3730fda36fba6312060869d84",
+    "apps/ios/SoloCompass/Services/Geo/MainlandChinaBoundary.swift": "e729b982936269d1d6e1362276503bcf400c01c57f8f0c1c6a0bf255fbd86e25",
+    "apps/ios/SoloCompass/Resources/JSON/mainland_china_boundary.json": "9c395f396a8df805158759933526fd738f2bd1d1a53e3c698113429b98cd0992",
+    "infra/supabase/functions/synthesize-experiences/index.ts": "5caa0a98ed58bfdd5903a89123fac48c0d3f534098533078f947b9475dd1dcdd",
+    "packages/ai/src/__tests__/deepseek-edge-functions.test.ts": "532e768410da89d61825775120b4634d6a40f6e193458720641748098345e8ce",
+    "scripts/qa/map-accuracy-host.sh": "fef5d08f73287e19f28ed42fe6620926d72f01bcb027602ee82ad08f345dd3f7",
+    "scripts/qa/map-accuracy-host.swift": "2f13ce6fcefdb5a58f627daec7bd45214f2b485f72a1ebc527a2758b7bbb558f",
+    "scripts/qa/map-accuracy-cases.swift": "072183768b8b5a63907c34e4dbab3588228b74483d10d63ac89e75a5830d129f",
+    "apps/ios/SoloCompass/Tests/AmapPOIServiceTests.swift": "015f052c833c5d8fb24a7bf42427eee35358042cef568ac03299029cd9cc59be",
+    "apps/ios/SoloCompass/Tests/MapFoodAccuracyTests.swift": "ee957c78b201c147d25f6a52104d71a7bbee9fa88cd00abbaef66ccd8215b01a"
+  },
+  "probeSourceSha256": "ff96130a6ce57f8aa4695bc2296a5dcf18effefd5348e8178688e6c0065094b1",
+  "probeConverterMatchesProduction": true
+}

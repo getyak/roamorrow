@@ -56,6 +56,24 @@ final class MapFoodAccuracyTests: XCTestCase {
         check(CoordinateConverter.mapKitSearchToWgs84(reclaimed, countryCode: "CN").latitude != reclaimed.latitude, "explicit CN evidence overrides generalized coastlines")
     }
 
+    func testAuthoritativeProviderIdsPreventBranchRatingTransfer() {
+        let base = POI(osmId: 100, name: "郝店面馆", nameEn: nil, lat: 31.78001, lon: 113.75001,
+                       tags: ["source":"amap", "amap_id":"A100", "addr":"Mall", "phone":"4000000"])
+        let other = POI(osmId: 101, name: "郝店面馆", nameEn: nil, lat: 31.78002, lon: 113.75001,
+                        tags: ["source":"amap", "amap_id":"A101", "addr":"Mall", "phone":"4000000", "fsq_rating":"9.6"])
+        let merged = POIMerger.enrichMerge(base: [base], enrichment: [other])
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertNil(merged[0].tags["fsq_rating"])
+        let renamed = POI(osmId: 100, name: "New name", nameEn: nil, lat: 31.78002, lon: 113.75001,
+                          tags: ["source":"amap", "amap_id":"A100", "phone":"new number"])
+        XCTAssertEqual(POIMerger.merge(primary: [base], secondary: [renamed]).count, 1)
+        for source in ["mapkit", "amap"] {
+            let a = POI(osmId: 200, name: "Town Cafe", nameEn: nil, lat: 31.78004, lon: 113.75, tags: ["source":source])
+            let b = POI(osmId: 201, name: "Town Cafe", nameEn: nil, lat: 31.78006, lon: 113.75, tags: ["source":source])
+            XCTAssertEqual(POIMerger.merge(primary: [a], secondary: [b]).count, 1, "Synthetic IDs allow proximity matching")
+        }
+    }
+
     func testFractionalRadiusFormattingKeepsPlaceCount() {
         let format = NSLocalizedString("explore.toast.multiRing.addedNamed", comment: "Explore count and radius")
         let text = String(format: format, "Test", 12, 1.5)

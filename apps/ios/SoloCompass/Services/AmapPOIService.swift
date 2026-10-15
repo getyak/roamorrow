@@ -479,6 +479,9 @@ public final class AmapPOIService {
         // opening hours, and rating are deliberately dropped: they are Amap's
         // distributable data, not SoloCompass's own synthesized content.
         var tags: [String: String] = ["name": name, "source": "amap"]
+        if let providerID = amap.id?.trimmingCharacters(in: .whitespacesAndNewlines), !providerID.isEmpty {
+            tags["amap_id"] = providerID
+        }
         // Map the Amap typecode prefix to an OSM-style tag so
         // `OverpassService.category(for:)` keeps resolving buckets unchanged.
         // A typecode-derived bucket is a category, not raw redistributable data.
@@ -487,7 +490,7 @@ public final class AmapPOIService {
         }
 
         return OverpassService.POI(
-            osmId: stableInt64Id(amapId: amap.id, name: name, coordinate: wgs),
+            osmId: stableInt64Id(amapId: tags["amap_id"], name: name, coordinate: wgs),
             name: name,
             nameEn: nil,
             lat: wgs.latitude,

@@ -1,0 +1,9 @@
+$ vitest run
+
+ RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/apps/web
+
+
+ Test Files  3 passed (3)
+      Tests  12 passed (12)
+   Start at  19:11:31
+   Duration  1.66s (transform 531ms, setup 0ms, import 1.28s, tests 319ms, environment 0ms)

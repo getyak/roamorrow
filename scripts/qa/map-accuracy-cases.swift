@@ -38,5 +38,31 @@ check(CoordinateConverter.isInsideChinaMainland(pudong), "Pudong airport routes 
 check(CoordinateConverter.isInsideChinaMainland(xiamen, countryCode: "CN"), "Xiamen airport uses mainland routing with geocoded country evidence")
 let reclaimed = CLLocationCoordinate2D(latitude: 31.14, longitude: 121.83)
 check(CoordinateConverter.mapKitSearchToWgs84(reclaimed, countryCode: "CN").latitude != reclaimed.latitude, "explicit CN evidence overrides generalized coastlines")
+let providerA = fixture(100, "郝店面馆", 31.78001, 113.75001, ["source":"amap", "amap_id":"A100"])
+let providerB = fixture(101, "郝店面馆", 31.78002, 113.75001, ["source":"amap", "amap_id":"A101", "fsq_rating":"9.6"])
+let distinctIDs = POIMerger.enrichMerge(base:[providerA],enrichment:[providerB])
+check(distinctIDs.count == 2, "distinct IDs from the same provider remain distinct")
+check(distinctIDs[0].tags["fsq_rating"] == nil, "same-name neighboring ID cannot donate its rating")
+let sameProviderID = fixture(100, "Renamed venue", 31.7802, 113.75001, ["source":"amap", "amap_id":"A100", "phone":"new number"])
+check(POIMerger.merge(primary:[providerA],secondary:[sameProviderID]).count == 1, "stable identity survives updated names and phone numbers")
+let sameAddressBranches = POIMerger.merge(primary:[fixture(200,"蜜雪冰城",31.78001,113.75001,["source":"amap","amap_id":"A200","addr":"Mall","phone":"4000000"])],secondary:[fixture(201,"蜜雪冰城",31.78002,113.75001,["source":"amap","amap_id":"A201","addr":"Mall","phone":"4000000"])])
+check(sameAddressBranches.count == 2, "shared address and chain hotline cannot override different provider IDs")
+let jittered = POIMerger.merge(primary:[fixture(300,"Town Cafe",31.78004,113.75,["source":"mapkit"])],secondary:[fixture(301,"Town Cafe",31.78006,113.75,["source":"mapkit"])])
+check(jittered.count == 1, "synthetic MapKit IDs must allow corroborated proximity matching")
+let missingProviderID = POIMerger.merge(primary:[fixture(400,"Town Cafe",31.78004,113.75,["source":"amap"])],secondary:[fixture(401,"Town Cafe",31.78006,113.75,["source":"amap"])])
+check(missingProviderID.count == 1, "Amap coordinate hashes without upstream IDs are not authoritative")
+MainActor.assumeIsolated {
+    @MainActor func amap(_ id: String?, _ name: String = "Town Cafe") -> POI {
+        AmapPOIService.poi(from: .init(id: id, name: name, location: "113.759462,31.787312",
+                                     typecode: "050500", address: nil, tel: nil, business: nil))!
+    }
+    let upstream = amap("  B123  ")
+    check(upstream.tags["amap_id"] == "B123", "Amap adapter preserves a normalized provider identity")
+    check(upstream.osmId == amap("B123").osmId, "whitespace cannot fork provider identity")
+    check(POIMerger.merge(primary:[upstream],secondary:[amap("B124")]).count == 2, "adapter identities protect distinct neighboring provider records end to end")
+    check(amap("   ").tags["amap_id"] == nil, "blank upstream IDs are not authoritative")
+    check(amap("   ").osmId == amap(nil).osmId, "blank IDs use the same synthetic fallback as absent IDs")
+    check(amap("   ").osmId != amap("   ", "Different venue").osmId, "blank IDs cannot collapse different venues")
+}
 print("Map accuracy host checks: \(checks - failures)/\(checks) passed")
 exit(failures == 0 ? 0 : 1)

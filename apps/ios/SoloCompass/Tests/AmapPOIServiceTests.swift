@@ -162,15 +162,30 @@ final class AmapPOIServiceTests: XCTestCase {
 
         XCTAssertEqual(poi.name, "测试咖啡馆")
         XCTAssertEqual(poi.tags["source"], "amap")
+        XCTAssertEqual(poi.tags["amap_id"], "B0FFABCDEF")
         XCTAssertEqual(poi.tags["amenity"], "cafe")
         // Compliance (ADR §3.2): Amap's raw structured fields must NOT be
         // projected into tags, because the downstream Experience is persisted to
         // SwiftData and Amap's ToS forbids storing/redistributing its raw data.
-        // Only name + source marker + category bucket survive.
+        // Only name + source identity + category bucket survive.
         XCTAssertNil(poi.tags["addr"], "raw address must not be persisted")
         XCTAssertNil(poi.tags["phone"], "raw phone must not be persisted")
         XCTAssertNil(poi.tags["opening_hours"], "raw hours must not be persisted")
         XCTAssertNil(poi.tags["amap_rating"], "raw rating must not be persisted")
+    }
+
+    func testPOIMappingTreatsBlankProviderIdAsSynthetic() throws {
+        @MainActor func poi(_ id: String?, name: String = "Cafe") throws -> POI {
+            try XCTUnwrap(AmapPOIService.poi(from: .init(
+                id: id, name: name, location: "114.06,22.54", typecode: "050500",
+                address: nil, tel: nil, business: nil)))
+        }
+        XCTAssertNil(try poi("   ").tags["amap_id"])
+        XCTAssertEqual(try poi("   ").osmId, try poi(nil).osmId)
+        XCTAssertNotEqual(try poi("   ").osmId, try poi("   ", name: "Other cafe").osmId)
+        XCTAssertEqual(try poi(" B123 ").tags["amap_id"], "B123")
+        XCTAssertEqual(try poi(" B123 ").osmId, try poi("B123").osmId)
+        XCTAssertEqual(POIMerger.merge(primary: [try poi("B123")], secondary: [try poi("B124")]).count, 2)
     }
 
     func testPOIMappingDropsMissingNameOrCoordinate() {
