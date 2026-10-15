@@ -1,0 +1,9 @@
+MARKER_PERF passesPerBatch=100 samples=100 baselineP95=0.00093446958 cachedP95=0.00055517166 improvement=0.4058964872885429
+MARKER_PERF passesPerBatch=100 samples=100 baselineP95=0.0007631191599999999 cachedP95=0.00040859125 improvement=0.4645773931295343
+MARKER_PERF passesPerBatch=100 samples=100 baselineP95=0.00090684 cachedP95=0.00049049708 improvement=0.45911397821004807
+MARKER_PERF passesPerBatch=100 samples=100 baselineP95=0.0006915020800000001 cachedP95=0.00037442207999999997 improvement=0.4585380278248767
+MARKER_PERF passesPerBatch=100 samples=100 baselineP95=0.00071014042 cachedP95=0.00037711792 improvement=0.4689530276279725
+	 Executed 10 tests, with 0 failures (0 unexpected) in 53.658 (53.773) seconds
+	 Executed 10 tests, with 0 failures (0 unexpected) in 53.658 (53.780) seconds
+	 Executed 10 tests, with 0 failures (0 unexpected) in 53.658 (53.781) seconds
+** TEST EXECUTE SUCCEEDED **

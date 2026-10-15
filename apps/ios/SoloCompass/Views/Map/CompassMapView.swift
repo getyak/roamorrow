@@ -9,6 +9,14 @@ enum MapStyleChoice: String, CaseIterable {
     case imagery
     case hybrid
 
+    var coordinateStyle: MapKitCoordinateSpace.Style {
+        switch self {
+        case .standard: return .standard
+        case .imagery: return .imagery
+        case .hybrid: return .hybrid
+        }
+    }
+
     var label: String {
         switch self {
         case .standard: return NSLocalizedString("map.style.standard", comment: "Standard map")
@@ -373,6 +381,8 @@ struct CompassMapContentView: View {
     /// are honest fractions of the real screen.
     @State private var workspaceContainerHeight: CGFloat = 0
     @State private var mapStyleChoice: MapStyleChoice = .standard
+    @State private var coordinateSpace = MapKitCoordinateSpace.shared
+    @State private var mapPresentation = MapCoordinatePresentation()
 
     // US-017: Companion map layer (default off)
     @State private var isCompanionLayerOn: Bool = false
@@ -1269,6 +1279,9 @@ struct CompassMapContentView: View {
                 } else if hasDisconnected {
                     Haptics.notify(.success)
                 }
+            }
+            .onChange(of: networkMonitor.pathGeneration) { _, _ in
+                coordinateSpace.invalidate()
             }
             .onChange(of: viewModel.isShowingDetail) { _, showing in
                 if showing {
@@ -2763,7 +2776,7 @@ struct CompassMapContentView: View {
     /// routes come from `RouteStore`, places from `MapViewModel.visibleExperiences`.
     private var discoveryReferenceCoordinate: CLLocationCoordinate2D {
         if viewModel.selectedCity != nil { return viewModel.defaultCenterForSelectedCity }
-        return locationService.currentLocation?.coordinate ?? viewModel.defaultCenterForSelectedCity
+        return viewModel.exploreAnchorCoordinate
     }
 
     @State private var isShowingItineraries = false
@@ -2952,11 +2965,25 @@ struct CompassMapContentView: View {
         )
     }
 
+    private func registerProviderCoordinateRoutes(_ experiences: [Experience]) {
+        for experience in experiences where experience.sources.contains(where: { $0.type == .amap }) {
+            if let coordinate = experience.coordinate { coordinateSpace.registerMainlandProviderCoordinate(coordinate) }
+        }
+    }
+
+    private func renderedCoordinate(_ coordinate: CLLocationCoordinate2D) -> CLLocationCoordinate2D? {
+        coordinateSpace.mapCoordinate(coordinate, style: mapStyleChoice.coordinateStyle)
+    }
+
     @ViewBuilder
     private func mapLayer(viewModel: MapViewModel) -> some View {
         let bindingCamera = Binding<MapCameraPosition>(
-            get: { viewModel.cameraPosition },
-            set: { viewModel.cameraPosition = $0 }
+            get: { mapPresentation.position },
+            set: { position in
+                if let canonical = mapPresentation.receive(position, space: coordinateSpace, style: mapStyleChoice.coordinateStyle) {
+                    viewModel.cameraPosition = canonical
+                }
+            }
         )
 
         MapReader { proxy in
@@ -2984,8 +3011,9 @@ struct CompassMapContentView: View {
                 //      exact coordinate so the center is always easy to spot.
                 // Only drawn once GPS has a fix; otherwise nothing renders
                 // (no marker stranded at 0,0).
-                if let here = locationService.currentLocation {
-                    MapCircle(center: here.coordinate, radius: Self.userRadiusMeters)
+                if let here = locationService.currentLocation,
+                   let mapCoordinate = renderedCoordinate(here.coordinate) {
+                    MapCircle(center: mapCoordinate, radius: Self.userRadiusMeters)
                         .foregroundStyle(Color.accentColor.opacity(0.12))
                         .stroke(Color.accentColor.opacity(0.4), lineWidth: 1.5)
                     // `anchor: .center` is stated explicitly (not left to the
@@ -2993,7 +3021,7 @@ struct CompassMapContentView: View {
                     // to the GPS coordinate. Combined with UserLocationMarker's
                     // fixed layout bounds, this keeps the dot planted instead of
                     // drifting as its breathing halo pulses.
-                    Annotation("", coordinate: here.coordinate, anchor: .center) {
+                    Annotation("", coordinate: mapCoordinate, anchor: .center) {
                         UserLocationMarker()
                     }
                 }
@@ -3003,7 +3031,7 @@ struct CompassMapContentView: View {
                 ForEach(mapItems) { item in
                     switch item {
                     case .single(let exp):
-                        if let coord = exp.coordinate {
+                        if let canonical = exp.coordinate, let coord = renderedCoordinate(canonical) {
                             let state = viewModel.markerState(for: exp)
                             let isClosingSoon = BestNowChipState
                                 .resolve(for: exp, at: renderNow)
@@ -3081,7 +3109,8 @@ struct CompassMapContentView: View {
                         let clusterHighlightActive = smartPickHighlightActive
                             && !smartPickIds.isEmpty
                             && viewModel.exploreRadiusOverlay == nil
-                        Annotation("", coordinate: cluster.coordinate) {
+                        if let mapCoordinate = renderedCoordinate(cluster.coordinate) {
+                        Annotation("", coordinate: mapCoordinate) {
                             ClusterAnnotationView(cluster: cluster) {
                                 HapticService.shared.impact(style: .medium)
                                 if let first = cluster.experiences.first {
@@ -3097,9 +3126,10 @@ struct CompassMapContentView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
                     }
+                    }
                 }
                 ForEach(viewModel.candidateExperiences) { cand in
-                    if let coord = cand.coordinate {
+                    if let canonical = cand.coordinate, let coord = renderedCoordinate(canonical) {
                         let candHighlightActive = smartPickHighlightActive
                             && !smartPickIds.isEmpty
                             && viewModel.exploreRadiusOverlay == nil
@@ -3128,8 +3158,9 @@ struct CompassMapContentView: View {
                 // with a coordinate gets a breathing (reduce-motion static) ring.
                 if FeatureFlags.cityOS && currentCityMode == .live {
                     ForEach(cityBriefService.activeEvents()) { event in
-                        if let lat = event.lat, let lng = event.lng {
-                            Annotation("", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)) {
+                        if let lat = event.lat, let lng = event.lng,
+                           let mapCoordinate = renderedCoordinate(.init(latitude: lat, longitude: lng)) {
+                            Annotation("", coordinate: mapCoordinate) {
                                 EventMarkerView(
                                     event: event,
                                     isHighlighted: viewModel.highlightedEventId == event.id,
@@ -3146,15 +3177,18 @@ struct CompassMapContentView: View {
                 // No exact pins; no user identifiers. Layer must be explicitly on.
                 if isCompanionLayerOn {
                     ForEach(nearbyCells) { cell in
-                        Annotation("", coordinate: cell.coordinate) {
-                            NearbyBlurAnnotation()
+                        if let mapCoordinate = renderedCoordinate(cell.coordinate) {
+                            Annotation("", coordinate: mapCoordinate) {
+                                NearbyBlurAnnotation()
+                            }
                         }
                     }
                 }
                 // US-011: fading radius ring during progressive explore.
                 // Drawn below annotations so it never occludes marker tap targets.
-                if let ring = viewModel.exploreRadiusOverlay {
-                    MapCircle(center: ring.center, radius: ring.radiusMeters)
+                if let ring = viewModel.exploreRadiusOverlay,
+                   let center = renderedCoordinate(ring.center) {
+                    MapCircle(center: center, radius: ring.radiusMeters)
                         .foregroundStyle(Color.accentColor.opacity(0.08))
                         .stroke(Color.accentColor.opacity(0.35), lineWidth: 1.5)
                 }
@@ -3163,19 +3197,63 @@ struct CompassMapContentView: View {
                 // the walk reads as an ordered sequence on the map. Drawn last so
                 // the line and numbers sit above the radius ring.
                 if let active = activeRoute, active.coordinates.count >= 2 {
-                    MapPolyline(coordinates: active.coordinates, contourStyle: .straight)
+                    let renderedCoordinates = active.coordinates.compactMap { renderedCoordinate($0) }
+                    if renderedCoordinates.count == active.coordinates.count {
+                    MapPolyline(coordinates: renderedCoordinates, contourStyle: .straight)
                         .stroke(
                             Color.accentColor,
                             style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
                         )
-                    ForEach(Array(active.coordinates.enumerated()), id: \.offset) { index, coord in
+                    ForEach(Array(renderedCoordinates.enumerated()), id: \.offset) { index, coord in
                         Annotation("", coordinate: coord) {
                             RouteStopBadge(number: index + 1)
                         }
                     }
+                    }
                 }
             }
             .mapStyle(mapStyleChoice.mapStyle)
+            .overlay(alignment: .top) {
+                if !coordinateSpace.supportsRenderStyle(mapStyleChoice.coordinateStyle, at: mapPresentation.target ?? viewModel.exploreAnchorCoordinate),
+                   mapStyleChoice != .standard {
+                    MapCoordinateStatus(messageKey: "map.coordinates.styleUnverified", actionKey: "map.coordinates.useStandard") {
+                        mapStyleChoice = .standard
+                    }.padding(.top, 100)
+                } else if renderedCoordinate(mapPresentation.target ?? viewModel.exploreAnchorCoordinate) == nil {
+                    MapCoordinateStatus { coordinateSpace.invalidate() }.padding(.top, 100)
+                }
+            }
+            .onChange(of: viewModel.visibleExperiences, initial: true) { _, experiences in
+                registerProviderCoordinateRoutes(experiences)
+            }
+            .onChange(of: viewModel.cameraPosition, initial: true) { _, position in
+                mapPresentation.request(position, fallback: viewModel.exploreAnchorCoordinate,
+                                        space: coordinateSpace, style: mapStyleChoice.coordinateStyle)
+            }
+            .onChange(of: mapStyleChoice) { _, _ in
+                mapPresentation.request(viewModel.cameraPosition, fallback: viewModel.exploreAnchorCoordinate,
+                                        space: coordinateSpace, style: mapStyleChoice.coordinateStyle)
+            }
+            .onChange(of: coordinateSpace.revision) { _, _ in
+                if let recovered = mapPresentation.recover(viewModel.cameraPosition, fallback: viewModel.exploreAnchorCoordinate,
+                                                           space: coordinateSpace, style: mapStyleChoice.coordinateStyle) {
+                    viewModel.cameraPosition = .region(recovered)
+                    viewModel.refreshForLocation(recovered.center)
+                }
+            }
+            .task(id: "\(mapPresentation.target?.latitude ?? viewModel.exploreAnchorCoordinate.latitude),\(mapPresentation.target?.longitude ?? viewModel.exploreAnchorCoordinate.longitude)-\(coordinateSpace.generation)") {
+                do {
+                    repeat {
+                        registerProviderCoordinateRoutes(viewModel.visibleExperiences)
+                        try await coordinateSpace.prepare(near: mapPresentation.target ?? viewModel.exploreAnchorCoordinate)
+                        try await Task.sleep(for: .seconds(MapKitCoordinateSpace.lifetime))
+                        coordinateSpace.invalidate()
+                    } while !Task.isCancelled
+                } catch { /* Keep the raw camera and usable list; retry is explicit. */ }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { coordinateSpace.invalidate() }
+            }
             // Only keep the compass (which auto-hides unless the map is
             // rotated). The built-in MapUserLocationButton is intentionally
             // dropped: because the map sets `.ignoresSafeArea()` to bleed tiles
@@ -3214,8 +3292,9 @@ struct CompassMapContentView: View {
                 // Re-filter only after a meaningful viewport move. MapKit's
                 // tiny settle corrections retain stable pins instead of
                 // invalidating the full Map + bottom sheet hierarchy.
-                if mapInteractionCoordinator.consumeRefresh(for: context.region) {
-                    viewModel.refreshForLocation(context.region.center)
+                if let canonical = mapPresentation.finish(context.region, space: coordinateSpace, style: mapStyleChoice.coordinateStyle),
+                   mapInteractionCoordinator.consumeRefresh(for: canonical) {
+                    viewModel.refreshForLocation(canonical.center)
                 }
                 // Direction 2: the curation dim-out is a cold-start cue. Once
                 // the camera settles for the first time after the user has
@@ -3233,7 +3312,8 @@ struct CompassMapContentView: View {
                     .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
                     .onEnded { value in
                         if case .second(true, let drag?) = value,
-                           let coord = proxy.convert(drag.location, from: .local) {
+                           let raw = proxy.convert(drag.location, from: .local),
+                           let coord = coordinateSpace.canonicalMapCoordinate(raw, style: mapStyleChoice.coordinateStyle) {
                             viewModel.handleMapLongPress(at: coord)
                             Haptics.impact(.medium)
                         }
@@ -4389,7 +4469,7 @@ private struct EmptyStateOverlay: View {
     @State private var isVisible = false
 
     private var nearestCityName: String? {
-        let anchor = locationService.currentLocation?.coordinate ?? viewModel.defaultCenterForSelectedCity
+        let anchor = viewModel.exploreAnchorCoordinate
         guard let code = viewModel.nearestSeededCity(to: anchor),
               let city = viewModel.availableCities.first(where: { $0.code == code }) else {
             return nil

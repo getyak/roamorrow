@@ -1,0 +1,8 @@
+
+ RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/ai
+
+
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+   Start at  19:00:37
+   Duration  575ms (transform 76ms, setup 0ms, import 243ms, tests 259ms, environment 0ms)

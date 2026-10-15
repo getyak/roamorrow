@@ -1,0 +1,4 @@
+独立复核：accuracy_independent_review，2026-10-15。
+最新 follow-up 未发现新增 P0/P1/P2。原始 provider ID 判断、空白 ID 回退及 adapter→merger 路径一致；已读到 host 日志 38/38 通过，git diff --check 通过。
+探针仅支持本次模拟器环境下两个公开搜索均返回 CN、转换前后差 602.3m/595.9m、截图中高德底图 R/W 落在不同位置。不能据此确认真实入口、renderer 已修复，或推断所有香港结果都应转换/不转换。
+国家码不足、渲染契约未验证、同 ID 新事实被丢弃仍是准确性验收阻塞。

@@ -77,6 +77,7 @@ pnpm --filter @solo-compass/bot dev
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow.
 
+- [`docs/development/map-food-accuracy-delivery.md`](./docs/development/map-food-accuracy-delivery.md): map coordinate boundaries, restaurant fact refresh, verified compatibility and acceptance evidence.
 - [`docs/development/ios-testing.md`](./docs/development/ios-testing.md): local simulator selection, shared session ownership and registered test artifacts.
 - [`docs/CI_TEST_MATRIX.md`](./docs/CI_TEST_MATRIX.md): native test suites and portable/macOS simulator policy gates.
 - [`docs/development/dependency-security.md`](./docs/development/dependency-security.md): dependency updates, the braces mitigation and its mandatory audit checks.

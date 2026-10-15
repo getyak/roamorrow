@@ -17,6 +17,7 @@ struct LocationPickerSheet: View {
     let onDismiss: () -> Void
 
     @State private var state: LocationPickerState
+    @State private var coordinateNotice: String?
     @State private var searchService = LocationSearchService()
     @State private var searchDebounceTask: Task<Void, Never>? = nil
     @State private var userLocation: CLLocation?
@@ -291,6 +292,9 @@ struct LocationPickerSheet: View {
             }
 
             Divider()
+            if let coordinateNotice {
+                Text(coordinateNotice).font(.caption).padding(12)
+            }
 
             if let error = state.searchError {
                 ContentUnavailableView(
@@ -308,6 +312,11 @@ struct LocationPickerSheet: View {
                         selectSearchResult(item)
                     } label: {
                         SearchResultRow(item: item)
+                    }
+                    .contextMenu {
+                        Button(NSLocalizedString("location.openIn.apple", comment: "Open original map result")) {
+                            item.openInMaps()
+                        }
                     }
                     .swipeActions(edge: .trailing) {
                         Button {
@@ -450,7 +459,10 @@ struct LocationPickerSheet: View {
 
     private func selectSearchResult(_ item: MKMapItem) {
         commitHaptic()
-        let coord = item.placemark.coordinate
+        guard let coord = MapKitCoordinateSpace.shared.canonicalSearchCoordinate(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode) else {
+            coordinateNotice = MapKitCoordinateSpace.CalibrationError.unavailable.localizedDescription
+            return
+        }
         let label = item.name
             ?? item.placemark.locality
             ?? item.placemark.administrativeArea
@@ -478,7 +490,10 @@ struct LocationPickerSheet: View {
         let name = state.saveNameText.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
 
-        let coord = item.placemark.coordinate
+        guard let coord = MapKitCoordinateSpace.shared.canonicalSearchCoordinate(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode) else {
+            coordinateNotice = MapKitCoordinateSpace.CalibrationError.unavailable.localizedDescription
+            return
+        }
         let city = SavedCity(
             id: "custom_\(UUID().uuidString)",
             name: name,
@@ -680,11 +695,12 @@ private struct SearchResultRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            let coord = item.placemark.coordinate
+            if let coord = MapKitCoordinateSpace.shared.canonicalSearchCoordinate(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode) {
             Text(String(format: "%.4f, %.4f", coord.latitude, coord.longitude))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
+            }
         }
         .padding(.vertical, 2)
     }

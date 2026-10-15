@@ -1,0 +1,60 @@
+
+ RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/ai
+
+ ❯ src/__tests__/deepseek-edge-functions.test.ts (27 tests | 7 failed) 639ms
+     × rejects malformed model facts before cache write: negative duration 155ms
+     × rejects malformed model facts before cache write: reversed duration 46ms
+     × rejects malformed model facts before cache write: invalid hour 32ms
+     × rejects malformed model facts before cache write: invalid score 18ms
+     × rejects malformed model facts before cache write: non-text instructions 28ms
+     × rejects malformed model facts before cache write: empty title 17ms
+     × rejects non-object request body null with 400 16ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/deepseek-edge-functions.test.ts > synthesize-experiences handler > rejects malformed model facts before cache write: negative duration
+ FAIL  src/__tests__/deepseek-edge-functions.test.ts > synthesize-experiences handler > rejects malformed model facts before cache write: reversed duration
+ FAIL  src/__tests__/deepseek-edge-functions.test.ts > synthesize-experiences handler > rejects malformed model facts before cache write: invalid hour
+ FAIL  src/__tests__/deepseek-edge-functions.test.ts > synthesize-experiences handler > rejects malformed model facts before cache write: invalid score
+ FAIL  src/__tests__/deepseek-edge-functions.test.ts > synthesize-experiences handler > rejects malformed model facts before cache write: non-text instructions
+ FAIL  src/__tests__/deepseek-edge-functions.test.ts > synthesize-experiences handler > rejects malformed model facts before cache write: empty title
+AssertionError: expected 200 to be 502 // Object.is equality
+
+- Expected
++ Received
+
+- 502
++ 200
+
+ ❯ src/__tests__/deepseek-edge-functions.test.ts:224:29
+    222|     });
+    223|     const response = await handler(postRequest("https://p.functions.su…
+    224|     expect(response.status).toBe(502);
+       |                             ^
+    225|     expect(fake.upserts).toHaveLength(0);
+    226|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/__tests__/deepseek-edge-functions.test.ts > synthesize-experiences handler > rejects non-object request body null with 400
+TypeError: Cannot read properties of null (reading 'cacheKey')
+ ❯ ../../infra/supabase/functions/synthesize-experiences/index.ts:80:15
+ ❯ src/__tests__/deepseek-edge-functions.test.ts:233:22
+    231|       fetchImpl: async () => {throw new Error("should not call model")…
+    232|     });
+    233|     const response = await handler(postRequest("https://p.functions.su…
+       |                      ^
+    234|     expect(response.status).toBe(400);
+    235|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  7 failed | 20 passed (27)
+   Start at  18:59:21
+   Duration  1.59s (transform 286ms, setup 0ms, import 717ms, tests 639ms, environment 0ms)
+
+undefined
+/Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/ai:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/__tests__/deepseek-edge-functions.test.ts '--maxWorkers=1'

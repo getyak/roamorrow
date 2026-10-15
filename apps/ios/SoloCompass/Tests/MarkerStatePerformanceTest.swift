@@ -17,7 +17,7 @@ import Dispatch
 /// iteration) and a *non-cached* baseline (two calls per iteration, mirroring
 /// the pre-fix code) — and asserts the cached path's p95 of amortized batch
 /// latency per pass drops by ≥ 40% versus the baseline. Each shape executes
-/// 1000 measured passes, sampled in alternating pairs of 10-pass batches to
+/// 10000 measured passes, sampled in alternating pairs of 100-pass batches to
 /// reduce shared-runner scheduling noise and measurement-order bias.
 ///
 /// Run with:
@@ -25,8 +25,8 @@ import Dispatch
 final class MarkerStatePerformanceTest: XCTestCase {
 
     private static let markerCount = 100
-    private static let iterations = 1000
-    private static let passesPerBatch = 10
+    private static let iterations = 10000
+    private static let passesPerBatch = 100
     private static let requiredImprovement = 0.40
 
     // Bounding box: ±0.15° around Chiang Mai old-city center.
@@ -201,10 +201,12 @@ final class MarkerStatePerformanceTest: XCTestCase {
         XCTAssertEqual(visibleExperiences.count, Self.markerCount,
                        "Precondition: visibleExperiences must hold exactly \(Self.markerCount) entries")
 
-        // Warm-up so the first measured pass isn't penalised by cold caches.
+        // Warm both shapes for a full batch before collecting samples. Longer
+        // batches amortize shared-runner scheduling interruptions without
+        // dropping samples or changing the p95/40% acceptance threshold.
         XCTAssertEqual(
-            cachedPass(vm, experiences: visibleExperiences, now: now),
-            nonCachedPass(vm, experiences: visibleExperiences, now: now)
+            measureBatch { cachedPass(vm, experiences: visibleExperiences, now: now) }.output,
+            measureBatch { nonCachedPass(vm, experiences: visibleExperiences, now: now) }.output
         )
 
         let batchCount = Self.iterations / Self.passesPerBatch
@@ -237,6 +239,8 @@ final class MarkerStatePerformanceTest: XCTestCase {
         XCTAssertGreaterThan(baselineP95, 0, "Baseline p95 must be measurable")
 
         let improvement = (baselineP95 - cachedP95) / baselineP95
+        print("MARKER_PERF passesPerBatch=\(Self.passesPerBatch) samples=\(batchCount) "
+              + "baselineP95=\(baselineP95) cachedP95=\(cachedP95) improvement=\(improvement)")
         XCTAssertGreaterThanOrEqual(
             improvement,
             Self.requiredImprovement,

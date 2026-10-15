@@ -1,0 +1,12 @@
+# Nine SHA-256 source-file digests mistaken for API/Sentry tokens.
+# Each was independently recomputed from source commit 4be1a909.
+# Exact commit/path/rule/line fingerprints only; no path or rule allowlist.
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:generic-api-key:6
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:generic-api-key:161
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:generic-api-key:195
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:generic-api-key:376
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:generic-api-key:598
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:generic-api-key:601
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:sentry-access-token:204
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:sentry-access-token:353
+b56f8b8a0582237ef8d449f5761ab1622dd1fed9:docs/development/evidence/map-food-accuracy-delivery-20261015/source-sha256.json:sentry-access-token:699

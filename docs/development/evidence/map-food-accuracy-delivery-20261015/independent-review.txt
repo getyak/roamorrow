@@ -1,0 +1,4 @@
+Independent review: /root/accuracy_independent_review
+Final native-boundary increment: no confirmed P0/P1/P2 remained. Reviewed coastal hints restricted to unresolved exact points, independently calibrated profiles, camera echo guards, standard-style compatibility, exact Macau aliases and 32 MiB diff reader. Reviewer did not run Simulator; parent retains native verification evidence.
+Marker performance follow-up: unchanged measured production hot path; 39.1% old CI result is about 21 microseconds/pass short of the unchanged 40% threshold. Recommended larger timed batches with full-batch warm-up, retaining p95 and all samples. Final follow-up review and execution are recorded separately.
+Final marker benchmark diff reviewed: unchanged 40%/p95 gate, 100 paired samples, checksum and output equivalence; no sample selection. No confirmed findings.

@@ -778,6 +778,7 @@ function RightSurface(p: RightSurfaceProps) {
     >
       <div style={{ position: "absolute", inset: 0 }}>
         <WebLisbonMap
+          lang={p.lang}
           pins={p.city.experiences}
           hoverId={p.hoverId}
           focusedId={p.focusedId}

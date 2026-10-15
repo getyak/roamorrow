@@ -1,0 +1,34 @@
+{
+  "threshold": 0.4,
+  "allRepetitionsRequired": true,
+  "discardedSamples": 0,
+  "passesPerBatch": 100,
+  "pairedBatchesPerRepetition": 100,
+  "repetitions": [
+    {
+      "baselineP95Seconds": 0.00093446958,
+      "cachedP95Seconds": 0.00055517166,
+      "improvement": 0.4058964872885429
+    },
+    {
+      "baselineP95Seconds": 0.0007631191599999999,
+      "cachedP95Seconds": 0.00040859125,
+      "improvement": 0.4645773931295343
+    },
+    {
+      "baselineP95Seconds": 0.00090684,
+      "cachedP95Seconds": 0.00049049708,
+      "improvement": 0.45911397821004807
+    },
+    {
+      "baselineP95Seconds": 0.0006915020800000001,
+      "cachedP95Seconds": 0.00037442207999999997,
+      "improvement": 0.4585380278248767
+    },
+    {
+      "baselineP95Seconds": 0.00071014042,
+      "cachedP95Seconds": 0.00037711792,
+      "improvement": 0.4689530276279725
+    }
+  ]
+}

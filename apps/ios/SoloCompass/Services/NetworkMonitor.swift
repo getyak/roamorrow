@@ -9,6 +9,8 @@ public final class NetworkMonitor {
     public static let shared = NetworkMonitor()
 
     public private(set) var isConnected: Bool = true
+    /// Path changes can switch the regional maps backend even while online.
+    public private(set) var pathGeneration: UInt = 0
 
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "com.solocompass.network-monitor")
@@ -40,6 +42,7 @@ public final class NetworkMonitor {
                     let final = self.pendingConnected
                     Task { @MainActor [weak self] in
                         guard let self else { return }
+                        self.pathGeneration &+= 1
                         if self.isConnected != final { self.isConnected = final }
                     }
                 }

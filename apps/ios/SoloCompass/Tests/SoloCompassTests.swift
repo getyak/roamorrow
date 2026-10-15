@@ -6421,7 +6421,7 @@ final class FoursquareServiceTests: XCTestCase {
     /// Merge keeps the Overpass record when both sources contain a POI in
     /// the same 4-decimal-coord cell. The Overpass entry comes first in
     /// the output and the Foursquare duplicate is dropped.
-    func testMergePrefersOverpassOnCellCollision() {
+    func testMergeKeepsDistinctVenuesInTheSameCell() {
         let overpass: [OverpassService.POI] = [
             .init(osmId: 1, name: "OSM Cafe", nameEn: nil,
                   lat: 21.0341, lon: 105.8521,
@@ -6436,16 +6436,15 @@ final class FoursquareServiceTests: XCTestCase {
                   tags: ["amenity": "bar", "source": "foursquare"])
         ]
         let merged = FoursquareService.merge(overpass: overpass, foursquare: foursquare)
-        XCTAssertEqual(merged.count, 2)
-        XCTAssertEqual(merged[0].name, "OSM Cafe", "Overpass record must win on cell collision")
+        XCTAssertEqual(merged.count, 3)
+        XCTAssertEqual(merged.map(\.name), ["OSM Cafe", "FSQ Cafe", "FSQ Bar"])
         XCTAssertEqual(merged[0].tags["source"], "osm")
-        XCTAssertEqual(merged[1].name, "FSQ Bar", "non-colliding Foursquare entry must be kept")
     }
 
     /// Merge collapses two Foursquare entries that fall in the same cell —
     /// only the first one survives. Verifies the dedupe runs over the
     /// Foursquare list itself, not just the cross-source comparison.
-    func testMergeDedupesWithinFoursquare() {
+    func testMergeDoesNotCollapseDistinctFoursquareVenues() {
         let overpass: [OverpassService.POI] = []
         let foursquare: [OverpassService.POI] = [
             .init(osmId: 2_000, name: "First", nameEn: nil,
@@ -6454,8 +6453,8 @@ final class FoursquareServiceTests: XCTestCase {
                   lat: 1.23454, lon: 2.34564, tags: [:])
         ]
         let merged = FoursquareService.merge(overpass: overpass, foursquare: foursquare)
-        XCTAssertEqual(merged.count, 1)
-        XCTAssertEqual(merged.first?.name, "First")
+        XCTAssertEqual(merged.count, 2)
+        XCTAssertEqual(merged.map(\.name), ["First", "Same Cell"])
     }
 
     /// Merge preserves Overpass input order and appends Foursquare additions

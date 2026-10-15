@@ -1,0 +1,1095 @@
+{
+  "devices": [
+    {
+      "architecture": "arm64",
+      "deviceId": "02B4F0C1-A92F-469D-9DCC-5ED13F119507",
+      "deviceName": "iPhone 17 Pro",
+      "modelName": "iPhone 17 Pro",
+      "osBuildNumber": "23F77",
+      "osVersion": "26.5",
+      "platform": "iOS Simulator"
+    }
+  ],
+  "testNodes": [
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "duration": "0.048s",
+                  "durationInSeconds": 0.047821998596191406,
+                  "name": "testFallbackPathSetsSkeleton()",
+                  "nodeIdentifier": "AISynthesisQualityTests/testFallbackPathSetsSkeleton()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AISynthesisQualityTests/testFallbackPathSetsSkeleton",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0015s",
+                  "durationInSeconds": 0.0014640092849731445,
+                  "name": "testRealThenCachedTransition()",
+                  "nodeIdentifier": "AISynthesisQualityTests/testRealThenCachedTransition()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AISynthesisQualityTests/testRealThenCachedTransition",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "AISynthesisQualityTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AISynthesisQualityTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.0027s",
+                  "durationInSeconds": 0.0027159452438354492,
+                  "name": "testBroadTourismTypesIncludeAllDiningAndExcludeUtility()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testBroadTourismTypesIncludeAllDiningAndExcludeUtility()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testBroadTourismTypesIncludeAllDiningAndExcludeUtility",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0035s",
+                  "durationInSeconds": 0.0035080909729003906,
+                  "name": "testBuildURLCarriesTheAmapContract()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testBuildURLCarriesTheAmapContract()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testBuildURLCarriesTheAmapContract",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00073s",
+                  "durationInSeconds": 0.0007339715957641602,
+                  "name": "testBuildURLClampsRadiusAndPageSize()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testBuildURLClampsRadiusAndPageSize()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testBuildURLClampsRadiusAndPageSize",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00049s",
+                  "durationInSeconds": 0.0004919767379760742,
+                  "name": "testCoffeeMapsToCafeTypecode()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testCoffeeMapsToCafeTypecode()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testCoffeeMapsToCafeTypecode",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00043s",
+                  "durationInSeconds": 0.0004349946975708008,
+                  "name": "testEveryCategoryMapsExceptHidden()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testEveryCategoryMapsExceptHidden()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testEveryCategoryMapsExceptHidden",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0048s",
+                  "durationInSeconds": 0.004827022552490234,
+                  "name": "testFetchThrowsMissingKeyWhenKeyEmpty()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testFetchThrowsMissingKeyWhenKeyEmpty()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testFetchThrowsMissingKeyWhenKeyEmpty",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0021s",
+                  "durationInSeconds": 0.0020769834518432617,
+                  "name": "testFlexibleDecoderAcceptsIntStatus()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testFlexibleDecoderAcceptsIntStatus()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testFlexibleDecoderAcceptsIntStatus",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0014s",
+                  "durationInSeconds": 0.0013800859451293945,
+                  "name": "testFlexibleDecoderAcceptsStringStatus()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testFlexibleDecoderAcceptsStringStatus()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testFlexibleDecoderAcceptsStringStatus",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00056s",
+                  "durationInSeconds": 0.0005600452423095703,
+                  "name": "testInfocodeHintCoversWellKnownErrors()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testInfocodeHintCoversWellKnownErrors()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testInfocodeHintCoversWellKnownErrors",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0084s",
+                  "durationInSeconds": 0.008434057235717773,
+                  "name": "testLowRatingDoesNotHideRealDiningVenues()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testLowRatingDoesNotHideRealDiningVenues()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testLowRatingDoesNotHideRealDiningVenues",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0044s",
+                  "durationInSeconds": 0.004389047622680664,
+                  "name": "testParseLocationRejectsOutOfRangeAndNaN()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testParseLocationRejectsOutOfRangeAndNaN()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testParseLocationRejectsOutOfRangeAndNaN",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0019s",
+                  "durationInSeconds": 0.0018949508666992188,
+                  "name": "testPOIMappingConvertsGCJToWGSAndProjectsTags()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testPOIMappingConvertsGCJToWGSAndProjectsTags()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testPOIMappingConvertsGCJToWGSAndProjectsTags",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0005s",
+                  "durationInSeconds": 0.000496983528137207,
+                  "name": "testPOIMappingDropsMissingNameOrCoordinate()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testPOIMappingDropsMissingNameOrCoordinate()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testPOIMappingDropsMissingNameOrCoordinate",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00079s",
+                  "durationInSeconds": 0.0007860660552978516,
+                  "name": "testPOIMappingTreatsBlankProviderIdAsSynthetic()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testPOIMappingTreatsBlankProviderIdAsSynthetic()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testPOIMappingTreatsBlankProviderIdAsSynthetic",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0004s",
+                  "durationInSeconds": 0.00039505958557128906,
+                  "name": "testPOIMappingTreatsEmptyArrayPhoneAsAbsent()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testPOIMappingTreatsEmptyArrayPhoneAsAbsent()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testPOIMappingTreatsEmptyArrayPhoneAsAbsent",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0037s",
+                  "durationInSeconds": 0.0036939382553100586,
+                  "name": "testQualityGateBlocksJunkNamesEvenWithAcceptableTypecode()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testQualityGateBlocksJunkNamesEvenWithAcceptableTypecode()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testQualityGateBlocksJunkNamesEvenWithAcceptableTypecode",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00069s",
+                  "durationInSeconds": 0.0006880760192871094,
+                  "name": "testQualityGateBlocksUtilityTypecodes()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testQualityGateBlocksUtilityTypecodes()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testQualityGateBlocksUtilityTypecodes",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00045s",
+                  "durationInSeconds": 0.00044798851013183594,
+                  "name": "testQualityGateScenicClassExemptFromNameFilter()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testQualityGateScenicClassExemptFromNameFilter()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testQualityGateScenicClassExemptFromNameFilter",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00044s",
+                  "durationInSeconds": 0.00043702125549316406,
+                  "name": "testStableIdIsDeterministicAndSourceTagged()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testStableIdIsDeterministicAndSourceTagged()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testStableIdIsDeterministicAndSourceTagged",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00041s",
+                  "durationInSeconds": 0.0004069805145263672,
+                  "name": "testTypecodeToOSMTag()",
+                  "nodeIdentifier": "AmapPOIServiceTests/testTypecodeToOSMTag()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests/testTypecodeToOSMTag",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "AmapPOIServiceTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/AmapPOIServiceTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.0086s",
+                  "durationInSeconds": 0.00863802433013916,
+                  "name": "testHongKongNorthernNewTerritoriesAreExcluded()",
+                  "nodeIdentifier": "CoordinateConverterTests/testHongKongNorthernNewTerritoriesAreExcluded()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testHongKongNorthernNewTerritoriesAreExcluded",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00042s",
+                  "durationInSeconds": 0.0004200935363769531,
+                  "name": "testMacauIsExcluded()",
+                  "nodeIdentifier": "CoordinateConverterTests/testMacauIsExcluded()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testMacauIsExcluded",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0017s",
+                  "durationInSeconds": 0.0016679763793945312,
+                  "name": "testMainlandOffsetIsBetween50And700Metres()",
+                  "nodeIdentifier": "CoordinateConverterTests/testMainlandOffsetIsBetween50And700Metres()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testMainlandOffsetIsBetween50And700Metres",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0047s",
+                  "durationInSeconds": 0.004701972007751465,
+                  "name": "testMainlandPointsAreInsideChina()",
+                  "nodeIdentifier": "CoordinateConverterTests/testMainlandPointsAreInsideChina()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testMainlandPointsAreInsideChina",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.015s",
+                  "durationInSeconds": 0.015423059463500977,
+                  "name": "testOverseasConversionIsIdentity()",
+                  "nodeIdentifier": "CoordinateConverterTests/testOverseasConversionIsIdentity()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testOverseasConversionIsIdentity",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00065s",
+                  "durationInSeconds": 0.0006549358367919922,
+                  "name": "testOverseasPointsAreOutsideChina()",
+                  "nodeIdentifier": "CoordinateConverterTests/testOverseasPointsAreOutsideChina()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testOverseasPointsAreOutsideChina",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.003s",
+                  "durationInSeconds": 0.0029709339141845703,
+                  "name": "testRoundTripIsSubMetreBeijing()",
+                  "nodeIdentifier": "CoordinateConverterTests/testRoundTripIsSubMetreBeijing()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testRoundTripIsSubMetreBeijing",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.003s",
+                  "durationInSeconds": 0.0029680728912353516,
+                  "name": "testRoundTripIsSubMetreShenzhen()",
+                  "nodeIdentifier": "CoordinateConverterTests/testRoundTripIsSubMetreShenzhen()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testRoundTripIsSubMetreShenzhen",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0016s",
+                  "durationInSeconds": 0.0016160011291503906,
+                  "name": "testShenzhenCBDStaysMainlandDespiteHKBoundary()",
+                  "nodeIdentifier": "CoordinateConverterTests/testShenzhenCBDStaysMainlandDespiteHKBoundary()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testShenzhenCBDStaysMainlandDespiteHKBoundary",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00058s",
+                  "durationInSeconds": 0.0005819797515869141,
+                  "name": "testTaiwanAndHongKongAreExcluded()",
+                  "nodeIdentifier": "CoordinateConverterTests/testTaiwanAndHongKongAreExcluded()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testTaiwanAndHongKongAreExcluded",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0016s",
+                  "durationInSeconds": 0.0016499757766723633,
+                  "name": "testZhuhaiIsMainland()",
+                  "nodeIdentifier": "CoordinateConverterTests/testZhuhaiIsMainland()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests/testZhuhaiIsMainland",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "CoordinateConverterTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/CoordinateConverterTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.086s",
+                  "durationInSeconds": 0.08621490001678467,
+                  "name": "testAmbiguousProvenanceIsSkippedNotRefreshed()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testAmbiguousProvenanceIsSkippedNotRefreshed()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testAmbiguousProvenanceIsSkippedNotRefreshed",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.013s",
+                  "durationInSeconds": 0.01326596736907959,
+                  "name": "testBatchOrderingCannotInsertOlderOrSkeletonCopy()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testBatchOrderingCannotInsertOlderOrSkeletonCopy()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testBatchOrderingCannotInsertOlderOrSkeletonCopy",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.011s",
+                  "durationInSeconds": 0.010825037956237793,
+                  "name": "testCompleteRefreshClearsUnsupportedMachineFacts()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testCompleteRefreshClearsUnsupportedMachineFacts()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testCompleteRefreshClearsUnsupportedMachineFacts",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0096s",
+                  "durationInSeconds": 0.009631037712097168,
+                  "name": "testDuplicateBatchIDsProduceOneRowAndLastWins()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testDuplicateBatchIDsProduceOneRowAndLastWins()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testDuplicateBatchIDsProduceOneRowAndLastWins",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.012s",
+                  "durationInSeconds": 0.011587977409362793,
+                  "name": "testFieldVisitAndManualRowsAreNeverRefreshed()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testFieldVisitAndManualRowsAreNeverRefreshed()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testFieldVisitAndManualRowsAreNeverRefreshed",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0086s",
+                  "durationInSeconds": 0.008591055870056152,
+                  "name": "testFreshRichContentRefreshesSkeletonRow()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testFreshRichContentRefreshesSkeletonRow()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testFreshRichContentRefreshesSkeletonRow",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0094s",
+                  "durationInSeconds": 0.009373068809509277,
+                  "name": "testInvalidInsertAndRefreshCoordinatesAreRejected()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testInvalidInsertAndRefreshCoordinatesAreRejected()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testInvalidInsertAndRefreshCoordinatesAreRejected",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0097s",
+                  "durationInSeconds": 0.009711980819702148,
+                  "name": "testNewOnlyCountCountsUniqueNewIDs()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testNewOnlyCountCountsUniqueNewIDs()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testNewOnlyCountCountsUniqueNewIDs",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0087s",
+                  "durationInSeconds": 0.008691906929016113,
+                  "name": "testNonAutomaticIncomingCannotInsertOrRefresh()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testNonAutomaticIncomingCannotInsertOrRefresh()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testNonAutomaticIncomingCannotInsertOrRefresh",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0083s",
+                  "durationInSeconds": 0.008322954177856445,
+                  "name": "testPolicyDecisionMatrixIsExplicitAndPure()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testPolicyDecisionMatrixIsExplicitAndPure()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testPolicyDecisionMatrixIsExplicitAndPure",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.02s",
+                  "durationInSeconds": 0.019888997077941895,
+                  "name": "testRefreshRetainsUserEvidenceCommunityScoreAndHighlights()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testRefreshRetainsUserEvidenceCommunityScoreAndHighlights()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testRefreshRetainsUserEvidenceCommunityScoreAndHighlights",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0097s",
+                  "durationInSeconds": 0.009660005569458008,
+                  "name": "testSameIDFreshFactsRefreshSingleRowAndCountStaysOne()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testSameIDFreshFactsRefreshSingleRowAndCountStaysOne()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testSameIDFreshFactsRefreshSingleRowAndCountStaysOne",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.009s",
+                  "durationInSeconds": 0.00899505615234375,
+                  "name": "testServiceReloadsWhenBatchInsertsNothing()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testServiceReloadsWhenBatchInsertsNothing()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testServiceReloadsWhenBatchInsertsNothing",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0081s",
+                  "durationInSeconds": 0.008104920387268066,
+                  "name": "testSkeletonFallbackNeverReplacesRicherAIContent()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testSkeletonFallbackNeverReplacesRicherAIContent()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testSkeletonFallbackNeverReplacesRicherAIContent",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0091s",
+                  "durationInSeconds": 0.00906991958618164,
+                  "name": "testStaleIncomingDoesNotRegressFreshContent()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testStaleIncomingDoesNotRegressFreshContent()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testStaleIncomingDoesNotRegressFreshContent",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.03s",
+                  "durationInSeconds": 0.029951095581054688,
+                  "name": "testViewModelRefreshOnlyBatchUpdatesVisibleAndSelectedFacts()",
+                  "nodeIdentifier": "DiscoveryRefreshTests/testViewModelRefreshOnlyBatchUpdatesVisibleAndSelectedFacts()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests/testViewModelRefreshOnlyBatchUpdatesVisibleAndSelectedFacts",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "DiscoveryRefreshTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/DiscoveryRefreshTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.0027s",
+                  "durationInSeconds": 0.0026780366897583008,
+                  "name": "testEnrichedLocationExtractsHardSignals()",
+                  "nodeIdentifier": "EnrichmentPipelineTests/testEnrichedLocationExtractsHardSignals()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/EnrichmentPipelineTests/testEnrichedLocationExtractsHardSignals",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00041s",
+                  "durationInSeconds": 0.00040900707244873047,
+                  "name": "testEnrichedLocationNilWhenNoSignals()",
+                  "nodeIdentifier": "EnrichmentPipelineTests/testEnrichedLocationNilWhenNoSignals()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/EnrichmentPipelineTests/testEnrichedLocationNilWhenNoSignals",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0016s",
+                  "durationInSeconds": 0.0016260147094726562,
+                  "name": "testEnrichMergeAppendsEnrichmentOnlyCells()",
+                  "nodeIdentifier": "EnrichmentPipelineTests/testEnrichMergeAppendsEnrichmentOnlyCells()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/EnrichmentPipelineTests/testEnrichMergeAppendsEnrichmentOnlyCells",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0013s",
+                  "durationInSeconds": 0.0012500286102294922,
+                  "name": "testEnrichMergeBaseTagWinsOnCollision()",
+                  "nodeIdentifier": "EnrichmentPipelineTests/testEnrichMergeBaseTagWinsOnCollision()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/EnrichmentPipelineTests/testEnrichMergeBaseTagWinsOnCollision",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00058s",
+                  "durationInSeconds": 0.0005849599838256836,
+                  "name": "testEnrichMergeFoldsSignalsIntoBasePOI()",
+                  "nodeIdentifier": "EnrichmentPipelineTests/testEnrichMergeFoldsSignalsIntoBasePOI()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/EnrichmentPipelineTests/testEnrichMergeFoldsSignalsIntoBasePOI",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0028s",
+                  "durationInSeconds": 0.002769947052001953,
+                  "name": "testMapKitOSMTagMappingAndIdRange()",
+                  "nodeIdentifier": "EnrichmentPipelineTests/testMapKitOSMTagMappingAndIdRange()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/EnrichmentPipelineTests/testMapKitOSMTagMappingAndIdRange",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0016s",
+                  "durationInSeconds": 0.001589059829711914,
+                  "name": "testSignalScoreRanksRichPOIsHigher()",
+                  "nodeIdentifier": "EnrichmentPipelineTests/testSignalScoreRanksRichPOIsHigher()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/EnrichmentPipelineTests/testSignalScoreRanksRichPOIsHigher",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "EnrichmentPipelineTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/EnrichmentPipelineTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.00074s",
+                  "durationInSeconds": 0.0007369518280029297,
+                  "name": "testExperienceJSON_absentHighlightsDecodeNil()",
+                  "nodeIdentifier": "ExperienceRecordHighlightsRoundTripTests/testExperienceJSON_absentHighlightsDecodeNil()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRecordHighlightsRoundTripTests/testExperienceJSON_absentHighlightsDecodeNil",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0028s",
+                  "durationInSeconds": 0.002750992774963379,
+                  "name": "testExperienceJSON_roundTripsHighlights()",
+                  "nodeIdentifier": "ExperienceRecordHighlightsRoundTripTests/testExperienceJSON_roundTripsHighlights()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRecordHighlightsRoundTripTests/testExperienceJSON_roundTripsHighlights",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0006s",
+                  "durationInSeconds": 0.0005970001220703125,
+                  "name": "testRoundTrip_emptyHighlightsDoNotPersistBlob()",
+                  "nodeIdentifier": "ExperienceRecordHighlightsRoundTripTests/testRoundTrip_emptyHighlightsDoNotPersistBlob()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRecordHighlightsRoundTripTests/testRoundTrip_emptyHighlightsDoNotPersistBlob",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00053s",
+                  "durationInSeconds": 0.0005270242691040039,
+                  "name": "testRoundTrip_nilHighlightsStayNil()",
+                  "nodeIdentifier": "ExperienceRecordHighlightsRoundTripTests/testRoundTrip_nilHighlightsStayNil()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRecordHighlightsRoundTripTests/testRoundTrip_nilHighlightsStayNil",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00046s",
+                  "durationInSeconds": 0.0004640817642211914,
+                  "name": "testRoundTrip_preservesPopulatedHighlights()",
+                  "nodeIdentifier": "ExperienceRecordHighlightsRoundTripTests/testRoundTrip_preservesPopulatedHighlights()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRecordHighlightsRoundTripTests/testRoundTrip_preservesPopulatedHighlights",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "ExperienceRecordHighlightsRoundTripTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRecordHighlightsRoundTripTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.035s",
+                  "durationInSeconds": 0.03534901142120361,
+                  "name": "testCompletionsAppearInExportAfterRecord()",
+                  "nodeIdentifier": "ExperienceRepositoryExportTests/testCompletionsAppearInExportAfterRecord()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRepositoryExportTests/testCompletionsAppearInExportAfterRecord",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.011s",
+                  "durationInSeconds": 0.010828018188476562,
+                  "name": "testEmptyExportProducesWellFormedEnvelope()",
+                  "nodeIdentifier": "ExperienceRepositoryExportTests/testEmptyExportProducesWellFormedEnvelope()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRepositoryExportTests/testEmptyExportProducesWellFormedEnvelope",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.03s",
+                  "durationInSeconds": 0.03011906147003174,
+                  "name": "testExportIncludesAllExpectedTables()",
+                  "nodeIdentifier": "ExperienceRepositoryExportTests/testExportIncludesAllExpectedTables()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRepositoryExportTests/testExportIncludesAllExpectedTables",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0067s",
+                  "durationInSeconds": 0.006713986396789551,
+                  "name": "testExportIsPrettyPrintedAndSortedKeys()",
+                  "nodeIdentifier": "ExperienceRepositoryExportTests/testExportIsPrettyPrintedAndSortedKeys()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRepositoryExportTests/testExportIsPrettyPrintedAndSortedKeys",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0091s",
+                  "durationInSeconds": 0.009137988090515137,
+                  "name": "testFavoritesAppearInExportAfterToggle()",
+                  "nodeIdentifier": "ExperienceRepositoryExportTests/testFavoritesAppearInExportAfterToggle()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRepositoryExportTests/testFavoritesAppearInExportAfterToggle",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.012s",
+                  "durationInSeconds": 0.012228965759277344,
+                  "name": "testGeneratedAtIsISO8601()",
+                  "nodeIdentifier": "ExperienceRepositoryExportTests/testGeneratedAtIsISO8601()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRepositoryExportTests/testGeneratedAtIsISO8601",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0098s",
+                  "durationInSeconds": 0.009821057319641113,
+                  "name": "testSurveyExportSchemaPinsAllFieldNames()",
+                  "nodeIdentifier": "ExperienceRepositoryExportTests/testSurveyExportSchemaPinsAllFieldNames()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRepositoryExportTests/testSurveyExportSchemaPinsAllFieldNames",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "ExperienceRepositoryExportTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/ExperienceRepositoryExportTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.00077s",
+                  "durationInSeconds": 0.0007709264755249023,
+                  "name": "testAuthoritativeProviderIdsPreventBranchRatingTransfer()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testAuthoritativeProviderIdsPreventBranchRatingTransfer()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testAuthoritativeProviderIdsPreventBranchRatingTransfer",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.025s",
+                  "durationInSeconds": 0.024577975273132324,
+                  "name": "testCacheRestoresConsumedTransientSignals()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testCacheRestoresConsumedTransientSignals()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testCacheRestoresConsumedTransientSignals",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0081s",
+                  "durationInSeconds": 0.008074045181274414,
+                  "name": "testCoordinateRatingAndVenueIdentityBoundaries()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testCoordinateRatingAndVenueIdentityBoundaries()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testCoordinateRatingAndVenueIdentityBoundaries",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.003s",
+                  "durationInSeconds": 0.0029889345169067383,
+                  "name": "testFractionalRadiusFormattingKeepsPlaceCount()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testFractionalRadiusFormattingKeepsPlaceCount()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testFractionalRadiusFormattingKeepsPlaceCount",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "4s",
+                  "durationInSeconds": 4.38598108291626,
+                  "name": "testPartialPaginationIsRetainedAndRetried()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testPartialPaginationIsRetainedAndRetried()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testPartialPaginationIsRetainedAndRetried",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0092s",
+                  "durationInSeconds": 0.009219050407409668,
+                  "name": "testProviderIdentityDecodesLargeStringsAndLegacyNumbers()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testProviderIdentityDecodesLargeStringsAndLegacyNumbers()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testProviderIdentityDecodesLargeStringsAndLegacyNumbers",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.025s",
+                  "durationInSeconds": 0.024966001510620117,
+                  "name": "testRemoteMapSelectionKeepsItsPreciseQueryAnchor()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testRemoteMapSelectionKeepsItsPreciseQueryAnchor()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testRemoteMapSelectionKeepsItsPreciseQueryAnchor",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00062s",
+                  "durationInSeconds": 0.0006229877471923828,
+                  "name": "testSearchRadiusRejectsDistantProviderResults()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testSearchRadiusRejectsDistantProviderResults()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testSearchRadiusRejectsDistantProviderResults",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00037s",
+                  "durationInSeconds": 0.0003679990768432617,
+                  "name": "testSkeletonDoesNotInventHoursOrSoloAssessment()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testSkeletonDoesNotInventHoursOrSoloAssessment()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testSkeletonDoesNotInventHoursOrSoloAssessment",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00051s",
+                  "durationInSeconds": 0.0005120038986206055,
+                  "name": "testSynthesisCacheBindsFactsRatherThanOnlyIds()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testSynthesisCacheBindsFactsRatherThanOnlyIds()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testSynthesisCacheBindsFactsRatherThanOnlyIds",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.37s",
+                  "durationInSeconds": 0.3689080476760864,
+                  "name": "testUnassessedCardVisualEvidence()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testUnassessedCardVisualEvidence()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testUnassessedCardVisualEvidence",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0086s",
+                  "durationInSeconds": 0.008630990982055664,
+                  "name": "testUnknownSoloPriorDoesNotHalveRealSurveyEvidence()",
+                  "nodeIdentifier": "MapFoodAccuracyTests/testUnknownSoloPriorDoesNotHalveRealSurveyEvidence()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests/testUnknownSoloPriorDoesNotHalveRealSurveyEvidence",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "MapFoodAccuracyTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapFoodAccuracyTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.044s",
+                  "durationInSeconds": 0.04369497299194336,
+                  "name": "testAmapCoastRoutingStillRequiresIndependentDatum()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testAmapCoastRoutingStillRequiresIndependentDatum()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testAmapCoastRoutingStillRequiresIndependentDatum",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.01s",
+                  "durationInSeconds": 0.010200023651123047,
+                  "name": "testCameraEchoDoesNotBecomeAnotherProgrammaticMove()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testCameraEchoDoesNotBecomeAnotherProgrammaticMove()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testCameraEchoDoesNotBecomeAnotherProgrammaticMove",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.051s",
+                  "durationInSeconds": 0.051335930824279785,
+                  "name": "testCancellingOneWaiterDoesNotEraseSharedSuccess()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testCancellingOneWaiterDoesNotEraseSharedSuccess()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testCancellingOneWaiterDoesNotEraseSharedSuccess",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.013s",
+                  "durationInSeconds": 0.012753963470458984,
+                  "name": "testCoastIsUnresolvedUntilCountryRoutesCalibration()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testCoastIsUnresolvedUntilCountryRoutesCalibration()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testCoastIsUnresolvedUntilCountryRoutesCalibration",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00047s",
+                  "durationInSeconds": 0.00046896934509277344,
+                  "name": "testConflictingOrDuplicateAnchorsDoNotActivateProfile()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testConflictingOrDuplicateAnchorsDoNotActivateProfile()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testConflictingOrDuplicateAnchorsDoNotActivateProfile",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.017s",
+                  "durationInSeconds": 0.0170060396194458,
+                  "name": "testExpiryAndInvalidationFreezePresentedCamera()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testExpiryAndInvalidationFreezePresentedCamera()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testExpiryAndInvalidationFreezePresentedCamera",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0048s",
+                  "durationInSeconds": 0.004819989204406738,
+                  "name": "testFujianAndShenzhenDoNotFallInsideSpecialRegionRectangles()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testFujianAndShenzhenDoNotFallInsideSpecialRegionRectangles()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testFujianAndShenzhenDoNotFallInsideSpecialRegionRectangles",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0091s",
+                  "durationInSeconds": 0.00910794734954834,
+                  "name": "testIndependentInterfacesAndIOS17SearchFallback()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testIndependentInterfacesAndIOS17SearchFallback()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testIndependentInterfacesAndIOS17SearchFallback",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.012s",
+                  "durationInSeconds": 0.012140035629272461,
+                  "name": "testSearchAndRendererCanUseDifferentDatums()",
+                  "nodeIdentifier": "MapKitCoordinateSpaceTests/testSearchAndRendererCanUseDifferentDatums()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests/testSearchAndRendererCanUseDifferentDatums",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "MapKitCoordinateSpaceTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitCoordinateSpaceTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.0029s",
+                  "durationInSeconds": 0.0028700828552246094,
+                  "name": "testEmptyQueryShortCircuits()",
+                  "nodeIdentifier": "MapKitSearchTests/testEmptyQueryShortCircuits()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitSearchTests/testEmptyQueryShortCircuits",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00059s",
+                  "durationInSeconds": 0.0005930662155151367,
+                  "name": "testWhitespaceQueryShortCircuits()",
+                  "nodeIdentifier": "MapKitSearchTests/testWhitespaceQueryShortCircuits()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitSearchTests/testWhitespaceQueryShortCircuits",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "MapKitSearchTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MapKitSearchTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.0036s",
+                  "durationInSeconds": 0.0036290884017944336,
+                  "name": "test_availableApps_allInstalled_returnsCanonicalOrder()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_availableApps_allInstalled_returnsCanonicalOrder()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_availableApps_allInstalled_returnsCanonicalOrder",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00045s",
+                  "durationInSeconds": 0.0004489421844482422,
+                  "name": "test_availableApps_alwaysIncludesAppleMaps_evenWhenNothingInstalled()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_availableApps_alwaysIncludesAppleMaps_evenWhenNothingInstalled()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_availableApps_alwaysIncludesAppleMaps_evenWhenNothingInstalled",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00047s",
+                  "durationInSeconds": 0.0004680156707763672,
+                  "name": "test_availableApps_includesAmapWhenInstalled()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_availableApps_includesAmapWhenInstalled()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_availableApps_includesAmapWhenInstalled",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00034s",
+                  "durationInSeconds": 0.00034308433532714844,
+                  "name": "test_availableApps_includesGoogleWhenInstalled()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_availableApps_includesGoogleWhenInstalled()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_availableApps_includesGoogleWhenInstalled",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00032s",
+                  "durationInSeconds": 0.00032007694244384766,
+                  "name": "test_soleApp_multipleInstalled_returnsNil()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_soleApp_multipleInstalled_returnsNil()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_soleApp_multipleInstalled_returnsNil",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0038s",
+                  "durationInSeconds": 0.0038280487060546875,
+                  "name": "test_soleApp_onlyAppleMaps_returnsAppleMaps()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_soleApp_onlyAppleMaps_returnsAppleMaps()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_soleApp_onlyAppleMaps_returnsAppleMaps",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0026s",
+                  "durationInSeconds": 0.0025850534439086914,
+                  "name": "test_url_amap_buildsExpectedDeepLinkWithWGS84Conversion()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_url_amap_buildsExpectedDeepLinkWithWGS84Conversion()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_url_amap_buildsExpectedDeepLinkWithWGS84Conversion",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0014s",
+                  "durationInSeconds": 0.001417994499206543,
+                  "name": "test_url_appleMaps_returnsNil()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_url_appleMaps_returnsNil()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_url_appleMaps_returnsNil",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00042s",
+                  "durationInSeconds": 0.0004240274429321289,
+                  "name": "test_url_googleMaps_buildsExpectedDeepLink()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_url_googleMaps_buildsExpectedDeepLink()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_url_googleMaps_buildsExpectedDeepLink",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00042s",
+                  "durationInSeconds": 0.00042307376861572266,
+                  "name": "test_url_nilName_producesEmptyQuery()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_url_nilName_producesEmptyQuery()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_url_nilName_producesEmptyQuery",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.00045s",
+                  "durationInSeconds": 0.00045096874237060547,
+                  "name": "test_url_percentEncodesNonAsciiName()",
+                  "nodeIdentifier": "NavigationLauncherTests/test_url_percentEncodesNonAsciiName()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/test_url_percentEncodesNonAsciiName",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0096s",
+                  "durationInSeconds": 0.009572982788085938,
+                  "name": "testNamesCannotInjectNavigationParameters()",
+                  "nodeIdentifier": "NavigationLauncherTests/testNamesCannotInjectNavigationParameters()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests/testNamesCannotInjectNavigationParameters",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "NavigationLauncherTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NavigationLauncherTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            },
+            {
+              "children": [
+                {
+                  "duration": "0.0084s",
+                  "durationInSeconds": 0.008355021476745605,
+                  "name": "testAllSevenP21ToolsRoutedInSwitch()",
+                  "nodeIdentifier": "NeverInventPOIRedLineTests/testAllSevenP21ToolsRoutedInSwitch()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NeverInventPOIRedLineTests/testAllSevenP21ToolsRoutedInSwitch",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0025s",
+                  "durationInSeconds": 0.002492070198059082,
+                  "name": "testBuryCapsuleValidatesContentType()",
+                  "nodeIdentifier": "NeverInventPOIRedLineTests/testBuryCapsuleValidatesContentType()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NeverInventPOIRedLineTests/testBuryCapsuleValidatesContentType",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0031s",
+                  "durationInSeconds": 0.0031279325485229492,
+                  "name": "testNoLiteralLatLonInSuccessJSON()",
+                  "nodeIdentifier": "NeverInventPOIRedLineTests/testNoLiteralLatLonInSuccessJSON()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NeverInventPOIRedLineTests/testNoLiteralLatLonInSuccessJSON",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                },
+                {
+                  "duration": "0.0024s",
+                  "durationInSeconds": 0.0023909807205200195,
+                  "name": "testSuggestNowActionAnchorsToVisibleExperiences()",
+                  "nodeIdentifier": "NeverInventPOIRedLineTests/testSuggestNowActionAnchorsToVisibleExperiences()",
+                  "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NeverInventPOIRedLineTests/testSuggestNowActionAnchorsToVisibleExperiences",
+                  "nodeType": "Test Case",
+                  "result": "Passed"
+                }
+              ],
+              "name": "NeverInventPOIRedLineTests",
+              "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/NeverInventPOIRedLineTests",
+              "nodeType": "Test Suite",
+              "result": "Passed"
+            }
+          ],
+          "name": "SoloCompassTests",
+          "nodeIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests",
+          "nodeType": "Unit test bundle",
+          "result": "Passed"
+        }
+      ],
+      "name": "SoloCompass",
+      "nodeType": "Test Plan",
+      "result": "Passed"
+    }
+  ],
+  "testPlanConfigurations": [
+    {
+      "configurationId": "1",
+      "configurationName": "Test Scheme Action"
+    }
+  ]
+}

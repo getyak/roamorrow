@@ -23,6 +23,7 @@ import os
 /// not part of any voice/chat agent protocol; it stands alone.
 @MainActor
 public final class EnrichmentAgent {
+    public private(set) var lastRunWasPartial = false
     private static let logger = Logger(subsystem: "com.solocompass", category: "EnrichmentAgent")
 
     /// Progress callback fired at each stage of the enrichment loop so a UI can
@@ -50,7 +51,7 @@ public final class EnrichmentAgent {
     public static let defaultTopN = 15
 
     /// Progressive radius ladder in meters: start tight, expand when sparse.
-    public static let progressiveRadii: [Int] = [5_000, 10_000, 25_000, 100_000]
+    public static let progressiveRadii: [Int] = [1_500, 3_000, 6_000, 12_000]
 
     /// Minimum POI count considered "enough" at a given radius stage before
     /// moving to the next rung of the ladder.
@@ -119,7 +120,8 @@ public final class EnrichmentAgent {
     private func basePOIs(
         near coordinate: CLLocationCoordinate2D,
         radiusMeters: Int,
-        category: ExperienceCategory?
+        category: ExperienceCategory?,
+        countryCode: String? = nil
     ) async throws -> [OverpassService.POI] {
         // MapKit runs concurrently with the primary source (Amap or Overpass) in
         // every branch — serializing them would add the slower source's latency
@@ -129,10 +131,10 @@ public final class EnrichmentAgent {
         )
 
         let policy = DataSourceSettings.policy
-        let inCN = CoordinateConverter.isInsideChinaMainland(coordinate)
+        let inCN = CoordinateConverter.isInsideChinaMainland(coordinate, countryCode: countryCode)
         let amapAvailable = policy.allowsAmap && amapService != nil
         let openMapAvailable = policy.allowsOpenMap
-        Self.logger.info("🌐 inCN(\(coordinate.latitude, privacy: .public),\(coordinate.longitude, privacy: .public))=\(inCN, privacy: .public) policy=\(policy.rawValue, privacy: .public) amap=\(amapAvailable, privacy: .public) openMap=\(openMapAvailable, privacy: .public)")
+        Self.logger.info("🌐 mainland=\(inCN, privacy: .public) policy=\(policy.rawValue, privacy: .public) amap=\(amapAvailable, privacy: .public) openMap=\(openMapAvailable, privacy: .public)")
 
         // Amap goes first inside China (authoritative there) OR whenever OpenMap
         // is disabled and Amap is the only base we're allowed to use.
@@ -140,7 +142,7 @@ public final class EnrichmentAgent {
 
         if amapFirst, let amap = amapService {
             let amapPois = await fetchAmapBase(
-                amap: amap, coordinate: coordinate, radiusMeters: radiusMeters, category: category
+                amap: amap, coordinate: coordinate, radiusMeters: radiusMeters, category: category, countryCode: countryCode
             )
             if !amapPois.isEmpty {
                 let mapKitPois = await mapKitTask
@@ -170,8 +172,6 @@ public final class EnrichmentAgent {
                     message: "overpass.fetch.empty",
                     level: .warning,
                     context: [
-                        "lat": coordinate.latitude,
-                        "lon": coordinate.longitude,
                         "radius_m": radiusMeters,
                         "category": category?.rawValue ?? "nil",
                         "mapkit_fallback_count": mapKitPois.count
@@ -196,16 +196,19 @@ public final class EnrichmentAgent {
         amap: AmapPOIService,
         coordinate: CLLocationCoordinate2D,
         radiusMeters: Int,
-        category: ExperienceCategory?
+        category: ExperienceCategory?,
+        countryCode: String?
     ) async -> [OverpassService.POI] {
         let outcome: (pois: [OverpassService.POI], error: String?)
         do {
             let pois = try await amap.fetchPOIs(
-                near: coordinate, radiusMeters: radiusMeters, category: category
+                near: coordinate, radiusMeters: radiusMeters, category: category, countryCode: countryCode
             )
+            lastRunWasPartial = lastRunWasPartial || amap.lastFetchWasPartial
             outcome = (pois, nil)
         } catch {
             Self.logger.error("Amap fetch failed, falling back per policy: \(String(describing: error), privacy: .public)")
+            lastRunWasPartial = true
             outcome = ([], String(describing: error))
         }
 
@@ -214,8 +217,6 @@ public final class EnrichmentAgent {
                 message: "amap.fetch.failed",
                 level: .warning,
                 context: [
-                    "lat": coordinate.latitude,
-                    "lon": coordinate.longitude,
                     "radius_m": radiusMeters,
                     "category": category?.rawValue ?? "nil",
                     "error": errMsg
@@ -231,15 +232,13 @@ public final class EnrichmentAgent {
             return outcome.pois
         }
 
-        Self.logger.warning("⚠️ amap returned 0 POIs at (\(coordinate.latitude, privacy: .public),\(coordinate.longitude, privacy: .public)) r=\(radiusMeters, privacy: .public)m. Check AmapPOIService logs for infocode.")
+        Self.logger.warning("⚠️ amap returned 0 POIs r=\(radiusMeters, privacy: .public)m. Check AmapPOIService logs for infocode.")
         if outcome.error == nil {
             // Only emit "empty" if we didn't already emit "failed" above.
             SentryService.capture(
                 message: "amap.fetch.empty",
                 level: .info,
                 context: [
-                    "lat": coordinate.latitude,
-                    "lon": coordinate.longitude,
                     "radius_m": radiusMeters,
                     "category": category?.rawValue ?? "nil"
                 ]
@@ -275,12 +274,14 @@ public final class EnrichmentAgent {
         category: ExperienceCategory? = nil,
         cityCode: String,
         locale: Locale = .current,
+        countryCode: String? = nil,
         topN: Int = EnrichmentAgent.defaultTopN,
         onProgress: ProgressHandler? = nil
     ) async throws -> [Experience] {
+        lastRunWasPartial = false
         // Which base provider is authoritative here — reported to the feed so
         // the user sees "Amap" in China vs "OpenStreetMap" overseas.
-        let inCN = CoordinateConverter.isInsideChinaMainland(coordinate)
+        let inCN = CoordinateConverter.isInsideChinaMainland(coordinate, countryCode: countryCode)
         let baseStage: CompileProgressEvent.Stage =
             (inCN && amapService != nil && DataSourceSettings.policy.allowsAmap) ? .amap : .overpass
 
@@ -290,7 +291,7 @@ public final class EnrichmentAgent {
         onProgress?(baseStage, .running, "")
         onProgress?(.mapKit, .running, "")
         var pois = try await basePOIs(
-            near: coordinate, radiusMeters: radiusMeters, category: category
+            near: coordinate, radiusMeters: radiusMeters, category: category, countryCode: countryCode
         )
         guard !pois.isEmpty else {
             onProgress?(baseStage, .failure, NSLocalizedString("recompile.feed.noPOIs", comment: "No POIs found nearby"))
@@ -501,12 +502,14 @@ public final class EnrichmentAgent {
         categories: [ExperienceCategory] = [],
         cityCode: String,
         locale: Locale = .current,
+        countryCode: String? = nil,
         onProgress: @MainActor @Sendable (MapViewModel.ExploreProgress) async -> Void = { _ in },
         onBatch: @MainActor @Sendable ([Experience]) async -> Void = { _ in }
     ) async -> [Experience] {
+        lastRunWasPartial = false
         var accumulated: [Experience] = []
         // Coordinate-cell key: round lat/lon to 4 decimal places (~11 m precision).
-        var seenCells: Set<String> = []
+        var seenPlaces: [OverpassService.POI] = []
         var seenOsmIds: Set<Int64> = []
         // Total novel POIs collected so far across stages (used for short-circuit).
         var novelPoiCount = 0
@@ -517,7 +520,7 @@ public final class EnrichmentAgent {
             // Short-circuit: already enough novel POIs from inner rings.
             if novelPoiCount >= Self.enoughThreshold { break }
 
-            let radiusKm = radius / 1_000
+            let radiusKm = Double(radius) / 1_000
             // Emit expanding state when advancing beyond the first ring.
             if prevRadius > 0 {
                 await onProgress(.expanding(toRadiusKm: radiusKm))
@@ -531,7 +534,7 @@ public final class EnrichmentAgent {
             let allPois: [OverpassService.POI]
             do {
                 allPois = try await basePOIs(
-                    near: coordinate, radiusMeters: radius, category: category
+                    near: coordinate, radiusMeters: radius, category: category, countryCode: countryCode
                 )
             } catch {
                 Self.logger.error("Stage \(radius, privacy: .public)m base fetch failed: \(String(describing: error), privacy: .public)")
@@ -572,15 +575,14 @@ public final class EnrichmentAgent {
 
             // Dedupe: skip any POI whose osmId or coord cell we've already seen.
             let novel = stagePois.filter { poi in
-                let cell = coordCell(lat: poi.lat, lon: poi.lon)
-                guard !seenOsmIds.contains(poi.osmId) && !seenCells.contains(cell) else {
+                guard !seenOsmIds.contains(poi.osmId) && !seenPlaces.contains(where: { POIMerger.sameVenue($0, poi) }) else {
                     return false
                 }
                 return true
             }
             for poi in novel {
                 seenOsmIds.insert(poi.osmId)
-                seenCells.insert(coordCell(lat: poi.lat, lon: poi.lon))
+                seenPlaces.append(poi)
             }
             novelPoiCount += novel.count
 
@@ -641,7 +643,13 @@ public final class EnrichmentAgent {
             guard let e = bag[poi.osmId] else { return poi }
             var tags = poi.tags
             if let r = e.rating,
-               tags["fsq_rating"] == nil { tags["fsq_rating"] = r }
+               tags["fsq_rating"] == nil,
+               let raw = Double(r), let normalized = POIRating.normalized10(value: raw, scale: 5) {
+                tags["provider_rating"] = r
+                tags["provider_rating_scale"] = "5"
+                tags["provider_rating_source"] = "amap"
+                tags["fsq_rating"] = String(normalized)
+            }
             if let h = e.opentimeToday,
                tags["opening_hours"] == nil { tags["opening_hours"] = h }
             if let p = e.phone,
@@ -702,14 +710,14 @@ public final class EnrichmentAgent {
     /// the same as a beloved one. 精品 means the score must read the score.
     static func signalScore(_ poi: OverpassService.POI) -> Int {
         var score = 0
-        if let ratingStr = poi.tags["fsq_rating"], let rating = Double(ratingStr) {
+        if let rating = POIRating.normalized10(tags: poi.tags) {
             switch rating {
-            case 4.5...:        score += 8
-            case 4.0..<4.5:     score += 6
-            case 3.5..<4.0:     score += 4
+            case 9.0...:        score += 8
+            case 8.0..<9.0:     score += 6
+            case 7.0..<8.0:     score += 4
             default:            score += 1  // rated but mediocre: barely above unrated
             }
-        } else if poi.tags["fsq_rating"] != nil { score += 4 }
+        }
         if poi.tags["opening_hours"] != nil { score += 3 }
         if poi.tags["fsq_price"] != nil { score += 2 }
         if poi.tags["fsq_popularity"] != nil { score += 2 }

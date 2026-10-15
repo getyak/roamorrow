@@ -102,8 +102,8 @@
 "bestTimes.now.pill" = "Good time now";
 "bestTimes.now.pill.left" = "Good now · %d min left";
 "bestTimes.now.pill.left.a11y" = "Good time now, %d minutes left in this window";
-"bestTimes.now.pill.closing" = "Closing in %dm — go now";
-"bestTimes.now.pill.closing.a11y" = "Closing soon, %d minutes left in this window — go now";
+"bestTimes.now.pill.closing" = "Suggested window ends in %d minutes";
+"bestTimes.now.pill.closing.a11y" = "Suggested visit window ends in %d minutes";
 "bestTimes.next.pill" = "Better at %@";
 "bestTimes.window.active.a11y" = "happening now";
 "bestTimes.pill.scrollHint" = "Scrolls to the time-of-day timeline";
@@ -155,8 +155,8 @@
 "badge.now.fallback" = "Now";
 "experience.bestNow.countdown" = "Best now · %dm left";
 "experience.bestNow.countdown.a11y" = "Best now, %d minutes left";
-"experience.bestNow.closingSoon" = "Closing soon · %dm left";
-"experience.bestNow.closingSoon.a11y" = "Closing soon, %d minutes left";
+"experience.bestNow.closingSoon" = "Best time · %d minutes left";
+"experience.bestNow.closingSoon.a11y" = "Suggested visit window ends in %d minutes";
 "experience.viewDetails" = "View details →";
 "experience.bestTime.hint" = "Best %@";
 "experience.bestTime.hint.a11y" = "Best %@";
@@ -233,7 +233,7 @@
 
 /* Marker accessibility */
 "marker.a11y.bestNow" = "best right now";
-"marker.a11y.closingSoon" = "best right now, closing soon";
+"marker.a11y.closingSoon" = "Best now, suggested visit window ending";
 "marker.a11y.completed" = "completed";
 "marker.a11y.favorited" = "favorited";
 "marker.a11y.upcoming" = "starts in %d minutes";
@@ -645,8 +645,8 @@
 "favorites.nearby.go.hint" = "Opens turn-by-turn directions in Maps";
 "favorites.row.goodNow" = "Good time now";
 "favorites.row.goodNow.a11y" = "good time to visit now";
-"favorites.row.closingSoon" = "Closing soon · %dm left";
-"favorites.row.closingSoon.a11y" = "closing soon, %d minutes left";
+"favorites.row.closingSoon" = "Best time · %d minutes left";
+"favorites.row.closingSoon.a11y" = "Suggested visit window ends in %d minutes";
 "favorites.row.bestAt" = "Best ~%@";
 "favorites.row.bestAt.a11y" = "best around %@";
 "favorites.row.markVisited" = "Mark visited";
@@ -795,8 +795,8 @@
 "exploreMode.pill.searchingFragment" = "searching…";
 "exploreMode.pill.verifiedFragment" = "%d verified";
 "exploreMode.cancel" = "Cancel";
-"exploreMode.handoff.summary" = "%1$d places · %2$d km · %3$@";
-"exploreMode.handoff.summaryNoCity" = "%1$d places · %2$d km";
+"exploreMode.handoff.summary" = "%1$d places · %2$.1f km · %3$@";
+"exploreMode.handoff.summaryNoCity" = "%1$d places · %2$.1f km";
 "exploreMode.handoff.verifiedSuffix" = "%d verified across sources";
 "exploreMode.handoff.askSolo" = "Ask Solo about these";
 "exploreMode.handoff.saveWalk" = "Save as a walk";
@@ -814,14 +814,14 @@
 "explore.quota.dailyLimit" = "Daily AI limit reached. Showing real places without enrichment until tomorrow.";
 "explore.toast.addedNamed" = "Now exploring %1$@ · %2$d places added";
 "explore.toast.added" = "%d places added near you";
-"explore.toast.multiRing.addedNamed" = "Now exploring %1$@ · %2$d places added across %3$d km";
-"explore.toast.multiRing.added" = "%1$d places added across %2$d km";
+"explore.toast.multiRing.addedNamed" = "Now exploring %1$@ · %2$d places added across %3$.1f km";
+"explore.toast.multiRing.added" = "%1$d places added across %2$.1f km";
 "explore.toast.progressive.expandedNamed" = "Expanded to %1$@ km · found %2$lld in %3$@";
 "explore.toast.progressive.expanded" = "Expanded to %1$@ km · found %2$lld";
 "explore.progress.scanning" = "Scanning area · ring %1$d of %2$d";
 "explore.progress.synthesizing" = "Synthesizing %d places…";
-"explore.progress.progressiveScanning" = "Scanning %d km…";
-"explore.progress.expanding" = "Nearby sparse · expanding to %d km";
+"explore.progress.progressiveScanning" = "Scanning %.1f km…";
+"explore.progress.expanding" = "Nearby sparse · expanding to %.1f km";
 "explore.offline.staleToast" = "Showing offline data from %@";
 "explore.toast.cachedFallback" = "Showing cached results";
 "explore.expand.alreadyMax" = "Already exploring the maximum radius (100 km).";
@@ -1591,8 +1591,8 @@
 "nearby.chip.solo" = "Solo %.1f";
 "nearby.chip.bestNow" = "Best now";
 /* Compact closing-soon countdown chip on the peek pick + Nearby rows (≤45 min left). %d = minutes. */
-"nearby.chip.closingSoon" = "Closing · %dm";
-"nearby.chip.closingSoon.a11y" = "best now, closing soon, %d minutes left";
+"nearby.chip.closingSoon" = "Best time · %dm left";
+"nearby.chip.closingSoon.a11y" = "Suggested visit window ends in %d minutes";
 "nearby.proximity.sparse" = "Quiet";
 "nearby.proximity.moderate" = "Moderate";
 "nearby.proximity.far" = "Far";
@@ -1747,7 +1747,7 @@
 "terms.declined.title" = "Consent required to continue";
 "terms.declined.body" = "Solo Compass cannot show the map, fetch nearby places, or use AI without your agreement to the Privacy Policy and Terms. Nothing has been collected. Tap below to review again.";
 "terms.declined.review" = "Review again";
-"nearby.chip.closingNow" = "Closing now";
+"nearby.chip.closingNow" = "Best time ending";
 
 /* US-058 — RouteCard walked-by row (CompareCanvas A-003) */
 "route.card.walkedBy" = "Walked by %d travelers";
@@ -2578,3 +2578,12 @@
 "ux.ritual.insight" = "Monthly reflections";
 "ux.ritual.capsule" = "Open a time capsule";
 "ux.discover.experiences" = "Experiences to try";
+
+"soloScore.unassessed" = "Not assessed";
+"explore.toast.partial" = "Some places could not be loaded. Try again shortly.";
+
+"map.coordinates.unavailable" = "Map positions could not be verified. Places remain available in the list.";
+"common.retry" = "Retry";
+
+"map.coordinates.styleUnverified" = "Positions in this map mode are unverified. Use the standard map or the places list.";
+"map.coordinates.useStandard" = "Standard map";

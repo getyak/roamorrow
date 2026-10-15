@@ -49,8 +49,11 @@ public final class MapKitPOIService {
         isFetching = true
         defer { isFetching = false }
 
+        let space = MapKitCoordinateSpace.shared
+        try await space.prepare(near: coordinate)
+        guard let searchCenter = space.searchCoordinate(coordinate) else { throw MapKitCoordinateSpace.CalibrationError.unavailable }
         let request = MKLocalPointsOfInterestRequest(
-            center: coordinate,
+            center: searchCenter,
             radius: CLLocationDistance(radiusMeters)
         )
         if let category, let filter = Self.poiFilter(for: category) {
@@ -65,13 +68,17 @@ public final class MapKitPOIService {
             // An empty-result search surfaces as an error on some OS versions;
             // treat that as "no POIs" rather than a hard failure.
             let ns = error as NSError
-            if ns.domain == MKError.errorDomain {
+            if ns.domain == MKError.errorDomain, ns.code == MKError.placemarkNotFound.rawValue {
                 return []
             }
             throw MapKitPOIError.searchFailed(String(describing: error))
         }
 
-        return response.mapItems.compactMap { Self.poi(from: $0) }
+        for item in response.mapItems {
+            try Task.checkCancellation()
+            try? await space.prepare(near: item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
+        }
+        return Self.withinRadius(response.mapItems.compactMap { Self.poi(from: $0) }, center: coordinate, meters: radiusMeters)
     }
 
     /// Free-text POI search — the missing piece the local card filter can't do.
@@ -106,11 +113,16 @@ public final class MapKitPOIService {
 
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = trimmed
+        let space = MapKitCoordinateSpace.shared
+        try await space.prepare(near: coordinate)
+        guard let searchCenter = space.searchCoordinate(coordinate) else { throw MapKitCoordinateSpace.CalibrationError.unavailable }
         request.region = MKCoordinateRegion(
-            center: coordinate,
+            center: searchCenter,
             latitudinalMeters: CLLocationDistance(radiusMeters * 2),
             longitudinalMeters: CLLocationDistance(radiusMeters * 2)
         )
+        request.resultTypes = .pointOfInterest
+        if #available(iOS 18.0, macOS 15.0, *) { request.regionPriority = .required }
 
         let search = MKLocalSearch(request: request)
         let response: MKLocalSearch.Response
@@ -118,13 +130,16 @@ public final class MapKitPOIService {
             response = try await search.start()
         } catch {
             let ns = error as NSError
-            if ns.domain == MKError.errorDomain {
+            if ns.domain == MKError.errorDomain, ns.code == MKError.placemarkNotFound.rawValue {
                 return []
             }
             throw MapKitPOIError.searchFailed(String(describing: error))
         }
 
-        return response.mapItems.compactMap { Self.poi(from: $0) }
+        for item in response.mapItems {
+            try? await space.prepare(near: item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
+        }
+        return Self.withinRadius(response.mapItems.compactMap { Self.poi(from: $0) }, center: coordinate, meters: radiusMeters)
     }
 
     // MARK: - Mapping
@@ -135,7 +150,7 @@ public final class MapKitPOIService {
         let placemark = item.placemark
         let name = item.name ?? placemark.name
         guard let name, !name.isEmpty else { return nil }
-        let coord = placemark.coordinate
+        guard let coord = MapKitCoordinateSpace.shared.canonicalSearchCoordinate(placemark.coordinate, countryCode: placemark.isoCountryCode) else { return nil }
         guard CLLocationCoordinate2DIsValid(coord) else { return nil }
 
         var tags: [String: String] = ["name": name, "source": "mapkit"]
@@ -166,6 +181,15 @@ public final class MapKitPOIService {
             lon: coord.longitude,
             tags: tags
         )
+    }
+
+    static func withinRadius(_ pois: [OverpassService.POI], center: CLLocationCoordinate2D, meters: Int) -> [OverpassService.POI] {
+        let origin = CLLocation(latitude: center.latitude, longitude: center.longitude)
+        return pois.filter { poi in
+            let point = CLLocationCoordinate2D(latitude: poi.lat, longitude: poi.lon)
+            return CLLocationCoordinate2DIsValid(point) && poi.lat.isFinite && poi.lon.isFinite
+                && origin.distance(from: CLLocation(latitude: poi.lat, longitude: poi.lon)) <= Double(max(0, meters))
+        }
     }
 
     /// Map an `MKPointOfInterestCategory` to an OSM-style tag (key, value) so

@@ -7,6 +7,7 @@ import MapKit
 final class LocationSearchService {
 
     private var activeSearch: MKLocalSearch?
+    private var calibrationTask: Task<Void, Never>?
 
     /// Search for locations by natural-language query.
     /// Cancels any in-flight search before starting a new one.
@@ -23,6 +24,14 @@ final class LocationSearchService {
 
         do {
             let response = try await search.start()
+            calibrationTask?.cancel()
+            calibrationTask = Task { @MainActor in
+                for item in response.mapItems.prefix(5) {
+                    guard !Task.isCancelled else { return }
+                    try? await MapKitCoordinateSpace.shared.prepare(near: item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
+                }
+            }
+            try Task.checkCancellation()
             return response.mapItems
         } catch MKError.placemarkNotFound {
             return []
@@ -36,5 +45,7 @@ final class LocationSearchService {
     func cancelAll() {
         activeSearch?.cancel()
         activeSearch = nil
+        calibrationTask?.cancel()
+        calibrationTask = nil
     }
 }

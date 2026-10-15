@@ -15,6 +15,7 @@ final class CityExperienceFetcherTests: XCTestCase {
         /// When true, every `get` returns `.success(Data())` — the backend-off /
         /// offline shape the real client produces behind the flag gate.
         var returnsEmpty = false
+        var getQueries: [String: [URLQueryItem]] = [:]
 
         var currentSession: SupabaseClient.Session? {
             SupabaseClient.Session(
@@ -24,6 +25,7 @@ final class CityExperienceFetcherTests: XCTestCase {
         }
 
         func get(table: String, query: [URLQueryItem]) async -> Result<Data, SupabaseClient.SupabaseError> {
+            getQueries[table] = query
             if returnsEmpty { return .success(Data()) }
             let json: String
             switch table {
@@ -114,6 +116,22 @@ final class CityExperienceFetcherTests: XCTestCase {
         let source = try! XCTUnwrap(fetched.first?.sources.first)
         XCTAssertEqual(source.type, .amap)
         XCTAssertNil(source.url, "amap places carry no OSM node url")
+    }
+
+    @MainActor
+    func testLargeStringIdentityAndUnknownFactsSurviveSharedRead() async throws {
+        let stub = StubSupabaseClient()
+        stub.synthJSON = #"[{"payload":[{"osmId":"4611686018427387905","title":"Cafe","oneLiner":"a","whyItMatters":"b","category":"food"}]}]"#
+        stub.poisJSON = #"[{"osm_id":"4611686018427387905","name":"Cafe","name_en":null,"lat":31.78,"lon":113.75,"tags":{"amenity":"cafe"}}]"#
+        let fetched = await makeFetcher(stub).fetchCityExperiences(cityCode: "test")
+        let experience = try XCTUnwrap(fetched.first)
+        XCTAssertEqual(experience.id, "exp_osm_4611686018427387905")
+        XCTAssertEqual(experience.category, .coffee, "provider facts determine category")
+        XCTAssertTrue(experience.bestTimes.isEmpty)
+        XCTAssertEqual(experience.soloScore.overall, 0)
+        let query = try XCTUnwrap(stub.getQueries["synthesized_experiences"])
+        XCTAssertEqual(query.first { $0.name == "order" }?.value, "synthesized_at.asc")
+        XCTAssertTrue(query.first { $0.name == "synthesized_at" }?.value?.hasPrefix("gte.") == true)
     }
 
     // MARK: - Empty / failure contract

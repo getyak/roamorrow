@@ -1,0 +1,32 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "acceptance.json": "db99218148634eeffece076ffa42f3e5732c0e86cf27a35f1e16d46ecf5373c6",
+    "anti-pattern.txt": "4e979c6516e198cf81f8e61f9287438651e6c6c27b0e9eec00c90bd4d1374833",
+    "hongkong-standard.png": "d27da3dce4970a2e70da5af09a4d72642ad3ed76250413d318cebfdb6c4cfb5b",
+    "host-tests.txt": "dc506e700e8535f36acf6e476183a939fab7abc2c04150cd4262342e3e44f16c",
+    "independent-review.txt": "d798f91241d8679dffb88c0741c56ca5e9a67d54af090773a67e135dafa00566",
+    "lint-buffer-regression.json": "e059fab2b94b193aa4c0f0ef8918edcdccd5e1ce38052e738912375de330da79",
+    "localization.txt": "34306356cd442b3d7da4e9722fd8330820519d6299dbd488996559ece9c3641f",
+    "macau-standard.png": "7de5de5cabd72558e051bbe5e4e919bbcc1f766d7eb8d9713ed2e6f9cf2a1801",
+    "mainland-standard.png": "173096079b7a38e4f04da5cdb08493aaa22e38dbba71c4d709eece621b1ca140",
+    "marker-perf-baseline-summary.json": "9886ae3658432033a72d9e7c512fc843fea4d3dd8985af2517f208a428080435",
+    "marker-perf-metrics.json": "f7bd8614cd92c221a4398a78ba451f96b55420205a7b9ffc4dcb576194fa8ae8",
+    "marker-perf-output.txt": "c1ce094721b960c8e9e89e377119caa545c0d11e6e70ef575617af604fb51f3c",
+    "marker-perf-summary.json": "71ba166d51ca68ce410f91785e952866bb7b9e501e4d70324da5d4c02342e0f5",
+    "native-focused-cases.json": "f5473bedc30adfccc93882924b805c575b967bea5868678fe029bbf71adcdd4f",
+    "native-focused-summary.json": "31f1999a1373d4ab30c40cb0867a5ae94de6cb32ab08dbf44e474e4fdff5547a",
+    "native-live-summary.json": "f7175e441384ab343b32a228a93f98e4a909b42c9aa1dd23e4ed07269d75680e",
+    "parity.txt": "259fdd2f5edc4bf3d3fc2df877b979ac20ee0490e120a46cc763e3d33e12e77c",
+    "public-anchor-receipts.json": "1487d13c58403e881bd0636695e28bbe2ced328184685ac109b8aa21aac34d8f",
+    "security-edge-validation.txt": "1ce323eb8d74dccf7790546db539df71d7a4b1487070912eda828566ff55927d",
+    "security-gitleaks-positive-control.txt": "5db91d107c952c8003e9b43bb74d358b8ea245a0bd22ae036355739cacb7f9b5",
+    "security-gitleaks-validation.txt": "a4b561c1f8f17bd46a149291c2d7972110d56b7927a13a9d66543b8ff9163b66",
+    "security-patch-validation.txt": "f8b9e680da5a73bbc14dd0a451b21cd94f4b9c5b30e071b4ca76b7a4512d7ccd",
+    "security-validation.json": "cb580895996770cd1a66a1f697440cb770cb96aebd010dffb0401d371d4954ec",
+    "source-sha256.json": "082d258edef66820beea1740e96e5debac38ff4fd3feebcae44e551b12dd2328",
+    "trial-history.json": "61d5a5284ed65b86670db8e1d27fb85d63db82eb1aa050b8c77c233a0949c5f9",
+    "typecheck.txt": "4192ab1bb9d28579afa71d8a3d34579a015bfcdd2a851e3f1c2f6b86a9cbab8a",
+    "workspace-tests.txt": "1ec5ce1c1da067ee376a8f564d801c4068fe2ac6701ea723d9c3e9ef2a1876d3"
+  }
+}

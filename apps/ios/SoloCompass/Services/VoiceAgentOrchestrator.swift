@@ -1191,7 +1191,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
         let visibleSummary = visible.isEmpty
             ? "No experiences currently visible on the map."
             : visible.map {
-                "  [\($0.id)] \($0.title) — \($0.category.rawValue) — score \(String(format: "%.1f", $0.soloScore.overall))/10"
+                "  [\($0.id)] \($0.title) — \($0.category.rawValue) — score \($0.soloScoreDisplay)"
               }.joined(separator: "\n")
 
         let coord = mapViewModel?.exploreAnchorCoordinate ?? MapViewModel.defaultCenter
@@ -1353,7 +1353,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
     static func renderExperienceContext(_ exp: Experience) -> String {
         let category = exp.category.rawValue
         let confidence = exp.confidence.level
-        let score = String(format: "%.1f", exp.soloScore.overall)
+        let score = exp.soloScoreDisplay
         let bestTimes = summarizeBestTimes(exp.bestTimes)
 
         // Optional identifying lines — only emitted when the field carries
