@@ -2584,3 +2584,6 @@
 
 "map.coordinates.unavailable" = "Map positions could not be verified. Places remain available in the list.";
 "common.retry" = "Retry";
+
+"map.coordinates.styleUnverified" = "Positions in this map mode are unverified. Use the standard map or the places list.";
+"map.coordinates.useStandard" = "Standard map";

@@ -31,8 +31,7 @@ struct MapPinPickerView: View {
             Map(position: Binding(
                 get: { presentation.position },
                 set: {
-                    presentation.receive($0)
-                    if let canonical = coordinateSpace.canonicalPosition($0) { cameraPosition = canonical }
+                    if let canonical = presentation.receive($0, space: coordinateSpace) { cameraPosition = canonical }
                 }
             )) {
                 if let mapCoordinate = coordinateSpace.mapCoordinate(coordinate) {

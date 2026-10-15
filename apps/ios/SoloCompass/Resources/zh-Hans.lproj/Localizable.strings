@@ -2594,3 +2594,6 @@
 
 "map.coordinates.unavailable" = "地图位置暂时无法核实，可继续查看地点列表。";
 "common.retry" = "重试";
+
+"map.coordinates.styleUnverified" = "此地图模式的位置尚未核实，可切换标准地图或查看地点列表。";
+"map.coordinates.useStandard" = "切换标准地图";

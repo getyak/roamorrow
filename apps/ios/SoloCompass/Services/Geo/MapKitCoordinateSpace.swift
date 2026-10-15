@@ -32,7 +32,7 @@ final class MapKitCoordinateSpace {
         let verifiedAt: Date
     }
     enum CalibrationError: Error, LocalizedError {
-        case unavailable
+        case unavailable, identityUnverified
         var errorDescription: String? {
             NSLocalizedString("map.coordinates.unavailable", comment: "Unverified map position")
         }
@@ -49,7 +49,7 @@ final class MapKitCoordinateSpace {
     static var validatedStyles: Set<Style> {
         #if os(iOS)
         let os = ProcessInfo.processInfo.operatingSystemVersion
-        return os.majorVersion == 26 && os.minorVersion == 5 ? Set(Style.allCases) : []
+        return os.majorVersion == 26 && os.minorVersion == 5 ? [.standard] : []
         #else
         return []
         #endif
@@ -184,6 +184,21 @@ final class MapKitCoordinateSpace {
         inFlight.removeAll(); profiles.removeAll(); retryAfter.removeAll(); routingHints.removeAll()
         revision &+= 1
     }
+    /// Amap's adapter has already normalized these points to WGS84. Its
+    /// mainland provenance can route reclaimed land missing from coarse coast
+    /// geometry; it cannot establish a render datum or override foreign land.
+    func registerMainlandProviderCoordinate(_ canonical: CLLocationCoordinate2D) {
+        guard Self.area(for: canonical) == .unresolved else { return }
+        let target = Area.calibrated(.mainland)
+        if routingHints[key(canonical)] != target {
+            routingHints[key(canonical)] = target
+            revision &+= 1
+        }
+    }
+    func supportsRenderStyle(_ style: Style, at coordinate: CLLocationCoordinate2D) -> Bool {
+        if case .calibrated = area(for: coordinate) { return renderStyles.contains(style) }
+        return true
+    }
     func canonicalSearchCoordinate(_ raw: CLLocationCoordinate2D, countryCode: String? = nil) -> CLLocationCoordinate2D? {
         guard let c = convert(raw, datum: profile(for: raw, countryCode: countryCode).searchOutput, inverse: true) else { return nil }
         if let countryCode { routingHints[key(c)] = Self.area(for: c, countryCode: countryCode) }
@@ -269,7 +284,7 @@ final class MapKitCoordinateSpace {
                 .unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.map(String.init).joined()
         }
         let aliases = Set(([anchor.query] + anchor.aliases).map(normalized))
-        guard let item = response.mapItems.first(where: { aliases.contains(normalized($0.name ?? "")) }) else { throw CalibrationError.unavailable }
+        guard let item = response.mapItems.first(where: { aliases.contains(normalized($0.name ?? "")) }) else { throw CalibrationError.identityUnverified }
         return item
     }
 
@@ -294,7 +309,7 @@ final class MapKitCoordinateSpace {
             return [
                 .init(id: "Q4310094", query: "澳门仁慈堂", aliases: ["Holy House of Mercy", "Santa Casa da Misericórdia", "仁慈堂大楼", "仁慈堂大樓"],
                       latitude: 22 + 11.0/60 + 37.0/3600, longitude: 113 + 32.0/60 + 25.0/3600, reference: "https://www.wikidata.org/wiki/Q4310094"),
-                .init(id: "Q909429", query: "澳门邮政总局", aliases: ["Macao Post and Telecommunications Bureau", "CTT Macau", "General Post Office", "澳门邮电局", "澳門郵政總局"],
+                .init(id: "Q909429", query: "澳门邮政总局", aliases: ["Macao Post and Telecommunications Bureau", "CTT Macau", "General Post Office", "邮政总局", "郵政總局", "邮政总局大楼", "郵政總局大樓", "澳门邮电局", "澳門郵政總局"],
                       latitude: 22 + 11.0/60 + 35.9/3600, longitude: 113 + 32.0/60 + 24.7/3600, reference: "https://www.wikidata.org/wiki/Q909429")
             ]
         }

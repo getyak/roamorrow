@@ -2965,6 +2965,12 @@ struct CompassMapContentView: View {
         )
     }
 
+    private func registerProviderCoordinateRoutes(_ experiences: [Experience]) {
+        for experience in experiences where experience.sources.contains(where: { $0.type == .amap }) {
+            if let coordinate = experience.coordinate { coordinateSpace.registerMainlandProviderCoordinate(coordinate) }
+        }
+    }
+
     private func renderedCoordinate(_ coordinate: CLLocationCoordinate2D) -> CLLocationCoordinate2D? {
         coordinateSpace.mapCoordinate(coordinate, style: mapStyleChoice.coordinateStyle)
     }
@@ -2974,8 +2980,7 @@ struct CompassMapContentView: View {
         let bindingCamera = Binding<MapCameraPosition>(
             get: { mapPresentation.position },
             set: { position in
-                mapPresentation.receive(position)
-                if let canonical = coordinateSpace.canonicalPosition(position, style: mapStyleChoice.coordinateStyle) {
+                if let canonical = mapPresentation.receive(position, space: coordinateSpace, style: mapStyleChoice.coordinateStyle) {
                     viewModel.cameraPosition = canonical
                 }
             }
@@ -3209,10 +3214,17 @@ struct CompassMapContentView: View {
             }
             .mapStyle(mapStyleChoice.mapStyle)
             .overlay(alignment: .top) {
-                if renderedCoordinate(mapPresentation.target ?? viewModel.exploreAnchorCoordinate) == nil {
-                    MapCoordinateStatus { coordinateSpace.invalidate() }
-                        .padding(.top, 100)
+                if !coordinateSpace.supportsRenderStyle(mapStyleChoice.coordinateStyle, at: mapPresentation.target ?? viewModel.exploreAnchorCoordinate),
+                   mapStyleChoice != .standard {
+                    MapCoordinateStatus(messageKey: "map.coordinates.styleUnverified", actionKey: "map.coordinates.useStandard") {
+                        mapStyleChoice = .standard
+                    }.padding(.top, 100)
+                } else if renderedCoordinate(mapPresentation.target ?? viewModel.exploreAnchorCoordinate) == nil {
+                    MapCoordinateStatus { coordinateSpace.invalidate() }.padding(.top, 100)
                 }
+            }
+            .onChange(of: viewModel.visibleExperiences, initial: true) { _, experiences in
+                registerProviderCoordinateRoutes(experiences)
             }
             .onChange(of: viewModel.cameraPosition, initial: true) { _, position in
                 mapPresentation.request(position, fallback: viewModel.exploreAnchorCoordinate,
@@ -3232,6 +3244,7 @@ struct CompassMapContentView: View {
             .task(id: "\(mapPresentation.target?.latitude ?? viewModel.exploreAnchorCoordinate.latitude),\(mapPresentation.target?.longitude ?? viewModel.exploreAnchorCoordinate.longitude)-\(coordinateSpace.generation)") {
                 do {
                     repeat {
+                        registerProviderCoordinateRoutes(viewModel.visibleExperiences)
                         try await coordinateSpace.prepare(near: mapPresentation.target ?? viewModel.exploreAnchorCoordinate)
                         try await Task.sleep(for: .seconds(MapKitCoordinateSpace.lifetime))
                         coordinateSpace.invalidate()
