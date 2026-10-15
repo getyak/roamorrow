@@ -1,0 +1,50 @@
+{
+  "devicesAndConfigurations": [
+    {
+      "device": {
+        "architecture": "arm64",
+        "deviceId": "02B4F0C1-A92F-469D-9DCC-5ED13F119507",
+        "deviceName": "iPhone 17 Pro",
+        "modelName": "iPhone 17 Pro",
+        "osBuildNumber": "23F77",
+        "osVersion": "26.5",
+        "platform": "iOS Simulator"
+      },
+      "expectedFailures": 0,
+      "failedTests": 1,
+      "passedTests": 9,
+      "skippedTests": 0,
+      "testPlanConfiguration": {
+        "configurationId": "1",
+        "configurationName": "Test Scheme Action"
+      }
+    }
+  ],
+  "environmentDescription": "SoloCompass · Built with macOS 26.4",
+  "expectedFailures": 0,
+  "failedTests": 1,
+  "finishTime": 1792074157.198,
+  "passedTests": 1,
+  "result": "Failed",
+  "skippedTests": 0,
+  "startTime": 1792073921.352,
+  "statistics": [
+    {
+      "subtitle": "10 test runs",
+      "title": "1 configuration ran with test repetitions"
+    }
+  ],
+  "testFailures": [
+    {
+      "failureText": "XCTAssertGreaterThanOrEqual failed: (\"0.3871581473674788\") is less than (\"0.4\") - Cached marker-state amortized batch latency per pass should be ≥ 40% faster at p95 (10 passes/batch). baseline amortized p95 = 0.001126s, cached amortized p95 = 0.000690s, improvement = 38.7%",
+      "targetName": "SoloCompassTests",
+      "testIdentifier": 2,
+      "testIdentifierString": "MarkerStatePerformanceTest/testCachedMarkerStateP95DropsAtLeast40Percent()",
+      "testIdentifierURL": "test://com.apple.xcode/SoloCompass/SoloCompassTests/MarkerStatePerformanceTest/testCachedMarkerStateP95DropsAtLeast40Percent",
+      "testName": "testCachedMarkerStateP95DropsAtLeast40Percent()"
+    }
+  ],
+  "title": "Test - SoloCompass",
+  "topInsights": [],
+  "totalTestCount": 2
+}

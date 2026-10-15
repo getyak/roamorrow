@@ -1,0 +1,321 @@
+
+   • turbo 2.11.4
+   • Packages in scope: @solo-compass/ai, @solo-compass/bot, @solo-compass/core, @solo-compass/data, @solo-compass/db, @solo-compass/routing, @solo-compass/sources-core, @solo-compass/sources-google-places, @solo-compass/sources-osm, @solo-compass/sources-wikivoyage, @solo-compass/web, @solo-compass/worker
+   • Running test in 12 packages
+   • Remote caching disabled, using shared worktree cache
+
+@solo-compass/sources-core:test: cache miss, executing df41282af7faaee0
+@solo-compass/core:test: cache miss, executing ea8361b9c127c21c
+@solo-compass/sources-core:test: $ vitest run
+@solo-compass/core:test: $ vitest run
+@solo-compass/sources-core:test: 
+@solo-compass/sources-core:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/sources/core
+@solo-compass/sources-core:test: 
+@solo-compass/sources-core:test:  ✓ src/registry.test.ts (6 tests) 2ms
+@solo-compass/sources-core:test: 
+@solo-compass/sources-core:test:  Test Files  1 passed (1)
+@solo-compass/sources-core:test:       Tests  6 passed (6)
+@solo-compass/sources-core:test:    Start at  20:08:09
+@solo-compass/sources-core:test:    Duration  92ms (transform 17ms, setup 0ms, import 23ms, tests 2ms, environment 0ms)
+@solo-compass/sources-core:test: 
+@solo-compass/routing:test: cache miss, executing 2bd0a0c15e1007af
+@solo-compass/core:test: 
+@solo-compass/core:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/core
+@solo-compass/core:test: 
+@solo-compass/routing:test: $ vitest run
+@solo-compass/core:test:  ✓ src/llm-context.test.ts (12 tests) 3ms
+@solo-compass/core:test: 
+@solo-compass/core:test:  Test Files  1 passed (1)
+@solo-compass/core:test:       Tests  12 passed (12)
+@solo-compass/core:test:    Start at  20:08:09
+@solo-compass/core:test:    Duration  96ms (transform 17ms, setup 0ms, import 22ms, tests 3ms, environment 0ms)
+@solo-compass/core:test: 
+@solo-compass/sources-google-places:test: cache miss, executing 39d6b8b41a676a7a
+@solo-compass/sources-google-places:test: $ vitest run
+@solo-compass/routing:test: 
+@solo-compass/routing:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/routing
+@solo-compass/routing:test: 
+@solo-compass/routing:test:  ✓ src/valhalla.test.ts (2 tests) 12ms
+@solo-compass/routing:test:  ✓ src/solver.test.ts (8 tests) 10ms
+@solo-compass/routing:test: 
+@solo-compass/routing:test:  Test Files  2 passed (2)
+@solo-compass/routing:test:       Tests  10 passed (10)
+@solo-compass/routing:test:    Start at  20:08:09
+@solo-compass/routing:test:    Duration  128ms (transform 60ms, setup 0ms, import 75ms, tests 22ms, environment 0ms)
+@solo-compass/routing:test: 
+@solo-compass/sources-wikivoyage:test: cache miss, executing 60c9fa7b43c478e1
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/sources/google-places
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-wikivoyage:test: $ vitest run
+@solo-compass/sources-google-places:test: stdout | src/adapter.test.ts > GooglePlacesAdapter > fetchNearby > returns Candidate[] from nearby search response
+@solo-compass/sources-google-places:test: [google-places] nearbySearch lat=18.79 lon=98.97 radius=1000m — cost $0.0170
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test: stdout | src/adapter.test.ts > GooglePlacesAdapter > fetchNearby > uses GeoJSON coordinate order [lon, lat]
+@solo-compass/sources-google-places:test: [google-places] nearbySearch lat=18.79 lon=98.97 radius=1000m — cost $0.0170
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test: stdout | src/adapter.test.ts > GooglePlacesAdapter > fetchNearby > returns cached result on second call without re-fetching
+@solo-compass/sources-google-places:test: [google-places] nearbySearch lat=18.79 lon=98.97 radius=1000m — cost $0.0170
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test: stdout | src/adapter.test.ts > GooglePlacesAdapter > fetchNearby > does not include raw Google API fields in rawText
+@solo-compass/sources-google-places:test: [google-places] nearbySearch lat=18.79 lon=98.97 radius=1000m — cost $0.0170
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test: stdout | src/adapter.test.ts > GooglePlacesAdapter > fetchNearby > skips places with empty display names
+@solo-compass/sources-google-places:test: [google-places] nearbySearch lat=1 lon=2 radius=500m — cost $0.0170
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test: stdout | src/adapter.test.ts > GooglePlacesAdapter > fetch (SourceAdapter contract) > derives lat/lon and radius from bbox and returns candidates
+@solo-compass/sources-google-places:test: [google-places] nearbySearch lat=18.79 lon=98.97 radius=1570m — cost $0.0170
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test: stdout | src/adapter.test.ts > BudgetTracker (via adapter) > allows calls within daily cap
+@solo-compass/sources-google-places:test: [google-places] nearbySearch lat=18.79 lon=98.97 radius=500m — cost $0.0170
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test:  ✓ src/adapter.test.ts (14 tests) 7ms
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-google-places:test:  Test Files  1 passed (1)
+@solo-compass/sources-google-places:test:       Tests  14 passed (14)
+@solo-compass/sources-google-places:test:    Start at  20:08:10
+@solo-compass/sources-google-places:test:    Duration  118ms (transform 37ms, setup 0ms, import 50ms, tests 7ms, environment 0ms)
+@solo-compass/sources-google-places:test: 
+@solo-compass/sources-osm:test: cache miss, executing 33f5828de13a8a07
+@solo-compass/sources-osm:test: $ vitest run
+@solo-compass/sources-wikivoyage:test: 
+@solo-compass/sources-wikivoyage:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/sources/wikivoyage
+@solo-compass/sources-wikivoyage:test: 
+@solo-compass/sources-wikivoyage:test:  ✓ src/adapter.test.ts (9 tests) 19ms
+@solo-compass/sources-wikivoyage:test:  ✓ src/parser.test.ts (14 tests) 23ms
+@solo-compass/sources-wikivoyage:test: 
+@solo-compass/sources-wikivoyage:test:  Test Files  2 passed (2)
+@solo-compass/sources-wikivoyage:test:       Tests  23 passed (23)
+@solo-compass/sources-wikivoyage:test:    Start at  20:08:10
+@solo-compass/sources-wikivoyage:test:    Duration  222ms (transform 50ms, setup 0ms, import 263ms, tests 42ms, environment 0ms)
+@solo-compass/sources-wikivoyage:test: 
+@solo-compass/data:test: cache miss, executing f732a9cd211ed103
+@solo-compass/sources-osm:test: 
+@solo-compass/sources-osm:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/sources/osm
+@solo-compass/sources-osm:test: 
+@solo-compass/data:test: $ vitest run
+@solo-compass/sources-osm:test:  ✓ src/overpass.test.ts (5 tests) 2ms
+@solo-compass/data:test: 
+@solo-compass/data:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/data
+@solo-compass/data:test: 
+@solo-compass/data:test:  ✓ src/work-session-repo.test.ts (3 tests) 3ms
+@solo-compass/data:test:  ✓ src/refresh-policy.test.ts (5 tests) 5ms
+@solo-compass/data:test:  ✓ src/opening-hours.test.ts (4 tests) 4ms
+@solo-compass/data:test:  ✓ src/feature-resolver.test.ts (8 tests) 5ms
+@solo-compass/data:test:  ✓ src/entity-resolution.test.ts (4 tests) 2ms
+@solo-compass/data:test: 
+@solo-compass/data:test:  Test Files  5 passed (5)
+@solo-compass/data:test:       Tests  24 passed (24)
+@solo-compass/data:test:    Start at  20:08:11
+@solo-compass/data:test:    Duration  176ms (transform 218ms, setup 0ms, import 296ms, tests 19ms, environment 0ms)
+@solo-compass/data:test: 
+@solo-compass/ai:test: cache miss, executing bc15d1ac4174551c
+@solo-compass/ai:test: $ vitest run
+@solo-compass/ai:test: 
+@solo-compass/ai:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/packages/ai
+@solo-compass/ai:test: 
+@solo-compass/sources-osm:test:  ✓ src/adapter.test.ts (20 tests) 1013ms
+@solo-compass/sources-osm:test:      ✓ makes a new request for different bbox  1003ms
+@solo-compass/sources-osm:test: 
+@solo-compass/sources-osm:test:  Test Files  2 passed (2)
+@solo-compass/sources-osm:test:       Tests  25 passed (25)
+@solo-compass/sources-osm:test:    Start at  20:08:10
+@solo-compass/sources-osm:test:    Duration  1.13s (transform 50ms, setup 0ms, import 67ms, tests 1.01s, environment 0ms)
+@solo-compass/sources-osm:test: 
+@solo-compass/worker:test: cache miss, executing bb73616a09c85050
+@solo-compass/ai:test: stdout | src/__tests__/cost-tracker.test.ts > trackCost > does not instantiate PostHog when POSTHOG_API_KEY is unset
+@solo-compass/ai:test: {"event":"ai_cost","route":"test-route","usd_cents":1,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":42}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/cost-tracker.test.ts > trackCost > calls posthog.capture with expected event shape when POSTHOG_API_KEY is set
+@solo-compass/ai:test: {"event":"ai_cost","route":"test-route","usd_cents":1,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":42}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/cost-tracker.test.ts > trackCost > uses custom POSTHOG_HOST when provided
+@solo-compass/ai:test: {"event":"ai_cost","route":"test-route","usd_cents":1,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":42}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/cost-tracker.test.ts > trackCost > defaults POSTHOG_HOST to https://app.posthog.com
+@solo-compass/ai:test: {"event":"ai_cost","route":"test-route","usd_cents":1,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":42}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/cost-tracker.test.ts > trackCost > swallows PostHog errors silently without throwing
+@solo-compass/ai:test: {"event":"ai_cost","route":"test-route","usd_cents":1,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":42}
+@solo-compass/ai:test: 
+@solo-compass/ai:test:  ✓ src/__tests__/retry.test.ts (11 tests) 18ms
+@solo-compass/ai:test:  ✓ src/parse-intent.test.ts (2 tests) 41ms
+@solo-compass/ai:test:  ✓ src/__tests__/cost-tracker.test.ts (7 tests) 33ms
+@solo-compass/ai:test:  ✓ src/__tests__/deepseek-wire.test.ts (13 tests) 6ms
+@solo-compass/ai:test:  ✓ src/__tests__/city-brief-core.test.ts (22 tests) 19ms
+@solo-compass/ai:test:  ✓ src/__tests__/client.test.ts (11 tests) 4ms
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (cultural experience) > returns a non-null experience
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":1}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (cultural experience) > experience passes full schema validation
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (cultural experience) > coordinates are in GeoJSON order [longitude, latitude] for Chiang Mai region
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (cultural experience) > source URL not fabricated — only URLs present in input are passed through
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (cultural experience) > model confidence is between 0 and 1
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (cultural experience) > ID slug has no spaces or special chars
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (cultural experience) > soloScore is initialized with zero values
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (cultural experience) > nearbyExperienceIds starts empty
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (coffee experience) > category is 'coffee' for coffee-focused source
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (coffee experience) > source type reddit is preserved in sources array
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (coffee experience) > realInconveniences includes at least one honest downside
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — emit success (coffee experience) > experience ID uses city code prefix
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — refuse path > returns null experience for thin source
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — refuse path > provides a non-empty refusal reason
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — refuse path > model confidence is 0 on refusal
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — fence-wrapped response stripping > strips ```json fences before parsing
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — fence-wrapped response stripping > strips plain ``` fences before parsing
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — malformed JSON > returns null experience with refusalReason when model returns invalid JSON
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":50,"output_tokens":10,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — malformed JSON > returns null with reason for unexpected action value
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":50,"output_tokens":20,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/structure-experience.test.ts > structureExperience — DeepSeek thinking disabled > sends deepseek-flash with a top-level thinking:disabled field
+@solo-compass/ai:test: {"event":"ai_cost","route":"structure","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":80,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test:  ✓ src/structure-experience.test.ts (21 tests) 15ms
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > keeps an unknown place hour and missing visit window unknown
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > never invents IDs: model returns unknown id → omitted from result
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > clamps score above 100 down to 100
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > clamps score below 0 up to 0
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > returns at most 3 items even when model returns 5
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > passes reason string through unchanged
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":100,"output_tokens":50,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > handles fence-wrapped JSON response gracefully
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":50,"output_tokens":25,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > returns empty ranked array when response is invalid JSON
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":50,"output_tokens":10,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test: stdout | src/__tests__/rank-experiences.test.ts > rankExperiences — anti-hallucination > disables DeepSeek thinking at the top level of the wire body
+@solo-compass/ai:test: {"event":"ai_cost","route":"rank","usd_cents":0,"model":"deepseek-flash","input_tokens":10,"output_tokens":3,"duration_ms":0}
+@solo-compass/ai:test: 
+@solo-compass/ai:test:  ✓ src/__tests__/rank-experiences.test.ts (10 tests) 9ms
+@solo-compass/worker:test: $ vitest run
+@solo-compass/ai:test:  ✓ src/compilation/__tests__/dedup.test.ts (7 tests) 7ms
+@solo-compass/ai:test:  ✓ src/__tests__/deepseek-edge-functions.test.ts (29 tests) 290ms
+@solo-compass/ai:test: 
+@solo-compass/ai:test:  Test Files  10 passed (10)
+@solo-compass/ai:test:       Tests  133 passed (133)
+@solo-compass/ai:test:    Start at  20:08:11
+@solo-compass/ai:test:    Duration  747ms (transform 726ms, setup 0ms, import 1.44s, tests 444ms, environment 0ms)
+@solo-compass/ai:test: 
+@solo-compass/web:test: cache miss, executing 23e3f969b42853b7
+@solo-compass/worker:test: 
+@solo-compass/worker:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/apps/worker
+@solo-compass/worker:test: 
+@solo-compass/web:test: $ vitest run
+@solo-compass/worker:test:  ✓ src/processor.test.ts (3 tests) 8ms
+@solo-compass/worker:test: 
+@solo-compass/worker:test:  Test Files  1 passed (1)
+@solo-compass/worker:test:       Tests  3 passed (3)
+@solo-compass/worker:test:    Start at  20:08:12
+@solo-compass/worker:test:    Duration  247ms (transform 118ms, setup 0ms, import 175ms, tests 8ms, environment 0ms)
+@solo-compass/worker:test: 
+@solo-compass/bot:test: cache miss, executing a4112236df2c591c
+@solo-compass/web:test: 
+@solo-compass/web:test:  RUN  v4.1.11 /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/apps/web
+@solo-compass/web:test: 
+@solo-compass/bot:test: $ tsx --test src/lib/markdown.test.ts
+@solo-compass/web:test:  ✓ src/lib/local-hour.test.ts (3 tests) 40ms
+@solo-compass/web:test:  ✓ src/lib/route-compilation-cache.test.ts (3 tests) 13ms
+@solo-compass/web:test: stderr | src/lib/nearby-route.test.ts > nearby accuracy boundary > does not return demonstration restaurants when production configuration is absent
+@solo-compass/web:test: findNearby failed Error: Invalid server environment configuration
+@solo-compass/web:test:     at /Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/apps/web/src/lib/nearby-route.test.ts:42:40
+@solo-compass/web:test:     at file:///Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11
+@solo-compass/web:test:     at file:///Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26
+@solo-compass/web:test:     at file:///Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20
+@solo-compass/web:test:     at new Promise (<anonymous>)
+@solo-compass/web:test:     at runWithCancel (file:///Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)
+@solo-compass/web:test:     at file:///Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20
+@solo-compass/web:test:     at new Promise (<anonymous>)
+@solo-compass/web:test:     at runWithTimeout (file:///Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)
+@solo-compass/web:test:     at file:///Users/cubxxw/.codex/worktrees/map-food-accuracy/solo-compass/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2956:64
+@solo-compass/web:test: 
+@solo-compass/web:test:  ✓ src/lib/nearby-route.test.ts (6 tests) 8ms
+@solo-compass/web:test: 
+@solo-compass/web:test:  Test Files  3 passed (3)
+@solo-compass/web:test:       Tests  12 passed (12)
+@solo-compass/web:test:    Start at  20:08:13
+@solo-compass/web:test:    Duration  443ms (transform 150ms, setup 0ms, import 237ms, tests 60ms, environment 0ms)
+@solo-compass/web:test: 
+@solo-compass/bot:test: TAP version 13
+@solo-compass/bot:test: # Subtest: escapes every Telegram MarkdownV2 control character
+@solo-compass/bot:test: ok 1 - escapes every Telegram MarkdownV2 control character
+@solo-compass/bot:test:   ---
+@solo-compass/bot:test:   duration_ms: 0.54475
+@solo-compass/bot:test:   type: 'test'
+@solo-compass/bot:test:   ...
+@solo-compass/bot:test: # Subtest: preserves ordinary text
+@solo-compass/bot:test: ok 2 - preserves ordinary text
+@solo-compass/bot:test:   ---
+@solo-compass/bot:test:   duration_ms: 0.047208
+@solo-compass/bot:test:   type: 'test'
+@solo-compass/bot:test:   ...
+@solo-compass/bot:test: 1..2
+@solo-compass/bot:test: # tests 2
+@solo-compass/bot:test: # suites 0
+@solo-compass/bot:test: # pass 2
+@solo-compass/bot:test: # fail 0
+@solo-compass/bot:test: # cancelled 0
+@solo-compass/bot:test: # skipped 0
+@solo-compass/bot:test: # todo 0
+@solo-compass/bot:test: # duration_ms 89.973208
+
+ Tasks:    11 successful, 11 total
+Cached:    0 cached, 11 total
+  Time:    5.82s 
+
+ WARNING  no output files found for task @solo-compass/ai#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/bot#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/core#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/data#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/routing#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/sources-core#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/sources-google-places#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/sources-osm#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/sources-wikivoyage#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/web#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @solo-compass/worker#test. Please check your `outputs` key in `turbo.json`

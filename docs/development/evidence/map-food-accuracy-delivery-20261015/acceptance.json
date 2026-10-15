@@ -1,0 +1,70 @@
+{
+  "sourceCommit": "4be1a909ef15f300d49ea6b37cf9a9f9fa07767b",
+  "baseCommit": "f38528c11aace8dcf8a20cdae82ed9d1fb14a802",
+  "pullRequest": "https://github.com/getyak/solo-compass/pull/667",
+  "status": "LOCAL_ACCEPTANCE_PASSED_REMOTE_FINAL_HEAD_CHECKS_REQUIRED",
+  "sourceBinding": "source-sha256.json pins source content. Documentation/evidence commit follows without changing product code. Latest PR head checks must pass before merge.",
+  "stages": [
+    {
+      "name": "Focused5",
+      "passed": 107,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Before final one-line pending camera-region cleanup; subsequent final native build and live acceptance used production source of 789bbc1e. Full latest-head CI is separately required."
+    },
+    {
+      "name": "BuildFinal6/Live6",
+      "productionSourceCommit": "789bbc1ece7aa713ed833767935a9731d78a3254",
+      "nativeBuild": "PASSED",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "style": "standard",
+      "runtime": "iOS 26.5 (23F77)",
+      "screenshotsVisuallyInspected": true,
+      "allThreeRegionsFullyRendered": true,
+      "maximumNativeCustomPhysicalPixels": 0,
+      "town": "湖北省随州市广水市郝店镇人民政府",
+      "townProductionSearch": "non-empty, canonical coordinate independently calibrated"
+    },
+    {
+      "name": "BuildPerf7/MarkerPerf7",
+      "sourceCommit": "4be1a909ef15f300d49ea6b37cf9a9f9fa07767b",
+      "nativeBuild": "PASSED",
+      "failed": 0,
+      "skipped": 0,
+      "note": "Only marker microbenchmark test code changed after Live6; both cases repeated 5 times, no retry-until-pass.",
+      "testCases": 2,
+      "passedRuns": 10
+    },
+    {
+      "name": "Swift host",
+      "passed": 38,
+      "failed": 0
+    },
+    {
+      "name": "Workspace",
+      "successfulTestTasks": 11,
+      "vitestCases": 262,
+      "successfulTypecheckTasks": 12,
+      "parity": "PASSED",
+      "localization": "PASSED"
+    },
+    {
+      "name": "large-diff anti-pattern lint",
+      "cases": 3,
+      "passed": 3,
+      "minimumDiffBytes": 2000062
+    }
+  ],
+  "review": "independent-review.txt",
+  "remoteVerification": "Use PR #667 latest-head checks, not any old-head green result. CI and merge readback will also be retained in the permanent task delivery directory after final push.",
+  "limits": [
+    "0 pixels describes two annotation views, not GPS accuracy or restaurant entrances.",
+    "120 m is the independent-reference classification tolerance for datum, not a geographic accuracy promise.",
+    "Only iOS 26.5 standard-style custom pins in affected regions have a render receipt; unverified runtime/style keeps search, lists and external Apple Maps navigation.",
+    "Provider facts may remain unknown; model text does not establish real hours, images or business status.",
+    "Existing eligible automatic records refresh when rediscovered; no bulk user database migration.",
+    "No manual Edge deploy or TestFlight dispatch in this task. Existing main-merge workflow may automatically publish TestFlight; check its run separately."
+  ]
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "case": "large-clean",
+    "diffBytes": 2000062,
+    "exit": 0,
+    "expected": 0,
+    "output": "anti-pattern-lint: clean \u2713\n"
+  },
+  {
+    "case": "large-forbidden",
+    "diffBytes": 2000102,
+    "exit": 1,
+    "expected": 1,
+    "output": "anti-pattern-lint: 1 forbidden pattern(s) introduced\n  app.ts: no social feed\n    +const social_feed = true;\n\nIf this is a false positive, append `// anti-pattern-lint:allow <reason>`.\n"
+  },
+  {
+    "case": "large-scoped-allow",
+    "diffBytes": 2000147,
+    "exit": 0,
+    "expected": 0,
+    "output": "anti-pattern-lint: clean \u2713\n"
+  }
+]

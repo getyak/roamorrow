@@ -1,0 +1,2 @@
+$ tsx scripts/check-localization.ts
+✅ All 1662 NSLocalizedString keys found in en.lproj/Localizable.strings

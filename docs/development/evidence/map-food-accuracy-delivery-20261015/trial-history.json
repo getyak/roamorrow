@@ -1,0 +1,39 @@
+{
+  "purpose": "Preserve failed and inconclusive trials; latest live acceptance uses BuildFinal6 / Live6 only.",
+  "failedOrInconclusive": [
+    {
+      "stage": "Live1/Live2",
+      "result": "Macau anchor identity did not match the exact alias list. Earlier standard/imagery/hybrid screenshots did not independently prove styles had finished rendering."
+    },
+    {
+      "stage": "Live3",
+      "result": "Waiting for fullyRendered in an earlier harness timed out. The diagnostic InvalidTransition wrapping our CalibrationError does not prove MKLocalSearch or CLGeocoder deinitialization failure."
+    },
+    {
+      "stage": "Live4",
+      "result": "Explicit CalibrationError.identityUnverified and actual Macau candidate names established missing exact aliases 邮政总局/郵政總局/邮政总局大楼/郵政總局大樓. Added exact aliases; retained independent coordinate checks."
+    },
+    {
+      "stage": "Live5",
+      "result": "API annotation centers aligned, but Macau tiles were not visibly loaded. Not used as final screenshot acceptance."
+    },
+    {
+      "stage": "Live6",
+      "result": "All three standard maps reported fullyRendered and were visually inspected with map tiles present; annotation centers match within 0 physical pixels."
+    },
+    {
+      "stage": "Old remote head 098463b7",
+      "result": "Full iOS suite: 1782 cases, 14 skipped, one pre-existing marker microbenchmark missed its 40% p95 target (39.1%). Workspace lint hit default Node child-process buffer limit on >1 MiB diff. Neither is represented as a passing final-head check."
+    }
+  ],
+  "delegatedImplementation": {
+    "task": "20261015-192202-4bfcd644",
+    "result": "deadline/43 turns, not successful delivery; partial refresh work independently reviewed, corrected and validated by parent. No silent paid-provider fallback."
+  },
+  "unverified": [
+    "imagery/hybrid custom annotation alignment",
+    "affected-region custom annotation compatibility on iOS runtimes other than 26.5",
+    "physical-device GPS and each restaurant entrance",
+    "production Edge deployment and TestFlight release"
+  ]
+}

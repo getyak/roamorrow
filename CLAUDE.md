@@ -124,6 +124,7 @@ daily gate.
 **TS**: per-package `pnpm test` via turbo.
 
 CI policy gates — [docs/CI_TEST_MATRIX.md](docs/CI_TEST_MATRIX.md).
+Map and restaurant accuracy boundaries — [delivery and compatibility evidence](docs/development/map-food-accuracy-delivery.md).
 Dependency patch and audit policy — [docs/development/dependency-security.md](docs/development/dependency-security.md).
 
 ## Skill Routing

@@ -1,5 +1,7 @@
 # ADR: 中国大陆 POI 数据源接入高德地图（混合模式）
 
+Current coordinate and data-refresh behavior: [accuracy delivery](../development/map-food-accuracy-delivery.md). The implementation blueprint below retains the original proposal context.
+
 - **Status**: Proposed
 - **Date**: 2026-06-13
 - **Context owner**: Explore / Enrichment pipeline
@@ -35,7 +37,7 @@ explore 坐标
 理由：
 
 1. **合规隔离**：高德禁止数据落库（见 §3.2），只有中国坐标才需要承担这个约束；海外维持 OSM（ODbL，可自由落库）不受影响。
-2. **复用现有抽象**：项目已有多源 POI 管线——`OverpassService` / `MapKitPOIService` / `FoursquareService` 都返回同构的 `OverpassService.POI`，由 `EnrichmentAgent`（`Services/Agents/EnrichmentAgent.swift:83`）用 `FoursquareService.enrichMerge(base:enrichment:)` 按坐标格子合并。**高德只需新增一个同构 Service，插进同一个合并器**，不动管线骨架。
+2. **复用现有抽象**：多源服务均返回 `OverpassService.POI`，由 `EnrichmentAgent` 交给 `POIMerger` 合并。门店匹配使用来源身份、名称、距离及联系方式；不同真实平台 ID 的分店保持独立，不再仅按坐标格子合并。
 3. **零成本起步**：高德个人实名认证即可用「周边搜索 v5/place/around」，**搜索类免费 5000 次/月**，超额接口报错不自动扣费。
 
 ## 3. 三个硬约束
@@ -43,10 +45,10 @@ explore 坐标
 ### 3.1 坐标系：GCJ-02 ↔ WGS84（boundary 转换）
 
 - app 内部坐标体系 = **WGS84** GeoJSON `[lon, lat]`（见 CLAUDE.md）。
-- 高德进出**都是 GCJ-02（火星坐标系）**，不转换深圳的点会偏 ~100–300m。
-- 先例：`Services/NavigationLauncher.swift:79` 已用 `dev=0` 让高德导航 URL 内部转换。
+- 高德周边搜索 API 的输入与返回使用 GCJ-02，需要在服务边界转换。
+- 导航 URI 接收内部 WGS84 时使用 `dev=1`；官方的 `dev=0` 表示输入已经偏移，不能让它再次承担 WGS84 转换。
 - **入参** WGS84→GCJ-02：用内置算法（不依赖网络，避免每次 explore 多一次 RTT）。
-- **返回** GCJ-02→WGS84：高德**不提供官方反向接口**（测绘法规），用开源迭代逆变换（亚米~米级精度，对"附近找咖啡"足够）。
+- **返回** GCJ-02→WGS84：采用迭代逆变换。数值往返测试不代表门店入口或上游 POI 的真实地理精度。
 - 转换在 **`AmapPOIService` 边界内完成**：进 Service 是 WGS84，出 Service 也是 WGS84。`EnrichmentAgent` / 合并器 / 落库**全程只见 WGS84**，与现有管线零摩擦。
 
 ### 3.2 合规：高德数据**不落库**（红线）
@@ -74,7 +76,7 @@ explore 坐标
 | 文件                                                                | 改动                    | 说明                                                                                                                                                                                                                                                                           |
 | ------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `Services/AmapPOIService.swift`                                     | **新建**                | 同构 `fetchPOIs(near:radiusMeters:category:) async throws -> [OverpassService.POI]`；内部做 WGS84↔GCJ-02 转换；NSCache 会话缓存；ExperienceCategory → 高德 POI typecode 映射；范本参考 `Services/MapKitPOIService.swift:81`（`poi(from:)` 把外部源塞回 `OverpassService.POI`） |
-| `Services/Geo/CoordinateConverter.swift`                            | **新建**                | `wgs84ToGcj02` / `gcj02ToWgs84`（开源算法）；纯函数易测；附 `isInsideChinaMainland(_:)` 判定（国测局通用的国界粗包围盒，境外直接跳过转换）                                                                                                                                     |
+| `Services/Geo/CoordinateConverter.swift`                            | **新建**                | WGS84 / GCJ-02 边界转换；区域路由使用实际大陆、港澳台及邻国陆地几何，未知海岸位置保守处理。MapKit 搜索与渲染分别校验，不通过国家码假设 datum；当前兼容范围见准确性交付报告。                                                                                                   |
 | `Models/Secrets.swift` + `Config/GeneratedSecrets.swift`            | 加字段                  | `resolvedAmapKey`（UserDefaults > Generated > env `AMAP_API_KEY`）                                                                                                                                                                                                             |
 | `Services/Agents/EnrichmentAgent.swift`                             | 改 `enrich(at:)`（L83） | 开头按 `CoordinateConverter.isInsideChinaMainland(coordinate)` 分流：中国 → `amapService.fetchPOIs` 作 base + 跳过落库；境外 → 维持 `overpassService`                                                                                                                          |
 | `ViewModels/MapViewModel.swift`                                     | 注入                    | 构造 `AmapPOIService` 并传入 `EnrichmentAgent`；`exploreNearby*`（L1713 / L2186）的旧路径同样加中国分流                                                                                                                                                                        |

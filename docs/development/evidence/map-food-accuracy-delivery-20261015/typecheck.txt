@@ -1,0 +1,35 @@
+
+   • turbo 2.11.4
+   • Packages in scope: @solo-compass/ai, @solo-compass/bot, @solo-compass/core, @solo-compass/data, @solo-compass/db, @solo-compass/routing, @solo-compass/sources-core, @solo-compass/sources-google-places, @solo-compass/sources-osm, @solo-compass/sources-wikivoyage, @solo-compass/web, @solo-compass/worker
+   • Running typecheck in 12 packages
+   • Remote caching disabled, using shared worktree cache
+
+@solo-compass/core:typecheck: cache miss, executing 06558483eb02de3c
+@solo-compass/routing:typecheck: cache miss, executing 9483feaa21eb58d1
+@solo-compass/routing:typecheck: $ tsc --noEmit
+@solo-compass/core:typecheck: $ tsc --noEmit
+@solo-compass/db:typecheck: cache miss, executing 3ff1b6acf1e357a0
+@solo-compass/sources-core:typecheck: cache miss, executing e7d52663eb9d83a1
+@solo-compass/db:typecheck: $ tsc --noEmit
+@solo-compass/sources-core:typecheck: $ tsc --noEmit
+@solo-compass/sources-google-places:typecheck: cache miss, executing 05839a60f20e45cd
+@solo-compass/sources-google-places:typecheck: $ tsc --noEmit
+@solo-compass/sources-osm:typecheck: cache miss, executing a670c4fde9e2a5fd
+@solo-compass/sources-wikivoyage:typecheck: cache miss, executing 8d49e794083d995e
+@solo-compass/sources-osm:typecheck: $ tsc --noEmit
+@solo-compass/sources-wikivoyage:typecheck: $ tsc --noEmit
+@solo-compass/data:typecheck: cache miss, executing cf97b411a0f29d31
+@solo-compass/data:typecheck: $ tsc --noEmit
+@solo-compass/ai:typecheck: cache miss, executing 4bcff062b512e455
+@solo-compass/ai:typecheck: $ tsc --noEmit
+@solo-compass/worker:typecheck: cache miss, executing 3dfd8c873ae6d621
+@solo-compass/bot:typecheck: cache miss, executing e1539042d7a57e65
+@solo-compass/worker:typecheck: $ tsc --noEmit
+@solo-compass/bot:typecheck: $ tsc --noEmit
+@solo-compass/web:typecheck: cache miss, executing 39af97351adeec5f
+@solo-compass/web:typecheck: $ tsc --noEmit
+
+ Tasks:    12 successful, 12 total
+Cached:    0 cached, 12 total
+  Time:    9.514s 
+
