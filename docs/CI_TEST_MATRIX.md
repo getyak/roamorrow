@@ -35,7 +35,7 @@ them regresses.
 - `VisitedMarkerStateTests` — 6 cases
 - `LiveActivityServiceTests` — 6 cases
 - `MarkerStatePerformanceTest` — identical marker outputs and ≥40% lower cached
-  p95 amortized per-pass latency, using 100 paired batches of 10 full
+  p95 amortized per-pass latency, using 100 paired batches of 100 full
   100-marker passes for each path.
 
 ### Phase 2 P2.0 (must stay green)
