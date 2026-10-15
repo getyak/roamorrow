@@ -29,5 +29,18 @@
     "production Edge deployment",
     "zero security advisories",
     "live account authorization acceptance"
-  ]
+  ],
+  "gitleaks": {
+    "version": "8.30.1",
+    "darwinArm64ArchiveSha256": "b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5",
+    "scannedHead": "c6c17d16a831b21c5164bb12b5be132b30d2bde8",
+    "workingConfigurationDelta": ".gitleaksignore with exactly 9 independently verified SHA-256 false-positive fingerprints",
+    "commitsScanned": 1425,
+    "result": "no leaks found",
+    "output": "security-gitleaks-validation.txt",
+    "positiveControl": "security-gitleaks-positive-control.txt",
+    "positiveControlExit": 1,
+    "rulesRemainActive": true,
+    "officialFingerprintDocumentation": "https://github.com/gitleaks/gitleaks#gitleaksignore"
+  }
 }

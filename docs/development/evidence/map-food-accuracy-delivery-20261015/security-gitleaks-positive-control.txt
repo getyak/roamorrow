@@ -1,0 +1,8 @@
+Synthetic positive control using a known SHA-256 under a Sentry-like key; expected exit 1. No real credential.
+Finding:     ...oloCompass/Services/SentryService.swift": "REDACTED"
+Secret:      REDACTED
+RuleID:      sentry-access-token
+Entropy:     3.803979
+
+10:40PM INF scanned ~120 bytes (120 bytes) in 74.6ms
+10:40PM WRN leaks found: 1
