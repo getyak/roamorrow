@@ -14,6 +14,8 @@ struct MapPinPickerView: View {
     var onCoordinateChanged: (CLLocationCoordinate2D) -> Void
 
     @State private var cameraPosition: MapCameraPosition
+    @State private var coordinateSpace = MapKitCoordinateSpace.shared
+    @State private var presentation = MapCoordinatePresentation()
 
     init(coordinate: CLLocationCoordinate2D, onCoordinateChanged: @escaping (CLLocationCoordinate2D) -> Void) {
         self.coordinate = coordinate
@@ -26,26 +28,54 @@ struct MapPinPickerView: View {
 
     var body: some View {
         MapReader { proxy in
-            Map(position: $cameraPosition) {
+            Map(position: Binding(
+                get: { presentation.position },
+                set: {
+                    presentation.receive($0)
+                    if let canonical = coordinateSpace.canonicalPosition($0) { cameraPosition = canonical }
+                }
+            )) {
+                if let mapCoordinate = coordinateSpace.mapCoordinate(coordinate) {
                 Annotation(
                     NSLocalizedString("locationPicker.map.pin", comment: "Location pin"),
-                    coordinate: coordinate
+                    coordinate: mapCoordinate
                 ) {
                     Image(systemName: "mappin.circle.fill")
                         .font(.title)
                         .foregroundStyle(CT.savedRed, .white)
                         .shadow(radius: 4)
                 }
+                }
             }
             .mapStyle(.standard(elevation: .flat))
+            .onMapCameraChange(frequency: .onEnd) { context in
+                _ = presentation.finish(context.region, space: coordinateSpace)
+            }
             .mapControls {
                 MapCompass()
             }
             // Tap-to-reposition: convert the tap location to a map coordinate.
             .onTapGesture { screenPoint in
-                guard let coord = proxy.convert(screenPoint, from: .local) else { return }
+                guard let raw = proxy.convert(screenPoint, from: .local),
+                      let coord = coordinateSpace.canonicalMapCoordinate(raw) else { return }
                 onCoordinateChanged(coord)
             }
+        }
+        .overlay(alignment: .bottom) {
+            if coordinateSpace.mapCoordinate(presentation.target ?? coordinate) == nil {
+                MapCoordinateStatus { coordinateSpace.invalidate() }.padding(.bottom, 12)
+            }
+        }
+        .onChange(of: cameraPosition, initial: true) { _, position in
+            presentation.request(position, fallback: coordinate, space: coordinateSpace)
+        }
+        .onChange(of: coordinateSpace.revision) { _, _ in
+            if let region = presentation.recover(cameraPosition, fallback: coordinate, space: coordinateSpace) {
+                cameraPosition = .region(region)
+            }
+        }
+        .task(id: "\(presentation.target?.latitude ?? coordinate.latitude),\(presentation.target?.longitude ?? coordinate.longitude)-\(coordinateSpace.generation)") {
+            try? await coordinateSpace.prepare(near: presentation.target ?? coordinate)
         }
         // Keep the camera centered whenever the pin moves from outside
         // (e.g., text field entry) but don't fight user pan after that.

@@ -1,26 +1,10 @@
 import Foundation
 import CoreLocation
 
-/// WGS84 ↔ GCJ-02 ("Mars coordinate system") conversion and a China-mainland
-/// gate, used at the boundary of any data source that speaks GCJ-02 (Amap /
-/// AutoNavi). The rest of the app works exclusively in WGS84 GeoJSON
-/// `[lon, lat]` (see CLAUDE.md), so conversion is confined to the edge of
-/// `AmapPOIService`: WGS84 in, WGS84 out.
-///
-/// Why this exists
-/// ----------------
-/// Chinese mapping regulations require civilian map data to use GCJ-02, an
-/// obfuscation of WGS84 that offsets coordinates by 50–500 m. Amap returns
-/// GCJ-02; plotting it on a WGS84 (Mapbox/MapKit-in-WGS84) map without
-/// converting puts every pin one street over. The forward transform (WGS84 →
-/// GCJ-02) is the published, deterministic state-bureau algorithm. There is no
-/// official inverse (測繪法 forbids publishing it), so `gcj02ToWgs84` recovers
-/// WGS84 by iterating the forward transform to a fixed point — accurate to
-/// well under a metre, which is far below GPS noise.
-///
-/// Coordinates use `CLLocationCoordinate2D` (lat/lon) here because conversion
-/// math is latitude/longitude-symmetric and CoreLocation is the lingua franca
-/// of the POI services; callers map to/from `[lon, lat]` at their own edge.
+/// Datum conversion at provider boundaries. Persisted coordinates, distances
+/// and geofences use WGS84 [longitude, latitude]. Amap has a mainland routing
+/// gate; MapKit uses explicit operations only after independent calibration.
+/// Numerical round-trip residual is not evidence of geographical accuracy.
 enum CoordinateConverter {
     // MARK: - Constants (state-bureau GCJ-02 algorithm)
 
@@ -33,11 +17,18 @@ enum CoordinateConverter {
     // MARK: - Public API
 
     /// Convert a WGS84 (GPS) coordinate to GCJ-02 for sending to Amap.
-    /// Coordinates outside mainland China are returned unchanged — GCJ-02 is
-    /// only defined inside the national boundary, and Hong Kong / Macau / Taiwan
-    /// publish in WGS84.
+    /// This adapter only serves the mainland Amap route; other provider
+    /// environments must establish their own datum independently.
     static func wgs84ToGcj02(_ wgs: CLLocationCoordinate2D, countryCode: String? = nil) -> CLLocationCoordinate2D {
         guard shouldConvert(wgs, countryCode: countryCode) else { return wgs }
+        return applyingGCJ02Offset(wgs)
+    }
+
+    /// Explicit datum operation for a calibrated MapKit boundary, including
+    /// service environments whose map coordinates cover Hong Kong or Macau.
+    /// This does not decide which POI provider serves a geographical region.
+    static func applyingGCJ02Offset(_ wgs: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        guard CLLocationCoordinate2DIsValid(wgs), wgs.latitude.isFinite, wgs.longitude.isFinite else { return wgs }
         let (dLat, dLon) = offset(lat: wgs.latitude, lon: wgs.longitude)
         return CLLocationCoordinate2D(
             latitude: wgs.latitude + dLat,
@@ -50,11 +41,16 @@ enum CoordinateConverter {
     ///
     /// There is no closed-form inverse, so we treat `gcj` as a first guess for
     /// the unknown WGS84 point and refine it: re-encode the guess, measure how
-    /// far the result drifts from `gcj`, subtract that drift, repeat. Converges
-    /// to sub-millimetre in a handful of iterations because the offset field is
-    /// smooth and slowly varying.
+    /// far the result drifts from `gcj`, subtract that drift, repeat. The small
+    /// numerical residual does not establish the accuracy of the upstream POI.
     static func gcj02ToWgs84(_ gcj: CLLocationCoordinate2D, countryCode: String? = nil) -> CLLocationCoordinate2D {
         guard shouldConvert(gcj, countryCode: countryCode) else { return gcj }
+        return removingGCJ02Offset(gcj)
+    }
+
+    /// Inverse of `applyingGCJ02Offset`; only a known datum authorizes its use.
+    static func removingGCJ02Offset(_ gcj: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        guard CLLocationCoordinate2DIsValid(gcj), gcj.latitude.isFinite, gcj.longitude.isFinite else { return gcj }
         var wgs = gcj
         // 5 iterations drives the residual below ~1e-7° (~1 cm) everywhere in
         // China; the loop is cheap and the extra rounds cost nothing.
@@ -79,71 +75,21 @@ enum CoordinateConverter {
     /// Coarse shoreline/border data is not suitable for navigation or surveying.
     static func isInsideChinaMainland(_ c: CLLocationCoordinate2D, countryCode: String? = nil) -> Bool {
         guard CLLocationCoordinate2DIsValid(c), c.latitude.isFinite, c.longitude.isFinite else { return false }
-        if let countryCode { return countryCode.uppercased() == "CN" }
-        let lat = c.latitude, lon = c.longitude
-        guard MainlandChinaBoundary.contains(c) else { return false }
-
-        // Coarse outer span of the mainland.
-        guard lon >= 73.66, lon <= 135.05 else { return false }
-        guard lat >= 18.0, lat <= 53.55 else { return false }
-
-        // South-west cut. The naive `lat >= 18.0` box reaches far enough south
-        // and west to swallow northern mainland-SE-Asia (Chiang Mai is
-        // 18.79°N / 98.99°E). The mainland's south-west land border with
-        // Myanmar/Laos sits around 21°N once you go west of ~102°E, while
-        // Hainan (down to ~18.1°N) lives east of ~108°E. So raise the southern
-        // floor only on the western side, leaving Hainan untouched.
-        if lon < 108.0, lat < 21.1 { return false }
-
-        // Carve out Taiwan (WGS84 island): inside the coarse box but routed to
-        // the overseas (WGS84 / Overpass) branch.
-        if lon >= 119.3, lon <= 122.0,
-           lat >= 21.5, lat <= 25.5 {
-            return false
-        }
-        // Carve out Macau SAR (publishes WGS84): the peninsula + Taipa/Coloane
-        // islands, west of the Pearl River estuary. Macau's main urban area sits
-        // at/below ~22.20°N (Macau Tower 22.186, Ruins of St. Paul's 22.197); the
-        // Gongbei border checkpoint is the ~22.215°N seam with Zhuhai. The upper
-        // bound is held at 22.205°N so mainland Zhuhai (Xiangzhou 22.27°N) stays
-        // on the Amap branch — a wider HK+Macau box used to swallow it.
-        if lon >= 113.52, lon <= 113.60,
-           lat >= 22.10, lat <= 22.205 {
-            return false
-        }
-        // Carve out Hong Kong SAR (publishes WGS84): HK Island, Kowloon, and the
-        // New Territories. Upper latitude bound is the Shenzhen River (~22.515°N),
-        // the HK/Shenzhen administrative boundary — this includes northern NT
-        // (Fanling 22.49°N, Sheung Shui 22.50°N, Tai Po 22.45°N) on the HK side
-        // while Shenzhen's CBD (22.54°N) stays on the mainland Amap branch.
-        if lon >= 113.82, lon <= 114.45,
-           lat >= 22.15, lat <= 22.515 {
-            return false
-        }
-        return true
-    }
-
-    /// MKLocalSearch mainland POIs use the provider's GCJ-02 coordinates.
-    /// CoreLocation GPS remains WGS84; never apply this to CLLocation fixes or
-    /// persisted Experience coordinates. Explicit non-CN placemarks win over
-    /// the offline boundary approximation near international borders.
-    static func mapKitSearchToWgs84(
-        _ coordinate: CLLocationCoordinate2D,
-        countryCode: String?
-    ) -> CLLocationCoordinate2D {
-        if let code = countryCode, code.uppercased() != "CN" { return coordinate }
-        return gcj02ToWgs84(coordinate, countryCode: countryCode)
+        // Country evidence handles reclaimed land, but cannot turn actual SAR
+        // or Taiwan land into mainland. Rectangles also contain Fujian/Shenzhen.
+        if isSpecialAdministrativeRegionOrTaiwan(c) { return false }
+        if let code = countryCode?.uppercased(), !code.isEmpty { return code == "CN" }
+        return MainlandChinaBoundary.contains(c)
     }
 
     private static func shouldConvert(_ coordinate: CLLocationCoordinate2D, countryCode: String?) -> Bool {
         guard CLLocationCoordinate2DIsValid(coordinate), coordinate.latitude.isFinite,
               coordinate.longitude.isFinite else { return false }
-        if let countryCode {
-            // Explicit placemark/provider country evidence overrides generalized
-            // coastlines, including airports and reclaimed land. Never GPS alone.
-            return countryCode.uppercased() == "CN"
-        }
-        return isInsideChinaMainland(coordinate)
+        return isInsideChinaMainland(coordinate, countryCode: countryCode)
+    }
+
+    static func isSpecialAdministrativeRegionOrTaiwan(_ c: CLLocationCoordinate2D) -> Bool {
+        MainlandChinaBoundary.specialRegion(c) != nil
     }
 
     // MARK: - State-bureau offset

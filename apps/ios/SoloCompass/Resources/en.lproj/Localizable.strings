@@ -2581,3 +2581,6 @@
 
 "soloScore.unassessed" = "Not assessed";
 "explore.toast.partial" = "Some places could not be loaded. Try again shortly.";
+
+"map.coordinates.unavailable" = "Map positions could not be verified. Places remain available in the list.";
+"common.retry" = "Retry";

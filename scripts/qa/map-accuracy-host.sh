@@ -19,6 +19,10 @@ parts.append((root / 'scripts/qa/map-accuracy-cases.swift').read_text())
 (out / 'main.swift').write_text('\n'.join(parts))
 boundary = root / 'apps/ios/SoloCompass/Resources/JSON/mainland_china_boundary.json'
 if boundary.exists(): shutil.copy2(boundary, out / boundary.name)
+foreign = root / 'apps/ios/SoloCompass/Resources/JSON/mapkit_foreign_land.geojson'
+if foreign.exists(): shutil.copy2(foreign, out / foreign.name)
+special = root / 'apps/ios/SoloCompass/Resources/JSON/mapkit_special_regions.geojson'
+if special.exists(): shutil.copy2(special, out / special.name)
 PY
 xcrun swiftc -module-cache-path "$task_artifact/ModuleCache" \
   "$task_artifact/host/main.swift" -o "$task_artifact/host/map-accuracy-tests"

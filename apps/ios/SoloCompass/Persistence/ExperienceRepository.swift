@@ -146,6 +146,104 @@ public final class ExperienceRepository {
         return added
     }
 
+    // MARK: - Discovery merge (same-ID refresh)
+
+    /// Merge a batch of discovery (Explore) experiences — the dedicated
+    /// same-ID refresh path. Unlike `appendGenerated` (insert-only, kept for
+    /// seeds and user-created routes), this also refreshes the stored row of
+    /// an incoming id when `DiscoveryRefreshPolicy` recognizes it as
+    /// machine-generated content that is safe to update. Within the batch,
+    /// duplicate ids use the same freshness and downgrade policy, so a duplicated batch
+    /// never creates duplicate rows.
+    ///
+    /// The value written over an existing row is always the policy-*merged*
+    /// value (user stats/status/tags, photos, highlights, community Solo Score
+    /// and human evidence are retained) — raw incoming values are never
+    /// written through `update(_:)`. Returns which ids were inserted,
+    /// refreshed, or skipped (with the policy reason) so callers can drive
+    /// new-only badges and reload their visible experiences.
+    @discardableResult
+    public func mergeDiscovered(_ incoming: [Experience]) -> DiscoveryMergeResult {
+        var inserted: Set<String> = []
+        var refreshed: Set<String> = []
+        var skipped: [String: DiscoveryRefreshPolicy.SkipReason] = [:]
+        // Apply the same policy inside the batch, so input ordering cannot
+        // replace a fresh rich value with an older or skeleton duplicate.
+        var records = Dictionary(uniqueKeysWithValues: allRecords().map { ($0.id, $0) })
+        for experience in incoming {
+            let id = experience.id
+            let record = records[id]
+            switch DiscoveryRefreshPolicy.decision(existing: record?.asValue, incoming: experience) {
+            case .insert(let value):
+                let newRecord = ExperienceRecord(from: value)
+                context.insert(newRecord)
+                records[id] = newRecord
+                inserted.insert(id)
+                skipped[id] = nil
+            case .refresh(let merged):
+                if let record {
+                    applyMerged(merged, to: record)
+                    if !inserted.contains(id) { refreshed.insert(id) }
+                    skipped[id] = nil
+                }
+            case .skip(let reason):
+                if !inserted.contains(id), !refreshed.contains(id) { skipped[id] = reason }
+            }
+        }
+        if !inserted.isEmpty || !refreshed.isEmpty {
+            try? context.save()
+        }
+        return DiscoveryMergeResult(insertedIDs: inserted, refreshedIDs: refreshed, skipped: skipped)
+    }
+
+    /// Fetch the single stored row for `id`, if any.
+    private func fetchExperienceRecord(id: String) -> ExperienceRecord? {
+        let descriptor = FetchDescriptor<ExperienceRecord>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return (try? context.fetch(descriptor))?.first
+    }
+
+    /// Write a policy-merged `Experience` over `record` field-by-field.
+    /// Deliberately not `update(_:)`: the caller passes an already-merged
+    /// value, this path additionally persists `userTagsBlob` /
+    /// `categoryHighlightsBlob`, and `createdAt` plus the server-aggregated
+    /// Solo Score (`serverAggregatedSoloScore` / `serverSignalCount`) stay
+    /// untouched so user and community state survives the refresh.
+    private func applyMerged(_ merged: Experience, to record: ExperienceRecord) {
+        let fresh = ExperienceRecord(from: merged)
+        record.title = fresh.title
+        record.oneLiner = fresh.oneLiner
+        record.whyItMatters = fresh.whyItMatters
+        record.category = fresh.category
+        record.longitude = fresh.longitude
+        record.latitude = fresh.latitude
+        record.cityCode = fresh.cityCode
+        record.addressHint = fresh.addressHint
+        record.placeNameLocal = fresh.placeNameLocal
+        record.placeNameRomanized = fresh.placeNameRomanized
+        record.rating = fresh.rating
+        record.openingHours = fresh.openingHours
+        record.priceLevel = fresh.priceLevel
+        record.website = fresh.website
+        record.phone = fresh.phone
+        record.durationMin = fresh.durationMin
+        record.durationMax = fresh.durationMax
+        record.status = fresh.status
+        record.updatedAt = fresh.updatedAt
+        record.bestTimesBlob = fresh.bestTimesBlob
+        record.howToBlob = fresh.howToBlob
+        record.realInconveniencesBlob = fresh.realInconveniencesBlob
+        record.sourcesBlob = fresh.sourcesBlob
+        record.soloScoreBlob = fresh.soloScoreBlob
+        record.confidenceBlob = fresh.confidenceBlob
+        record.statsBlob = fresh.statsBlob
+        record.nearbyExperienceIdsBlob = fresh.nearbyExperienceIdsBlob
+        record.userTagsBlob = fresh.userTagsBlob
+        record.photoUrlsBlob = fresh.photoUrlsBlob
+        record.categoryHighlightsBlob = fresh.categoryHighlightsBlob
+    }
+
     /// Replace an existing record's mutable fields. Idempotent: if no
     /// matching record exists we silently skip.
     public func update(_ experience: Experience) {

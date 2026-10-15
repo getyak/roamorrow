@@ -1145,7 +1145,10 @@ public final class MapViewModel {
     // into a synthetic file that lacks `import MapKit`, causing build errors.
     @ObservationIgnored private var _cameraPosition: MapCameraPosition
     public var cameraPosition: MapCameraPosition {
-        get { _cameraPosition }
+        get {
+            _ = cameraPositionVersion
+            return _cameraPosition
+        }
         set {
             withMutation(keyPath: \.cameraPositionVersion) {
                 _cameraPosition = newValue
@@ -2910,23 +2913,9 @@ public final class MapViewModel {
                     },
                     onBatch: { [weak self] batch in
                         guard let self else { return }
-                        // US-009: dedupe by id and append to visibleExperiences.
-                        let existingIds = Set(self.visibleExperiences.map(\.id))
-                        let novel = batch.filter { !existingIds.contains($0.id) }
-                        if !novel.isEmpty {
-                            let batchAdded = self.experienceService.appendGenerated(novel)
-                            self.progressiveScratchAddedCount += batchAdded
-                            // Slice C: track this Explore's own new ids so
-                            // the map dim & the live-feed list can pick
-                            // them out from the pre-existing set.
-                            for exp in novel {
-                                self.exploreSessionAddedIds.insert(exp.id)
-                            }
-                            withAnimation(Self.markerSetAnimation) {
-                                self.visibleExperiences.append(contentsOf: novel)
-                                self.nearbySoloCount = self.computeNearbySoloCount(in: self.visibleExperiences)
-                            }
-                        }
+                        let result = self.mergeDiscoveryBatch(batch)
+                        self.progressiveScratchAddedCount += result.insertedCount
+                        self.exploreSessionAddedIds.formUnion(result.insertedIDs)
                     }
                 )
 
@@ -2951,7 +2940,7 @@ public final class MapViewModel {
                     lastFailureKind = enrichmentAgent.lastRunWasPartial ? .apiServerError : .noResults
                     return
                 }
-                // Use the full accumulated set for appendGenerated count tracking.
+                // Use the full accumulated set for discovery count tracking.
                 generated = allResults
                 effectiveRadius = progressiveScratchRadiusMeters
             } else {
@@ -3010,20 +2999,19 @@ public final class MapViewModel {
                 effectiveRadius = ringRadius
             }
 
-            // For the progressive path, appendGenerated + lastExploreAddedCount were
+            // For the progressive path, mergeDiscovered + lastExploreAddedCount were
             // already handled incrementally in onBatch. For the legacy path, do it now.
             let added: Int
             if FeatureFlags.deepDiveEnrichment {
                 // Already persisted and counted in onBatch; use the cumulative count.
                 added = lastExploreAddedCount
             } else {
-                added = experienceService.appendGenerated(generated)
+                let result = mergeDiscoveryBatch(generated)
+                added = result.insertedCount
                 lastExploreAddedCount = added
                 // Slice C: legacy path — record every new id in the session
                 // tracker so the overlay + live-feed pick them up too.
-                for exp in generated {
-                    exploreSessionAddedIds.insert(exp.id)
-                }
+                exploreSessionAddedIds.formUnion(result.insertedIDs)
             }
 
             // US-022: record a successful region so offline fallback can reuse it.
@@ -3392,7 +3380,7 @@ public final class MapViewModel {
                 cityCode: cityCode,
                 locale: LanguageService.shared.effectiveLocale
             )
-            let added = experienceService.appendGenerated(generated)
+            let added = mergeDiscoveryBatch(generated).insertedCount
             lastExploreAddedCount = added
             if added > 0 {
                 selectCity(cityCode, explicit: false)
@@ -3412,6 +3400,29 @@ public final class MapViewModel {
         } catch {
             lastExploreError = error.localizedDescription
         }
+    }
+
+    /// All discovery paths update the visible value from the policy-merged
+    /// store, including refresh-only runs (zero new discoveries).
+    @discardableResult
+    func mergeDiscoveryBatch(_ batch: [Experience]) -> DiscoveryMergeResult {
+        let result = experienceService.mergeDiscovered(batch)
+        guard result.didChangeStore else { return result }
+        let changedIds = result.insertedIDs.union(result.refreshedIDs)
+        let byId = Dictionary(uniqueKeysWithValues: experienceService.allExperiences
+            .filter { changedIds.contains($0.id) }.map { ($0.id, $0) })
+        withAnimation(Self.markerSetAnimation) {
+            visibleExperiences = visibleExperiences.map { byId[$0.id] ?? $0 }
+            var visibleIds = Set(visibleExperiences.map(\.id))
+            for item in batch {
+                if let value = byId[item.id], visibleIds.insert(item.id).inserted {
+                    visibleExperiences.append(value)
+                }
+            }
+            if let selected = selectedExperience, let refreshed = byId[selected.id] { selectedExperience = refreshed }
+            nearbySoloCount = computeNearbySoloCount(in: visibleExperiences)
+        }
+        return result
     }
 
     /// Stable, lat/lon-derived city code used for OSM-generated entries so

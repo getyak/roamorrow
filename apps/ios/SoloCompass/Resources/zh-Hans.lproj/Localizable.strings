@@ -2591,3 +2591,6 @@
 
 "soloScore.unassessed" = "尚未评估";
 "explore.toast.partial" = "部分地点暂未加载，请稍后重试。";
+
+"map.coordinates.unavailable" = "地图位置暂时无法核实，可继续查看地点列表。";
+"common.retry" = "重试";

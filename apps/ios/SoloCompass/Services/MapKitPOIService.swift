@@ -49,8 +49,11 @@ public final class MapKitPOIService {
         isFetching = true
         defer { isFetching = false }
 
+        let space = MapKitCoordinateSpace.shared
+        try await space.prepare(near: coordinate)
+        guard let searchCenter = space.searchCoordinate(coordinate) else { throw MapKitCoordinateSpace.CalibrationError.unavailable }
         let request = MKLocalPointsOfInterestRequest(
-            center: coordinate,
+            center: searchCenter,
             radius: CLLocationDistance(radiusMeters)
         )
         if let category, let filter = Self.poiFilter(for: category) {
@@ -71,6 +74,10 @@ public final class MapKitPOIService {
             throw MapKitPOIError.searchFailed(String(describing: error))
         }
 
+        for item in response.mapItems {
+            try Task.checkCancellation()
+            try? await space.prepare(near: item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
+        }
         return Self.withinRadius(response.mapItems.compactMap { Self.poi(from: $0) }, center: coordinate, meters: radiusMeters)
     }
 
@@ -106,8 +113,11 @@ public final class MapKitPOIService {
 
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = trimmed
+        let space = MapKitCoordinateSpace.shared
+        try await space.prepare(near: coordinate)
+        guard let searchCenter = space.searchCoordinate(coordinate) else { throw MapKitCoordinateSpace.CalibrationError.unavailable }
         request.region = MKCoordinateRegion(
-            center: coordinate,
+            center: searchCenter,
             latitudinalMeters: CLLocationDistance(radiusMeters * 2),
             longitudinalMeters: CLLocationDistance(radiusMeters * 2)
         )
@@ -126,6 +136,9 @@ public final class MapKitPOIService {
             throw MapKitPOIError.searchFailed(String(describing: error))
         }
 
+        for item in response.mapItems {
+            try? await space.prepare(near: item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
+        }
         return Self.withinRadius(response.mapItems.compactMap { Self.poi(from: $0) }, center: coordinate, meters: radiusMeters)
     }
 
@@ -137,7 +150,7 @@ public final class MapKitPOIService {
         let placemark = item.placemark
         let name = item.name ?? placemark.name
         guard let name, !name.isEmpty else { return nil }
-        let coord = CoordinateConverter.mapKitSearchToWgs84(placemark.coordinate, countryCode: placemark.isoCountryCode)
+        guard let coord = MapKitCoordinateSpace.shared.canonicalSearchCoordinate(placemark.coordinate, countryCode: placemark.isoCountryCode) else { return nil }
         guard CLLocationCoordinate2DIsValid(coord) else { return nil }
 
         var tags: [String: String] = ["name": name, "source": "mapkit"]

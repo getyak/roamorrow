@@ -25,15 +25,15 @@ final class NavigationLauncherTests: XCTestCase {
         XCTAssertTrue(s.contains("directionsmode=walking"), "missing walking mode; got: \(s)")
     }
 
-    func test_url_amap_buildsExpectedDeepLinkWithDevZero() {
+    func test_url_amap_buildsExpectedDeepLinkWithWGS84Conversion() {
         let url = NavigationLauncher.url(for: .amap, coordinate: coordinate, name: "Senso-ji")
         XCTAssertNotNil(url)
         let s = url!.absoluteString
         XCTAssertTrue(s.hasPrefix("iosamap://path"), "got: \(s)")
         XCTAssertTrue(s.contains("dlat=35.7148"), "missing dlat; got: \(s)")
         XCTAssertTrue(s.contains("dlon=139.7967"), "missing dlon; got: \(s)")
-        // dev=0 is critical: declares WGS-84 input so Amap converts to GCJ-02 internally.
-        XCTAssertTrue(s.contains("dev=0"), "missing dev=0; got: \(s)")
+        // Official URI contract: dev=1 converts WGS84; dev=0 is GCJ02.
+        XCTAssertTrue(s.contains("dev=1"), "missing dev=1; got: \(s)")
         XCTAssertTrue(s.contains("t=2"), "missing walking mode t=2; got: \(s)")
     }
 
@@ -49,6 +49,16 @@ final class NavigationLauncherTests: XCTestCase {
         let url = NavigationLauncher.url(for: .googleMaps, coordinate: coordinate, name: nil)
         XCTAssertNotNil(url)
         XCTAssertTrue(url!.absoluteString.contains("q=&"), "nil name should yield empty q=; got: \(url!.absoluteString)")
+    }
+
+    func testNamesCannotInjectNavigationParameters() throws {
+        let name = "店 A&B?dev=0#楼上"
+        for app in [NavigationApp.amap, .googleMaps] {
+            let url = try XCTUnwrap(NavigationLauncher.url(for: app, coordinate: coordinate, name: name))
+            let items = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+            XCTAssertEqual(items.first { $0.name == (app == .amap ? "dname" : "q") }?.value, name)
+            if app == .amap { XCTAssertEqual(items.filter { $0.name == "dev" }.map(\.value), ["1"]) }
+        }
     }
 
     // MARK: - availableApps(canOpen:)
