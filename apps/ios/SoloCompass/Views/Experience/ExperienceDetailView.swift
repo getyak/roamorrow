@@ -634,10 +634,9 @@ public struct ExperienceDetailView: View {
                 }
             }
             HStack(spacing: 5) {
-                Text(String(
-                    format: NSLocalizedString("experience.soloScore.short", comment: "Compact Solo Score value"),
-                    viewModel.displaySoloScore.overall
-                ))
+                Text(viewModel.displaySoloScore.overall > 0
+                    ? String(format: NSLocalizedString("experience.soloScore.short", comment: "Compact Solo Score value"), viewModel.displaySoloScore.overall)
+                    : NSLocalizedString("soloScore.unassessed", comment: "No solo assessment available"))
             }
             .foregroundStyle(CT.successText)
             .fontWeight(.semibold)
@@ -1189,7 +1188,7 @@ public struct ExperienceDetailView: View {
 
         switch count {
         case 0:
-            titleKey = "solo.section.estimate"
+            titleKey = score.overall > 0 ? "solo.section.estimate" : "soloScore.unassessed"
             subtitle = nil
             isEstimate = true
         case 1...2:
@@ -1218,6 +1217,7 @@ public struct ExperienceDetailView: View {
                     .tracking(1.6)
                     .foregroundStyle(CT.fgMuted)
                 Spacer()
+                if score.overall > 0 {
                 Text(String(format: "%.1f", score.overall))
                     .ctDisplay(34, .bold)
                     .foregroundStyle(isEstimate ? CT.accent.opacity(0.55) : CT.accent)
@@ -1226,8 +1226,11 @@ public struct ExperienceDetailView: View {
                         format: NSLocalizedString("solo.a11y", comment: "Solo Score %@ of 10"),
                         String(format: "%.1f", score.overall)
                     )))
+                }
             }
-            soloScoreCard(score: score, subtitle: subtitle, isEstimate: isEstimate)
+            if score.overall > 0 {
+                soloScoreCard(score: score, subtitle: subtitle, isEstimate: isEstimate)
+            }
         }
     }
 
@@ -1562,7 +1565,7 @@ public struct ExperienceDetailView: View {
 
         var body: some View {
             if let onSelect = onSelectExperience {
-                let scoreStr = String(format: "%.1f", exp.soloScore.overall)
+                let scoreStr = exp.soloScoreDisplay
                 let a11yLabel = String(
                     format: NSLocalizedString("detail.nearby.open.a11y", comment: "Nearby card accessibility label: title and Solo Score"),
                     exp.title, scoreStr

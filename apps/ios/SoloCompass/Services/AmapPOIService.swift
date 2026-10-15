@@ -55,6 +55,8 @@ public final class AmapPOIService {
     }
 
     public private(set) var isFetching: Bool = false
+    public private(set) var lastFetchWasPartial = false
+    private static var nextRequestAt = Date.distantPast
 
     private let session: URLSession
     private let maxResults: Int
@@ -69,7 +71,13 @@ public final class AmapPOIService {
 
     final class CachedPOIs {
         let pois: [OverpassService.POI]
-        init(_ pois: [OverpassService.POI]) { self.pois = pois }
+        let enrichments: [Int64: TransientAmapEnrichment]
+        let fetchedAt = Date()
+        var isFresh: Bool { Date().timeIntervalSince(fetchedAt) < 300 }
+        init(_ pois: [OverpassService.POI], enrichments: [Int64: TransientAmapEnrichment]) {
+            self.pois = pois
+            self.enrichments = enrichments
+        }
     }
 
     /// In-flight request dedup. progressiveRadii fan-out + user re-taps can
@@ -133,6 +141,16 @@ public final class AmapPOIService {
 
     // MARK: - Public
 
+    /// Keep the POISource protocol entry point for callers without country evidence.
+    public func fetchPOIs(
+        near coordinate: CLLocationCoordinate2D,
+        radiusMeters: Int = 3000,
+        category: ExperienceCategory? = nil
+    ) async throws -> [OverpassService.POI] {
+        try await fetchPOIs(near: coordinate, radiusMeters: radiusMeters,
+                            category: category, countryCode: nil)
+    }
+
     /// Fetch up to `maxResults` POIs within `radiusMeters` of `coordinate`
     /// (WGS84). Returns WGS84 POIs. Mirrors
     /// `OverpassService.fetchPOIs(near:radiusMeters:category:)` so it slots into
@@ -140,15 +158,16 @@ public final class AmapPOIService {
     public func fetchPOIs(
         near coordinate: CLLocationCoordinate2D,
         radiusMeters: Int = 3000,
-        category: ExperienceCategory? = nil
+        category: ExperienceCategory? = nil,
+        countryCode: String?
     ) async throws -> [OverpassService.POI] {
         let key = keyProvider()
-        // DIAG: amap key presence on device build — "did .env reach the binary"
-        Self.logger.info("🔑 amap key len=\(key.count, privacy: .public) empty=\(key.isEmpty, privacy: .public)")
         guard !key.isEmpty else { throw AmapError.missingKey }
 
-        let cacheKey = Self.cacheKey(coordinate: coordinate, radiusMeters: radiusMeters, category: category)
-        if let cached = memoryCache.object(forKey: cacheKey) {
+        let cacheKey = Self.cacheKey(coordinate: coordinate, radiusMeters: radiusMeters, category: category, countryCode: countryCode)
+        if let cached = memoryCache.object(forKey: cacheKey), cached.isFresh {
+            lastFetchWasPartial = false
+            transientEnrichments.merge(cached.enrichments) { _, cached in cached }
             return cached.pois
         }
 
@@ -156,17 +175,21 @@ public final class AmapPOIService {
         // locally on great-circle distance. Saves a network round-trip across
         // the progressiveRadii ladder (5k → 10k → 25k → 100k previously burned
         // 4 separate amap queries; now only the outermost cache-miss hits).
-        let centerKey = Self.centerCacheKey(coordinate: coordinate, category: category)
+        let centerKey = Self.centerCacheKey(coordinate: coordinate, category: category, countryCode: countryCode)
         if let largest = largestFetchedRadius[centerKey], largest > radiusMeters {
-            let largestKey = Self.cacheKey(coordinate: coordinate, radiusMeters: largest, category: category)
-            if let bigger = memoryCache.object(forKey: largestKey) {
+            let largestKey = Self.cacheKey(coordinate: coordinate, radiusMeters: largest, category: category, countryCode: countryCode)
+            if let bigger = memoryCache.object(forKey: largestKey), bigger.isFresh {
                 let filtered = bigger.pois.filter { poi in
                     Self.haversineMeters(
                         lat1: coordinate.latitude, lon1: coordinate.longitude,
                         lat2: poi.lat, lon2: poi.lon
                     ) <= Double(radiusMeters)
                 }
-                memoryCache.setObject(CachedPOIs(filtered), forKey: cacheKey)
+                let ids = Set(filtered.map(\.osmId))
+                let enrichments = bigger.enrichments.filter { ids.contains($0.key) }
+                transientEnrichments.merge(enrichments) { _, cached in cached }
+                lastFetchWasPartial = false
+                memoryCache.setObject(CachedPOIs(filtered, enrichments: enrichments), forKey: cacheKey)
                 Self.logger.info("♻️ amap cache reuse r=\(radiusMeters, privacy: .public)m from r=\(largest, privacy: .public)m: \(filtered.count, privacy: .public)/\(bigger.pois.count, privacy: .public)")
                 return filtered
             }
@@ -181,12 +204,13 @@ public final class AmapPOIService {
             return try await inflight.value
         }
 
-        let task = Task { [self, key, coordinate, radiusMeters, category, cacheKey, centerKey] in
+        let task = Task { [self, key, coordinate, radiusMeters, category, countryCode, cacheKey, centerKey] in
             try await self.performFetch(
                 key: key,
                 coordinate: coordinate,
                 radiusMeters: radiusMeters,
                 category: category,
+                countryCode: countryCode,
                 cacheKey: cacheKey,
                 centerKey: centerKey
             )
@@ -205,10 +229,12 @@ public final class AmapPOIService {
         coordinate: CLLocationCoordinate2D,
         radiusMeters: Int,
         category: ExperienceCategory?,
+        countryCode: String?,
         cacheKey: NSString,
         centerKey: NSString
     ) async throws -> [OverpassService.POI] {
-        let gcj = CoordinateConverter.wgs84ToGcj02(coordinate)
+        let gcj = CoordinateConverter.wgs84ToGcj02(coordinate, countryCode: countryCode)
+        lastFetchWasPartial = false
 
         isFetching = true
         defer { isFetching = false }
@@ -235,23 +261,32 @@ public final class AmapPOIService {
             request.timeoutInterval = 20
             request.setValue("SoloCompass-iOS/1.0", forHTTPHeaderField: "User-Agent")
 
-            // Retry only on URLError (timeout / connection lost) — common on
-            // mainland mobile networks. HTTP non-2xx and business errors
-            // (status="0") are NOT retried: they indicate a permanent problem
-            // (bad key, quota, signature) that another request won't fix.
-            let (data, response) = try await Self.fetchWithRetry(request: request, session: session)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                throw AmapError.requestFailed(status: status)
-            }
+            // Pace all requests and retry bounded transient network/QPS errors.
+            // Permanent key/quota errors are surfaced without repeated requests.
+            let decoded: AroundResponse
+            do {
+                let (data, response) = try await Self.fetchWithRetry(request: request, session: session)
+                guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                    let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    throw AmapError.requestFailed(status: status)
+                }
 
-            let decoded = try JSONDecoder().decode(AroundResponse.self, from: data)
-            guard decoded.status == "1" else {
-                // Map well-known infocodes to actionable hints so the developer
-                // sees "需要在控制台关数字签名" instead of just an opaque "10009".
-                let hint = Self.infocodeHint(decoded.infocode)
-                let raw = String(data: data, encoding: .utf8) ?? "<non-utf8>"
-                Self.logger.error("⚠️ amap fail status=\(decoded.status, privacy: .public) infocode=\(decoded.infocode ?? "nil", privacy: .public) hint=\(hint, privacy: .public) info=\(decoded.info ?? "nil", privacy: .public) raw=\(String(raw.prefix(240)), privacy: .public)")
+                decoded = try JSONDecoder().decode(AroundResponse.self, from: data)
+                guard decoded.status == "1" else {
+                    // Map well-known infocodes to actionable hints so the developer
+                    // sees "需要在控制台关数字签名" instead of just an opaque "10009".
+                    let hint = Self.infocodeHint(decoded.infocode)
+                    Self.logger.error("Amap request failed: \(decoded.infocode ?? "unknown", privacy: .public)")
+                    if allPois.isEmpty {
+                        throw AmapError.apiError(code: decoded.infocode ?? "unknown", info: hint)
+                    }
+                    lastFetchWasPartial = true
+                    break
+                }
+            } catch {
+                if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
+                guard !allPois.isEmpty else { throw error }
+                lastFetchWasPartial = true
                 break
             }
 
@@ -266,6 +301,8 @@ public final class AmapPOIService {
                     typecode: amap.typecode,
                     rating: amap.business?.rating
                 ) else { continue }
+                guard Self.haversineMeters(lat1: coordinate.latitude, lon1: coordinate.longitude,
+                    lat2: poi.lat, lon2: poi.lon) <= Double(radiusMeters) else { continue }
                 if seenIds.contains(poi.osmId) { continue }
                 seenIds.insert(poi.osmId)
                 allPois.append(poi)
@@ -295,12 +332,18 @@ public final class AmapPOIService {
             if allPois.count >= maxResults { break }
         }
 
-        memoryCache.setObject(CachedPOIs(allPois), forKey: cacheKey)
+        // Incomplete pages must be retried on the next user request, never
+        // treated as a complete geographic coverage cache.
+        if !lastFetchWasPartial {
+            let ids = Set(allPois.map(\.osmId))
+            let enrichments = transientEnrichments.filter { ids.contains($0.key) }
+            memoryCache.setObject(CachedPOIs(allPois, enrichments: enrichments), forKey: cacheKey)
+        }
         // Record the largest radius we've fetched for this (center, category)
         // so a subsequent smaller-radius call can filter locally (see fetchPOIs
         // entry: "Reuse a strictly larger same-(center, category) fetch...").
         let prevLargest = largestFetchedRadius[centerKey] ?? 0
-        if radiusMeters > prevLargest {
+        if !lastFetchWasPartial, radiusMeters > prevLargest {
             largestFetchedRadius[centerKey] = radiusMeters
         }
         return allPois
@@ -351,7 +394,7 @@ public final class AmapPOIService {
     /// 餐厅 — deliberately excluding 0503 快餐厅), coffee/tea/dessert
     /// (0505/0506/0509), and entertainment venues (0803). Everything a solo
     /// traveler might actually walk to; nothing they wouldn't.
-    static let broadTourismTypes = "110000|140000|050100|050200|050500|050600|050900|080300"
+    static let broadTourismTypes = "110000|140000|050000|080300"
 
     /// Map an `ExperienceCategory` to Amap POI typecodes (pipe-separated). Codes
     /// are the published Amap classification: 05=餐饮, 0505=咖啡厅, 11=风景名胜,
@@ -380,7 +423,7 @@ public final class AmapPOIService {
     /// is not 精品 by definition).
     static let blockedTypePrefixes: [String] = [
         "01", "02", "03", "04", "07", "10", "12", "13",
-        "15", "16", "17", "18", "19", "20", "0503"
+        "15", "16", "17", "18", "19", "20"
     ]
 
     /// Name substrings that mark a POI as utility/infrastructure noise even
@@ -397,14 +440,8 @@ public final class AmapPOIService {
         "公墓", "墓园", "派出所", "警务", "税务局", "工商局", "居委会", "村委会"
     ]
 
-    /// Minimum acceptable Amap rating when one is present. Unrated POIs pass
-    /// (plenty of genuinely good places have no rating yet); a place that HAS
-    /// been rated and sits below this is a confirmed dud.
-    static let minAcceptableRating: Double = 3.0
-
-    /// The 精品/旅游 gate applied to every fetched POI before caching/merging.
-    /// Three checks, cheapest first: typecode blocklist → junk-name patterns
-    /// (scenic class 11 exempt) → rated-and-bad floor.
+    /// Discovery eligibility is independent of popularity or star ratings.
+    /// Utility typecodes and non-travel names are filtered before ranking.
     static func isQualityPOI(name: String, typecode: String?, rating: String?) -> Bool {
         if let code = typecode {
             for prefix in blockedTypePrefixes where code.hasPrefix(prefix) {
@@ -417,10 +454,7 @@ public final class AmapPOIService {
                 return false
             }
         }
-        if let ratingStr = rating, let value = Double(ratingStr),
-           value > 0, value < minAcceptableRating {
-            return false
-        }
+        // Rating affects ordering, never whether a real venue exists.
         return true
     }
 
@@ -434,7 +468,7 @@ public final class AmapPOIService {
         // Amap `location` is "lon,lat" in GCJ-02.
         guard let location = amap.location,
               let gcj = parseLocation(location) else { return nil }
-        let wgs = CoordinateConverter.gcj02ToWgs84(gcj)
+        let wgs = CoordinateConverter.gcj02ToWgs84(gcj, countryCode: "CN")
 
         // Compliance (Amap ToS §3.5 / §4.12.2, ADR §3.2): we must NOT persist or
         // redistribute Amap's raw structured fields. The downstream Experience is
@@ -516,13 +550,14 @@ public final class AmapPOIService {
     private static func cacheKey(
         coordinate: CLLocationCoordinate2D,
         radiusMeters: Int,
-        category: ExperienceCategory?
+        category: ExperienceCategory?,
+        countryCode: String? = nil
     ) -> NSString {
         // 4-decimal (~11 m) rounding so near-identical centers share a cell.
         let lat = (coordinate.latitude * 10_000).rounded() / 10_000
         let lon = (coordinate.longitude * 10_000).rounded() / 10_000
         let cat = category?.rawValue ?? "all"
-        return "\(lat),\(lon)_r\(radiusMeters)_\(cat)" as NSString
+        return "\(lat),\(lon)_r\(radiusMeters)_\(cat)_\(countryCode?.uppercased() ?? "auto")" as NSString
     }
 
     /// Radius-agnostic key, used to look up the largest-radius cached result
@@ -530,12 +565,13 @@ public final class AmapPOIService {
     /// local filtering reuse.
     private static func centerCacheKey(
         coordinate: CLLocationCoordinate2D,
-        category: ExperienceCategory?
+        category: ExperienceCategory?,
+        countryCode: String? = nil
     ) -> NSString {
         let lat = (coordinate.latitude * 10_000).rounded() / 10_000
         let lon = (coordinate.longitude * 10_000).rounded() / 10_000
         let cat = category?.rawValue ?? "all"
-        return "\(lat),\(lon)_\(cat)" as NSString
+        return "\(lat),\(lon)_\(cat)_\(countryCode?.uppercased() ?? "auto")" as NSString
     }
 
     /// Haversine great-circle distance in meters between two WGS84 points.
@@ -563,7 +599,21 @@ public final class AmapPOIService {
         var lastError: Error?
         for attempt in 1...attempts {
             do {
-                return try await session.data(for: request)
+                // Reserve a process-wide slot before awaiting: distinct cells
+                // and pages share the key's request budget as well as duplicates.
+                let slot = max(Date(), nextRequestAt)
+                nextRequestAt = slot.addingTimeInterval(1.1)
+                let delay = slot.timeIntervalSinceNow
+                if delay > 0 { try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) }
+                try Task.checkCancellation()
+                let result = try await session.data(for: request)
+                if attempt < attempts,
+                   let body = try? JSONSerialization.jsonObject(with: result.0) as? [String: Any],
+                   let code = body["infocode"] as? String,
+                   ["10015", "10019", "10020", "10021"].contains(code) {
+                    continue
+                }
+                return result
             } catch let urlError as URLError {
                 lastError = urlError
                 let transient: Set<URLError.Code> = [
@@ -596,7 +646,8 @@ public final class AmapPOIService {
         case "10009": return "INVALID_USER_GROUP_COUNT — 通常为数字签名校验失败，控制台关闭'数字签名校验'或补 sig 参数"
         case "10012": return "INSUFFICIENT_PRIVILEGES — 服务未开通，控制台启用 'Web 服务 API → 搜索 POI 2.0'"
         case "10014": return "USER_DAILY_QUERY_OVER_LIMIT — 个人每日配额耗尽"
-        case "10019": return "USER_KEY_RECYCLED — key 已回收"
+        case "10019": return "Service QPS limit reached — retry after reducing request frequency"
+        case "10020", "10021": return "QPS limit reached — retry after reducing request frequency"
         case "10044": return "USER_DAY_QUERY_OVER_LIMIT — 当日额度达上限"
         case "10045": return "USER_ACCESS_TOO_FREQUENT — 服务 QPS 超限"
         case "20000": return "INVALID_PARAMS — 请求参数非法 (检查 location/radius/types)"

@@ -408,7 +408,7 @@ public final class ExperienceRepository {
         experienceId: String,
         seedOverall: Double
     ) -> (overall: Double, count: Int)? {
-        if let cached = aggregatedScoreCache[experienceId],
+        if let cached = aggregatedScoreCache[experienceId], cached.seedOverall == seedOverall,
            Date().timeIntervalSince(cached.cachedAt) < 60 {
             return (cached.overall, cached.count)
         }
@@ -422,7 +422,7 @@ public final class ExperienceRepository {
            let serverScore = record.serverAggregatedSoloScore,
            let signalCount = record.serverSignalCount,
            signalCount >= 3 {
-            aggregatedScoreCache[experienceId] = (serverScore, signalCount, Date())
+            aggregatedScoreCache[experienceId] = (serverScore, signalCount, Date(), seedOverall)
             return (serverScore, signalCount)
         }
 
@@ -439,9 +439,12 @@ public final class ExperienceRepository {
         let localOnTen = ((comfortAvg + pressureAvg) / 2.0) * 2.0
         let yesCount = surveys.filter { $0.recommend == "yes" }.count
         let recommendBoost = (Double(yesCount) / Double(surveys.count)) >= 0.5 ? 0.5 : 0.0
-        let blended = (seedOverall * 0.5 + localOnTen * 0.5) + recommendBoost
+        // Zero is the unassessed sentinel, not negative evidence about a venue.
+        let prior = seedOverall.isFinite && seedOverall > 0
+            ? seedOverall * 0.5 + localOnTen * 0.5 : localOnTen
+        let blended = prior + recommendBoost
         let clamped = max(0.0, min(10.0, blended))
-        aggregatedScoreCache[experienceId] = (clamped, surveys.count, Date())
+        aggregatedScoreCache[experienceId] = (clamped, surveys.count, Date(), seedOverall)
         return (clamped, surveys.count)
     }
 
@@ -449,7 +452,7 @@ public final class ExperienceRepository {
     /// on app foreground (caller responsibility) so a freshly synced
     /// signal lights up.
     // swiftlint:disable:next large_tuple
-    private var aggregatedScoreCache: [String: (overall: Double, count: Int, cachedAt: Date)] = [:]
+    private var aggregatedScoreCache: [String: (overall: Double, count: Int, cachedAt: Date, seedOverall: Double)] = [:]
 
     // MARK: - Discovered cities (Epic C US-016/017)
 

@@ -36,8 +36,8 @@ enum CoordinateConverter {
     /// Coordinates outside mainland China are returned unchanged — GCJ-02 is
     /// only defined inside the national boundary, and Hong Kong / Macau / Taiwan
     /// publish in WGS84.
-    static func wgs84ToGcj02(_ wgs: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
-        guard isInsideChinaMainland(wgs) else { return wgs }
+    static func wgs84ToGcj02(_ wgs: CLLocationCoordinate2D, countryCode: String? = nil) -> CLLocationCoordinate2D {
+        guard shouldConvert(wgs, countryCode: countryCode) else { return wgs }
         let (dLat, dLon) = offset(lat: wgs.latitude, lon: wgs.longitude)
         return CLLocationCoordinate2D(
             latitude: wgs.latitude + dLat,
@@ -53,8 +53,8 @@ enum CoordinateConverter {
     /// far the result drifts from `gcj`, subtract that drift, repeat. Converges
     /// to sub-millimetre in a handful of iterations because the offset field is
     /// smooth and slowly varying.
-    static func gcj02ToWgs84(_ gcj: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
-        guard isInsideChinaMainland(gcj) else { return gcj }
+    static func gcj02ToWgs84(_ gcj: CLLocationCoordinate2D, countryCode: String? = nil) -> CLLocationCoordinate2D {
+        guard shouldConvert(gcj, countryCode: countryCode) else { return gcj }
         var wgs = gcj
         // 5 iterations drives the residual below ~1e-7° (~1 cm) everywhere in
         // China; the loop is cheap and the extra rounds cost nothing.
@@ -75,15 +75,13 @@ enum CoordinateConverter {
         return wgs
     }
 
-    /// Whether a coordinate falls inside mainland China's rough bounding box.
-    ///
-    /// Deliberately a coarse rectangle, matching the heuristic every GCJ-02
-    /// implementation uses: the goal is "should I apply the Mars offset", and
-    /// the offset is only meaningful on the mainland. Hong Kong, Macau, and
-    /// Taiwan are excluded so their WGS84 data is left untouched and routed to
-    /// the overseas (Overpass) explore branch.
-    static func isInsideChinaMainland(_ c: CLLocationCoordinate2D) -> Bool {
+    /// Offline mainland provider routing: country geometry with SAR exclusions.
+    /// Coarse shoreline/border data is not suitable for navigation or surveying.
+    static func isInsideChinaMainland(_ c: CLLocationCoordinate2D, countryCode: String? = nil) -> Bool {
+        guard CLLocationCoordinate2DIsValid(c), c.latitude.isFinite, c.longitude.isFinite else { return false }
+        if let countryCode { return countryCode.uppercased() == "CN" }
         let lat = c.latitude, lon = c.longitude
+        guard MainlandChinaBoundary.contains(c) else { return false }
 
         // Coarse outer span of the mainland.
         guard lon >= 73.66, lon <= 135.05 else { return false }
@@ -123,6 +121,29 @@ enum CoordinateConverter {
             return false
         }
         return true
+    }
+
+    /// MKLocalSearch mainland POIs use the provider's GCJ-02 coordinates.
+    /// CoreLocation GPS remains WGS84; never apply this to CLLocation fixes or
+    /// persisted Experience coordinates. Explicit non-CN placemarks win over
+    /// the offline boundary approximation near international borders.
+    static func mapKitSearchToWgs84(
+        _ coordinate: CLLocationCoordinate2D,
+        countryCode: String?
+    ) -> CLLocationCoordinate2D {
+        if let code = countryCode, code.uppercased() != "CN" { return coordinate }
+        return gcj02ToWgs84(coordinate, countryCode: countryCode)
+    }
+
+    private static func shouldConvert(_ coordinate: CLLocationCoordinate2D, countryCode: String?) -> Bool {
+        guard CLLocationCoordinate2DIsValid(coordinate), coordinate.latitude.isFinite,
+              coordinate.longitude.isFinite else { return false }
+        if let countryCode {
+            // Explicit placemark/provider country evidence overrides generalized
+            // coastlines, including airports and reclaimed land. Never GPS alone.
+            return countryCode.uppercased() == "CN"
+        }
+        return isInsideChinaMainland(coordinate)
     }
 
     // MARK: - State-bureau offset

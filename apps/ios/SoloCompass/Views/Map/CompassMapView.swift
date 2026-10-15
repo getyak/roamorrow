@@ -2763,7 +2763,7 @@ struct CompassMapContentView: View {
     /// routes come from `RouteStore`, places from `MapViewModel.visibleExperiences`.
     private var discoveryReferenceCoordinate: CLLocationCoordinate2D {
         if viewModel.selectedCity != nil { return viewModel.defaultCenterForSelectedCity }
-        return locationService.currentLocation?.coordinate ?? viewModel.defaultCenterForSelectedCity
+        return viewModel.exploreAnchorCoordinate
     }
 
     @State private var isShowingItineraries = false
@@ -4389,7 +4389,7 @@ private struct EmptyStateOverlay: View {
     @State private var isVisible = false
 
     private var nearestCityName: String? {
-        let anchor = locationService.currentLocation?.coordinate ?? viewModel.defaultCenterForSelectedCity
+        let anchor = viewModel.exploreAnchorCoordinate
         guard let code = viewModel.nearestSeededCity(to: anchor),
               let city = viewModel.availableCities.first(where: { $0.code == code }) else {
             return nil

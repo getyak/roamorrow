@@ -37,7 +37,7 @@ final class CityExperienceFetcher {
     /// Edge function stored. Field-for-field identical to `AIService`'s private
     /// `EdgeItem`; only `osmId` links back to a place.
     struct SynthItem: Decodable, Sendable {
-        let osmId: Int64
+        @LosslessInt64 var osmId: Int64
         let title: String
         let oneLiner: String
         let whyItMatters: String
@@ -58,7 +58,7 @@ final class CityExperienceFetcher {
 
     /// One `osm_pois` row: the place facts the payload lacks.
     private struct PoiRow: Decodable {
-        let osmId: Int64
+        @LosslessInt64 var osmId: Int64
         let name: String
         let nameEn: String?
         let lat: Double
@@ -90,6 +90,8 @@ final class CityExperienceFetcher {
             query: [
                 URLQueryItem(name: "city_code", value: "eq.\(code)"),
                 URLQueryItem(name: "select", value: "payload"),
+                URLQueryItem(name: "synthesized_at", value: "gte." + ISO8601DateFormatter().string(from: Date().addingTimeInterval(-7 * 24 * 3600))),
+                URLQueryItem(name: "order", value: "synthesized_at.asc"),
             ]
         ), !synthData.isEmpty else {
             return []
@@ -157,13 +159,10 @@ final class CityExperienceFetcher {
         cityCode: String,
         now: Date
     ) -> Experience {
-        let category = ExperienceCategory(rawValue: item.category)
-            ?? OverpassService.category(for: poi.tags)
-        let startHour = item.bestStartHour.map { max(0, min(23, $0)) } ?? 9
-        let endHour = item.bestEndHour.map { max(0, min(23, $0)) } ?? 21
+        let category = OverpassService.category(for: poi.tags)
         let dMin = item.durationMinMinutes ?? 30
         let dMax = max(dMin, item.durationMaxMinutes ?? 90)
-        let overall = max(6.0, min(9.5, item.soloOverall ?? 7.0))
+        let overall = AIService.validSoloEstimate(item.soloOverall)
         let breakdown = SoloScore.Breakdown(
             seatingFriendly: overall, soloPatronRatio: overall, staffPressure: overall,
             soloPortioning: overall, ambianceFit: overall, safety: overall
@@ -183,7 +182,7 @@ final class CityExperienceFetcher {
                 placeNameLocal: poi.name,
                 placeNameRomanized: poi.nameEn
             ),
-            bestTimes: [TimeWindow(startHour: startHour, endHour: endHour)],
+            bestTimes: AIService.verifiedVisitWindows(start: item.bestStartHour, end: item.bestEndHour),
             durationMinutes: .init(min: dMin, max: dMax),
             howTo: howTo,
             realInconveniences: [],

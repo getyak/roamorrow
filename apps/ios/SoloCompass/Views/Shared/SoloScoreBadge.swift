@@ -20,14 +20,20 @@ public struct SoloScoreBadge: View {
     }
 
     public var body: some View {
-        switch style {
-        case .compact: compactView
-        case .full: fullView
+        if score.overall <= 0 {
+            Text(NSLocalizedString("soloScore.unassessed", comment: "No solo assessment available"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            switch style {
+            case .compact: compactView
+            case .full: fullView
+            }
         }
     }
 
     private var isExcellent: Bool { score.overall >= 8.5 }
-    private var isCaution: Bool { score.overall < 4.0 }
+    private var isCaution: Bool { score.overall > 0 && score.overall < 4.0 }
 
     private var compactView: some View {
         Button {

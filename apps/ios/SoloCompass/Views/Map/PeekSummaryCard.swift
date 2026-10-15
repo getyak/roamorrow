@@ -389,7 +389,9 @@ struct PeekSummaryCard: View {
                 return String(format: format, firstSentence)
             }
         }
-        // 3. Warm-start fallback — for entries with no AI enrichment yet.
+        // 3. Unknown source data must not advertise a placeholder assessment.
+        if experience.soloScore.overall <= 0 { return experience.soloScoreDisplay }
+        // Warm-start fallback for assessed entries.
         let format = NSLocalizedString(
             "peek.reason.warmStart",
             comment: "Warm-start fallback reason, friend voice. %.1f = Solo score, %@ = category name."
@@ -583,7 +585,7 @@ struct PeekSummaryCard: View {
         if isSmartPick {
             label += ", " + NSLocalizedString("peek.card.aiPick.a11y", comment: "AI pick for right now")
         }
-        label += ", Solo \(String(format: "%.1f", experience.soloScore.overall))"
+        label += ", Solo \(experience.soloScoreDisplay)"
         if let meters = distanceMeters {
             label += ", \(formattedDistance(meters))"
             if meters < 1500 {

@@ -14,6 +14,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as vm from "node:vm";
+import { webcrypto } from "node:crypto";
 import * as ts from "typescript";
 import { describe, it, expect } from "vitest";
 import * as deepseekShared from "../../../../infra/supabase/functions/_shared/deepseek";
@@ -71,6 +72,7 @@ function loadEdgeHandler(
     URLSearchParams,
     TextEncoder,
     TextDecoder,
+    crypto: webcrypto,
     console,
     fetch: options.fetchImpl,
   };
@@ -88,6 +90,7 @@ interface FakeSupabaseOptions {
   callCount?: number;
   cachedPayload?: unknown;
   cachedModelName?: string;
+  cachedSynthesizedAt?: string;
 }
 
 interface FakeSupabase {
@@ -124,7 +127,14 @@ function makeFakeSupabase(options: FakeSupabaseOptions = {}): FakeSupabase {
           // cached model matches. An unqualified query returns the stale row
           // (which is exactly the bug the model filter prevents).
           if (!modelFilter || options.cachedModelName === modelFilter[1]) {
-            return { data: { payload: options.cachedPayload }, error: null, count: null };
+            return {
+              data: {
+                payload: options.cachedPayload,
+                synthesized_at: options.cachedSynthesizedAt ?? new Date().toISOString(),
+              },
+              error: null,
+              count: null,
+            };
           }
         }
         return { data: null, error: null, count: null };
@@ -198,6 +208,90 @@ function postRequest(url: string, body: unknown, withAuth = true): Request {
 // ─── synthesize-experiences: success + wire ──────────────────────────────────
 
 describe("synthesize-experiences handler", () => {
+  it("rejects a model response that silently omits a requested place", async () => {
+    const fake = makeFakeSupabase();
+    const handler = loadEdgeHandler(SYNTH_PATH, {
+      env: ENV,
+      supabase: fake.admin,
+      fetchImpl: async () => chatResponse(JSON.stringify([ITEM])),
+    });
+    const response = await handler(
+      postRequest("https://p.functions.supabase.co/x", {
+        ...SYNTH_BODY,
+        pois: [POI, { ...POI, osmId: 2, name: "Other cafe" }],
+      }),
+    );
+    expect(response.status).toBe(502);
+    expect(fake.upserts).toHaveLength(0);
+  });
+
+  it("preserves exact provider IDs across batches while the model uses safe aliases", async () => {
+    const fake = makeFakeSupabase();
+    const handler = loadEdgeHandler(SYNTH_PATH, {
+      env: ENV,
+      supabase: fake.admin,
+      fetchImpl: async () => chatResponse(JSON.stringify([ITEM])),
+    });
+    for (const id of ["4611686018427387905", "4611686018427387906"]) {
+      const response = await handler(
+        postRequest("https://p.functions.supabase.co/x", {
+          ...SYNTH_BODY,
+          pois: [{ ...POI, osmId: id }],
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ experiences: [{ osmId: id }] });
+    }
+    expect(fake.upserts.map(({ row }) => row["id"])).toEqual([
+      "exp_osm_4611686018427387905",
+      "exp_osm_4611686018427387906",
+    ]);
+    expect(
+      fake.upserts.map(({ row }) => (row["payload"] as { osmId: string }[])[0]?.osmId),
+    ).toEqual(["4611686018427387905", "4611686018427387906"]);
+  });
+
+  it("does not serve stale cached facts even when the model and client key match", async () => {
+    const fake = makeFakeSupabase({
+      cachedPayload: [ITEM],
+      cachedModelName: "deepseek-flash",
+      cachedSynthesizedAt: "2020-01-01T00:00:00Z",
+    });
+    let fetched = false;
+    const handler = loadEdgeHandler(SYNTH_PATH, {
+      env: ENV,
+      supabase: fake.admin,
+      fetchImpl: async () => {
+        fetched = true;
+        return chatResponse(JSON.stringify([ITEM]));
+      },
+    });
+    const response = await handler(postRequest("https://p.functions.supabase.co/x", SYNTH_BODY));
+    expect(response.status).toBe(200);
+    expect(fetched).toBe(true);
+    expect(((await response.json()) as { cached: boolean }).cached).toBe(false);
+    expect(fake.upserts[0]?.row["synthesized_at"]).toEqual(expect.any(String));
+  });
+
+  it("fingerprints input facts on the server rather than trusting a reused client key", async () => {
+    const fake = makeFakeSupabase();
+    const handler = loadEdgeHandler(SYNTH_PATH, {
+      env: ENV,
+      supabase: fake.admin,
+      fetchImpl: async () => chatResponse(JSON.stringify([ITEM])),
+    });
+    await handler(postRequest("https://p.functions.supabase.co/x", SYNTH_BODY));
+    await handler(
+      postRequest("https://p.functions.supabase.co/x", {
+        ...SYNTH_BODY,
+        pois: [{ ...POI, tags: { ...POI.tags, opening_hours: "18:00-22:00" } }],
+      }),
+    );
+    const keys = fake.upserts.map(({ row }) => row["source_cache_key"]);
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
   it("calls DeepSeek with Bearer auth, Flash, thinking disabled, and caches by model", async () => {
     const fake = makeFakeSupabase();
     let captured: { url: string; init?: RequestInit } | undefined;
@@ -228,7 +322,7 @@ describe("synthesize-experiences handler", () => {
     expect(fake.upserts).toHaveLength(1);
     expect(fake.upserts[0]?.row).toMatchObject({
       model_name: "deepseek-flash",
-      source_cache_key: "ck-1",
+      source_cache_key: expect.stringMatching(/^facts-v2:[a-f0-9]{64}$/),
     });
     expect(fake.inserts.some((row) => row.table === "sc_function_calls")).toBe(true);
   });
@@ -253,7 +347,7 @@ describe("synthesize-experiences handler", () => {
     expect(synthFilters).toContainEqual({
       table: "synthesized_experiences",
       column: "source_cache_key",
-      value: "ck-1",
+      value: expect.stringMatching(/^facts-v2:[a-f0-9]{64}$/),
     });
     expect(synthFilters).toContainEqual({
       table: "synthesized_experiences",

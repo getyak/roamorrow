@@ -143,7 +143,7 @@
 
 /* Marker accessibility */
 "marker.a11y.bestNow" = "此刻最佳";
-"marker.a11y.closingSoon" = "此刻最佳，即将关闭";
+"marker.a11y.closingSoon" = "此刻最佳，推荐时段即将结束";
 "marker.a11y.completed" = "已完成";
 "marker.a11y.favorited" = "已收藏";
 "marker.a11y.upcoming" = "%d 分钟后开始";
@@ -465,8 +465,8 @@
 "exploreMode.pill.searchingFragment" = "搜寻中…";
 "exploreMode.pill.verifiedFragment" = "%d 处多源确认";
 "exploreMode.cancel" = "取消";
-"exploreMode.handoff.summary" = "%1$d 处 · %2$d km · %3$@";
-"exploreMode.handoff.summaryNoCity" = "%1$d 处 · %2$d km";
+"exploreMode.handoff.summary" = "%1$d 处 · %2$.1f km · %3$@";
+"exploreMode.handoff.summaryNoCity" = "%1$d 处 · %2$.1f km";
 "exploreMode.handoff.verifiedSuffix" = "其中 %d 处多源确认";
 "exploreMode.handoff.askSolo" = "问 Solo 这些地方";
 "exploreMode.handoff.saveWalk" = "保存为路线";
@@ -484,14 +484,14 @@
 "explore.quota.dailyLimit" = "今日 AI 调用次数已达上限。明天恢复前会展示真实地点但不再增强。";
 "explore.toast.addedNamed" = "正在探索 %1$@ · 新增 %2$d 处地点";
 "explore.toast.added" = "附近新增 %d 处地点";
-"explore.toast.multiRing.addedNamed" = "正在探索 %1$@ · %3$d km 范围内新增 %2$d 处地点";
-"explore.toast.multiRing.added" = "%2$d km 范围内新增 %1$d 处地点";
+"explore.toast.multiRing.addedNamed" = "正在探索 %1$@ · %3$.1f km 范围内新增 %2$d 处地点";
+"explore.toast.multiRing.added" = "%2$.1f km 范围内新增 %1$d 处地点";
 "explore.toast.progressive.expandedNamed" = "已扩展至 %1$@ km · 在 %3$@ 发现 %2$lld 处";
 "explore.toast.progressive.expanded" = "已扩展至 %1$@ km · 发现 %2$lld 处";
 "explore.progress.scanning" = "正在扫描 · 第 %1$d/%2$d 环";
 "explore.progress.synthesizing" = "AI 正在整理 %d 处地点…";
-"explore.progress.progressiveScanning" = "正在扫描 %d km…";
-"explore.progress.expanding" = "附近较少 · 正在扩大到 %d km";
+"explore.progress.progressiveScanning" = "正在扫描 %.1f km…";
+"explore.progress.expanding" = "附近较少 · 正在扩大到 %.1f km";
 "explore.offline.staleToast" = "正在显示 %@ 的离线缓存数据";
 "explore.toast.cachedFallback" = "正在显示缓存结果";
 
@@ -1467,8 +1467,8 @@
 "nearby.chip.solo" = "Solo %.1f";
 "nearby.chip.bestNow" = "此刻最佳";
 /* 此刻最值得去卡片 + 附近列表上的紧凑「即将关闭」倒计时（剩余 ≤45 分钟）。%d = 分钟。 */
-"nearby.chip.closingSoon" = "即将关闭 · %d分";
-"nearby.chip.closingSoon.a11y" = "此刻最佳，即将关闭，还剩 %d 分钟";
+"nearby.chip.closingSoon" = "推荐时段 · 剩余 %d 分钟";
+"nearby.chip.closingSoon.a11y" = "推荐时段将在 %d 分钟后结束";
 "nearby.proximity.sparse" = "稀疏";
 "nearby.proximity.moderate" = "中等";
 "nearby.proximity.far" = "较远";
@@ -1683,7 +1683,7 @@
 "terms.declined.title" = "需要同意后才能继续";
 "terms.declined.body" = "未获得你对《隐私政策》和《用户协议》的同意前，Solo Compass 无法展示地图、获取附近地点或调用 AI。我们尚未收集任何数据。点击下方按钮可重新查看。";
 "terms.declined.review" = "重新查看";
-"nearby.chip.closingNow" = "即将关闭";
+"nearby.chip.closingNow" = "推荐时段即将结束";
 
 /* Solo score breakdown */
 "solo.breakdown.title" = "独行评分";
@@ -1744,8 +1744,8 @@
 "nowscore.sunset.after_min" = "日落已过 %d 分钟";
 
 /* Parity backfill (US-005): zh-Hans translations for pre-existing en-only keys. */
-"bestTimes.now.pill.closing" = "%d 分钟后关闭 — 现在就去";
-"bestTimes.now.pill.closing.a11y" = "即将关闭，本时段还剩 %d 分钟 — 现在就去";
+"bestTimes.now.pill.closing" = "推荐时段将在 %d 分钟后结束";
+"bestTimes.now.pill.closing.a11y" = "推荐时段将在 %d 分钟后结束";
 "bestTimes.now.pill.left" = "此刻适合 · 还剩 %d 分钟";
 "bestTimes.now.pill.left.a11y" = "现在正合适，本时段还剩 %d 分钟";
 "card.distance.onCourse.a11y" = "在路线上";
@@ -1759,8 +1759,8 @@
 "confidence.strength.strong" = "强";
 "confidence.strength.weak" = "弱";
 "confidence.strongest" = "主要依据 %@";
-"experience.bestNow.closingSoon" = "即将关闭 · 还剩 %d 分钟";
-"experience.bestNow.closingSoon.a11y" = "即将关闭，还剩 %d 分钟";
+"experience.bestNow.closingSoon" = "推荐时段 · 剩余 %d 分钟";
+"experience.bestNow.closingSoon.a11y" = "推荐时段将在 %d 分钟后结束";
 "favorites.empty.tip1" = "点击任意体验上的爱心即可收藏到这里。";
 "favorites.empty.tip2" = "可步行抵达的收藏地点会显示绿点。";
 "favorites.empty.tip3" = "收藏按当前时段适合做什么排序。";
@@ -1795,8 +1795,8 @@
 "favorites.remaining.allDone.title" = "你全部完成了";
 "favorites.remaining.hint" = "筛选出尚未完成的收藏";
 "favorites.remaining.show.a11y" = "显示剩余体验";
-"favorites.row.closingSoon" = "即将关闭 · 还剩 %d 分钟";
-"favorites.row.closingSoon.a11y" = "即将关闭，还剩 %d 分钟";
+"favorites.row.closingSoon" = "推荐时段 · 剩余 %d 分钟";
+"favorites.row.closingSoon.a11y" = "推荐时段将在 %d 分钟后结束";
 "favorites.row.goodNow" = "此刻适合";
 "favorites.row.goodNow.a11y" = "此刻适合前往";
 "favorites.row.markNotVisited" = "标记为未到访";
@@ -2588,3 +2588,6 @@
 "ux.ritual.insight" = "每月回顾";
 "ux.ritual.capsule" = "打开时光胶囊";
 "ux.discover.experiences" = "值得体验";
+
+"soloScore.unassessed" = "尚未评估";
+"explore.toast.partial" = "部分地点暂未加载，请稍后重试。";

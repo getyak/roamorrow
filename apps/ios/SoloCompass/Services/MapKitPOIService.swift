@@ -65,13 +65,13 @@ public final class MapKitPOIService {
             // An empty-result search surfaces as an error on some OS versions;
             // treat that as "no POIs" rather than a hard failure.
             let ns = error as NSError
-            if ns.domain == MKError.errorDomain {
+            if ns.domain == MKError.errorDomain, ns.code == MKError.placemarkNotFound.rawValue {
                 return []
             }
             throw MapKitPOIError.searchFailed(String(describing: error))
         }
 
-        return response.mapItems.compactMap { Self.poi(from: $0) }
+        return Self.withinRadius(response.mapItems.compactMap { Self.poi(from: $0) }, center: coordinate, meters: radiusMeters)
     }
 
     /// Free-text POI search — the missing piece the local card filter can't do.
@@ -111,6 +111,8 @@ public final class MapKitPOIService {
             latitudinalMeters: CLLocationDistance(radiusMeters * 2),
             longitudinalMeters: CLLocationDistance(radiusMeters * 2)
         )
+        request.resultTypes = .pointOfInterest
+        if #available(iOS 18.0, macOS 15.0, *) { request.regionPriority = .required }
 
         let search = MKLocalSearch(request: request)
         let response: MKLocalSearch.Response
@@ -118,13 +120,13 @@ public final class MapKitPOIService {
             response = try await search.start()
         } catch {
             let ns = error as NSError
-            if ns.domain == MKError.errorDomain {
+            if ns.domain == MKError.errorDomain, ns.code == MKError.placemarkNotFound.rawValue {
                 return []
             }
             throw MapKitPOIError.searchFailed(String(describing: error))
         }
 
-        return response.mapItems.compactMap { Self.poi(from: $0) }
+        return Self.withinRadius(response.mapItems.compactMap { Self.poi(from: $0) }, center: coordinate, meters: radiusMeters)
     }
 
     // MARK: - Mapping
@@ -135,7 +137,7 @@ public final class MapKitPOIService {
         let placemark = item.placemark
         let name = item.name ?? placemark.name
         guard let name, !name.isEmpty else { return nil }
-        let coord = placemark.coordinate
+        let coord = CoordinateConverter.mapKitSearchToWgs84(placemark.coordinate, countryCode: placemark.isoCountryCode)
         guard CLLocationCoordinate2DIsValid(coord) else { return nil }
 
         var tags: [String: String] = ["name": name, "source": "mapkit"]
@@ -166,6 +168,15 @@ public final class MapKitPOIService {
             lon: coord.longitude,
             tags: tags
         )
+    }
+
+    static func withinRadius(_ pois: [OverpassService.POI], center: CLLocationCoordinate2D, meters: Int) -> [OverpassService.POI] {
+        let origin = CLLocation(latitude: center.latitude, longitude: center.longitude)
+        return pois.filter { poi in
+            let point = CLLocationCoordinate2D(latitude: poi.lat, longitude: poi.lon)
+            return CLLocationCoordinate2DIsValid(point) && poi.lat.isFinite && poi.lon.isFinite
+                && origin.distance(from: CLLocation(latitude: poi.lat, longitude: poi.lon)) <= Double(max(0, meters))
+        }
     }
 
     /// Map an `MKPointOfInterestCategory` to an OSM-style tag (key, value) so

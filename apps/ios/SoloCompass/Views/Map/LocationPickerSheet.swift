@@ -450,7 +450,7 @@ struct LocationPickerSheet: View {
 
     private func selectSearchResult(_ item: MKMapItem) {
         commitHaptic()
-        let coord = item.placemark.coordinate
+        let coord = CoordinateConverter.mapKitSearchToWgs84(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
         let label = item.name
             ?? item.placemark.locality
             ?? item.placemark.administrativeArea
@@ -478,7 +478,7 @@ struct LocationPickerSheet: View {
         let name = state.saveNameText.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
 
-        let coord = item.placemark.coordinate
+        let coord = CoordinateConverter.mapKitSearchToWgs84(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
         let city = SavedCity(
             id: "custom_\(UUID().uuidString)",
             name: name,
@@ -680,7 +680,7 @@ private struct SearchResultRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            let coord = item.placemark.coordinate
+            let coord = CoordinateConverter.mapKitSearchToWgs84(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
             Text(String(format: "%.4f, %.4f", coord.latitude, coord.longitude))
                 .font(.caption)
                 .foregroundStyle(.tertiary)

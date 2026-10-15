@@ -89,6 +89,22 @@ const BASE_INPUT = {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("rankExperiences — anti-hallucination", () => {
+  it("keeps an unknown place hour and missing visit window unknown", async () => {
+    const exp = { ...makeExperience("exp_unknown_time", "Cafe"), bestTimes: [] };
+    const client = makeMockClient([]);
+    await rankExperiences(
+      { ...BASE_INPUT, currentHour: null, availableExperiences: [exp] },
+      client,
+    );
+    const create = vi.mocked(client.chat.completions.create);
+    const request = create.mock.calls[0]?.[0];
+    const user = request?.messages.find((message) => message.role === "user");
+    expect(user?.content).toContain("Current local hour: unknown");
+    expect(user?.content).toContain("bestTimes: unknown");
+    expect(user?.content).not.toContain("anytime");
+    expect(request?.messages[0]?.content).toContain("not opening hours");
+  });
+
   it("never invents IDs: model returns unknown id → omitted from result", async () => {
     const realExp = makeExperience("exp_cmi_real", "Real Experience");
     const mockClient = makeMockClient([

@@ -75,7 +75,7 @@ public struct ExploreSession: Equatable {
     public struct HandoffResult: Equatable {
         public let addedCount: Int
         public let verifiedCount: Int
-        public let finalRadiusKm: Int
+        public let finalRadiusKm: Double
         public let cityName: String?
         public let addedIds: [String]        // for "Save as walk" & "Clear these"
         public let canExpand: Bool           // false when at max ring (100 km)
@@ -83,7 +83,7 @@ public struct ExploreSession: Equatable {
         public init(
             addedCount: Int,
             verifiedCount: Int,
-            finalRadiusKm: Int,
+            finalRadiusKm: Double,
             cityName: String?,
             addedIds: [String],
             canExpand: Bool
