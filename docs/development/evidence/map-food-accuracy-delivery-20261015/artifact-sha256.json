@@ -1,7 +1,7 @@
 {
   "algorithm": "sha256",
   "files": {
-    "acceptance.json": "ed47101ee436b4ed6ea3c7202858e91293f88dd91dbdffd75d3970c3fb9ccc99",
+    "acceptance.json": "db99218148634eeffece076ffa42f3e5732c0e86cf27a35f1e16d46ecf5373c6",
     "anti-pattern.txt": "4e979c6516e198cf81f8e61f9287438651e6c6c27b0e9eec00c90bd4d1374833",
     "hongkong-standard.png": "d27da3dce4970a2e70da5af09a4d72642ad3ed76250413d318cebfdb6c4cfb5b",
     "host-tests.txt": "dc506e700e8535f36acf6e476183a939fab7abc2c04150cd4262342e3e44f16c",
@@ -19,6 +19,9 @@
     "native-live-summary.json": "f7175e441384ab343b32a228a93f98e4a909b42c9aa1dd23e4ed07269d75680e",
     "parity.txt": "259fdd2f5edc4bf3d3fc2df877b979ac20ee0490e120a46cc763e3d33e12e77c",
     "public-anchor-receipts.json": "1487d13c58403e881bd0636695e28bbe2ced328184685ac109b8aa21aac34d8f",
+    "security-edge-validation.txt": "1ce323eb8d74dccf7790546db539df71d7a4b1487070912eda828566ff55927d",
+    "security-patch-validation.txt": "f8b9e680da5a73bbc14dd0a451b21cd94f4b9c5b30e071b4ca76b7a4512d7ccd",
+    "security-validation.json": "5260740867dd36a1a90b0a17c8b07dd009954368e8c9a919d51af0af42ca6945",
     "source-sha256.json": "082d258edef66820beea1740e96e5debac38ff4fd3feebcae44e551b12dd2328",
     "trial-history.json": "61d5a5284ed65b86670db8e1d27fb85d63db82eb1aa050b8c77c233a0949c5f9",
     "typecheck.txt": "4192ab1bb9d28579afa71d8a3d34579a015bfcdd2a851e3f1c2f6b86a9cbab8a",

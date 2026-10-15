@@ -66,5 +66,6 @@
     "Provider facts may remain unknown; model text does not establish real hours, images or business status.",
     "Existing eligible automatic records refresh when rediscovered; no bulk user database migration.",
     "No manual Edge deploy or TestFlight dispatch in this task. Existing main-merge workflow may automatically publish TestFlight; check its run separately."
-  ]
+  ],
+  "securityEvidence": "security-validation.json"
 }
