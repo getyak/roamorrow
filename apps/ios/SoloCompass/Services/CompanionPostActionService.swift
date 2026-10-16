@@ -16,6 +16,7 @@ public final class CompanionPostActionService {
         self.isEnabled = isEnabled
     }
 
+    /// Explicit traveler intent submitted against a discovery post.
     public enum Action: String, Encodable { case request, friend, report, block }
 
     /// Keep actionId stable across a retry of the same intent. A transport

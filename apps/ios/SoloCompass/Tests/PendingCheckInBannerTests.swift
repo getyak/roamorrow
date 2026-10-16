@@ -6,30 +6,19 @@ final class PendingCheckInBannerTests: XCTestCase {
 
     // MARK: - autoDismissSeconds
 
-    /// Default (VoiceOver off): banner should dismiss after 6 s.
+    /// Default (VoiceOver off): banner leaves ten seconds to read and act.
     func testAutoDismissSecondsDefault() {
         let banner = PendingCheckInBanner(
             experienceTitle: "Test experience",
             onConfirm: {},
             onDismiss: {}
         )
-        XCTAssertEqual(banner.autoDismissSeconds, 6, "Default dismiss window must be 6 s")
+        XCTAssertEqual(banner.autoDismissSeconds, 10, "Default dismiss window must be 10 s")
     }
 
-    /// Under VoiceOver the dismiss window must be larger than the default.
-    /// autoDismissSeconds returns voiceOverOn ? 12 : 6. We verify the two
-    /// constants satisfy the required relationship: VoiceOver ≥ 2× default.
-    func testAutoDismissSecondsUnderVoiceOverIsDoubleDefault() {
-        let defaultSeconds = 6.0
-        let voiceOverSeconds = 12.0
-        XCTAssertGreaterThanOrEqual(
-            voiceOverSeconds,
-            defaultSeconds * 2,
-            "VoiceOver dismiss window must be at least double the default"
-        )
-        XCTAssertEqual(voiceOverSeconds, 12, "VoiceOver timeout must be 12 s")
-        XCTAssertEqual(defaultSeconds, 6, "Default timeout must be 6 s")
-    }
+    // VoiceOver now keeps the banner available until an explicit action.
+    // The old test compared hard-coded 6/12 constants and never exercised that
+    // policy. Actual VoiceOver focus/timer acceptance remains a UI check.
 
     // MARK: - View construction
 

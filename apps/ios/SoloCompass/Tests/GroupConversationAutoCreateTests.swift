@@ -116,7 +116,9 @@ final class GroupConversationAutoCreateTests: XCTestCase {
         let afterFirst = try XCTUnwrap(routeStore.get(route.id))
         let convIdStr = try XCTUnwrap(afterFirst.companion?.groupConversationId)
         let convAfterFirst = try XCTUnwrap(convStore.get(ConversationId(rawValue: convIdStr)))
-        XCTAssertEqual(convAfterFirst.participantIds.count, 2)
+        XCTAssertEqual(Set(convAfterFirst.participantIds), ["maya", "lin", "tomas"],
+            "Conversation must preserve the host and every already-confirmed member")
+        XCTAssertEqual(convAfterFirst.participantIds.count, 3, "Participants must not be duplicated")
 
         // Accept second request (ren) → stays forming, appends to conversation
         let secondRequest = try XCTUnwrap(
@@ -132,8 +134,9 @@ final class GroupConversationAutoCreateTests: XCTestCase {
         let convAfterSecond = try XCTUnwrap(convStore.get(ConversationId(rawValue: convIdStr)))
         XCTAssertTrue(convAfterSecond.participantIds.contains("ren"),
             "Second requester must be added to existing conversation")
-        XCTAssertEqual(convAfterSecond.participantIds.count, 3,
-            "Conversation must have host + both accepted requesters")
+        XCTAssertEqual(Set(convAfterSecond.participantIds), ["maya", "lin", "tomas", "ren"],
+            "Conversation must preserve confirmed members and both accepted requesters")
+        XCTAssertEqual(convAfterSecond.participantIds.count, 4, "Participants must not be duplicated")
     }
 
     // MARK: - groupConversationId not set for declined requests

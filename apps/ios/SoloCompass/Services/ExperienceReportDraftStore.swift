@@ -11,6 +11,7 @@ import Foundation
 /// sent anywhere) from `sent` (the mail composer reported a completed send).
 /// Nothing in this file transmits anything on its own.
 public struct ExperienceReportDraft: Codable, Identifiable, Equatable, Sendable {
+    /// Distinguishes a local draft from a completed user-controlled mail send.
     public enum Status: String, Codable, Sendable {
         /// Written to this device only. NOT sent to anyone.
         case savedLocally
@@ -120,6 +121,7 @@ public final class ExperienceReportDraftStore {
         return drafts[idx]
     }
 
+    /// Returns the stored draft or send receipt with this stable identifier.
     public func draft(id: String) -> ExperienceReportDraft? {
         drafts.first { $0.id == id }
     }
@@ -136,6 +138,7 @@ public final class ExperienceReportDraftStore {
 /// Pure text assembly — sending happens only when the traveler acts inside the
 /// system mail/share UI.
 public enum ExperienceReportComposer {
+    /// Identifies the experience in the support email subject.
     public static func emailSubject(experienceTitle: String) -> String {
         "[Solo Compass] \(experienceTitle)"
     }
