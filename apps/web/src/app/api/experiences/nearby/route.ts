@@ -53,6 +53,8 @@ export interface NearbyResult {
 export interface NearbyResponse {
   readonly results: readonly NearbyResult[];
   readonly degraded?: true;
+  /** Sample fixtures are distinct from a real-data AI ranking fallback. */
+  readonly source?: "sample" | "database";
   readonly evidence?: {
     readonly coverage: "fresh" | "partial" | "legacy";
     readonly refreshScheduled: boolean;
@@ -127,6 +129,7 @@ export async function GET(
           center,
         ),
         degraded: true,
+        source: "sample",
       });
     }
     // eslint-disable-next-line no-console

@@ -62,11 +62,6 @@ public struct FilterBarView: View {
     /// constructed `UserPreferences`, which defaults to all 8 categories.
     @Environment(UserPreferences.self) private var preferences
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isPulsing: Bool = false
-    @State private var nowCountPop: Bool = false
-    @State private var lastNowCount: Int = 0
-    @State private var heartPulse: Bool = false
-    @State private var didCelebrateSaved: Bool = false
     @State private var lastResultCount: Int = 0
     @State private var emptyShake: Int = 0
 
@@ -90,28 +85,6 @@ public struct FilterBarView: View {
     /// Pure helper: returns true when a tap on a pill with `isSelected` state should
     /// resolve to a clear (toggle-off) rather than a selection. Used in unit tests.
     static func resolvesToClear(isSelected: Bool) -> Bool { isSelected }
-
-    /// Called when `nowCount` changes. Fires a spring scale-pop + gold flash + selection
-    /// haptic only when the count increases (a place enters its golden window). Decreases
-    /// are silent so the pill never feels noisy. Respects reduceMotion: skips scale/flash
-    /// but still fires the haptic (tactile feedback remains useful without motion).
-    private func handleNowCountChange(_ old: Int, _ new: Int) {
-        lastNowCount = new
-        guard new > old else { return }
-        #if canImport(UIKit)
-        Haptics.selection()
-        #endif
-        guard !reduceMotion else { return }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-            nowCountPop = true
-        }
-        Task {
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            withAnimation(.easeOut(duration: 0.25)) {
-                nowCountPop = false
-            }
-        }
-    }
 
     public init(
         selectedCategory: ExperienceCategory?,
@@ -211,7 +184,7 @@ public struct FilterBarView: View {
                         pill(
                             id: "all",
                             label: NSLocalizedString("filter.all", comment: "All"),
-                            isSelected: !isNowSelected && selectedCategory == nil && selectedCustomTag == nil,
+                            isSelected: !isNowSelected && !isFavoriteSelected && selectedCategory == nil && selectedCustomTag == nil,
                             // Use the shared brown selected-fill (same as Now and
                             // category chips) so the active 'All' filter carries
                             // real visual weight. The old Color.primary fill was
@@ -395,52 +368,26 @@ public struct FilterBarView: View {
                 Circle()
                     .fill(isSelected ? Color.white : CT.sunGold)
                     .frame(width: 6, height: 6)
-                    .scaleEffect(isPulsing ? 1.4 : 1.0)
-                    .opacity(isPulsing ? 0.5 : 1.0)
 
                 Text(label)
                     .font(.subheadline.weight(.medium))
 
                 if nowCount > 0 {
-                    ZStack {
-                        Text(Self.compactCount(nowCount))
-                            .font(.caption2.monospacedDigit().weight(.semibold))
-                            .contentTransition(.numericText(value: Double(nowCount)))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule().fill(isSelected ? Color.white.opacity(0.28) : CT.sunGold.opacity(0.2))
-                            )
-                        // Gold flash overlay — fades in on increase, eases out
-                        Capsule()
-                            .fill(CT.sunGold.opacity(nowCountPop ? 0.6 : 0))
-                            .animation(.easeOut(duration: 0.5), value: nowCountPop)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                    }
-                    .scaleEffect(nowCountPop ? 1.35 : 1.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.5), value: nowCountPop)
+                    Text(Self.compactCount(nowCount))
+                        .font(.caption2.monospacedDigit().weight(.semibold))
+                        .contentTransition(reduceMotion ? .identity : .numericText(value: Double(nowCount)))
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .foregroundStyle(isSelected ? .white : CT.accent)
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
+            .foregroundStyle(isSelected ? .white : CT.actionTintAdaptive)
             .background {
                 if isSelected {
                     Capsule()
                         .fill(Self.selectedFill)
                         .matchedGeometryEffect(id: "filterHighlight", in: pillHighlight)
-                }
-            }
-            .overlay(
-                Capsule().stroke(isSelected ? Color.clear : CT.sunGold, lineWidth: 1)
-            )
-            .overlay(alignment: .topTrailing) {
-                if isSelected && resultCount > 0 {
-                    countBadge(count: resultCount, tint: Self.selectedFill)
-                        .offset(x: 6, y: -6)
-                        .opacity(countBadgeOpacity)
-                        .transition(.scale.combined(with: .opacity))
                 }
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.65), value: resultCount)
@@ -450,23 +397,7 @@ public struct FilterBarView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityValue(isSelected && resultCount > 0 ? Text("\(resultCount) results") : Text(""))
         .accessibilityHint(isSelected ? Text(NSLocalizedString("filter.pill.clear.hint", comment: "Double tap to clear this filter")) : Text(""))
-        .onAppear {
-            lastNowCount = nowCount
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                isPulsing = true
-            }
-        }
-        .onChange(of: reduceMotion) { _, reduced in
-            if reduced {
-                withAnimation(.default) { isPulsing = false }
-            } else {
-                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                    isPulsing = true
-                }
-            }
-        }
-        .onChange(of: nowCount) { old, new in handleNowCountChange(old, new) }
+
     }
 
     private func pill(id: String, label: String, isSelected: Bool, color: Color, action: @escaping () -> Void) -> some View {
@@ -491,6 +422,8 @@ public struct FilterBarView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
             .foregroundStyle(isSelected ? .white : .primary)
             .background {
                 if isSelected {
@@ -499,9 +432,6 @@ public struct FilterBarView: View {
                         .matchedGeometryEffect(id: "filterHighlight", in: pillHighlight)
                 }
             }
-            .overlay(
-                Capsule().stroke(isSelected ? Color.clear : Color.primary.opacity(0.2), lineWidth: 1)
-            )
             .animation(.spring(response: 0.3, dampingFraction: 0.65), value: resultCount)
         }
         .buttonStyle(PressableButtonStyle())
@@ -517,46 +447,14 @@ public struct FilterBarView: View {
     /// the app; the inline count mirrors the All/Now chips' visual language.
     private func favoritePill(isSelected: Bool, action: @escaping () -> Void) -> some View {
         let label = NSLocalizedString("filter.saved", comment: "Saved (favourites filter)")
-        let tint = CT.savedRed
+        let tint = Self.selectedFill
         return Button {
-            if !isSelected && resultCount > 0 {
-                if !didCelebrateSaved {
-                    #if canImport(UIKit)
-                    Haptics.notify(.success)
-                    #endif
-                    didCelebrateSaved = true
-                    if !reduceMotion {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
-                            heartPulse = true
-                        }
-                        Task {
-                            try? await Task.sleep(nanoseconds: 450_000_000)
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                heartPulse = false
-                            }
-                        }
-                    }
-                } else {
-                    #if canImport(UIKit)
-                    Haptics.selection()
-                    #endif
-                }
-            } else if isSelected {
-                #if canImport(UIKit)
-                Haptics.impact(.light)
-                #endif
-            } else {
-                #if canImport(UIKit)
-                Haptics.selection()
-                #endif
-            }
+            Haptics.selection()
             action()
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: isSelected ? "heart.fill" : "heart")
                     .font(.caption.weight(.semibold))
-                    .scaleEffect(heartPulse ? 1.35 : 1.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.5), value: heartPulse)
 
                 Text(label)
                     .font(.subheadline.weight(.medium))
@@ -574,6 +472,8 @@ public struct FilterBarView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
             // Unselected pills now share a single neutral text color across the
             // bar (Now/All/Saved/category) so the row reads as one component
             // instead of a parade of red/orange/green outlines. The category
@@ -586,9 +486,6 @@ public struct FilterBarView: View {
                         .matchedGeometryEffect(id: "filterHighlight", in: pillHighlight)
                 }
             }
-            .overlay(
-                Capsule().stroke(isSelected ? Color.clear : CT.borderDefault, lineWidth: 1)
-            )
             .animation(.spring(response: 0.3, dampingFraction: 0.65), value: resultCount)
         }
         .buttonStyle(PressableButtonStyle())
@@ -618,10 +515,9 @@ public struct FilterBarView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .foregroundStyle(CT.sunGoldDeep)
-            .overlay(
-                Capsule().stroke(CT.sunGoldDeep.opacity(0.35), lineWidth: 1)
-            )
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
+            .foregroundStyle(CT.actionTintAdaptive)
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(Text(label))
@@ -648,17 +544,15 @@ public struct FilterBarView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
             .foregroundStyle(isOn ? .white : .primary)
             .background {
                 if isOn {
                     Capsule()
                         .fill(CT.accent)
-                        .matchedGeometryEffect(id: "filterHighlight", in: pillHighlight)
                 }
             }
-            .overlay(
-                Capsule().stroke(isOn ? Color.clear : CT.borderDefault, lineWidth: 1)
-            )
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(Text(label))
@@ -696,6 +590,8 @@ public struct FilterBarView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .contentShape(Capsule())
             // Same unification as favoritePill: unselected = neutral text +
             // neutral border. Category identity color stays as the inline glyph
             // tint (the `category.symbol` Image keeps its colored stroke via the
@@ -704,13 +600,10 @@ public struct FilterBarView: View {
             .background {
                 if isSelected {
                     Capsule()
-                        .fill(category.color)
+                        .fill(Self.selectedFill)
                         .matchedGeometryEffect(id: "filterHighlight", in: pillHighlight)
                 }
             }
-            .overlay(
-                Capsule().stroke(isSelected ? Color.clear : CT.borderDefault, lineWidth: 1)
-            )
             .animation(.spring(response: 0.3, dampingFraction: 0.65), value: resultCount)
         }
         .buttonStyle(PressableButtonStyle())
@@ -727,35 +620,25 @@ public struct FilterBarView: View {
         Button {
             handleTap(isSelected: isSelected, select: action)
         } label: {
-            Image(systemName: "tag.fill")
-                .font(.body.weight(.semibold))
-                .frame(width: 36, height: 36)
-                .foregroundStyle(isSelected ? .white : CT.accent)
-                .background {
-                    if isSelected {
-                        Circle()
-                            .fill(CT.accent)
-                            .matchedGeometryEffect(id: "filterHighlight", in: pillHighlight)
-                    }
+            HStack(spacing: 5) {
+                Image(systemName: "tag.fill").font(.caption.weight(.semibold))
+                Text(tag).font(.subheadline.weight(.medium)).lineLimit(1)
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .foregroundStyle(isSelected ? .white : .primary)
+            .background {
+                if isSelected {
+                    Capsule().fill(Self.selectedFill)
+                        .matchedGeometryEffect(id: "filterHighlight", in: pillHighlight)
                 }
-                .overlay(
-                    Circle().stroke(isSelected ? Color.clear : CT.accent.opacity(0.4), lineWidth: 1)
-                )
-                .overlay(alignment: .topTrailing) {
-                    if isSelected && resultCount > 0 {
-                        countBadge(count: resultCount, tint: CT.accent)
-                            .offset(x: 6, y: -6)
-                            .opacity(countBadgeOpacity)
-                            .transition(.scale.combined(with: .opacity))
-                    }
-                }
-                .animation(.spring(response: 0.3, dampingFraction: 0.65), value: resultCount)
+            }
+            .contentShape(Capsule())
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(Text(tag))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityValue(isSelected && resultCount > 0 ? Text("\(resultCount) results") : Text(""))
-        .accessibilityHint(isSelected ? Text(NSLocalizedString("filter.pill.clear.hint", comment: "Double tap to clear this filter")) : Text(""))
+        .accessibilityHint(isSelected ? Text(NSLocalizedString("filter.pill.clear.hint", comment: "Clear filter")) : Text(""))
     }
 
     @ViewBuilder

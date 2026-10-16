@@ -204,6 +204,9 @@ struct DiscoverWorkspaceView: View {
             .foregroundStyle(colorScheme == .dark ? CT.sunGold : CT.accent)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            // Keep the compact capsule but guarantee the 44pt menu target.
+            .frame(minHeight: HitTargetMetrics.minimum)
+            .contentShape(Capsule())
             .glassSurface(.control, in: Capsule(), opaqueFallback: CT.cardAdaptive)
         }
         .accessibilityIdentifier("discover.sort")

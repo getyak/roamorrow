@@ -455,6 +455,8 @@ private struct SectionCard<Content: View>: View {
                         Text(trailing.0)
                             .ctBody(12.5, .semibold)
                             .foregroundStyle(CT.accent)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }

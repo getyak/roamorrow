@@ -22,16 +22,22 @@ export function DayPageMock() {
 
       {/* Nav row */}
       <div className="flex items-center justify-between px-4 pt-2 pb-3">
-        <button className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-white shadow-xs">
+        <span
+          aria-hidden="true"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-white shadow-xs"
+        >
           <span className="text-[14px]" aria-hidden>
             ‹
           </span>
-        </button>
-        <button className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-white shadow-xs">
+        </span>
+        <span
+          aria-hidden="true"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-white shadow-xs"
+        >
           <span className="text-[12px]" aria-hidden>
             ♡
           </span>
-        </button>
+        </span>
       </div>
 
       {/* Hero image — warm gradient */}

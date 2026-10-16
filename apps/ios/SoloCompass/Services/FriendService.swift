@@ -595,9 +595,19 @@ public final class FriendService {
     /// Remove a friendship. When `block` is true, also records a CompanionBlock
     /// so the pair can no longer see or reach each other (shared with the
     /// companion system's block table).
-    public func unfriend(_ friendship: Friendship, block: Bool = false) async {
-        guard FeatureFlags.companion else { return }
-        _ = await client.delete(table: "friendships", id: friendship.id.rawValue)
+    ///
+    /// Returns success only after the durable remote delete is acknowledged
+    /// (contract 3) — a failed delete keeps the friendship in the local list
+    /// so the UI can show an honest error + retry instead of a false removal.
+    @discardableResult
+    public func unfriend(_ friendship: Friendship, block: Bool = false) async -> Result<Void, Error> {
+        guard FeatureFlags.companion else {
+            return .failure(FriendServiceError.featureDisabled)
+        }
+        let deleteResult = await client.delete(table: "friendships", id: friendship.id.rawValue)
+        if case .failure(let err) = deleteResult {
+            return .failure(err)
+        }
         friends.removeAll { $0.id == friendship.id }
         deleteFriendshipRecord(friendship.id.rawValue)
 
@@ -611,6 +621,7 @@ public final class FriendService {
                 _ = await client.post(table: "companion_blocks", body: data)
             }
         }
+        return .success(())
     }
 
     // MARK: - FRD-005: Fetch

@@ -43,6 +43,8 @@ struct ConversationPanel<Content: View, Dock: View>: View {
     @GestureState(resetTransaction: Transaction(animation: Motion.settle))
     private var dragTranslation: CGFloat = 0
 
+    @State private var measuredDockHeight: CGFloat = 76
+
     /// Grabber band height (also the grabber's ≥44pt hit area).
     static var grabberHeight: CGFloat { 44 }
     /// Space reserved for the dock so the content can never overlap it.
@@ -63,7 +65,7 @@ struct ConversationPanel<Content: View, Dock: View>: View {
     }
 
     var body: some View {
-        let dockReserve = workspace.isSoftwareKeyboardVisible ? 0 : Self.dockHeight
+        let dockReserve = workspace.isSoftwareKeyboardVisible ? 0 : max(Self.dockHeight, measuredDockHeight)
         ZStack(alignment: .top) {
             // Middle band: clipped, so oversized content can never affect the
             // grabber or dock layout.
@@ -101,7 +103,15 @@ struct ConversationPanel<Content: View, Dock: View>: View {
                 dock()
                     .padding(.horizontal, 16)
                     .padding(.bottom, 6)
+                    .background {
+                        GeometryReader { geometry in
+                            Color.clear.preference(key: WorkspaceDockHeightKey.self, value: geometry.size.height)
+                        }
+                    }
             }
+        }
+        .onPreferenceChange(WorkspaceDockHeightKey.self) { height in
+            if height > 0 { measuredDockHeight = height }
         }
         .elevation(Elevation.sheet)
         .animation(reduceMotion ? nil : Motion.settle, value: workspace.detent)
@@ -217,14 +227,15 @@ struct ConversationPanel<Content: View, Dock: View>: View {
     // MARK: - Rendering
 
     private var liveHeight: CGFloat {
-        guard dragTranslation != 0 else {
-            return workspace.targetPanelHeight(containerHeight: containerHeight)
-        }
         let committed = workspace.targetPanelHeight(containerHeight: containerHeight)
-        return ConversationWorkspaceState.clampDraggedHeight(
+        let proposed = dragTranslation == 0 ? committed : ConversationWorkspaceState.clampDraggedHeight(
             committed - dragTranslation,
             containerHeight: containerHeight
         )
+        // Accessibility-sized dock labels can grow beyond the default reserve.
+        // Even the collapsed map doorway must leave its grabber unobstructed.
+        let controlsHeight = Self.grabberHeight + (workspace.isSoftwareKeyboardVisible ? 0 : max(Self.dockHeight, measuredDockHeight))
+        return max(proposed, min(containerHeight, controlsHeight))
     }
 
     private var panelShape: UnevenRoundedRectangle {
@@ -279,4 +290,9 @@ struct ConversationPanel<Content: View, Dock: View>: View {
             Color.clear.frame(height: 60)
         }
     }
+}
+
+private struct WorkspaceDockHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }

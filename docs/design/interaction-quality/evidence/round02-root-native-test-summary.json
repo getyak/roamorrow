@@ -1,0 +1,6 @@
+{
+  "exit": 143,
+  "testsEntered": 0,
+  "xcresultSummaryError": "Error: Failed to create a new result bundle reader, underlying error: Info.plist at /private/tmp/ai-test-interaction-quality-round02-native.rjd5vT/RootTests.xcresult/Info.plist does not exist, the result bundle might be corrupted or the provided path is not a result bundle\nUsage: xcresulttool <subcommand>\n  See 'xcresulttool --help' for more information.\n",
+  "error": "NSMachErrorDomain -308, IDELaunchiPhoneSimulatorLauncher server died; own session terminated after392978ms launch attempt"
+}

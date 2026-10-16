@@ -1,0 +1,14 @@
+{
+  "reason": "Free space below30GiB before next heavy test; completed checkpoint evidence archived first",
+  "removedRebuildableCaches": [
+    "/Users/cubxxw/.codex/worktrees/interaction-quality/solo-compass/apps/web/.next",
+    "/private/tmp/ai-test-interaction-quality.0Igzij/DerivedData/Build/Intermediates.noindex"
+  ],
+  "preserved": [
+    "source worktree and patch hashes",
+    "DerivedData/Build/Products",
+    "all xcresult bundles and logs",
+    "permanent checkpoint01 summary and test result"
+  ],
+  "noActiveBuildOrServer": true
+}

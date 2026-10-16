@@ -199,6 +199,8 @@ struct LiveEventCard: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Capsule().fill(mapButtonFill))
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableButtonStyle(pressedScale: 0.96))
                 .accessibilityLabel(Text(String(

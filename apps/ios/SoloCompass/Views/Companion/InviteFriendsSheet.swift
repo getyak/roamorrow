@@ -9,7 +9,7 @@ import SwiftData
 /// where a join request waits for the host's accept), a friend the host picks
 /// here lands directly in `confirmedMembers`. The host is the only gate: there
 /// is no request, no pending state, and no acceptance step on the invitee's
-/// side. The invited friend simply receives a local "you're in" notification.
+/// side. This local path does not deliver an invitation to another device.
 ///
 /// The actual membership mutation reuses the exact same group-conversation and
 /// state-machine wiring as `ApprovalQueueView.localAccept` (create the group on
@@ -24,6 +24,9 @@ public struct InviteFriendsSheet: View {
     /// User ids the host has selected to invite this session.
     @State private var selected: Set<String> = []
     @State private var isSending = false
+    /// Honest failure surface (review closure 3): a failed commit keeps the
+    /// selection and the sheet, and offers a retry.
+    @State private var inviteErrorMessage: String?
     @Environment(\.dismiss) private var dismiss
 
     public init(
@@ -81,6 +84,9 @@ public struct InviteFriendsSheet: View {
                     Button(NSLocalizedString("action.cancel", comment: "Cancel")) {
                         dismiss()
                     }
+                    // Edits and cancel are locked while committing (review
+                    // closure 3) — one in-flight write, no racing dismiss.
+                    .disabled(isSending)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(NSLocalizedString("invite.friends.send", comment: "Send invites")) {
@@ -89,6 +95,24 @@ public struct InviteFriendsSheet: View {
                     .disabled(selected.isEmpty || isSending)
                 }
             }
+        }
+        .interactiveDismissDisabled(isSending)
+        .alert(
+            NSLocalizedString("invite.friends.error.title", comment: "Invite failed alert title"),
+            isPresented: Binding(
+                get: { inviteErrorMessage != nil },
+                set: { if !$0 { inviteErrorMessage = nil } }
+            )
+        ) {
+            Button(NSLocalizedString("invite.friends.error.retry", comment: "Retry the invite write")) {
+                inviteErrorMessage = nil
+                Task { await invite() }
+            }
+            Button(NSLocalizedString("action.cancel", comment: "Cancel"), role: .cancel) {
+                inviteErrorMessage = nil
+            }
+        } message: {
+            Text(inviteErrorMessage ?? "")
         }
     }
 
@@ -121,8 +145,9 @@ public struct InviteFriendsSheet: View {
     private func friendRow(_ friendId: String) -> some View {
         let isSelected = selected.contains(friendId)
         // A friend can be tapped to select while seats remain; an already-
-        // selected friend can always be deselected.
-        let isEnabled = isSelected || canInviteMore
+        // selected friend can always be deselected. Rows are locked while a
+        // commit is in flight (review closure 3).
+        let isEnabled = !isSending && (isSelected || canInviteMore)
 
         return Button {
             toggle(friendId)
@@ -183,26 +208,36 @@ public struct InviteFriendsSheet: View {
         defer { isSending = false }
 
         let ids = Array(selected)
-        let added = InviteFriendsSheet.confirmFriends(
-            ids,
-            into: route,
-            contextProvider: contextProvider
-        )
-
-        if !added.isEmpty {
-            Haptics.notify(.success)
-            // US-020: the invited friend gets a local join notification. (Best
-            // effort — membership is already persisted regardless.)
-            let title = route.title
-            let hostId = route.companion?.hostId ?? currentUserId
-            let routeId = route.id.rawValue
-            await NotificationService.shared.scheduleRouteJoinNotification(
-                routeId: routeId,
-                routeTitle: title,
-                hostId: hostId
+        do {
+            let added = try InviteFriendsSheet.confirmFriendsPersisted(
+                ids,
+                into: route,
+                contextProvider: contextProvider
             )
+            guard !added.isEmpty else {
+                // Everything was filtered (seats filled / already in). Nothing
+                // was written — keep the sheet so the host can adjust.
+                inviteErrorMessage = NSLocalizedString(
+                    "invite.friends.error.message",
+                    comment: "Nothing was added — the selection can be adjusted and retried"
+                )
+                return
+            }
+            Haptics.notify(.success)
+            // This host-side action only edits the local route. A recipient
+            // invitation notification on this device would address the host
+            // as their own invitee, so the durable result is acknowledged here.
+            dismiss()
+        } catch {
+            // Failed commit (review closure 3): selection and sheet are kept
+            // exactly as they are, the error is explained and retryable. No
+            // success haptic, no dismissal, no local notification.
+            inviteErrorMessage = NSLocalizedString(
+                "invite.friends.error.message",
+                comment: "Nothing was added — the selection can be adjusted and retried"
+            )
+            Haptics.notify(.error)
         }
-        dismiss()
     }
 
     /// Add `friendIds` straight into the route's `confirmedMembers` (no approval),
@@ -210,26 +245,39 @@ public struct InviteFriendsSheet: View {
     /// status machine — the same persistence path the host's accept uses, minus
     /// the join-request lifecycle.
     ///
-    /// Returns the ids actually added (capped at the remaining seats), so the
-    /// caller knows whether to fire the join notification.
-    @discardableResult
-    static func confirmFriends(
+    /// ONE staged route+conversation snapshot, committed ATOMICALLY ONCE via
+    /// `RouteStore.saveRouteAndConversation` (review closure 3) — never
+    /// per-friend partial commits. On a failed commit the store rolls back only
+    /// these rows and this method rethrows; the caller keeps the selection and
+    /// offers a retry. Returns the ids actually added (capped at the remaining
+    /// seats, deduped, host excluded).
+    ///
+    /// - Parameter commit: test seam for forcing a commit failure; production
+    ///   callers omit it.
+    enum MembershipError: Error { case missingRoute, missingCompanion, unavailable, missingConversation }
+
+    static func confirmFriendsPersisted(
         _ friendIds: [String],
         into route: Route,
-        contextProvider: () -> ModelContext
-    ) -> [String] {
+        contextProvider: () -> ModelContext,
+        commit: (() throws -> Void)? = nil
+    ) throws -> [String] {
         let ctx = contextProvider()
         let routeStore = RouteStore(context: ctx)
         let convStore = ConversationStore(context: ctx)
 
         // Read the freshest route row so we don't clobber concurrent accepts.
-        var updated = routeStore.get(route.id) ?? route
-        guard var companion = updated.companion else { return [] }
+        guard var updated = routeStore.get(route.id) else { throw MembershipError.missingRoute }
+        guard var companion = updated.companion else { throw MembershipError.missingCompanion }
+        guard companion.status == .open || companion.status == .forming else {
+            throw MembershipError.unavailable
+        }
 
         let existing = Set(companion.confirmedMembers)
         var added: [String] = []
         let now = ISO8601DateFormatter().string(from: Date())
 
+        // Compute the FINAL companion state for the whole selection first.
         for friendId in friendIds {
             // Stop at capacity; never overfill past maxMembers.
             guard companion.confirmedMembers.count < companion.maxMembers else { break }
@@ -239,8 +287,7 @@ public struct InviteFriendsSheet: View {
 
             let wasOpen = companion.status == .open
             let event: CompanionEvent = wasOpen ? .acceptFirst : .acceptAdditional
-            let newStatus = (try? RouteCompanionStateMachine.transition(state: companion.status, event: event))
-                ?? companion.status
+            let newStatus = try RouteCompanionStateMachine.transition(state: companion.status, event: event)
 
             companion.confirmedMembers.append(friendId)
             companion.status = newStatus
@@ -250,53 +297,63 @@ public struct InviteFriendsSheet: View {
                let closed = try? RouteCompanionStateMachine.transition(state: companion.status, event: .reachMax) {
                 companion.status = closed
             }
+        }
 
-            if wasOpen && newStatus == .forming && companion.groupConversationId == nil {
-                // First member: create the group conversation atomically.
-                let convId = ConversationId(rawValue: UUID().uuidString)
-                let conversation = Conversation(
-                    id: convId,
-                    requestId: nil,
-                    participantIds: [companion.hostId, friendId],
-                    type: .groupRoute,
-                    routeId: updated.id.rawValue,
-                    createdAt: now,
-                    updatedAt: now
-                )
-                companion.groupConversationId = convId.rawValue
-                updated.companion = companion
-                routeStore.saveWithContext(updated)
-                convStore.saveWithContext(conversation)
-                try? routeStore.commitContext()
-            } else if let existingConvIdStr = companion.groupConversationId,
-                      let existingConv = convStore.get(ConversationId(rawValue: existingConvIdStr)) {
-                // Subsequent member: append to the existing group conversation so
-                // group participants + Realtime stay in sync.
-                var participants = existingConv.participantIds
-                if !participants.contains(friendId) {
-                    participants.append(friendId)
-                }
-                let updatedConv = Conversation(
-                    id: existingConv.id,
-                    requestId: existingConv.requestId,
-                    participantIds: participants,
-                    type: existingConv.type,
-                    routeId: existingConv.routeId,
-                    lastMessageAt: existingConv.lastMessageAt,
-                    createdAt: existingConv.createdAt,
-                    updatedAt: now
-                )
-                updated.companion = companion
-                routeStore.saveWithContext(updated)
-                convStore.saveWithContext(updatedConv)
-                try? routeStore.commitContext()
-            } else {
-                updated.companion = companion
-                routeStore.save(updated)
+        guard !added.isEmpty else { return [] }
+
+        // ONE atomic write for the whole selection.
+        if companion.groupConversationId == nil {
+            // First member opens the group conversation — staged and committed
+            // together with the route in a single durable write.
+            let convId = ConversationId(rawValue: UUID().uuidString)
+            let conversation = Conversation(
+                id: convId,
+                requestId: nil,
+                participantIds: [companion.hostId] + companion.confirmedMembers,
+                type: .groupRoute,
+                routeId: updated.id.rawValue,
+                createdAt: now,
+                updatedAt: now
+            )
+            companion.groupConversationId = convId.rawValue
+            updated.companion = companion
+            try routeStore.saveRouteAndConversation(updated, conversation: conversation, commit: commit)
+        } else if let existingConvIdStr = companion.groupConversationId,
+                  let existingConv = convStore.get(ConversationId(rawValue: existingConvIdStr)) {
+            // Extend the existing group conversation with every added friend.
+            var participants = existingConv.participantIds
+            for friendId in added where !participants.contains(friendId) {
+                participants.append(friendId)
             }
+            let updatedConv = Conversation(
+                id: existingConv.id,
+                requestId: existingConv.requestId,
+                participantIds: participants,
+                type: existingConv.type,
+                routeId: existingConv.routeId,
+                lastMessageAt: existingConv.lastMessageAt,
+                createdAt: existingConv.createdAt,
+                updatedAt: now
+            )
+            updated.companion = companion
+            try routeStore.saveRouteAndConversation(updated, conversation: updatedConv, commit: commit)
+        } else {
+            throw MembershipError.missingConversation
         }
 
         return added
+    }
+
+    /// Legacy non-throwing wrapper kept for existing tests/callers. Delegates
+    /// to `confirmFriendsPersisted`; a failed commit reports "nothing added"
+    /// instead of pretending success. Production uses the throwing method.
+    @discardableResult
+    static func confirmFriends(
+        _ friendIds: [String],
+        into route: Route,
+        contextProvider: () -> ModelContext
+    ) -> [String] {
+        (try? confirmFriendsPersisted(friendIds, into: route, contextProvider: contextProvider)) ?? []
     }
 }
 

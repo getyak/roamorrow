@@ -67,6 +67,11 @@ public final class UserPreferences {
         var completedExperiences: Set<String> = []
         var favoritedExperiences: Set<String> = []
         var favoritedAt: [String: Date] = [:]
+        // R2-01: route favorites are a LOCAL user preference, deliberately kept
+        // separate from the experience-id sets (routes have their own id space
+        // and are not Experience rows). Absent in older blobs → defaults.
+        var favoritedRouteIds: Set<String> = []
+        var favoritedRouteAt: [String: Date] = [:]
         var pendingCheckIns: [String: Date] = [:]
         var lastSelectedCity: String?
         var hasCompletedOnboarding: Bool = false
@@ -137,6 +142,7 @@ public final class UserPreferences {
         enum CodingKeys: String, CodingKey {
             case preferredCategories, dislikedCategories, soloTravelStyle, nomadCohortRaw, maxDistanceKm
             case visitHistory, completedExperiences, favoritedExperiences, favoritedAt, pendingCheckIns
+            case favoritedRouteIds, favoritedRouteAt
             case lastSelectedCity, hasCompletedOnboarding, notificationsEnabled
             case quietHoursStart, quietHoursEnd, seedImported, swiftDataMirrored
             case hasAcceptedExploreConsent, exploreConsentGivenAt, reviewPromptShown
@@ -166,6 +172,8 @@ public final class UserPreferences {
             completedExperiences: Set<String>,
             favoritedExperiences: Set<String>,
             favoritedAt: [String: Date],
+            favoritedRouteIds: Set<String> = [],
+            favoritedRouteAt: [String: Date] = [:],
             pendingCheckIns: [String: Date],
             lastSelectedCity: String?,
             hasCompletedOnboarding: Bool,
@@ -213,6 +221,8 @@ public final class UserPreferences {
             self.completedExperiences = completedExperiences
             self.favoritedExperiences = favoritedExperiences
             self.favoritedAt = favoritedAt
+            self.favoritedRouteIds = favoritedRouteIds
+            self.favoritedRouteAt = favoritedRouteAt
             self.pendingCheckIns = pendingCheckIns
             self.lastSelectedCity = lastSelectedCity
             self.hasCompletedOnboarding = hasCompletedOnboarding
@@ -263,6 +273,10 @@ public final class UserPreferences {
             self.completedExperiences = try container.decodeIfPresent(Set<String>.self, forKey: .completedExperiences) ?? []
             self.favoritedExperiences = try container.decodeIfPresent(Set<String>.self, forKey: .favoritedExperiences) ?? []
             self.favoritedAt = try container.decodeIfPresent([String: Date].self, forKey: .favoritedAt) ?? [:]
+            // Backward compatible: blobs written before route favorites existed
+            // decode to empty defaults instead of failing the whole snapshot.
+            self.favoritedRouteIds = try container.decodeIfPresent(Set<String>.self, forKey: .favoritedRouteIds) ?? []
+            self.favoritedRouteAt = try container.decodeIfPresent([String: Date].self, forKey: .favoritedRouteAt) ?? [:]
             self.pendingCheckIns = try container.decodeIfPresent([String: Date].self, forKey: .pendingCheckIns) ?? [:]
             self.lastSelectedCity = try container.decodeIfPresent(String.self, forKey: .lastSelectedCity)
             self.hasCompletedOnboarding = try container.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
@@ -322,6 +336,11 @@ public final class UserPreferences {
     public var completedExperiences: Set<String> { didSet { persist() } }
     public var favoritedExperiences: Set<String> { didSet { persist() } }
     public var favoritedAt: [String: Date] { didSet { persist() } }
+    /// Route ids the traveler favorited. Separate namespace from
+    /// `favoritedExperiences` — a RouteId must never be mirrored into the
+    /// experience repository rows.
+    public var favoritedRouteIds: Set<String> { didSet { persist() } }
+    public var favoritedRouteAt: [String: Date] { didSet { persist() } }
     public var pendingCheckIns: [String: Date] { didSet { persist() } }
     public var lastSelectedCity: String? { didSet { persist() } }
     public var hasCompletedOnboarding: Bool { didSet { persist() } }
@@ -482,6 +501,8 @@ public final class UserPreferences {
         self.completedExperiences = snapshot.completedExperiences
         self.favoritedExperiences = snapshot.favoritedExperiences
         self.favoritedAt = snapshot.favoritedAt
+        self.favoritedRouteIds = snapshot.favoritedRouteIds
+        self.favoritedRouteAt = snapshot.favoritedRouteAt
         self.pendingCheckIns = snapshot.pendingCheckIns
         self.lastSelectedCity = snapshot.lastSelectedCity
         self.hasCompletedOnboarding = snapshot.hasCompletedOnboarding
@@ -557,6 +578,8 @@ public final class UserPreferences {
             completedExperiences: completedExperiences,
             favoritedExperiences: favoritedExperiences,
             favoritedAt: favoritedAt,
+            favoritedRouteIds: favoritedRouteIds,
+            favoritedRouteAt: favoritedRouteAt,
             pendingCheckIns: pendingCheckIns,
             lastSelectedCity: lastSelectedCity,
             hasCompletedOnboarding: hasCompletedOnboarding,
@@ -717,6 +740,27 @@ public final class UserPreferences {
                 _ = repo.toggleFavorite(experienceId: id, at: date)
             }
         }
+    }
+
+    /// Adds or removes a ROUTE from the traveler's local favorites.
+    /// Deliberately independent of `toggleFavorite(_:)`: routes never write
+    /// through to the experience repository. Returns the new favorited state.
+    @discardableResult
+    public func toggleRouteFavorite(_ id: String, at date: Date = Date()) -> Bool {
+        if favoritedRouteIds.contains(id) {
+            favoritedRouteIds.remove(id)
+            favoritedRouteAt.removeValue(forKey: id)
+            return false
+        } else {
+            favoritedRouteIds.insert(id)
+            favoritedRouteAt[id] = date
+            return true
+        }
+    }
+
+    /// Read-back for the route favorite state (persists across relaunches).
+    public func isRouteFavorited(_ id: String) -> Bool {
+        favoritedRouteIds.contains(id)
     }
 
     /// Marks the first-run onboarding flow as finished so it won't be shown again.

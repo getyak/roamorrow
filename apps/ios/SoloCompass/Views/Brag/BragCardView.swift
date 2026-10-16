@@ -32,9 +32,9 @@ public struct BragCardView: View {
                 .foregroundColor(CT.omenGold)
 
             HStack(spacing: 20) {
-                metric(value: "\(data.dayCount)", label: "days")
-                metric(value: "\(data.distinctExperienceCount)", label: "places")
-                metric(value: String(format: "%.1f", data.approxDistanceKm), label: "km")
+                metric(value: "\(data.dayCount)", label: NSLocalizedString("brag.metric.days", comment: "days"))
+                metric(value: "\(data.distinctExperienceCount)", label: NSLocalizedString("brag.metric.places", comment: "places"))
+                metric(value: String(format: "%.1f", data.approxDistanceKm), label: NSLocalizedString("brag.metric.km", comment: "km"))
             }
 
             Text(data.headline)
@@ -53,24 +53,28 @@ public struct BragCardView: View {
 
             HStack {
                 Button(action: onShare) {
-                    Label("Share", systemImage: "square.and.arrow.up")
+                    Label(NSLocalizedString("brag.share", comment: "Share"), systemImage: "square.and.arrow.up")
                         .font(.callout.weight(.semibold))
                 }
+                .accessibilityLabel(Text(NSLocalizedString("brag.share.a11y", comment: "Share this card")))
                 Spacer()
                 Button(action: onWallpaper) {
-                    Label("Wallpaper", systemImage: "iphone")
+                    Label(NSLocalizedString("brag.wallpaper", comment: "Wallpaper"), systemImage: "iphone")
                         .font(.callout)
                         .foregroundColor(CT.fgMuted)
                 }
+                .accessibilityLabel(Text(NSLocalizedString("brag.wallpaper.a11y", comment: "Save the card to use as a wallpaper")))
                 Spacer()
-                Button(action: onVideoUnlock) {
-                    Label(
-                        isVideoUnlocked ? "Video" : "Video · $1.99",
-                        systemImage: "video"
-                    )
-                    .font(.callout)
-                    .foregroundColor(isVideoUnlocked ? CT.omenGold : CT.fgMuted)
-                }
+                // Video recap has no shipped capability yet — the old
+                // "Video · $1.99" button implied a purchase that does not
+                // exist. Shown as an honest preview chip, not an action.
+                Label(
+                    NSLocalizedString("brag.video.preview", comment: "Video · preview"),
+                    systemImage: "video"
+                )
+                .font(.callout)
+                .foregroundColor(CT.fgMuted)
+                .accessibilityLabel(Text(NSLocalizedString("brag.video.preview.a11y", comment: "Video recap, preview only")))
             }
             .padding(.horizontal, 20)
         }

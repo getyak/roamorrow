@@ -81,6 +81,8 @@ public final class VoiceService {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let permissions: PermissionRequester
+    private var generation = VoiceCaptureGeneration()
+    private var hasInstalledTap = false
 
     public init(locale: Locale = .current) {
         self.recognizer = SFSpeechRecognizer(locale: locale)
@@ -100,17 +102,20 @@ public final class VoiceService {
     /// the microphone is ever requested.
     public func requestPermission() async -> Bool {
         let speechAuthorized = await permissions.requestSpeechAuthorization()
-        guard speechAuthorized else { return false }
-        return await permissions.requestMicrophonePermission()
+        guard speechAuthorized, !Task.isCancelled else { return false }
+        let microphoneAuthorized = await permissions.requestMicrophonePermission()
+        return microphoneAuthorized && !Task.isCancelled
     }
 
     /// Returns a stream of transcripts. Each yielded value is the *current*
     /// best-guess transcript (replace, do not append). Stream ends on
     /// `stopListening()` or when the recognizer signals final.
     public func startListening() throws -> AsyncThrowingStream<String, Error> {
+        cleanup()
         guard let recognizer, recognizer.isAvailable else {
             throw VoiceError.recognizerUnavailable
         }
+        let token = generation.begin()
 
         // Audio session
         let session = AVAudioSession.sharedInstance()
@@ -118,6 +123,7 @@ public final class VoiceService {
             try session.setCategory(.record, mode: .measurement, options: .duckOthers)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
+            cleanup(ifGeneration: token)
             throw VoiceError.audioSessionFailed(error)
         }
 
@@ -149,14 +155,19 @@ public final class VoiceService {
                 rms = sqrtf(rms / Float(max(frames, 1)))
                 let normalized = Double(min(rms * 8, 1.0))
                 guard amplitudeGate.shouldPublish(normalized, at: time.hostTime) else { return }
-                Task { @MainActor [weak self] in self?.amplitude = normalized }
+                Task { @MainActor [weak self] in
+                    guard let self, self.generation.isCurrent(token) else { return }
+                    self.amplitude = normalized
+                }
             }
         }
+        hasInstalledTap = true
 
         audioEngine.prepare()
         do {
             try audioEngine.start()
         } catch {
+            cleanup(ifGeneration: token)
             throw VoiceError.audioSessionFailed(error)
         }
 
@@ -170,21 +181,23 @@ public final class VoiceService {
         // `Sendable` continuation directly and hops to the main actor for any
         // isolated cleanup.
         recognitionTask = recognizer.recognitionTask(with: request) { result, error in
-            if let result {
-                continuation.yield(result.bestTranscription.formattedString)
-                if result.isFinal {
+            let text = result?.bestTranscription.formattedString
+            let isFinal = result?.isFinal ?? false
+            Task { @MainActor [weak self] in
+                guard let self, self.generation.isCurrent(token) else { return }
+                if let text { continuation.yield(text) }
+                if let error {
+                    continuation.finish(throwing: VoiceError.recognitionFailed(error))
+                    self.cleanup(ifGeneration: token)
+                } else if isFinal {
                     continuation.finish()
-                    Task { @MainActor [weak self] in self?.cleanup() }
+                    self.cleanup(ifGeneration: token)
                 }
-            }
-            if let error {
-                continuation.finish(throwing: VoiceError.recognitionFailed(error))
-                Task { @MainActor [weak self] in self?.cleanup() }
             }
         }
 
         continuation.onTermination = { _ in
-            Task { @MainActor [weak self] in self?.stopListening() }
+            Task { @MainActor [weak self] in self?.cleanup(ifGeneration: token) }
         }
 
         return stream
@@ -195,10 +208,14 @@ public final class VoiceService {
         cleanup()
     }
 
-    private func cleanup() {
+    private func cleanup(ifGeneration token: UUID? = nil) {
+        guard generation.finish(token: token) else { return }
         if audioEngine.isRunning {
             audioEngine.stop()
+        }
+        if hasInstalledTap {
             audioEngine.inputNode.removeTap(onBus: 0)
+            hasInstalledTap = false
         }
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()

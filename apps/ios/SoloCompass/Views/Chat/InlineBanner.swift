@@ -87,21 +87,21 @@ public struct InlineBanner: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                if let ctaLabel, let onCTA {
+                    Button(action: onCTA) {
+                        Text(ctaLabel)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(CT.actionTintAdaptive)
+                            // HIG 44pt target without changing the compact copy.
+                            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             Spacer(minLength: 4)
-
-            if let ctaLabel, let onCTA {
-                Button(action: onCTA) {
-                    Text(ctaLabel)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(CT.accent)
-                        // HIG 44pt target without changing the compact copy.
-                        .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
 
             if let onDismiss {
                 Button(action: onDismiss) {
@@ -135,7 +135,7 @@ public struct InlineBanner: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
         .fixedSize(horizontal: false, vertical: true)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 

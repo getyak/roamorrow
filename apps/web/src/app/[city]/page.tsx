@@ -11,7 +11,7 @@
  */
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { notFound, useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   CITIES,
@@ -23,13 +23,14 @@ import {
 } from "@/lib/cities-data";
 import { WebLisbonMap } from "@/components/lisbon/WebLisbonMap";
 import { CommandPalette } from "@/components/lisbon/CommandPalette";
+import { applySort, parseSortParam, sortParamFor, type SortMode } from "@/lib/city-sort";
 
 const FONT_DISPLAY = '-apple-system, "SF Pro Display", "Inter", system-ui, sans-serif';
 const FONT_MONO = '"JetBrains Mono", "SF Mono", ui-monospace, monospace';
 const FONT_CN = '"PingFang SC", "Hiragino Sans GB", system-ui, sans-serif';
 
 type Lang = "zh" | "en";
-type Sort = "curated" | "recent" | "distance";
+type Sort = SortMode;
 
 interface Strings {
   nearby: string;
@@ -49,7 +50,7 @@ interface Strings {
   stay: string;
   price: string;
   crowd: string;
-  addToPlan: string;
+  liveMap: string;
   pinned: string;
   tram: string;
 }
@@ -60,21 +61,21 @@ function strings(lang: Lang, city: WebCity): Strings {
         nearby: `${city.zh} · ${city.experiences.length} 个体验`,
         search: "搜地点、心情、时间…",
         sortBy: "排序",
-        recent: "最近编辑",
+        recent: "示例日期",
         curated: "编辑精选",
-        distance: "距离",
+        distance: "步行时间",
         sources: "来源",
-        forYou: "为你",
+        forYou: "指南提示",
         allCats: "全部",
         verified: "核实于",
-        lastEdit: "今天 14:22",
+        lastEdit: "核实于",
         edition: "2026 春",
         walk: "步行",
         best: "时段",
         stay: "时长",
         price: "价",
         crowd: "人",
-        addToPlan: "加入计划",
+        liveMap: "查看体验详情",
         pinned: "体验",
         tram: city.slug === "porto" ? "Dom Luís 桥" : "28 路",
       }
@@ -82,21 +83,21 @@ function strings(lang: Lang, city: WebCity): Strings {
         nearby: `${city.en} · ${city.experiences.length} experiences`,
         search: "Search places, moods, times…",
         sortBy: "Sort",
-        recent: "Recent",
+        recent: "Sample date",
         curated: "Curated",
-        distance: "Distance",
+        distance: "Walk time",
         sources: "Sources",
-        forYou: "For you",
+        forYou: "Guide note",
         allCats: "All",
         verified: "Verified",
-        lastEdit: "Today 14:22",
+        lastEdit: "Verified",
         edition: "Spring 2026",
         walk: "Walk",
         best: "Best",
         stay: "Stay",
         price: "Price",
         crowd: "Crowd",
-        addToPlan: "Add to plan",
+        liveMap: "View experience",
         pinned: "pinned",
         tram: city.slug === "porto" ? "Dom Luís" : "Tram 28",
       };
@@ -117,16 +118,55 @@ export default function CityPage() {
   const fontStack = lang === "zh" ? FONT_CN : FONT_DISPLAY;
 
   const [hoverId, setHoverId] = useState<string | null>(null);
-  const initialFocusId = city.experiences[0]?.id ?? null;
+  // W16: `?experience=<id>` deep link selects that experience on this route.
+  const expParam = searchParams.get("experience");
+  const initialFocusId =
+    (expParam && city.experiences.some((e) => e.id === expParam) && expParam) ||
+    city.experiences[0]?.id ||
+    null;
   const [focusedId, setFocusedId] = useState<string | null>(initialFocusId);
   const [activeCat, setActiveCat] = useState<WebCategoryId | null>(null);
-  const [activeSort, setActiveSort] = useState<Sort>("curated");
+  // W11: the sort selection lives in the URL so options, order and shareable
+  // state always agree — and the order actually changes.
+  const activeSort: Sort = parseSortParam(searchParams.get("sort"));
+  const setActiveSort = (next: Sort) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const v = sortParamFor(next);
+    if (v) params.set("sort", v);
+    else params.delete("sort");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  };
+  const [mobileSurface, setMobileSurface] = useState<"list" | "map">(expParam ? "map" : "list");
+  useEffect(() => {
+    if (expParam) setMobileSurface("map");
+  }, [expParam]);
+  function showExperience(id: string | null) {
+    setFocusedId(id);
+    setMobileSurface(id ? "map" : "list");
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLButtonElement>(
+            id
+              ? '.city-guide-detail button[aria-label="Close"]'
+              : ".city-guide-mobile-switch button",
+          )
+          ?.focus({ preventScroll: true }),
+      );
+    }
+  }
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Illustrated-map view state (W17): real zoom on the schematic SVG.
+  const [mapZoom, setMapZoom] = useState(1);
+  const [mapCenterY, setMapCenterY] = useState(350);
 
-  const filtered = useMemo(
-    () => (activeCat ? city.experiences.filter((e) => e.cat === activeCat) : city.experiences),
-    [activeCat, city.experiences],
-  );
+  const filtered = useMemo(() => {
+    const byCat = activeCat
+      ? city.experiences.filter((e) => e.cat === activeCat)
+      : city.experiences;
+    return applySort(byCat, activeSort);
+  }, [activeCat, city.experiences, activeSort]);
   const focused = useMemo(
     () => city.experiences.find((e) => e.id === focusedId) ?? null,
     [city.experiences, focusedId],
@@ -142,6 +182,7 @@ export default function CityPage() {
 
   return (
     <div
+      className="city-guide"
       style={{
         position: "fixed",
         inset: 0,
@@ -161,7 +202,34 @@ export default function CityPage() {
         onOpenPalette={() => setPaletteOpen(true)}
         activeCitySlug={city.slug}
       />
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+      <div
+        className="city-guide-mobile-switch"
+        role="group"
+        aria-label={lang === "zh" ? "指南视图" : "Guide view"}
+      >
+        <button
+          type="button"
+          aria-pressed={mobileSurface === "list"}
+          onClick={() => setMobileSurface("list")}
+        >
+          {lang === "zh" ? "体验列表" : "Experiences"}
+        </button>
+        <button
+          type="button"
+          aria-pressed={mobileSurface === "map"}
+          onClick={() => setMobileSurface("map")}
+        >
+          {lang === "zh" ? "示意地图" : "Illustrated map"}
+        </button>
+      </div>
+      <div
+        id="main"
+        role="main"
+        tabIndex={-1}
+        className="city-guide-panels"
+        data-mobile-surface={mobileSurface}
+        style={{ flex: 1, display: "flex", minHeight: 0 }}
+      >
         <ListColumn
           T={T}
           lang={lang}
@@ -173,7 +241,7 @@ export default function CityPage() {
           hoverId={hoverId}
           setHoverId={setHoverId}
           focusedId={focusedId}
-          setFocusedId={setFocusedId}
+          setFocusedId={showExperience}
         />
         <RightSurface
           T={T}
@@ -181,12 +249,16 @@ export default function CityPage() {
           hoverId={hoverId}
           setHoverId={setHoverId}
           focusedId={focusedId}
-          setFocusedId={setFocusedId}
+          setFocusedId={showExperience}
           focused={focused}
           city={city}
+          zoom={mapZoom}
+          setZoom={setMapZoom}
+          centerY={mapCenterY}
+          setCenterY={setMapCenterY}
         />
       </div>
-      <StatusBar T={T} lang={lang} city={city} />
+      <StatusBar lang={lang} city={city} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} lang={lang} />
     </div>
   );
@@ -210,8 +282,9 @@ function TopBar({
 }) {
   return (
     <div
+      className="city-guide-topbar"
       style={{
-        height: 48,
+        height: 56,
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
@@ -270,22 +343,6 @@ function TopBar({
             </Link>
           );
         })}
-        <button
-          type="button"
-          style={{
-            padding: "5px 9px",
-            borderRadius: 6,
-            background: "transparent",
-            border: "0.5px dashed var(--dark-border-strong)",
-            color: "var(--dark-fg-faint)",
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            cursor: "pointer",
-            marginLeft: 4,
-          }}
-        >
-          + City
-        </button>
       </div>
       <div style={{ flex: 1 }} />
       <button
@@ -293,8 +350,8 @@ function TopBar({
         onClick={onOpenPalette}
         aria-label="Open command palette"
         style={{
-          height: 28,
-          width: 320,
+          height: 44,
+          width: 280,
           background: "var(--dark-bg)",
           border: "0.5px solid var(--dark-border)",
           borderRadius: 6,
@@ -431,6 +488,7 @@ interface ListColumnProps {
 function ListColumn(p: ListColumnProps) {
   return (
     <div
+      className="city-guide-list"
       style={{
         width: 480,
         flexShrink: 0,
@@ -499,8 +557,8 @@ function ListColumn(p: ListColumnProps) {
           {(
             [
               { id: "curated", label: p.T.curated },
-              { id: "recent", label: p.T.recent },
-              { id: "distance", label: p.T.distance },
+              { id: "verified", label: p.T.recent },
+              { id: "walk", label: p.T.distance },
             ] as const
           ).map((s) => {
             const a = p.activeSort === s.id;
@@ -508,6 +566,7 @@ function ListColumn(p: ListColumnProps) {
               <button
                 key={s.id}
                 type="button"
+                aria-pressed={a}
                 onClick={() => p.setActiveSort(s.id)}
                 style={{
                   background: "transparent",
@@ -517,7 +576,10 @@ function ListColumn(p: ListColumnProps) {
                   fontWeight: a ? 600 : 500,
                   color: a ? "var(--dark-fg)" : "var(--dark-fg-subtle)",
                   cursor: "pointer",
-                  padding: 0,
+                  padding: "0 4px",
+                  minHeight: 44,
+                  display: "inline-flex",
+                  alignItems: "center",
                   borderBottom: a ? "1.5px solid var(--accent-amber)" : "1.5px solid transparent",
                   paddingBottom: 2,
                 }}
@@ -582,9 +644,10 @@ function CatChip({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       style={{
-        padding: "3px 8px",
+        padding: "6px 10px",
         borderRadius: 4,
         background: active ? `${color}22` : "transparent",
         border: `0.5px solid ${active ? color : "var(--dark-border-strong)"}`,
@@ -624,11 +687,16 @@ function ListRow({
   const place = lang === "zh" ? exp.placeZh : exp.place;
   const tags = lang === "zh" ? exp.tagsZh : exp.tags;
   return (
-    <div
+    <button
+      type="button"
+      aria-pressed={focused}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onClick={onClick}
       style={{
+        width: "100%",
+        textAlign: "left",
+        border: "none",
         padding: "14px 22px",
         paddingLeft: focused ? 20 : 22,
         borderBottom: "1px solid var(--dark-border-soft)",
@@ -747,10 +815,10 @@ function ListRow({
             color: "var(--dark-fg-faint)",
           }}
         >
-          {exp.sources} src
+          {lang === "zh" ? "示例" : "Sample"}
         </span>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -764,11 +832,58 @@ interface RightSurfaceProps {
   setFocusedId: (v: string | null) => void;
   focused: WebExperience | null;
   city: WebCity;
+  zoom: number;
+  setZoom: (z: number) => void;
+  centerY: number;
+  setCenterY: (y: number) => void;
+}
+
+function zoomedViewBox(zoom: number, centerY: number): string {
+  const w = 1000 / zoom;
+  const h = 700 / zoom;
+  return `${500 - w / 2} ${centerY - h / 2} ${w} ${h}`;
+}
+
+function MapControl({
+  label,
+  glyph,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  glyph: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 6,
+        background: "rgba(21,17,13,0.8)",
+        backdropFilter: "blur(8px)",
+        border: "0.5px solid var(--dark-border)",
+        color: "var(--dark-fg-secondary)",
+        fontFamily: FONT_DISPLAY,
+        fontSize: 14,
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      {glyph}
+    </button>
+  );
 }
 
 function RightSurface(p: RightSurfaceProps) {
   return (
     <div
+      className="city-guide-map"
       style={{
         flex: 1,
         position: "relative",
@@ -786,6 +901,7 @@ function RightSurface(p: RightSurfaceProps) {
           onTap={p.setFocusedId}
           dark
           mapConfig={p.city.mapConfig}
+          viewBox={zoomedViewBox(p.zoom, p.centerY)}
         />
       </div>
 
@@ -799,26 +915,29 @@ function RightSurface(p: RightSurfaceProps) {
           gap: 4,
         }}
       >
-        {["+", "−", "⌖"].map((c) => (
-          <button
-            key={c}
-            type="button"
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 6,
-              background: "rgba(21,17,13,0.8)",
-              backdropFilter: "blur(8px)",
-              border: "0.5px solid var(--dark-border)",
-              color: "var(--dark-fg-secondary)",
-              fontFamily: FONT_DISPLAY,
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
-            {c}
-          </button>
-        ))}
+        {/* Real map controls (W17): they zoom the illustrated map or reset it.
+            No locate — this schematic has no user position to find. */}
+        <MapControl
+          label={p.lang === "zh" ? "放大" : "Zoom in"}
+          glyph="+"
+          disabled={p.zoom >= 2.5}
+          onClick={() => p.setZoom(Math.min(2.5, p.zoom * 1.25))}
+        />
+        <MapControl
+          label={p.lang === "zh" ? "缩小" : "Zoom out"}
+          glyph="−"
+          disabled={p.zoom <= 1}
+          onClick={() => p.setZoom(Math.max(1, p.zoom / 1.25))}
+        />
+        <MapControl
+          label={p.lang === "zh" ? "重置视图" : "Reset view"}
+          glyph="⌖"
+          disabled={p.zoom === 1 && p.centerY === 350}
+          onClick={() => {
+            p.setZoom(1);
+            p.setCenterY(350);
+          }}
+        />
       </div>
 
       <div
@@ -913,11 +1032,11 @@ function DetailDock({
   const place = lang === "zh" ? exp.placeZh : exp.place;
   const why = lang === "zh" ? exp.whyZh : exp.why;
   const moment = lang === "zh" ? exp.momentZh : exp.moment;
-  const aiReason = lang === "zh" ? exp.aiReasonZh : exp.aiReason;
   const tags = lang === "zh" ? exp.tagsZh : exp.tags;
   const detailHref = `/experience/${exp.id}${lang === "en" ? "?lang=en" : ""}`;
   return (
     <div
+      className="city-guide-detail"
       style={{
         position: "absolute",
         left: 24,
@@ -942,8 +1061,8 @@ function DetailDock({
           position: "absolute",
           top: 10,
           right: 12,
-          width: 22,
-          height: 22,
+          width: 44,
+          height: 44,
           borderRadius: 11,
           background: "transparent",
           border: "0.5px solid var(--dark-border-strong)",
@@ -996,7 +1115,10 @@ function DetailDock({
         />
         <MetaRow k={T.stay} v={`${exp.durationMin} min`} />
         <MetaRow k={T.price} v={exp.pricePill} />
-        <MetaRow k={T.crowd} v={exp.crowd} />
+        <MetaRow
+          k={T.crowd}
+          v={lang === "zh" ? { quiet: "安静", calm: "舒适", busy: "较热闹" }[exp.crowd] : exp.crowd}
+        />
         <div style={{ flex: 1 }} />
         <div
           style={{
@@ -1006,9 +1128,7 @@ function DetailDock({
             lineHeight: 1.5,
           }}
         >
-          {T.verified} {exp.lastVerified}
-          <br />
-          {exp.sources} {T.sources.toLowerCase()}
+          {lang === "zh" ? "示例资料 · 出行前请核对" : "Guide sample · check current details"}
         </div>
       </div>
 
@@ -1139,14 +1259,14 @@ function DetailDock({
             flex: 1,
           }}
         >
-          {aiReason}
+          {(lang === "zh" ? exp.tagsZh : exp.tags).join(" · ")}
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-          <button
-            type="button"
+          <Link
+            href={detailHref}
             style={{
               flex: 1,
-              padding: "7px 0",
+              padding: "9px 0",
               borderRadius: 5,
               background: "var(--accent-amber)",
               border: "none",
@@ -1155,27 +1275,11 @@ function DetailDock({
               fontSize: 12,
               fontWeight: 600,
               cursor: "pointer",
-            }}
-          >
-            {T.addToPlan}
-          </button>
-          <Link
-            href={detailHref}
-            style={{
-              padding: "7px 12px",
-              borderRadius: 5,
-              background: "transparent",
-              border: "0.5px solid var(--dark-border-strong)",
-              color: "var(--dark-fg-muted)",
-              fontFamily: lang === "zh" ? FONT_CN : FONT_DISPLAY,
-              fontSize: 12,
-              cursor: "pointer",
+              textAlign: "center",
               textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
             }}
           >
-            {lang === "zh" ? "详情" : "Details"} →
+            {T.liveMap}
           </Link>
         </div>
       </div>
@@ -1199,36 +1303,16 @@ function MetaRow({ k, v }: { k: string; v: string }) {
   );
 }
 
-function StatusBar({ T, lang, city }: { T: Strings; lang: Lang; city: WebCity }) {
+function StatusBar({ lang, city }: { lang: Lang; city: WebCity }) {
   return (
-    <div
-      style={{
-        height: 26,
-        flexShrink: 0,
-        background: "var(--dark-surface)",
-        borderTop: "1px solid var(--dark-border)",
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "0 14px",
-        fontFamily: FONT_MONO,
-        fontSize: 10,
-        color: "var(--dark-fg-faint)",
-        letterSpacing: 0.4,
-      }}
-    >
-      <span style={{ color: "var(--accent-amber)" }}>●</span>
-      <span>compass.io / {city.slug}</span>
-      <span style={{ color: "var(--dark-border-strong)" }}>·</span>
+    <footer className="city-guide-status">
+      <strong>{lang === "zh" ? "指南预览" : "Guide preview"}</strong>
       <span>
-        {city.experiences.length} exp · {Object.keys(WEB_CATS).length} cats
+        {city.experiences.length}{" "}
+        {lang === "zh"
+          ? "个示例体验 · 出行前确认当前情况"
+          : "illustrative experiences · check current details before travel"}
       </span>
-      <span style={{ flex: 1 }} />
-      <span>{T.lastEdit}</span>
-      <span style={{ color: "var(--dark-border-strong)" }}>·</span>
-      <span>v0.4.2</span>
-      <span style={{ color: "var(--dark-border-strong)" }}>·</span>
-      <span>{lang}</span>
-    </div>
+    </footer>
   );
 }

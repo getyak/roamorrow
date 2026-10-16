@@ -299,6 +299,8 @@ private struct CityPickerHeader: View {
                     onTap()
                 } label: {
                     nudgeCapsule
+                        .frame(minHeight: HitTargetMetrics.minimum, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .combine)

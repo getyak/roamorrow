@@ -9,7 +9,10 @@ import SwiftData
 /// Cancelling the form never pins the experience, and `onSuccess` only runs
 /// after persistence succeeded.
 public struct AddToItinerarySheet: View {
-    let experienceId: String
+    /// Experience ids to pin. Single-experience callers use `experienceId:`;
+    /// route add-to-itinerary passes every stop so the whole walk lands in the
+    /// chosen itinerary in one durable write.
+    let experienceIds: [String]
     let experienceTitle: String
     /// Called after a successful add, with the exact itinerary that was updated.
     var onSuccess: ((Itinerary) -> Void)?
@@ -19,6 +22,15 @@ public struct AddToItinerarySheet: View {
 
     private let store: ItineraryStore
     @State private var model: AddToItineraryModel
+    /// Local failure surface for the multi-stop write. Non-nil keeps the sheet
+    /// open with the user's selection intact (no silent loss).
+    @State private var saveErrorMessage: String?
+    /// Guards the in-flight write against double taps.
+    @State private var isSaving = false
+    /// Itinerary just updated (read-back highlight for the multi-stop path).
+    @State private var justAddedId: ItineraryId?
+    /// Target of the most recent (possibly failed) write — drives Retry.
+    @State private var lastAttemptedItineraryId: ItineraryId?
 
     public init(
         experienceId: String,
@@ -26,7 +38,21 @@ public struct AddToItinerarySheet: View {
         store: ItineraryStore = ItineraryStore(),
         onSuccess: ((Itinerary) -> Void)? = nil
     ) {
-        self.experienceId = experienceId
+        self.init(
+            experienceIds: [experienceId],
+            experienceTitle: experienceTitle,
+            store: store,
+            onSuccess: onSuccess
+        )
+    }
+
+    public init(
+        experienceIds: [String],
+        experienceTitle: String,
+        store: ItineraryStore = ItineraryStore(),
+        onSuccess: ((Itinerary) -> Void)? = nil
+    ) {
+        self.experienceIds = experienceIds
         self.experienceTitle = experienceTitle
         self.store = store
         self.onSuccess = onSuccess
@@ -37,7 +63,8 @@ public struct AddToItinerarySheet: View {
 
     /// City of the source experience, or nil when it is not loaded.
     private var sourceCityCode: String? {
-        ItineraryCreationRules.sourceCityCode(experienceId: experienceId, in: experienceService.allExperiences)
+        guard let firstId = experienceIds.first else { return nil }
+        return ItineraryCreationRules.sourceCityCode(experienceId: firstId, in: experienceService.allExperiences)
     }
 
     private var isCreating: Binding<Bool> {
@@ -69,7 +96,7 @@ public struct AddToItinerarySheet: View {
                 ItineraryFormView(
                     store: store,
                     sourceCityCode: sourceCityCode,
-                    pinnedExperienceIds: [experienceId],
+                    pinnedExperienceIds: experienceIds,
                     embedInNavigationStack: false,
                     onSaved: { created in handleCreated(created) },
                     onCancel: { model.cancelCreation() }
@@ -86,13 +113,24 @@ public struct AddToItinerarySheet: View {
         .alert(
             NSLocalizedString("itinerary.addTo.error.title", comment: "Error alert title when pinning fails"),
             isPresented: Binding(
-                get: { model.errorMessage != nil },
-                set: { if !$0 { model.clearError() } }
+                get: { saveErrorMessage != nil || model.errorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil; model.clearError() } }
             )
         ) {
-            Button(NSLocalizedString("common.ok", comment: "OK")) { model.clearError() }
+            Button(NSLocalizedString("itinerary.addTo.error.retry", comment: "Retry pinning after a failure")) {
+                let message = saveErrorMessage ?? model.errorMessage
+                saveErrorMessage = nil
+                model.clearError()
+                if message != nil, let target = model.itineraries.first(where: { $0.id == lastAttemptedItineraryId }) {
+                    addExisting(target)
+                }
+            }
+            Button(NSLocalizedString("common.ok", comment: "OK"), role: .cancel) {
+                saveErrorMessage = nil
+                model.clearError()
+            }
         } message: {
-            if let msg = model.errorMessage { Text(msg) }
+            Text(saveErrorMessage ?? model.errorMessage ?? "")
         }
     }
 
@@ -113,11 +151,11 @@ public struct AddToItinerarySheet: View {
     }
 
     private func itineraryRow(_ itin: Itinerary) -> some View {
-        let alreadyAdded = itin.experienceIds.contains(experienceId)
-        let wasJustAdded = model.addedToId == itin.id
+        let alreadyAdded = experienceIds.allSatisfy { itin.experienceIds.contains($0) }
+        let wasJustAdded = (justAddedId ?? model.addedToId) == itin.id
 
         return Button {
-            guard !alreadyAdded else { return }
+            guard !alreadyAdded, !isSaving else { return }
             addExisting(itin)
         } label: {
             HStack(spacing: 12) {
@@ -138,15 +176,19 @@ public struct AddToItinerarySheet: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                if wasJustAdded {
+                if isSaving && !alreadyAdded {
+                    ProgressView()
+                } else if wasJustAdded {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(CT.verifiedGreen)
                         .transition(.scale.combined(with: .opacity))
                 }
             }
+            .frame(minHeight: HitTargetMetrics.minimum)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(alreadyAdded)
+        .disabled(alreadyAdded || isSaving)
         .accessibilityLabel(Text(alreadyAdded
             ? String(format: NSLocalizedString("itinerary.addTo.alreadyAdded", comment: "Already in itinerary"), itin.title)
             : String(format: NSLocalizedString("itinerary.addTo.addToNamed", comment: "Add to itinerary name"), itin.title)
@@ -211,12 +253,26 @@ public struct AddToItinerarySheet: View {
     }
 
     private func addExisting(_ itinerary: Itinerary) {
-        guard let updated = model.addExisting(experienceId: experienceId, to: itinerary.id) else {
-            return
+        // One durable write for every stop; on failure the sheet stays open,
+        // the selection survives, and the error offers a retry (R2-01).
+        isSaving = true
+        defer { isSaving = false }
+        lastAttemptedItineraryId = itinerary.id
+        do {
+            guard let updated = try store.addExperiences(experienceIds, to: itinerary.id) else {
+                return
+            }
+            justAddedId = updated.id
+            model.reload()
+            Haptics.notify(.success)
+            onSuccess?(updated)
+            dismiss()
+        } catch {
+            saveErrorMessage = NSLocalizedString(
+                "itinerary.addTo.error.message",
+                comment: "Recoverable message shown when adding an experience fails"
+            )
         }
-        Haptics.notify(.success)
-        onSuccess?(updated)
-        dismiss()
     }
 }
 

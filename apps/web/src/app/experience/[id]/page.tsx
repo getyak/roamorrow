@@ -108,37 +108,35 @@ function ExperienceView({
   const place = lang === "zh" ? exp.placeZh : exp.place;
   const intro = lang === "zh" ? exp.whyZh : exp.why;
   const moment = lang === "zh" ? exp.momentZh : exp.moment;
-  const aiReason = lang === "zh" ? exp.aiReasonZh : exp.aiReason;
+  const guideNote = (lang === "zh" ? exp.tagsZh : exp.tags).join(" · ");
 
   const T =
     lang === "zh"
       ? {
           breadcrumb: `${city.zh} · ${cat.zh}`,
           quickFacts: "速览",
-          forYou: "为你推荐",
+          forYou: "指南提示",
           when: "什么时候去",
           whenLabel: ["位置", "最佳时段", "停留", "人多吗", "一人去合适吗", "花费"],
           why: "那一刻",
           nearby: "附近还有",
-          addToTrip: "加进我的行程",
-          viewMap: "在地图上看",
-          metaSeo:
-            "这一页是 Solo Compass 写的——一份只为独自旅行的人做的、由 AI 整理但人去过的指南。",
+          addToTrip: "在城市指南中查看",
+          viewMap: "城市指南",
+          metaSeo: "此页为示例体验内容，出行前请确认当前信息。",
           backToCity: `← 回到 ${city.zh}`,
           mins: "分钟",
         }
       : {
           breadcrumb: `${city.en} · ${cat.en}`,
           quickFacts: "Quick facts",
-          forYou: "For you",
+          forYou: "Guide note",
           when: "When to go",
           whenLabel: ["Where", "Best time", "Stay", "Crowded?", "Solo-friendly?", "Cost"],
           why: "The moment",
           nearby: "Nearby",
-          addToTrip: "Add to my trip",
-          viewMap: "View on map",
-          metaSeo:
-            "This page is by Solo Compass — a guide for people traveling alone, organized by AI but written by people who've been there.",
+          addToTrip: "View in city guide",
+          viewMap: "City guide",
+          metaSeo: "An illustrative experience. Confirm current details before travel.",
           backToCity: `← Back to ${city.en}`,
           mins: "min",
         };
@@ -150,21 +148,39 @@ function ExperienceView({
       `${exp.bestHours[0]}:00 – ${exp.bestHours[exp.bestHours.length - 1]! + 1}:00`,
     ],
     [T.whenLabel[2]!, `${exp.durationMin} ${T.mins}`],
-    [T.whenLabel[3]!, exp.crowd],
+    [
+      T.whenLabel[3]!,
+      lang === "zh" ? { quiet: "安静", calm: "舒适", busy: "较热闹" }[exp.crowd] : exp.crowd,
+    ],
     [T.whenLabel[4]!, lang === "zh" ? "是 · 推荐独自前往" : "Yes · solo recommended"],
     [T.whenLabel[5]!, exp.pricePill],
   ];
 
   return (
     <main
+      id="main"
+      className="experience-detail"
       style={{
         minHeight: "100vh",
         background: "#F1ECDF",
-        padding: "48px 24px 80px",
         fontFamily: fontStack,
         color: "#1A1612",
       }}
     >
+      <p
+        style={{
+          maxWidth: 760,
+          margin: "0 auto 16px",
+          padding: "0 18px",
+          fontSize: 13,
+          lineHeight: 1.6,
+          color: "#6D6358",
+        }}
+      >
+        {lang === "zh"
+          ? "指南预览 · 本页为示例体验，出行前请确认位置、营业与当前情况。"
+          : "Guide preview · This is an illustrative experience. Confirm location, opening hours and current conditions before travel."}
+      </p>
       <article
         style={{
           maxWidth: 760,
@@ -177,48 +193,29 @@ function ExperienceView({
         }}
       >
         <div
+          className="exp-topbar"
           style={{
             padding: "11px 22px",
             borderBottom: "0.5px solid #E5DDCD",
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            gap: 12,
+            justifyContent: "space-between",
             background: "#F8F4ED",
           }}
         >
-          <div style={{ display: "flex", gap: 5 }}>
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                style={{
-                  width: 9,
-                  height: 9,
-                  borderRadius: 4.5,
-                  background: "#E5DDCD",
-                }}
-              />
-            ))}
-          </div>
-          <div
-            style={{
-              flex: 1,
-              padding: "4px 12px",
-              borderRadius: 5,
-              background: "#FFF",
-              border: "0.5px solid #E5DDCD",
-              fontFamily: FONT_MONO,
-              fontSize: 10.5,
-              color: "#5C4F3E",
-              letterSpacing: 0.3,
-            }}
+          <span
+            className="exp-brand"
+            style={{ fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 600, color: "#5C4F3E" }}
           >
-            compass.io / {city.slug} / {exp.id}
-          </div>
+            Solo Compass
+          </span>
           <Link
             href={`/${city.slug}${lang === "en" ? "?lang=en" : ""}`}
+            className="exp-back"
             style={{
-              fontFamily: FONT_MONO,
-              fontSize: 10.5,
+              fontFamily: FONT_DISPLAY,
+              fontSize: 13,
               color: "#5C4F3E",
               textDecoration: "none",
               padding: "4px 10px",
@@ -232,11 +229,12 @@ function ExperienceView({
         </div>
 
         <div
+          className="exp-pad"
           style={{
-            padding: "20px 56px 0",
+            paddingTop: 20,
             fontFamily: FONT_MONO,
             fontSize: 10,
-            color: "#A39F99",
+            color: "#74695C",
             letterSpacing: 1.5,
             textTransform: "uppercase",
           }}
@@ -245,21 +243,24 @@ function ExperienceView({
         </div>
 
         <div
+          className="exp-pad"
           style={{
-            padding: "14px 56px 30px",
+            paddingTop: 14,
+            paddingBottom: 30,
             background: `linear-gradient(180deg, ${cat.color}10, transparent 60%)`,
           }}
         >
           <h1
             style={{
               fontFamily: lang === "zh" ? FONT_CN : FONT_SERIF,
-              fontSize: lang === "zh" ? 42 : 52,
+              fontSize: lang === "zh" ? "clamp(26px, 8vw, 42px)" : "clamp(30px, 9vw, 52px)",
               fontWeight: lang === "zh" ? 600 : 400,
               fontStyle: lang === "zh" ? "normal" : "italic",
               letterSpacing: "-1px",
               margin: "0 0 12px",
               lineHeight: 1.05,
               color: "#1A1612",
+              overflowWrap: "anywhere",
             }}
           >
             {title}
@@ -270,7 +271,7 @@ function ExperienceView({
               fontSize: lang === "zh" ? 18 : 22,
               fontStyle: lang === "zh" ? "normal" : "italic",
               fontWeight: lang === "zh" ? 500 : 400,
-              color: cat.color,
+              color: "#6D4B29",
               marginBottom: 22,
               letterSpacing: "-0.3px",
             }}
@@ -292,11 +293,9 @@ function ExperienceView({
         </div>
 
         <div
+          className="exp-pad exp-body-grid"
           style={{
-            padding: "0 56px 32px",
-            display: "grid",
-            gridTemplateColumns: "1fr 240px",
-            gap: 36,
+            paddingBottom: 32,
           }}
         >
           <div>
@@ -348,7 +347,7 @@ function ExperienceView({
                 margin: "0 0 24px",
               }}
             >
-              {lang === "zh" ? exp.whyZh : exp.why}
+              {facts[1]![1]} · {exp.durationMin} {T.mins}
             </p>
 
             <div
@@ -383,7 +382,7 @@ function ExperienceView({
                   style={{
                     fontFamily: FONT_MONO,
                     fontSize: 10,
-                    color: "#A66A00",
+                    color: "#755125",
                     letterSpacing: 1.2,
                     textTransform: "uppercase",
                     marginBottom: 6,
@@ -399,7 +398,7 @@ function ExperienceView({
                     lineHeight: 1.55,
                   }}
                 >
-                  {aiReason}
+                  {guideNote}
                 </div>
               </div>
             </div>
@@ -417,8 +416,8 @@ function ExperienceView({
             <div
               style={{
                 fontFamily: FONT_MONO,
-                fontSize: 9.5,
-                color: "#A39F99",
+                fontSize: 12,
+                color: "#74695C",
                 letterSpacing: 1.5,
                 textTransform: "uppercase",
                 marginBottom: 14,
@@ -433,8 +432,8 @@ function ExperienceView({
                 <div
                   style={{
                     fontFamily: FONT_MONO,
-                    fontSize: 9,
-                    color: "#A39F99",
+                    fontSize: 12,
+                    color: "#74695C",
                     letterSpacing: 1,
                     textTransform: "uppercase",
                     marginBottom: 3,
@@ -465,7 +464,8 @@ function ExperienceView({
               }}
             >
               <Link
-                href={`/${city.slug}${lang === "en" ? "?lang=en" : ""}`}
+                href={`/${city.slug}?experience=${encodeURIComponent(exp.id)}${lang === "en" ? "&lang=en" : ""}`}
+                className="exp-cta"
                 style={{
                   padding: "8px 12px",
                   borderRadius: 5,
@@ -480,10 +480,11 @@ function ExperienceView({
                   textDecoration: "none",
                 }}
               >
-                + {T.addToTrip}
+                {T.addToTrip}
               </Link>
               <Link
                 href={`/${city.slug}${lang === "en" ? "?lang=en" : ""}`}
+                className="exp-cta"
                 style={{
                   padding: "8px 12px",
                   borderRadius: 5,
@@ -503,27 +504,27 @@ function ExperienceView({
                 style={{
                   marginTop: 8,
                   fontFamily: FONT_MONO,
-                  fontSize: 9,
-                  color: "#A39F99",
+                  fontSize: 12,
+                  color: "#74695C",
                   letterSpacing: 0.5,
                   lineHeight: 1.5,
                 }}
               >
-                {lang === "zh" ? "核实于" : "Verified"} {exp.lastVerified}
-                <br />
-                {exp.sources} {lang === "zh" ? "来源" : "sources"}
+                {lang === "zh"
+                  ? "示例指南，尚未实时核实。"
+                  : "Guide sample; current conditions aren’t verified."}
               </div>
             </div>
           </aside>
         </div>
 
         {nearby.length > 0 && (
-          <div style={{ padding: "0 56px 36px" }}>
+          <div className="exp-pad" style={{ paddingBottom: 36 }}>
             <div
               style={{
                 fontFamily: FONT_MONO,
                 fontSize: 10,
-                color: "#A39F99",
+                color: "#74695C",
                 letterSpacing: 2,
                 textTransform: "uppercase",
                 paddingTop: 24,
@@ -534,9 +535,8 @@ function ExperienceView({
               {T.nearby}
             </div>
             <div
+              className="exp-nearby-grid"
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
                 gap: 12,
               }}
             >
@@ -578,8 +578,8 @@ function ExperienceView({
                       <span
                         style={{
                           fontFamily: FONT_MONO,
-                          fontSize: 9.5,
-                          color: ncat.color,
+                          fontSize: 12,
+                          color: "#6D4B29",
                           letterSpacing: 1,
                           textTransform: "uppercase",
                           fontWeight: 600,
@@ -619,8 +619,10 @@ function ExperienceView({
         )}
 
         <div
+          className="exp-pad exp-footer"
           style={{
-            padding: "20px 56px",
+            paddingTop: 20,
+            paddingBottom: 20,
             borderTop: "0.5px solid #E5DDCD",
             background: "#F8F4ED",
             display: "flex",

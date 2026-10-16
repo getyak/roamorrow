@@ -7,6 +7,7 @@ import SwiftData
 /// Sort: departure-within-7-days (weight 3) + verified (weight 2) + city-match (weight 1).
 public struct DiscoverRecruitingRoutesView: View {
     @Environment(UserPreferences.self) private var preferences
+    @Environment(ExperienceService.self) private var experienceService
 
     /// Injected for testability; defaults to a live RouteStore in production.
     private let storeProvider: () -> RouteStore
@@ -15,6 +16,10 @@ public struct DiscoverRecruitingRoutesView: View {
     var currentCityCode: String?
 
     @State private var showingCreateRoute = false
+    /// Saved route awaiting presentation once the create sheet is fully gone.
+    @State private var pendingCreatedRoute: Route?
+    /// Saved route whose detail must open after a successful create (R2-04).
+    @State private var routeToOpen: Route?
 
     public init(
         currentCityCode: String? = nil,
@@ -45,13 +50,73 @@ public struct DiscoverRecruitingRoutesView: View {
             NSLocalizedString("discover.recruiting.title", comment: "Discover Recruiting Routes nav title")
         )
         .navigationBarTitleDisplayMode(.large)
-        .sheet(isPresented: $showingCreateRoute) {
+        .sheet(isPresented: $showingCreateRoute, onDismiss: {
+            // Open the saved route's detail only after the create sheet is
+            // fully gone — never stack presentation on a dismissing sheet.
+            if let created = pendingCreatedRoute {
+                pendingCreatedRoute = nil
+                routeToOpen = created
+            }
+        }) {
+            // Real candidates and a real save handler (R2-04): the old empty
+            // state opened a form with `candidates: []` and `onSave: { _ in }`
+            // — pick, generate and save could all do nothing.
             CreateRouteView(
-                candidates: [],
-                cityCode: currentCityCode ?? "",
-                userCoordinate: nil,
-                onSave: { _ in }
+                candidates: sameCityCandidates,
+                cityCode: effectiveCityCode ?? "",
+                userCoordinate: LocationService.shared.currentLocation?.coordinate,
+                dismissOnSave: true,
+                onSave: { route in
+                    // Persist first — the detail opens only for a durably
+                    // saved route. On failure the create sheet stays open
+                    // with the draft and its own retry banner.
+                    try storeProvider().savePersisted(route)
+                    pendingCreatedRoute = route
+                }
             )
+        }
+        // Successful creation opens the new route's detail right here.
+        .navigationDestination(isPresented: Binding(
+            get: { routeToOpen != nil },
+            set: { if !$0 { routeToOpen = nil } }
+        )) {
+            if let routeToOpen {
+                RouteDetailView(route: routeToOpen)
+            }
+        }
+    }
+
+    // MARK: - Create candidates (R2-04)
+
+    /// City used for both the create form and candidate filtering: explicit
+    /// when provided, else the traveler's last selected city.
+    private var effectiveCityCode: String? {
+        if let currentCityCode, !currentCityCode.isEmpty { return currentCityCode }
+        if let last = preferences.lastSelectedCity, !last.isEmpty { return last }
+        return nil
+    }
+
+    /// Real same-city stop candidates from ExperienceService — never an empty
+    /// placeholder and NEVER a fallback to other cities (review closure 2):
+    /// planning a route against the wrong city's geography is invented data.
+    /// City-code aliases ("vientiane" ↔ "VTE") match in both directions so
+    /// the picker isn't blank on a slug-coded city.
+    private var sameCityCandidates: [Experience] {
+        guard let city = effectiveCityCode else {
+            // No city context: candidates are meaningless here. The empty
+            // state routes the traveler to the map's city picker instead.
+            return []
+        }
+        var spellings: Set<String> = [city.lowercased()]
+        if let alias = MapViewModel.cityCodeAliases[city.lowercased()] {
+            spellings.insert(alias.lowercased())
+        }
+        for (slug, seed) in MapViewModel.cityCodeAliases
+        where seed.caseInsensitiveCompare(city) == .orderedSame {
+            spellings.insert(slug)
+        }
+        return experienceService.allExperiences.filter {
+            spellings.contains($0.location.cityCode.lowercased())
         }
     }
 
@@ -94,30 +159,71 @@ public struct DiscoverRecruitingRoutesView: View {
             .font(.headline)
             .foregroundStyle(CT.textPrimaryAdaptive)
             .multilineTextAlignment(.center)
-            Text(
-                NSLocalizedString(
-                    "discover.recruiting.empty.description",
-                    comment: "Empty state description"
-                )
-            )
-            .font(.subheadline)
-            .foregroundStyle(CT.textMutedAdaptive)
-            .multilineTextAlignment(.center)
-            Button {
-                showingCreateRoute = true
-            } label: {
-                Text(
-                    NSLocalizedString(
-                        "discover.recruiting.empty.create",
-                        comment: "Empty state secondary action — start your own route"
+            Text(emptyDescription)
+                .font(.subheadline)
+                .foregroundStyle(CT.textMutedAdaptive)
+                .multilineTextAlignment(.center)
+            if effectiveCityCode != nil, !sameCityCandidates.isEmpty {
+                // Real create is possible: same-city candidates exist.
+                Button {
+                    showingCreateRoute = true
+                } label: {
+                    Text(
+                        NSLocalizedString(
+                            "discover.recruiting.empty.create",
+                            comment: "Empty state secondary action — start your own route"
+                        )
                     )
-                )
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
+            // Real recovery action (review closure 2): never a dead/disabled
+            // Create. With no city — or no same-city candidates — the traveler
+            // goes back to the map; the root-owned CompassMapView handler
+            // closes presenting surfaces and opens the city picker.
+            Button {
+                RouteNavigationRequest.requestCitySelection()
+            } label: {
+                Text(emptyRecoveryLabel)
+            }
+            .buttonStyle(.borderedProminent)
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(CT.pageAdaptive)
+    }
+
+    /// Honest explanation for why this screen is empty (review closure 2).
+    private var emptyDescription: String {
+        if effectiveCityCode == nil {
+            return NSLocalizedString(
+                "discover.recruiting.empty.noCity",
+                comment: "No city selected — pick one on the map to see or create recruiting routes"
+            )
+        }
+        if sameCityCandidates.isEmpty {
+            return NSLocalizedString(
+                "discover.recruiting.empty.noCandidates",
+                comment: "This city has no curated places to build a route from yet"
+            )
+        }
+        return NSLocalizedString(
+            "discover.recruiting.empty.description",
+            comment: "Empty state description"
+        )
+    }
+
+    /// Recovery action label matched to the actual gap (review closure 2).
+    private var emptyRecoveryLabel: String {
+        effectiveCityCode == nil
+            ? NSLocalizedString(
+                "discover.recruiting.empty.chooseCity",
+                comment: "Open the map's city picker"
+            )
+            : NSLocalizedString(
+                "discover.recruiting.empty.backToMap",
+                comment: "Return to the map"
+            )
     }
 
     // MARK: - Composite scoring
@@ -147,13 +253,10 @@ public struct DiscoverRecruitingRoutesView: View {
     }
 
     private func departureWithin7Days(_ window: DepartureWindow) -> Bool {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        guard let fromDate = formatter.date(from: window.from) else { return false }
-        let now = Date()
-        let sevenDaysOut = Calendar.current.date(byAdding: .day, value: 7, to: now) ?? now
-        return fromDate >= now && fromDate <= sevenDaysOut
+        // Civil-day comparison (R2-03): "within 7 days" is about the day the
+        // group departs, not a UTC midnight instant — the old UTC parse
+        // shifted negative-offset devices a day early.
+        CivilDay.isWithinNext(window.from, days: 7)
     }
 }
 
@@ -269,6 +372,7 @@ private struct RecruitingEmptyIllustration: View {
     }
     .modelContainer(container)
     .environment(UserPreferences())
+    .environment(ExperienceService(seed: ExperienceService.hardcodedSeed))
 }
 
 #Preview("Empty state") {
@@ -279,6 +383,7 @@ private struct RecruitingEmptyIllustration: View {
         )
     }
     .environment(UserPreferences())
+    .environment(ExperienceService(seed: ExperienceService.hardcodedSeed))
 }
 
 /// Builds an in-memory ModelContainer for #Preview infra. Wraps `try` so the

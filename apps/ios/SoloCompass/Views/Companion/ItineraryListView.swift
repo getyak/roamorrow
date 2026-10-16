@@ -4,6 +4,7 @@ import SwiftData
 /// List of the user's saved itineraries, ordered by creation date (newest first).
 public struct ItineraryListView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverOn
 
     private let store: ItineraryStore
     private var onClose: (() -> Void)? = nil
@@ -15,6 +16,8 @@ public struct ItineraryListView: View {
     @State private var undoDismissTask: Task<Void, Never>?
     @State private var undoProgress: CGFloat = 1
     @State private var undoDragOffset: CGFloat = 0
+    @State private var mutationFailed = false
+    @State private var failedDeletion: Itinerary?
 
     /// Production init using the shared on-disk container.
     public init(sourceCityCode: String? = nil, onClose: (() -> Void)? = nil) {
@@ -50,6 +53,7 @@ public struct ItineraryListView: View {
                                     systemImage: "trash"
                                 )
                             }
+                            .disabled(lastDeleted != nil)
                         }
                     }
                     .listStyle(.plain)
@@ -91,16 +95,32 @@ public struct ItineraryListView: View {
         .onChange(of: lastDeleted == nil) { _, isNil in
             if isNil { undoDragOffset = 0 }
         }
+        .onDisappear { undoDismissTask?.cancel() }
+        .onChange(of: voiceOverOn) { _, enabled in
+            if enabled { undoDismissTask?.cancel() }
+        }
+        .alert(NSLocalizedString("itinerary.mutation.failed", comment: "Changes could not be saved. Your previous state is kept."), isPresented: $mutationFailed) {
+            Button(NSLocalizedString("common.retry", comment: "Retry")) {
+                if let failedDeletion { delete(failedDeletion) } else { performUndo() }
+            }
+            Button(NSLocalizedString("action.cancel", comment: "Cancel"), role: .cancel) { }
+        }
     }
 
     private func loadItineraries() {
-        Haptics.impact(.light)
         itineraries = store.loadAll()
     }
 
     private func delete(_ itinerary: Itinerary) {
         let captured = itinerary
-        try? store.delete(id: itinerary.id)
+        do {
+            try store.delete(id: itinerary.id)
+        } catch {
+            failedDeletion = itinerary
+            mutationFailed = true
+            return
+        }
+        failedDeletion = nil
         withAnimation(reduceMotion ? nil : .easeInOut) {
             itineraries.removeAll { $0.id == itinerary.id }
         }
@@ -109,8 +129,9 @@ public struct ItineraryListView: View {
         undoDragOffset = 0
         lastDeleted = captured
         undoDismissTask?.cancel()
+        guard !voiceOverOn else { return }
         undoDismissTask = Task {
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 withAnimation(reduceMotion ? nil : .easeInOut) {
@@ -122,10 +143,16 @@ public struct ItineraryListView: View {
 
     private func performUndo() {
         guard let saved = lastDeleted else { return }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         undoDismissTask?.cancel()
         undoDismissTask = nil
-        try? store.save(saved)
+        do {
+            try store.save(saved)
+        } catch {
+            failedDeletion = nil
+            mutationFailed = true
+            return
+        }
+        Haptics.impact(.light)
         withAnimation(reduceMotion ? nil : .easeInOut) {
             lastDeleted = nil
         }
@@ -167,7 +194,7 @@ public struct ItineraryListView: View {
             }
             .buttonStyle(.plain)
 
-            if !reduceMotion {
+            if !reduceMotion && !voiceOverOn {
                 GeometryReader { geo in
                     Capsule()
                         .fill(countdownLineColor)
@@ -207,8 +234,8 @@ public struct ItineraryListView: View {
         .onAppear {
             undoProgress = 1
             undoDragOffset = 0
-            if !reduceMotion {
-                withAnimation(.linear(duration: 4)) {
+            if !reduceMotion && !voiceOverOn {
+                withAnimation(.linear(duration: 10)) {
                     undoProgress = 0
                 }
             }
@@ -291,6 +318,15 @@ private struct ItineraryRow: View {
         return "\(Self.dateFormatter.string(from: start)) – \(Self.dateFormatter.string(from: end))"
     }
 
+    private var cityName: String {
+        let code = itinerary.cityCode.lowercased()
+        let canonical = MapViewModel.cityCodeAliases[code] ?? code
+        return MapViewModel.cityNameMap[itinerary.cityCode]
+            ?? MapViewModel.cityNameMap[canonical]
+            ?? MapViewModel.cityNameMap.first { $0.key.caseInsensitiveCompare(canonical) == .orderedSame }?.value
+            ?? itinerary.cityCode
+    }
+
     private var tripStatus: TripStatus {
         TripStatus.from(startDate: itinerary.startDate, endDate: itinerary.endDate)
     }
@@ -312,7 +348,7 @@ private struct ItineraryRow: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text(itinerary.cityCode)
+                Text(cityName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -345,7 +381,7 @@ private struct ItineraryRow: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(
-            "\(itinerary.title), \(itinerary.cityCode), \(dateRangeText), \(tripStatus.label)"
+            "\(itinerary.title), \(cityName), \(dateRangeText), \(tripStatus.label)"
         ))
     }
 }

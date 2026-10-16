@@ -1,0 +1,38 @@
+{
+  "observer": "parent Codex via existing CUA IAB browser3/tab7; independent reviewer verified source and host receipts, could not attach parent IAB",
+  "viewports": [
+    320,
+    390
+  ],
+  "height": 900,
+  "locales": [
+    "zh",
+    "en"
+  ],
+  "routes": [
+    "/experience/miradouro-graca",
+    "/trip/sofia-lisbon-may-2025"
+  ],
+  "checks": {
+    "horizontalOverflow": "documentElement.scrollWidth equals clientWidth at both widths for both routes/locales",
+    "experienceTargets": "Back, View in city guide and City guide links:44px; nearby cards106px ZH/141.36px EN",
+    "tripTargets": "Share and Open city guide:44px",
+    "keyboard": "EN320 Back link Tab -> View in city guide, solid2px outline, fully within viewport",
+    "navigation": "Experience -> correct selected city guide; trip -> real city guide; Chinese/English retained",
+    "mapTargets": "ZH320, no detail overlay;5 visible pins, default and zoom viewBox100 70 800 560: visible intersection44x44 for each; elementFromPoint centre and4 side midpoints at2px inset all matched its own button",
+    "mapBoundaryExample": {
+      "zoomedRightPinX": 276,
+      "width": 44,
+      "viewportRight": 320,
+      "centreAndFourSidePointsHitSelf": true
+    },
+    "mapSelection": "A Vida Portuguesa marker opened A Vida Portuguesa detail with matching title, local language, price and duration",
+    "metadata": "HTTP200 confirmed Sample trip title and illustrative description; brand appears once"
+  },
+  "notVerified": [
+    "Share was invoked; no completion/copy result was observed in this IAB. No send/receipt claimed.",
+    "Actual Mapbox token restoration, real sensors, payment and deployed backend remain outside this local sample.",
+    "200% browser zoom was not run in this batch.",
+    "These are targeted samples, not all runtime controls or96point certification."
+  ]
+}

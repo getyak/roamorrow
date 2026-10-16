@@ -19,6 +19,9 @@ public struct ConversationListView: View {
     @State private var summaries: [ConversationSummary] = []
     @State private var isLoading = false
     @State private var didLoad = false
+    /// Honest load-failure surface (contract 3): the previous list is kept
+    /// untouched and the error offers a retry.
+    @State private var loadError: String?
     /// US-024: when this list was opened from a tapped `message` push, the
     /// matching conversation is pushed onto the stack once it loads. Cleared
     /// after it routes so a re-render doesn't re-open it.
@@ -50,6 +53,27 @@ public struct ConversationListView: View {
 
     public var body: some View {
         List {
+            if let loadError {
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(loadError, systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(CT.sunGoldDeep)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(NSLocalizedString(
+                            "messages.load.retry",
+                            comment: "Retry loading the conversation list"
+                        )) {
+                            self.loadError = nil
+                            Task { await reload() }
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(CT.accent)
+                        .frame(minHeight: HitTargetMetrics.minimum)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
             if summaries.isEmpty {
                 Section {
                     Text(NSLocalizedString("messages.empty", comment: "No conversations yet"))
@@ -120,26 +144,33 @@ public struct ConversationListView: View {
         defer { isLoading = false }
 
         let result = await service.listConversations()
-        guard case .success(let conversations) = result else {
-            // Network/feature failure leaves the existing list untouched.
-            return
-        }
-
-        var built: [ConversationSummary] = []
-        built.reserveCapacity(conversations.count)
-        for conversation in conversations {
-            let last = await fetchLastMessage(for: conversation.id)
-            built.append(
-                ConversationSummary(
-                    conversation: conversation,
-                    title: title(for: conversation),
-                    emoji: emoji(for: conversation),
-                    preview: previewText(for: last),
-                    hasUnread: isUnread(last)
-                )
+        switch result {
+        case .failure:
+            // Keep the existing list untouched; say so and offer a retry
+            // (contract 3) — never a silent empty list.
+            loadError = NSLocalizedString(
+                "messages.load.error",
+                comment: "Shown when loading the conversation list fails"
             )
+            return
+        case .success(let conversations):
+            loadError = nil
+            var built: [ConversationSummary] = []
+            built.reserveCapacity(conversations.count)
+            for conversation in conversations {
+                let last = await fetchLastMessage(for: conversation.id)
+                built.append(
+                    ConversationSummary(
+                        conversation: conversation,
+                        title: title(for: conversation),
+                        emoji: emoji(for: conversation),
+                        preview: previewText(for: last),
+                        hasUnread: isUnread(last)
+                    )
+                )
+            }
+            summaries = built
         }
-        summaries = built
     }
 
     /// The newest message in a conversation, used for the preview + unread dot.

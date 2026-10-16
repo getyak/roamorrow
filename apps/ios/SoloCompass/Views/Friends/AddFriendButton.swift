@@ -30,6 +30,9 @@ struct AddFriendButton: View {
     private var friendService: FriendService
 
     @State private var isSending = false
+    /// Last send failure, kept inline so the recipient stays on screen for a
+    /// retry instead of a silent revert (I26).
+    @State private var sendErrorMessage: String?
 
     enum Style {
         /// A compact capsule chip (member-row trailing accessory).
@@ -57,12 +60,26 @@ struct AddFriendButton: View {
     private var isActionable: Bool { relation == .none && !isSending }
 
     var body: some View {
-        Button(action: send) {
-            label
+        VStack(alignment: .leading, spacing: 2) {
+            Button(action: send) {
+                label
+            }
+            .buttonStyle(.plain)
+            .disabled(!isActionable)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityValue(Text(isSending
+                ? NSLocalizedString("friend.add.state.sending", comment: "Sending…")
+                : ""))
+
+            if let sendErrorMessage {
+                Text(sendErrorMessage)
+                    .font(.caption2)
+                    .foregroundStyle(CT.bannerError)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isStaticText)
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(!isActionable)
-        .accessibilityLabel(accessibilityLabel)
     }
 
     @ViewBuilder
@@ -78,6 +95,9 @@ struct AddFriendButton: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
+            // Compact visuals, 44pt hit target (I26).
+            .frame(minHeight: HitTargetMetrics.minimum)
+            .contentShape(Capsule())
             .foregroundStyle(isActionable ? CT.accent : CT.fgMuted)
             .background(
                 Capsule().fill(isActionable ? CT.accentSoft : CT.surfaceSunken)
@@ -94,6 +114,9 @@ struct AddFriendButton: View {
     }
 
     private var title: String {
+        if isSending {
+            return NSLocalizedString("friend.add.state.sending", comment: "Sending…")
+        }
         switch relation {
         case .accepted:
             return NSLocalizedString(
@@ -134,10 +157,29 @@ struct AddFriendButton: View {
 
     private func send() {
         guard isActionable else { return }
+        // Synchronous re-entry guard: a double tap can't send twice.
+        guard !isSending else { return }
         isSending = true
+        sendErrorMessage = nil
         Task {
-            _ = await friendService.sendRequest(to: recipientId, source: source)
+            let result = await friendService.sendRequest(to: recipientId, source: source)
             isSending = false
+            switch result {
+            case .success:
+                // The label flips via the relationship read-back — no fake
+                // local success state (I26).
+                break
+            case .failure(let error):
+                // Keep `recipientId` (the row stays) so the user can retry.
+                sendErrorMessage = String(
+                    format: NSLocalizedString(
+                        "friend.add.failed",
+                        comment: "Couldn't send the friend request: %@"
+                    ),
+                    error.localizedDescription
+                )
+                Haptics.notify(.error)
+            }
         }
     }
 }

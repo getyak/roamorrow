@@ -1,197 +1,129 @@
-# App Store Metadata — Solo Compass v1.1
+# App Store metadata — Solo Compass
 
-Source-of-truth for App Store Connect listing fields, TestFlight beta description, and reviewer notes. Update here first, then paste into ASC.
-
----
+Repository preparation only. These fields and notes must be checked against the submitted build and live App Store Connect configuration before submission. Editing this file does not change App Store Connect, publish an app, set an age rating or install a custom EULA.
 
 ## Build identity
 
-| Field                   | Value                                                                        |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| Bundle ID               | `com.solocompass.app`                                                        |
-| MARKETING_VERSION       | `1.1.0`                                                                      |
-| CURRENT_PROJECT_VERSION | `2`                                                                          |
-| Minimum iOS             | `17.0`                                                                       |
-| Primary language        | `English (U.S.)`                                                             |
-| Localizations           | `English`, `Simplified Chinese (zh-Hans)`                                    |
-| Category — Primary      | Travel                                                                       |
-| Category — Secondary    | Lifestyle                                                                    |
-| Encryption              | `ITSAppUsesNonExemptEncryption = false` (only HTTPS over standard libraries) |
-| Content rights          | "Does not use third-party content"                                           |
-| Age rating              | 4+                                                                           |
+| Field                   | Repository value / submission action                                                                                                                                                                |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bundle ID               | `com.solocompass.app`                                                                                                                                                                               |
+| MARKETING_VERSION       | `1.1.0` in `apps/ios/project.yml`; release automation may override it                                                                                                                               |
+| CURRENT_PROJECT_VERSION | `2` in `apps/ios/project.yml`; verify the uploaded build number                                                                                                                                     |
+| Minimum iOS             | `17.0`                                                                                                                                                                                              |
+| Localizations           | English and Simplified Chinese (`zh-Hans`)                                                                                                                                                          |
+| Category suggestions    | Travel / Lifestyle; confirm in App Store Connect                                                                                                                                                    |
+| Encryption              | `ITSAppUsesNonExemptEncryption = false`; verify actual export-compliance answers for the submitted build                                                                                            |
+| Content rights          | Uses third-party map/place/image data. Check attribution and applicable licenses; do not answer that it uses no third-party content.                                                                |
+| Age rating              | Complete the current App Store Connect questionnaire for the submitted features. Companion access requires an 18+ self-declaration; this is not verified age or a preselected App Store age rating. |
 
----
+## Name and subtitle
 
-## App name + subtitle
+- English name: `Solo Compass`
+- English subtitle: `Solo travel, mapped`
+- 中文名称：`Solo Compass`
+- 中文副标题：`属于一个人的旅行地图`
 
-- **App name (30 char max)**: `Solo Compass`
-- **Subtitle (30 char max)**: `Solo travel, mapped`
+## Promotional text
 
-zh-Hans:
+English (within 170 characters):
 
-- **应用名称**: `Solo Compass`
-- **副标题**: `属于一个人的旅行地图`
+> A map for solo travelers. Discover nearby experiences, review their sources, and save what matters. AI options depend on your settings and access.
 
----
+中文：
 
-## Promotional text (170 char, editable any time)
+> 为独行者准备的地图：发现附近体验，查看来源，收藏值得前往的地方。AI 功能取决于当前设置与访问权益。
 
-> AI exploration in any city worldwide. Real places from OpenStreetMap, enriched with solo-traveler context: comfort, vibe, what to expect when you walk in alone.
+## Description
 
-zh-Hans:
+### English
 
-> 在世界任意城市用 AI 探索。来自 OpenStreetMap 的真实地点,结合独行视角的解读:氛围、舒适度、一个人推门进去会遇到什么。
+Solo Compass is a map-first companion for solo travelers. Explore nearby experiences, inspect their sources and confidence, and save or record the ones you choose.
 
----
+Explore Here can use public place data to suggest experiences around a selected location. When enabled, AI adds draft descriptions and explanations. Sources, hours, estimated walking times and AI output can be incomplete or outdated; check current conditions before you go. Scores and confidence indicators are informational, not a safety or freshness guarantee.
 
-## Description (4000 char)
+Use supported text or voice input to describe what you want. Availability depends on the device, permissions, provider configuration and account/entitlement. Features explicitly labeled as previews or read-only are not complete paid capabilities.
 
-> Solo Compass is a map-first companion for people who travel — and live — alone.
->
-> Every spot on the map is an experience worth being at by yourself. Quiet cafes where staff leave you alone. Markets where solo eaters get a seat. Temples timed for the morning light. Viewpoints with a bench, not a tour group.
->
-> ### Explore here
->
-> Tap one button anywhere on Earth and Solo Compass pulls real public places from OpenStreetMap, then asks AI to draft solo-traveler descriptions: comfort, pace, what to bring, when to skip. Works in cities we have never seen before.
->
-> ### Solo Score
->
-> Each place gets a 0–10 score across six dimensions: seating, solo patrons, staff pressure, portion size for one, ambiance, and safety. Built from real user feedback, not a rating system.
->
-> ### Voice intent
->
-> Hold the mic, describe what you want — "a quiet bookshop with coffee" — and the map rearranges itself.
->
-> ### Free vs Pro
->
-> Free: full curated map, OSM-only Explore (skeleton mode), all your favorites and check-ins.
-> Pro: AI-enriched Explore in any city, voice intent, per-experience AI insights. 7-day free trial.
->
-> ### Privacy
->
-> No accounts. No tracking. Coarse location goes to OpenStreetMap; OSM tags + city slug go to Anthropic for the description draft. That's it. Nothing for sale, nothing for advertisers.
+Free and Pro access are those currently offered in the app. Monthly/yearly products, prices, billing periods and any introductory-offer eligibility are shown by Apple before purchase. No fixed free-trial duration, unlimited AI or lifetime entitlement is promised here. Manage or cancel subscriptions in Apple settings; deleting the app or local data does not cancel a subscription.
 
-zh-Hans:
+Location and selected context can be sent to exploration and AI services. Accounts, sync, companion messages, attachments and configured diagnostics involve the relevant backend or third-party service. The native default AI provider is DeepSeek; settings and the Pro proxy determine the actual request destination. Read the public Privacy Policy for recipients, retention limits and available controls.
 
-> Solo Compass 是为独行者设计的地图工具——无论你是旅行,还是日常生活。
->
-> 地图上的每一处都值得一个人前往。安静的咖啡馆、对单人友好的市集、晨光最好的寺庙、有长椅没有旅行团的观景台。
->
-> ### 在这里探索
->
-> 在地球上任意位置点一下按钮, Solo Compass 会从 OpenStreetMap 抓取真实公开地点,再请 AI 用独行视角写描述:氛围如何、节奏怎样、带什么、什么时候应该绕开。新城市也照样工作。
->
-> ### 独行评分
->
-> 每处都有六维 0–10 评分:座位友好度、独行客比例、员工压力、一人份量、氛围、安全感。来自真实用户反馈,而非评论系统。
->
-> ### 语音意图
->
-> 按住麦克风,说"安静的书店,有咖啡",地图会自动重新排列。
->
-> ### 免费 vs Pro
->
-> 免费:精选地图、OSM 骨架版探索、收藏与签到。
-> Pro:任意城市的 AI 增强探索、语音意图、按需 AI 洞察。7 天免费试用。
->
-> ### 隐私
->
-> 不需要账号,不做追踪。粗略位置发给 OpenStreetMap;OSM 标签 + 城市标识发给 Anthropic 用于生成描述。仅此而已。不出售,不给广告商。
+Privacy Policy: https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9
+Terms of Service: https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a
+Support and privacy requests: cubxxw@gmail.com
 
----
+### 中文
 
-## Keywords (100 char, comma-separated, no spaces)
+Solo Compass 是为独行者准备的地图伙伴。探索附近体验，查看来源与可信度，收藏或记录你自己选择的去处。
+
+“在这里探索”可根据选定位置使用公开地点数据提供体验建议。启用 AI 时，它会补充描述草稿与解释。来源、营业信息、估算步行时间和 AI 输出可能不完整或过时，出发前请确认当前情况；评分与可信度提示不保证安全或实时准确。
+
+你可通过支持的文字或语音输入表达需求；具体能力取决于设备、权限、服务商配置与账号/权益。标为预览或只读的界面，不代表相关付费能力已完整开放。
+
+免费与 Pro 以应用当前实际提供的内容为准。Apple 会在购买前显示月度/年度商品、价格、计费周期和优惠资格。本文不承诺固定试用天数、无限 AI 或终身权益。订阅可在 Apple 设置管理或取消；删除应用或本地数据不会取消订阅。
+
+位置和选定上下文可能发送至探索或 AI 服务。账号、同步、同行消息、附件和配置的诊断涉及相应后端或第三方服务。原生默认 AI 服务商为 DeepSeek，设置及 Pro 代理决定实际请求去向。数据接收方、保存限制与可管理选项请见完整隐私政策。
+
+隐私政策：https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9
+用户协议：https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a
+支持与隐私请求：cubxxw@gmail.com
+
+## Keywords
 
 `solo,travel,map,nomad,cafe,quiet,explore,coworking,wellness,nearby`
 
----
+## Public destinations
 
-## Support URL + Marketing URL
+| App Store field       | Public destination                                                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Privacy Policy URL    | `https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9`                                                            |
+| Terms of Service      | `https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a`                                                            |
+| Interim Support URL   | `https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a` — the public service terms include support/contact details |
+| Interim Marketing URL | `https://cubxxw.com` — the maintainer's public site lists Solo Compass                                                       |
+| Support/privacy email | `cubxxw@gmail.com`                                                                                                           |
 
-| Field         | Value (v1.1 placeholder)                  |
-| ------------- | ----------------------------------------- |
-| Support URL   | `https://solo-compass.vercel.app/support` |
-| Marketing URL | `https://solo-compass.vercel.app`         |
-| Privacy URL   | `https://solo-compass.vercel.app/privacy` |
+The old `solo-compass.vercel.app` deployment and `solocompass.app` legal paths are not valid substitutes. Keep the public Gist reading URLs, not a revision-pinned raw file. Both documents contain English and Chinese. A dedicated support/marketing page can replace the interim destinations when its deployed content has been verified.
 
-(Custom domain deferred to v1.2 per founder decision.)
+## In-app purchases
 
----
+| Runtime product ID            | Meaning     | Live storefront verification                                                                                             |
+| ----------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `com.solocompass.pro.monthly` | Pro monthly | Price, region, period, trial eligibility and family sharing must be read from the actual App Store configuration/product |
+| `com.solocompass.pro.yearly`  | Pro yearly  | Same verification required; do not infer a trial or price tier from a local StoreKit test file                           |
 
-## In-App Purchases (StoreKit Configuration source-of-truth)
+The local `Configuration.storekit` file supports development testing; it is not evidence that the same offer is active in App Store Connect. Standard Apple EULA applies where no different applicable app license has been provided. Publishing the service Terms Gist does not configure a custom EULA.
 
-| Product ID                    | Display name | Apple price tier | Family shareable | Trial      |
-| ----------------------------- | ------------ | ---------------- | ---------------- | ---------- |
-| `com.solocompass.pro.monthly` | Pro Monthly  | Tier 2           | Yes              | 7-day free |
-| `com.solocompass.pro.yearly`  | Pro Yearly   | Tier 11          | Yes              | 7-day free |
+## TestFlight beta notes
 
-Subscription group: `Solo Compass Pro`.
+Test the build's map, retained conversation, settings, localization and configured sync/Pro paths. Use supplied test access for protected features; do not treat an arbitrary client-side debug unlock as an App Review account or live purchase.
 
-App Review note: free users still get the curated map + OSM-only Explore. Pro unlocks AI synthesis on top.
+1. Explore the bundled experiences and inspect sources/confidence.
+2. Read both documents from first use, Settings and the paywall; verify the public Gist destinations.
+3. Exercise permitted/declined location and speech paths, keeping drafts on failure.
+4. Check current StoreKit products and any offer actually returned; exercise restore, empty restore and failure.
+5. Repeat affected flows in English and Simplified Chinese, including large text and dark appearance.
 
----
+Feedback: `cubxxw@gmail.com`, or an available in-app report action. Some rituals/archive/export screens remain preview or read-only; assess the functionality actually displayed by the submitted build. Availability of backend, AI, push and sync depends on that build's configuration.
 
-## Screenshots checklist (App Store Connect requires)
+## Reviewer notes for submission
 
-- [ ] 6.9" iPhone (Pro Max class, e.g. iPhone 17 Pro Max) — minimum 3, recommended 6
-- [ ] 6.5" iPhone (legacy, optional but recommended)
-- [ ] 12.9" / 13" iPad Pro (only if shipping iPad in v1.1; current project.yml allows iPad orientations, so include)
+Solo Compass provides a free map experience and, where configured, Pro subscription features. A reviewer must be given working backend/test access for any protected features included in the submission; none is supplied by this document alone.
 
-Required scenes:
+Native AI defaults to DeepSeek and can use the selected OpenAI/custom endpoint or the configured Pro proxy. Requests can include submitted text, relevant conversation/history, preferences, coordinates and context. Exploration can send coordinates/radius to OpenStreetMap/Overpass; Apple MapKit and other configured map/place/weather services also participate. Do not describe requests as containing only OSM tags and a city slug or as containing no personal data.
 
-1. Map with curated experiences in Chiang Mai
-2. Explore here in a fresh city (Hanoi recommended) — AI-enriched
-3. Experience detail with Solo Score
-4. Paywall with monthly/yearly cards
-5. Voice intent listening state
-6. Settings with Travel Style picker
+The app includes Supabase account/sync/conversation integration and configured Sentry diagnostics. Optional companion messages/attachments and push notifications have the data uses explained in the published Privacy Policy. Do not submit claims of no accounts, no third-party SDKs, all data on-device or universally anonymous diagnostics.
 
-zh-Hans screenshots: re-take #1, #2, #3 with system language set to Simplified Chinese.
+The first-use summary links to the public documents; Settings and the paywall retain access. Device permission prompts and feature-specific confirmations remain separate. Local Forget me/Clear data actions do not delete a backend account, cancel a subscription or erase every recipient's copy. Verify account-deletion requirements and the actual operational process before App Review; a contact email by itself is not proof of full in-app account deletion.
 
----
+Privacy Policy: https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9
+Terms of Service: https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a
+Support/privacy contact: cubxxw@gmail.com
 
-## TestFlight beta description (4000 char)
+## Before submission
 
-> v1.1 introduces full SwiftData persistence, AI cost control, freemium with 7-day free trial, cross-device sync via Supabase, and Simplified Chinese localization.
->
-> Test focus this round:
->
-> 1. Explore Here in a city you have never seen on the curated map (Hanoi, Da Nang, Ubud are good targets).
-> 2. The first-run consent sheet — does the language make sense?
-> 3. Paywall flow: tap Explore as a free user, start trial, exit, restore.
-> 4. Switch system language to Simplified Chinese and walk through the same flows.
->
-> Known limitations:
->
-> - Domain is `solo-compass.vercel.app` until v1.2.
-> - Support email is a Gmail alias for now.
->
-> Email feedback to xiong3293172751@outlook.com or use the in-app Report an issue from any experience detail.
-
----
-
-## Reviewer notes (App Review submission)
-
-> Solo Compass is a paid travel/lifestyle app with a free curated tier and Pro subscription.
->
-> AI features (Explore Here, voice intent, per-experience insights) call Anthropic. The first time the user invokes any AI feature we surface an in-app consent sheet describing exactly what data leaves the phone. No PII is sent: only OpenStreetMap tag dictionaries and a city slug.
->
-> Free demo for review:
->
-> - Open the app in any city and explore the curated map (no purchase required).
-> - To exercise Pro paths during review, use Sandbox account; the Configuration.storekit file ships with a 7-day intro trial.
->
-> No accounts, no tracking, no third-party SDKs. Anonymous Supabase user IDs are used only to sync completions/favorites across the same person's devices.
-
----
-
-## Pre-submit checklist
-
-- [ ] `xcodebuild test` passes on iPhone 17 simulator
-- [ ] `pnpm parity:check` passes (TS↔Swift, TS↔DB, SQL↔Swift)
-- [ ] PrivacyInfo.xcprivacy bundled in `.app` (verified in DerivedData)
-- [ ] Both `en.lproj/Localizable.strings` and `zh-Hans.lproj/Localizable.strings` bundled
-- [ ] Configuration.storekit products visible in StoreKit configuration
-- [ ] All `NSLocationWhenInUseUsageDescription`, `NSMicrophoneUsageDescription`, `NSSpeechRecognitionUsageDescription` strings reviewed for clarity
-- [ ] App icon: all required sizes filled in `Assets.xcassets/AppIcon.appiconset`
-- [ ] Privacy URL + Support URL reachable
+- [ ] Verify the actual uploaded build/version and required device screenshot classes.
+- [ ] Run release-required build/tests and affected permission, failure and recovery paths; do not treat the narrow legal-link build as full release acceptance.
+- [ ] Check privacy manifests, App Store privacy answers, third-party SDK configuration, content rights and age questionnaire against actual behavior.
+- [ ] Read back the current App Store products, prices, intro offers and entitlements.
+- [ ] Verify all public legal/support links without a logged-in session.
+- [ ] Update and read back the remote App Store Connect privacy URL, description/Terms link and support/contact fields. This step has not been performed by editing this document.
+- [ ] Confirm reviewer access, account/data deletion and applicable user-rights handling for the submitted service.

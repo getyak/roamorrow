@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-16T03:20:28.688613+00:00",
+  "base": "efcb8fc523f59c8333b010c9bc710d8d5b2e4559",
+  "nodeTestsExit": 0,
+  "postgresExit": 0,
+  "postgres": "18-alpine disposable tmpfs; 0003+0004+0017; authenticated role and auth.uid shim; direct write deny/allow and post-block updates tested",
+  "deployment": "not deployed; real Supabase integration not tested",
+  "files": {
+    "infra/supabase/functions/companion-post-action/persistence.test.ts": "c3f18ae82a8a9a32a62fdac886a070bf7ceb4b3f2cc25353c46282b9b7c9da99",
+    "infra/supabase/functions/companion-post-action/index.ts": "cd136d2981e4ae6a91eade26ac8dc95f9da5bcabbaa4c707840d6cf171d9ea75",
+    "infra/supabase/functions/companion-post-action/handler.test.ts": "76a50bfe2991cf79c591dff7ca901d4017c203eeb143879fb34c9e78cea70c5a",
+    "infra/supabase/functions/companion-post-action/handler.ts": "9ef3d33afaee2dc20e426b5397c9ee9467c6bcf90c700573e18eeae4ade030c5",
+    "infra/supabase/functions/companion-post-action/persistence.ts": "82c6ae4d11dad7409560644c54f3cf141095e2bdd1e1c0e05f903e1379b8c85a",
+    "infra/supabase/migrations/0017_companion_request_identity.sql": "3623b7ceea7394a2095700f7630822169fe064143339d8c48b2a2ab26562c12e",
+    "infra/supabase/test_companion_request_identity.sql": "f6d8afb9b3ffe973c1d20f4725f13e5d16588d75e2e80e7450586b3cf7b14577"
+  },
+  "hostChecks": [
+    {
+      "kind": "Node14tests",
+      "exit": 0
+    },
+    {
+      "kind": "SDK2.112.4 strict typecheck (Deno ambient only)",
+      "exit": 0
+    }
+  ]
+}

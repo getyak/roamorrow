@@ -21,9 +21,9 @@ private func travelerNoteISODaysAgo(_ days: Int) -> String {
 /// and a `convenience init()` over the shared container plus a DI `init(context:)`
 /// for tests.
 ///
-/// On first run it seeds a small set of demonstration notes/corrections for the
-/// known seed POIs so the section isn't empty out of the box; seeding is marked
-/// per-experience-id idempotent so it runs at most once per place.
+/// Production never manufactures community notes or corrections. Tests and
+/// previews may opt into design fixtures; historical fixture IDs are hidden
+/// from normal reads without deleting stored data.
 @Observable
 @MainActor
 public final class TravelerNoteStore {
@@ -35,8 +35,13 @@ public final class TravelerNoteStore {
     @ObservationIgnored
     let context: ModelContext
 
-    public init(context: ModelContext) {
+    private let saveContext: () throws -> Void
+    private let includeDemonstrationContent: Bool
+
+    public init(context: ModelContext, includeDemonstrationContent: Bool = false, saveContext: (() throws -> Void)? = nil) {
         self.context = context
+        self.includeDemonstrationContent = includeDemonstrationContent
+        self.saveContext = saveContext ?? { try context.save() }
     }
 
     /// Convenience init using the shared on-disk container.
@@ -58,7 +63,8 @@ public final class TravelerNoteStore {
                 SortDescriptor(\.createdAt, order: .reverse),
             ]
         )
-        let records = (try? context.fetch(descriptor)) ?? []
+        let fetched = (try? context.fetch(descriptor)) ?? []
+        let records = includeDemonstrationContent ? fetched : fetched.filter { !Self.demonstrationNoteIDs.contains($0.id) }
         // Stable partition: AI-adopted first, each group keeping the store's
         // confirm/date order (Swift's `sorted` isn't guaranteed stable).
         let adopted = records.filter { $0.aiAdopted }
@@ -76,6 +82,18 @@ public final class TravelerNoteStore {
         text: String,
         kind: TravelerNote.Kind = .experience
     ) -> TravelerNote? {
+        do { return try addNotePersisted(experienceId: experienceId, text: text, kind: kind) }
+        catch { return nil }
+    }
+
+    /// Returns only after durable storage acknowledges the new note. Failed
+    /// inserts remove only this method's staged record, preserving other edits.
+    @discardableResult
+    public func addNotePersisted(
+        experienceId: String,
+        text: String,
+        kind: TravelerNote.Kind = .experience
+    ) throws -> TravelerNote? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         let note = TravelerNote(
@@ -90,16 +108,21 @@ public final class TravelerNoteStore {
             aiAdopted: false,
             isMine: true
         )
-        context.insert(TravelerNoteRecord(from: note))
-        save()
+        let record = TravelerNoteRecord(from: note)
+        context.insert(record)
+        do { try commit() }
+        catch { context.delete(record); throw error }
         return note
     }
 
     /// Increment a note's confirm count by one. No-op if the note is missing.
-    public func confirmNote(id: String) {
-        guard let record = noteRecord(id) else { return }
+    @discardableResult
+    public func confirmNote(id: String) -> Bool {
+        guard let record = noteRecord(id) else { return false }
+        let previous = record.confirms
         record.confirms += 1
-        save()
+        do { try commit(); return true }
+        catch { record.confirms = previous; return false }
     }
 
     // MARK: - Corrections
@@ -112,26 +135,31 @@ public final class TravelerNoteStore {
             predicate: #Predicate { $0.experienceId == experienceId && $0.status == pending },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
-        return (try? context.fetch(descriptor))?.map(\.asValue) ?? []
+        let fetched = (try? context.fetch(descriptor)) ?? []
+        return (includeDemonstrationContent ? fetched : fetched.filter { !Self.demonstrationCorrectionIDs.contains($0.id) }).map(\.asValue)
     }
 
-    /// Mark a correction accepted (folds into the record) — persisted so it stays
-    /// resolved across launches.
-    public func acceptCorrection(id: String) {
+    /// Record a local acceptance decision. This does not mutate the shared
+    /// experience or publish a correction to the server.
+    @discardableResult
+    public func acceptCorrection(id: String) -> Bool {
         setCorrectionStatus(id: id, status: .accepted)
     }
 
     /// Mark a correction dismissed ("不准确").
-    public func dismissCorrection(id: String) {
+    @discardableResult
+    public func dismissCorrection(id: String) -> Bool {
         setCorrectionStatus(id: id, status: .dismissed)
     }
 
     // MARK: - Private
 
-    private func setCorrectionStatus(id: String, status: PlaceCorrection.Status) {
-        guard let record = correctionRecord(id) else { return }
+    private func setCorrectionStatus(id: String, status: PlaceCorrection.Status) -> Bool {
+        guard let record = correctionRecord(id) else { return false }
+        let previous = record.status
         record.status = status.rawValue
-        save()
+        do { try commit(); return true }
+        catch { record.status = previous; return false }
     }
 
     private func noteRecord(_ id: String) -> TravelerNoteRecord? {
@@ -148,14 +176,15 @@ public final class TravelerNoteStore {
         return (try? context.fetch(descriptor))?.first
     }
 
-    private func save() {
-        do {
-            try context.save()
-        } catch {
-            assertionFailure("TravelerNoteStore.save failed: \(error)")
-            return
-        }
+    private func commit() throws {
+        try saveContext()
         NotificationCenter.default.post(name: TravelerNoteStore.didChange, object: self)
+    }
+
+    private func save() {
+        // Demonstration seeding is best effort. User mutations use acknowledged
+        // APIs above; a full disk should never crash the app's feedback flow.
+        try? commit()
     }
 
     // MARK: - Seeding
@@ -180,7 +209,7 @@ public final class TravelerNoteStore {
     /// opened. Content is lifted from the design handoff's NOTES_BANK /
     /// PENDING_CORRECTIONS. No-op for unknown ids or already-seeded places.
     private func seedIfNeeded(for experienceId: String) {
-        guard let seed = Self.seedBank[experienceId] else { return }
+        guard includeDemonstrationContent, let seed = Self.seedBank[experienceId] else { return }
         guard !hasAnyRecords(for: experienceId) else { return }
 
         for note in seed.notes {
@@ -190,6 +219,15 @@ public final class TravelerNoteStore {
             context.insert(PlaceCorrectionRecord(from: corr.materialize(experienceId: experienceId)))
         }
         try? context.save()
+    }
+
+    // Filter only exact IDs reserved by the design fixtures. Real user rows
+    // are preserved; legacy demo rows are neither deleted nor counted as evidence.
+    private static var demonstrationNoteIDs: Set<String> {
+        Set(seedBank.flatMap { experienceID, bundle in bundle.notes.map { "seed_\(experienceID)_\($0.id)" } })
+    }
+    private static var demonstrationCorrectionIDs: Set<String> {
+        Set(seedBank.flatMap { experienceID, bundle in bundle.corrections.map { "seed_\(experienceID)_\($0.id)" } })
     }
 
     /// Lightweight seed descriptors — `daysAgo` is resolved to an ISO timestamp

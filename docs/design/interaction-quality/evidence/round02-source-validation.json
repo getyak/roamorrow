@@ -1,0 +1,33 @@
+{
+  "collectedAt": "2026-10-16T05:57:25.812236+00:00",
+  "nativeFinalSourceFiles": 633,
+  "sourceDrift": [],
+  "checks": {
+    "localization": {
+      "exitCode": 0,
+      "literalReferencedENKeysFound": 1835,
+      "note": "Dynamic error title keys independently verified in both locales and actual Chinese UI."
+    },
+    "schemaParity": {
+      "exitCode": 0,
+      "scope": [
+        "TypeScript/Swift",
+        "TypeScript/Drizzle",
+        "SupabaseSQL/SwiftSyncPayload",
+        "TypeScript/SwiftData"
+      ]
+    },
+    "stringsPlutil": {
+      "exitCode": 0,
+      "locales": [
+        "en",
+        "zh-Hans"
+      ]
+    },
+    "gitDiffCheck": {
+      "exitCode": 0
+    }
+  },
+  "sourceManifest": "round02-visual-badge-build-source.json",
+  "note": "Observed host validation and source equality; not device flow acceptance."
+}

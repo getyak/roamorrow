@@ -50,9 +50,17 @@ struct JoinRequestValidation {
         message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// `true` only when both fields validate (pace chosen and message long enough).
+    /// `true` only when both fields validate (pace chosen and message long
+    /// enough AFTER trimming — ten spaces are not an introduction).
     static func canSubmit(pace: PaceMatch?, message: String) -> Bool {
-        pace != nil && message.count >= minMessageLength
+        pace != nil
+            && message.trimmingCharacters(in: .whitespacesAndNewlines).count >= minMessageLength
+    }
+
+    /// Length used for the live counter and validation — trimmed so padding
+    /// whitespace cannot fake progress toward the minimum.
+    static func validatedLength(_ message: String) -> Int {
+        message.trimmingCharacters(in: .whitespacesAndNewlines).count
     }
 }
 
@@ -75,6 +83,9 @@ struct JoinRouteRequestSheet: View {
     @State private var selectedPace: PaceMatch? = nil
     @State private var message = ""
     @State private var isSubmitting = false
+    /// Failure status kept inline so the user can retry without losing the
+    /// pace choice or the introduction they wrote (I19).
+    @State private var submitErrorMessage: String?
 
     init(
         route: Route,
@@ -134,6 +145,13 @@ struct JoinRouteRequestSheet: View {
                 pacePicker
                 messageEditor
                 submitButton
+                if let submitErrorMessage {
+                    Text(submitErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(CT.savedRed)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isStaticText)
+                }
             }
             .padding(20)
         }
@@ -189,9 +207,9 @@ struct JoinRouteRequestSheet: View {
                 }
             }
 
-            Text("\(message.count) / 10+")
+            Text("\(JoinRequestValidation.validatedLength(message)) / 10+")
                 .font(.caption)
-                .foregroundStyle(message.count < 10 ? Color(.secondaryLabel) : CT.verifiedGreen)
+                .foregroundStyle(JoinRequestValidation.validatedLength(message) < 10 ? Color(.secondaryLabel) : CT.verifiedGreen)
 
             if showsMessageError {
                 inlineError(JoinRequestField.message.missingHint)
@@ -242,7 +260,10 @@ struct JoinRouteRequestSheet: View {
     @MainActor
     private func submit() {
         guard let pace = selectedPace, JoinRequestValidation.canSubmit(pace: pace, message: message) else { return }
+        // Synchronous re-entry guard: a double tap can't start two requests.
+        guard !isSubmitting else { return }
         isSubmitting = true
+        submitErrorMessage = nil
 
         Task { @MainActor in
             defer { isSubmitting = false }
@@ -250,16 +271,29 @@ struct JoinRouteRequestSheet: View {
             do {
                 try await remote.sendJoinRequest(
                     routeId: route.id,
-                    message: message,
+                    message: message.trimmingCharacters(in: .whitespacesAndNewlines),
                     pace: pace.rawValue
                 )
+                // ONLY a real success closes the sheet (I19).
+                Haptics.impact(.light)
+                dismiss()
             } catch is NotImplementedError {
-                // Supabase stub not yet implemented; silently degrade.
+                // Backend not wired yet: say so plainly and keep the draft.
+                // Never close as if the request had been sent.
+                submitErrorMessage = NSLocalizedString(
+                    "join.submit.unavailable",
+                    comment: "Joining routes isn't available yet — your draft is kept"
+                )
             } catch {
-                // Non-fatal: swallow submission errors gracefully.
+                // Keep pace + message so the traveler can retry (I19).
+                submitErrorMessage = String(
+                    format: NSLocalizedString(
+                        "join.submit.failed",
+                        comment: "Request not sent — your draft is kept. %@"
+                    ),
+                    error.localizedDescription
+                )
             }
-            Haptics.impact(.light)
-            dismiss()
         }
     }
 }

@@ -6,12 +6,11 @@ import { Eyebrow, Section } from "@/components/marketing/primitives";
 import { HomeJsonLd } from "../../_seo";
 
 const SITE_URL = "https://solocompass.app";
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Pricing · Solo Compass",
   description:
-    "$29 one-time lifetime, or $50 yearly. No ads. No data selling. No subscription bloat. Free tier to try before you buy.",
+    "Explore the free map first. Pro is monthly or yearly; some ritual and archive views remain previews. Review current entitlements and App Store pricing before purchase.",
   alternates: {
     canonical: `${SITE_URL}/pricing`,
     languages: {
@@ -23,35 +22,35 @@ export const metadata: Metadata = {
   openGraph: {
     url: `${SITE_URL}/pricing`,
     title: "Solo Compass · Pricing",
-    description: "$29 lifetime or $50 yearly. Honest pricing, no ads.",
+    description: "Monthly or yearly Pro on top of a real free tier. No ads.",
     images: [{ url: "/og/pricing.png", width: 1200, height: 630 }],
   },
 };
 
 const FAQ_EN = [
   {
-    q: "Why is Lifetime cheaper than Yearly?",
-    a: "Because Lifetime locks in what exists today; Yearly gets everything we ship in the future. Craft and Fastmail work the same way. Neither is a mistake — pick based on your relationship with new features.",
-  },
-  {
     q: "What's in Free vs Pro?",
-    a: "Free gives you the map, city guides, and 3 AI cross-references per day. Pro removes the daily cap and unlocks cross-city routes, Rituals authoring, iCloud sync, and print export.",
+    a: "The free map includes experiences, check-ins and your footprint. Pro adds AI and currently available route tools. Some ritual, archive and export views remain previews or read-only; review current entitlements before purchase.",
   },
   {
-    q: "Do you offer a student discount?",
-    a: "Yes — 50% off Yearly ($25) with a .edu email or UNiDAYS verification. Rolls out in Phase 1.5.",
+    q: "How much AI do I get?",
+    a: "Pro includes a daily allowance — up to 30 AI answers and 60 explanations per day. It is a real limit, not unlimited, and the app shows where you stand.",
+  },
+  {
+    q: "How is my data handled?",
+    a: "After you confirm exploration, selected coordinates and radius go to OpenStreetMap/Overpass. AI requests can include city and experience context. Account and sync features may require sign-in; see the data-use page.",
+  },
+  {
+    q: "Why is the price not on this page?",
+    a: "Prices vary by region and change over time. The App Store shows the live price and any free-trial eligibility before you pay — we would rather be honest than quote a number we can't guarantee.",
   },
   {
     q: "Will you ever run ads?",
-    a: "No. Ever. If we ever change this, we'll refund every Lifetime purchase in full.",
-  },
-  {
-    q: "Do you sell my data?",
-    a: "No. Your location never leaves your phone. See our privacy page for the four tables of what we do and don't collect.",
+    a: "No.",
   },
   {
     q: "Can I try before I buy?",
-    a: "Yes. Free tier is genuinely useful, not a demo. Download from the App Store, use it for a week, then decide.",
+    a: "Yes — the web map is open to everyone right now, and the free tier of the iPhone app is genuinely useful rather than a demo.",
   },
 ];
 
@@ -78,7 +77,7 @@ export default function PricingPage() {
         </Section>
         <Pricing {...props} />
 
-        <Section className="border-t border-border-subtle/50">
+        <Section className="border-t border-border-subtle">
           <Container width="narrow">
             <Eyebrow dot="sun">Frequently asked</Eyebrow>
             <h2 className="ds-display-md mt-6 font-display">

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Solo Compass · A map for people who travel alone",
   description:
-    "A map-first companion for solo travelers on iOS. Cross-referenced sources, honest AI, no ads, no tracking. $29 one-time or $50 a year.",
+    "A map-first companion for solo travelers on iOS. Cross-referenced sources, honest AI, no ads, data use explained. Free tier is the real product; Pro is a monthly or yearly subscription.",
   keywords: [
     "solo travel app",
     "solo travel companion",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     siteName: "Solo Compass",
     title: "A map for people who travel alone.",
     description:
-      "Map-first. Experience-as-unit. AI that filters — never decides. Made in Kyoto. No ads, no tracking, ever.",
+      "Map-first. Experience-as-unit. AI that filters — never decides. Made in Kyoto. No ads, data use explained, ever.",
     locale: "en_US",
     alternateLocale: "zh_CN",
     // og image comes from src/app/opengraph-image.tsx (file-based).
@@ -43,8 +43,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Solo Compass · A map for people who travel alone",
-    description:
-      "Map-first companion for solo travelers on iOS. No ads. No tracking. $29 one-time or $50 a year.",
+    description: "Map-first companion for solo travelers on iOS. No ads. Data use explained.",
     // twitter image comes from src/app/opengraph-image.tsx (Next reuses it).
   },
   alternates: {

@@ -2,6 +2,15 @@ import Foundation
 import SwiftData
 import os.log
 
+// MARK: - RouteStoreError
+
+/// Errors surfaced by the throwing save paths (`savePersisted`,
+/// `saveRouteAndConversation`). Views map these to their own localized,
+/// actionable copy — the raw description is for logs and tests.
+public enum RouteStoreError: Error, Equatable {
+    case saveFailed(String)
+}
+
 /// SwiftData-backed CRUD for `Route` values.
 ///
 /// `@MainActor` because SwiftData `ModelContext` is single-actor and the rest
@@ -48,17 +57,36 @@ public final class RouteStore {
     /// Persist a route. If a record with the same id exists it is replaced
     /// (delete-then-insert) so callers can treat `save` as idempotent upsert.
     ///
-    /// #81: The v1.7 active-route progress columns (activeStartedAt,
-    /// currentStopIndex, completedStopIdsBlob) are NOT carried on the
-    /// `Route` value type — they're per-device state, not part of the
-    /// content schema. RouteRecord.fromValue therefore leaves them nil,
-    /// which would silently wipe in-progress progress every time anyone
-    /// re-saves the same route (companion change, AI re-generation, etc).
-    /// We snapshot the three fields off the old record before deleting,
-    /// then restore them onto the freshly-inserted one. Idempotent: when
-    /// no record existed before, the three remain nil as expected.
+    /// Non-throwing compatibility wrapper over `savePersisted` — see that
+    /// method for the progress-field preservation and rollback semantics.
+    /// `RouteStore.didChange` fires only when the durable save succeeded.
     public func save(_ route: Route) {
+        do {
+            try savePersisted(route)
+        } catch {
+            assertionFailure("RouteStore.save failed: \(error)")
+        }
+    }
+
+    /// Throwing upsert used by save entry points that must report failure
+    /// honestly (create-route, open-for-companions, approval flows).
+    ///
+    /// #81: the v1.7 active-route progress columns (activeStartedAt,
+    /// currentStopIndex, completedStopIdsBlob) are NOT carried on the `Route`
+    /// value type — they're per-device state. They are snapshotted off the old
+    /// record and restored onto the fresh insert so re-saving a route never
+    /// wipes in-progress progress.
+    ///
+    /// On commit failure the method rolls back **only its own staged
+    /// delete/insert** (never `context.rollback()`, which would discard
+    /// unrelated pending edits in a shared context), re-inserts the prior
+    /// value with its progress intact, does NOT post `didChange`, and throws.
+    ///
+    /// - Parameter commit: test seam for forcing a commit failure; production
+    ///   callers omit it and get `context.save()`.
+    public func savePersisted(_ route: Route, commit: (() throws -> Void)? = nil) throws {
         let prior = record(for: route.id.rawValue)
+        let priorValue = prior?.asValue
         let priorActiveStartedAt = prior?.activeStartedAt
         let priorCurrentStopIndex = prior?.currentStopIndex
         let priorCompletedBlob = prior?.completedStopIdsBlob
@@ -70,9 +98,20 @@ public final class RouteStore {
         fresh.completedStopIdsBlob = priorCompletedBlob
         context.insert(fresh)
         do {
-            try context.save()
+            if let commit {
+                try commit()
+            } else {
+                try context.save()
+            }
         } catch {
-            assertionFailure("RouteStore.save failed: \(error)")
+            restorePrior(
+                priorValue,
+                activeStartedAt: priorActiveStartedAt,
+                currentStopIndex: priorCurrentStopIndex,
+                completedBlob: priorCompletedBlob,
+                replacing: fresh
+            )
+            throw RouteStoreError.saveFailed(String(describing: error))
         }
         postChange(routeId: route.id.rawValue)
     }
@@ -134,6 +173,26 @@ public final class RouteStore {
 
     // MARK: - Private helpers
 
+    /// Re-stage the prior route row after a failed commit — deletes the
+    /// failed insert and puts the previous value (plus its progress columns)
+    /// back so in-memory state matches the untouched on-disk row. Only these
+    /// two records are touched.
+    private func restorePrior(
+        _ priorValue: Route?,
+        activeStartedAt: Date?,
+        currentStopIndex: Int?,
+        completedBlob: Data?,
+        replacing fresh: RouteRecord
+    ) {
+        context.delete(fresh)
+        guard let priorValue else { return }
+        let restored = RouteRecord.fromValue(priorValue)
+        restored.activeStartedAt = activeStartedAt
+        restored.currentStopIndex = currentStopIndex
+        restored.completedStopIdsBlob = completedBlob
+        context.insert(restored)
+    }
+
     private func record(for id: String) -> RouteRecord? {
         let descriptor = FetchDescriptor<RouteRecord>(
             predicate: #Predicate { $0.id == id }
@@ -171,6 +230,79 @@ public final class RouteStore {
             object: self,
             userInfo: nil
         )
+    }
+
+    // MARK: - Atomic route + conversation writes
+
+    /// Persist a route and its group conversation in ONE durable commit
+    /// (approval accept creates/updates both together). On failure only these
+    /// two rows are rolled back to their prior values, `didChange` is not
+    /// posted, and the error is thrown so the caller can keep the previous UI
+    /// and offer a retry.
+    ///
+    /// - Parameter commit: test seam for forcing a commit failure; production
+    ///   callers omit it and get `context.save()`.
+    public func saveRouteAndConversation(
+        _ route: Route,
+        conversation: Conversation,
+        commit: (() throws -> Void)? = nil
+    ) throws {
+        let priorRouteRecord = record(for: route.id.rawValue)
+        let priorRoute = priorRouteRecord?.asValue
+        let priorActiveStartedAt = priorRouteRecord?.activeStartedAt
+        let priorCurrentStopIndex = priorRouteRecord?.currentStopIndex
+        let priorCompletedBlob = priorRouteRecord?.completedStopIdsBlob
+
+        let priorConversation = conversationRecord(for: conversation.id.rawValue)?.asValue
+
+        deleteRecord(id: route.id.rawValue)
+        let freshRoute = RouteRecord.fromValue(route)
+        freshRoute.activeStartedAt = priorActiveStartedAt
+        freshRoute.currentStopIndex = priorCurrentStopIndex
+        freshRoute.completedStopIdsBlob = priorCompletedBlob
+        context.insert(freshRoute)
+        stageConversation(conversation)
+
+        do {
+            if let commit {
+                try commit()
+            } else {
+                try context.save()
+            }
+        } catch {
+            restorePrior(
+                priorRoute,
+                activeStartedAt: priorActiveStartedAt,
+                currentStopIndex: priorCurrentStopIndex,
+                completedBlob: priorCompletedBlob,
+                replacing: freshRoute
+            )
+            if let priorConversation {
+                stageConversation(priorConversation)
+            } else {
+                deleteConversationRecord(for: conversation.id.rawValue)
+            }
+            throw RouteStoreError.saveFailed(String(describing: error))
+        }
+        postChange(routeId: route.id.rawValue)
+    }
+
+    /// Replace-or-insert a conversation row WITHOUT committing.
+    private func stageConversation(_ conversation: Conversation) {
+        deleteConversationRecord(for: conversation.id.rawValue)
+        context.insert(ConversationRecord.fromValue(conversation))
+    }
+
+    private func conversationRecord(for id: String) -> ConversationRecord? {
+        let descriptor = FetchDescriptor<ConversationRecord>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return (try? context.fetch(descriptor))?.first
+    }
+
+    private func deleteConversationRecord(for id: String) {
+        guard let existing = conversationRecord(for: id) else { return }
+        context.delete(existing)
     }
 
     // MARK: - Beta-P0-A: active-route progress

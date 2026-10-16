@@ -1,0 +1,40 @@
+{
+  "snapshot": "snapshot-05-legal",
+  "sourceFiles": 109,
+  "sourceManifest": "snapshot-05-legal-files.json",
+  "sourceManifestSha256": "f855ac12a781b9916759b5d7108ff119e646adb95b5e9b1e1a5c3acefb28d01c",
+  "checks": [
+    {
+      "log": "ios-legal-build.log.gz",
+      "exitCode": 0,
+      "uncompressedSha256": "ad3a23ed0f0fa56826842e08437e7edaa616b1b9756c99b40359c35aa158c759"
+    },
+    {
+      "log": "localization.log.gz",
+      "exitCode": 0,
+      "uncompressedSha256": "38d7d9085f39688f65cc6e63a974a57622dda7b922abc4a7879633103f36472f"
+    },
+    {
+      "log": "web-legal-build.log.gz",
+      "exitCode": 0,
+      "uncompressedSha256": "1bef87269753f235f30b85a1af63c2ff36b9f768070e2e9f49665b0097cdf073"
+    },
+    {
+      "log": "web-legal-typecheck.log.gz",
+      "exitCode": 0,
+      "uncompressedSha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "log": "bot-legal-typecheck.log.gz",
+      "exitCode": 0,
+      "uncompressedSha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    }
+  ],
+  "simulatorBooted": false,
+  "xctestRun": false,
+  "newNativeLegalLinkTapVerified": false,
+  "gistPublicUnauthenticatedHttp200": true,
+  "appStoreConnectRemoteUpdated": false,
+  "appWebsiteBotRedeployed": false,
+  "publicGistsPublished": true
+}

@@ -14,21 +14,33 @@ import SwiftUI
 ///   6. Bottom dock: Save + Favorite CTAs
 public struct RouteDetailView: View {
     let route: Route
-    var onTapStop: (Experience) -> Void
-    /// Called when the traveler taps "开始路线" — the host screen draws the route
-    /// on the map and dismisses this detail. Defaults to a no-op so the other
-    /// presentation sites (chat, requests, walked-routes) need no changes.
-    var onStartRoute: (Route) -> Void
+    /// Explicit stop-tap handler for hosts that own the navigation (the map
+    /// host). Optional — when absent, the detail pushes its own real stop
+    /// detail (`ExperienceDetailView`) so every presentation site works
+    /// instead of inheriting a silent no-op default.
+    var onTapStop: ((Experience) -> Void)?
+    /// Explicit start-route handler for the map host. Optional — when absent,
+    /// the detail posts the unified `RouteNavigationRequest`, which
+    /// CompassMapView consumes (dismissing any presenting surface first).
+    var onStartRoute: ((Route) -> Void)?
 
     @Environment(ExperienceService.self) private var service
+    @Environment(AIService.self) private var aiService
     @Environment(UserPreferences.self) private var preferences
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @State private var isSaved = false
-    @State private var isFavorited = false
     @State private var heartBurstTrigger = 0
     @State private var showCompletionMoment = false
     @State private var showApprovalQueue = false
+    /// Internal stop-detail fallback target (R2-03 / R2-05).
+    @State private var stopDetailExperience: Experience?
+    /// Real add-to-itinerary selection (R2-01) — the sheet pins every stop.
+    @State private var showingAddToItinerary = false
+    /// Read-back: title of an itinerary that already holds every route stop.
+    @State private var savedItineraryTitle: String?
+    /// Group-chat destination, only set when a conversation exists AND the
+    /// viewer is authorized (R2-02).
+    @State private var routeChatConversation: Conversation?
     // Single source of truth for the join / share sheets. Stacking two
     // `.sheet(isPresented:)` on one view collapses to only the last in SwiftUI
     // (the outer modifier overrides the inner), so a `.sheet(item:)` keyed on
@@ -39,8 +51,8 @@ public struct RouteDetailView: View {
 
     public init(
         route: Route,
-        onTapStop: @escaping (Experience) -> Void = { _ in },
-        onStartRoute: @escaping (Route) -> Void = { _ in }
+        onTapStop: ((Experience) -> Void)? = nil,
+        onStartRoute: ((Route) -> Void)? = nil
     ) {
         self.route = route
         self._liveRoute = State(initialValue: route)
@@ -50,15 +62,43 @@ public struct RouteDetailView: View {
 
     // MARK: - Companion recruiting helpers
 
+    private var viewerDeviceId: String {
+        DeviceIdentityService.shared.deviceID
+    }
+
     private var viewerIsHost: Bool {
         guard let companion = liveRoute.companion else { return false }
-        return companion.hostId == DeviceIdentityService.shared.deviceID
+        return companion.hostId == viewerDeviceId
     }
 
     private var hasMyRequest: Bool {
         guard let companion = liveRoute.companion else { return false }
         let deviceId = DeviceIdentityService.shared.deviceID
         return companion.joinRequests.contains { $0.requesterId == deviceId && $0.status == .pending }
+    }
+
+    // MARK: - Persistent favorite + itinerary read-back (R2-01)
+
+    /// Route favorite state lives in UserPreferences (route-id namespace,
+    /// independent of the experience favorites repository) so re-opening the
+    /// detail reads the same state back.
+    private var isFavorited: Bool {
+        preferences.isRouteFavorited(liveRoute.id.rawValue)
+    }
+
+    /// Read-back for the itinerary dock button: finds an itinerary holding
+    /// EVERY stop of this route. Keeps the button honest across re-opens
+    /// instead of a per-session @State flip.
+    private func refreshItineraryReadBack() {
+        let stops = Set(liveRoute.experienceIds)
+        guard !stops.isEmpty else {
+            savedItineraryTitle = nil
+            return
+        }
+        let store = ItineraryStore(context: modelContext)
+        savedItineraryTitle = store.loadAll()
+            .first { Set($0.experienceIds).isSuperset(of: stops) }?
+            .title
     }
 
     // MARK: - Primary category (majority category of stops)
@@ -111,6 +151,41 @@ public struct RouteDetailView: View {
         .navigationDestination(isPresented: $showApprovalQueue) {
             ApprovalQueueView(route: liveRoute, contextProvider: { modelContext })
         }
+        // Internal stop-detail fallback: hosts that pass `onTapStop` own the
+        // navigation; every other presentation site lands on the real
+        // ExperienceDetailView from the stop row (R2-03 / R2-05).
+        .navigationDestination(item: $stopDetailExperience) { exp in
+            ExperienceDetailView(
+                viewModel: ExperienceDetailViewModel(
+                    experience: exp,
+                    experienceService: service,
+                    aiService: aiService,
+                    preferences: preferences
+                ),
+                onClose: { stopDetailExperience = nil }
+            )
+        }
+        // Group chat for closed/completed routes — only reachable when the
+        // conversation actually exists and the viewer is authorized (R2-02).
+        .navigationDestination(item: $routeChatConversation) { conversation in
+            ChatView(
+                conversation: conversation,
+                currentUserId: FriendService.shared.resolvedUserId
+            )
+        }
+        .sheet(isPresented: $showingAddToItinerary) {
+            // Real itinerary selection — saves every route stop in one write,
+            // with the sheet's own honest success / error handling (R2-01).
+            AddToItinerarySheet(
+                experienceIds: liveRoute.experienceIds,
+                experienceTitle: liveRoute.title,
+                onSuccess: { itinerary in
+                    savedItineraryTitle = itinerary.title
+                }
+            )
+            .environment(service)
+        }
+        .onAppear { refreshItineraryReadBack() }
         .onReceive(NotificationCenter.default.publisher(for: RouteStore.didChange)) { note in
             // Accept both targeted (routeId key present) and broadcast (nil userInfo) changes.
             let affectedId = note.userInfo?["routeId"] as? String
@@ -201,8 +276,18 @@ public struct RouteDetailView: View {
                     .padding(.horizontal, 16)
             }
 
+            // Completion replay — separately named, host-only (R2-02).
+            completionReplayRow
+                .padding(.horizontal, 20)
+
             // StopsList
-            StopsList(route: liveRoute, onTapStop: onTapStop)
+            StopsList(route: liveRoute) { exp in
+                if let onTapStop {
+                    onTapStop(exp)
+                } else {
+                    stopDetailExperience = exp
+                }
+            }
                 .background(CT.surfaceWhite)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
@@ -211,8 +296,8 @@ public struct RouteDetailView: View {
                 )
                 .padding(.horizontal, 16)
 
-            // AI insight — locked Pro card (.sc-locked: dashed border, lock glyph, unlock CTA)
-            aiInsightLocked
+            // Route analysis status — honest availability only (R2-06).
+            aiInsightUnavailable
                 .padding(.horizontal, 20)
 
             // Route tags (.sc-tag-row) — accent-soft pills, only when the route has tags
@@ -362,9 +447,13 @@ public struct RouteDetailView: View {
         return parts.joined(separator: " · ")
     }
 
-    // MARK: - AI insight locked card (.sc-locked)
-
-    private var aiInsightLocked: some View {
+    // MARK: - Route analysis availability (R2-06)
+    //
+    // Weather / crowd / season analysis does not exist for routes yet. The
+    // old card promised a Pro "Unlock" for it — paywalled copy for a feature
+    // with no implementation behind it. This card states the actual status:
+    // nothing is for sale here and no benefit is invented.
+    private var aiInsightUnavailable: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(NSLocalizedString("route.detail.aiInsight.title", comment: "AI insight section title"))
                 .ctDisplay(12, .bold)
@@ -377,18 +466,18 @@ public struct RouteDetailView: View {
                     Circle()
                         .fill(CT.surfaceWhite)
                         .frame(width: 28, height: 28)
-                    Image(systemName: "lock.fill")
+                    Image(systemName: "info")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(CT.fgMuted)
                 }
-                Text(NSLocalizedString("route.detail.aiInsight.locked", comment: "AI insight unlock copy"))
-                    .ctBody(12)
-                    .foregroundStyle(CT.fgMuted)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(NSLocalizedString(
+                    "route.detail.aiInsight.unavailable",
+                    comment: "Weather/crowd/season analysis is not available for this route yet"
+                ))
+                .ctBody(12)
+                .foregroundStyle(CT.fgMuted)
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
-                Text(NSLocalizedString("route.detail.aiInsight.unlock", comment: "Unlock CTA"))
-                    .ctBody(12, .semibold)
-                    .foregroundStyle(CT.accent)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -398,10 +487,7 @@ public struct RouteDetailView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(
-                        CT.borderDefault,
-                        style: StrokeStyle(lineWidth: 0.5, dash: [4, 3])
-                    )
+                    .strokeBorder(CT.borderSubtle, lineWidth: 0.5)
             )
         }
         .accessibilityElement(children: .combine)
@@ -438,14 +524,33 @@ public struct RouteDetailView: View {
     }
 
     /// Resolved primary-CTA for the dock — label, SF symbol, disabled flag and
-    /// action vary by companion state, mirroring route.jsx's dock logic:
-    /// no-companion → 开始路线; viewer open/forming → 申请加入; host open/forming →
-    /// 审批 N; hasMyRequest → 等待确认(disabled); closed/completed → 进入群聊.
+    /// action vary by companion state: no-companion → 开始路线; viewer
+    /// open/forming → 申请加入; host open/forming → 审批 N; hasMyRequest →
+    /// 等待确认(disabled); closed/completed → 进入群聊 only when a real group
+    /// conversation exists and this viewer is allowed in (R2-02), otherwise an
+    /// honestly disabled item — never an enabled dead action.
     private struct PrimaryCTA {
         let label: String
         let systemImage: String
         let isDisabled: Bool
         let action: () -> Void
+    }
+
+    /// Group-chat access for the closed/completed branch (R2-02).
+    private var chatAccess: RouteChatAccess {
+        guard let companion = liveRoute.companion else { return .noConversation }
+        let conversation: Conversation?
+        if let convId = companion.groupConversationId {
+            conversation = ConversationStore(context: modelContext)
+                .get(ConversationId(rawValue: convId))
+        } else {
+            conversation = nil
+        }
+        return RouteChatAccess.decide(
+            companion: companion,
+            conversation: conversation,
+            viewerId: viewerDeviceId
+        )
     }
 
     private var primaryCTA: PrimaryCTA {
@@ -465,9 +570,15 @@ public struct RouteDetailView: View {
                 systemImage: "location.north.line.fill",
                 isDisabled: false,
                 action: {
-                    // Hand the route up to the map host (draws the polyline +
-                    // numbered stops, frames the camera) and close this sheet.
-                    onStartRoute(liveRoute)
+                    // Map hosts draw the polyline + numbered stops and frame
+                    // the camera via their own callback; every other site
+                    // posts the unified request, which CompassMapView consumes
+                    // after dismissing any presenting surface (R2-03).
+                    if let onStartRoute {
+                        onStartRoute(liveRoute)
+                    } else {
+                        RouteNavigationRequest.requestStart(route: liveRoute)
+                    }
                     dismiss()
                 }
             )
@@ -500,85 +611,172 @@ public struct RouteDetailView: View {
                 action: { activeSheet = .join }
             )
         }
-        // closed / completed → group chat entry (falls back to completion replay
-        // for a host on a completed route).
-        return PrimaryCTA(
-            label: NSLocalizedString("route.detail.cta.groupChat", comment: ""),
-            systemImage: "message.fill",
-            isDisabled: companion.status == .completed && !viewerIsHost,
-            action: {
-                if companion.status == .completed { showCompletionMoment = true }
+        // closed / completed → real group chat when available; otherwise an
+        // honestly disabled item. The completion celebration is a separate,
+        // separately-named control (completionReplayRow) — it must never play
+        // under a "chat" label (R2-02).
+        switch chatAccess {
+        case .available(let conversation):
+            return PrimaryCTA(
+                label: NSLocalizedString("route.detail.cta.groupChat", comment: ""),
+                systemImage: "message.fill",
+                isDisabled: false,
+                action: { routeChatConversation = conversation }
+            )
+        case .noConversation, .notAuthorized:
+            return PrimaryCTA(
+                label: NSLocalizedString("route.detail.cta.groupChat.unavailable", comment: ""),
+                systemImage: "message.fill",
+                isDisabled: true,
+                action: {}
+            )
+        }
+    }
+
+    /// Host-only replay of the completion celebration — named for what it
+    /// does and kept out of the chat CTA (R2-02).
+    @ViewBuilder
+    private var completionReplayRow: some View {
+        if let companion = liveRoute.companion,
+           RouteCompletionReplay.isReplayVisible(status: companion.status, viewerIsHost: viewerIsHost) {
+            Button {
+                showCompletionMoment = true
+            } label: {
+                Label(
+                    NSLocalizedString(
+                        "route.detail.completion.replay",
+                        comment: "Replay the route completion moment (host, completed route)"
+                    ),
+                    systemImage: "arrow.counterclockwise"
+                )
+                .ctBody(13, .semibold)
+                .foregroundStyle(CT.accent)
+                .frame(minHeight: HitTargetMetrics.minimum)
+                .padding(.horizontal, 14)
+                .background(Capsule().fill(CT.accentSoft))
             }
-        )
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(NSLocalizedString(
+                "route.detail.completion.replay",
+                comment: "Replay the route completion moment (host, completed route)"
+            )))
+        }
     }
 
     private var bottomDock: some View {
         let cta = primaryCTA
         return VStack(spacing: 0) {
             Rectangle().fill(CT.borderSubtle).frame(height: 0.5)
-            HStack(spacing: 12) {
-                // Ghost button — favorite
-                Button {
-                    let willFavorite = !isFavorited
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        isFavorited.toggle()
-                    }
-                    if willFavorite {
-                        heartBurstTrigger += 1
-                        Haptics.notify(.success)
-                    } else {
-                        Haptics.impact(.light)
-                    }
-                } label: {
-                    Image(systemName: isFavorited ? "heart.fill" : "heart")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(isFavorited ? CT.toneClosed : CT.fgMuted)
-                        .symbolEffect(.bounce, value: isFavorited)
-                        .scaleEffect(isFavorited ? 1.12 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFavorited)
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(CT.surfaceSunken))
-                        .overlay { HeartBurstView(trigger: heartBurstTrigger) }
+            // Adaptive dock (review closure 4): the horizontal dock is the
+            // quiet default; the single-line label reports its full ideal
+            // width to ViewThatFits, so at large Dynamic Type (or a long CTA
+            // label) the row stops fitting and the vertical dock takes over.
+            // Either way the CTA uses minHeight 44 with a vertically-growing
+            // label — scaled text is never clipped.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    favoriteButton
+                    itineraryButton
+                    ctaButton(cta, wrapsLabel: false)
                 }
-                .accessibilityLabel(Text(NSLocalizedString("route.detail.favorite", comment: "")))
-                .accessibilityValue(Text(isFavorited
-                    ? NSLocalizedString("action.favorited", comment: "Favorited accessibility value")
-                    : NSLocalizedString("action.notFavorited", comment: "Not favorited accessibility value")))
-
-                // Ghost button — add to itinerary
-                Button {
-                    isSaved.toggle()
-                } label: {
-                    Image(systemName: isSaved ? "calendar.badge.checkmark" : "calendar.badge.plus")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(isSaved ? CT.accent : CT.fgMuted)
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(CT.surfaceSunken))
-                }
-                .accessibilityLabel(Text(NSLocalizedString("route.detail.save", comment: "")))
-
-                // Primary CTA — accent fill, state-dependent label.
-                Button(action: cta.action) {
-                    HStack(spacing: 6) {
-                        Image(systemName: cta.systemImage)
-                            .font(.system(size: 15, weight: .semibold))
-                        Text(cta.label)
-                            .ctBody(15, .semibold)
+                VStack(spacing: 10) {
+                    ctaButton(cta, wrapsLabel: true)
+                    HStack(spacing: 12) {
+                        favoriteButton
+                        itineraryButton
+                        Spacer(minLength: 0)
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .foregroundStyle(cta.isDisabled ? CT.fgMuted : CT.surfaceWhite)
-                    .background(
-                        Capsule().fill(cta.isDisabled ? CT.surfaceSunken : CT.accent)
-                    )
                 }
-                .disabled(cta.isDisabled)
-                .accessibilityLabel(Text(cta.label))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(.bar)
         }
+    }
+
+    // MARK: - Dock pieces
+
+    /// Ghost button — favorite. Persists through UserPreferences (route-id
+    /// namespace, separate from experience favorites) so the state survives
+    /// re-entry (R2-01) — no @State fake toggle.
+    private var favoriteButton: some View {
+        Button {
+            let nowFavorited = preferences.toggleRouteFavorite(liveRoute.id.rawValue)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                if nowFavorited { heartBurstTrigger += 1 }
+            }
+            if nowFavorited {
+                Haptics.notify(.success)
+            } else {
+                Haptics.impact(.light)
+            }
+        } label: {
+            Image(systemName: isFavorited ? "heart.fill" : "heart")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(isFavorited ? CT.toneClosed : CT.fgMuted)
+                .symbolEffect(.bounce, value: isFavorited)
+                .scaleEffect(isFavorited ? 1.12 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFavorited)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(CT.surfaceSunken))
+                .overlay { HeartBurstView(trigger: heartBurstTrigger) }
+        }
+        .accessibilityLabel(Text(NSLocalizedString("route.detail.favorite", comment: "")))
+        .accessibilityValue(Text(isFavorited
+            ? NSLocalizedString("action.favorited", comment: "Favorited accessibility value")
+            : NSLocalizedString("action.notFavorited", comment: "Not favorited accessibility value")))
+    }
+
+    /// Ghost button — add to itinerary. Opens the real itinerary picker;
+    /// every route stop is pinned on success (R2-01).
+    private var itineraryButton: some View {
+        Button {
+            showingAddToItinerary = true
+        } label: {
+            Image(systemName: savedItineraryTitle != nil ? "calendar.badge.checkmark" : "calendar.badge.plus")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(savedItineraryTitle != nil ? CT.accent : CT.fgMuted)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(CT.surfaceSunken))
+        }
+        .accessibilityLabel(Text(NSLocalizedString("route.detail.save", comment: "")))
+        .accessibilityValue(Text(savedItineraryTitle.map {
+            String(format: NSLocalizedString("route.detail.save.savedIn", comment: "Saved in itinerary %@"), $0)
+        } ?? ""))
+    }
+
+    /// Primary CTA — accent fill, state-dependent label. The ONLY primary
+    /// element in the dock (quiet ghost buttons beside it). `wrapsLabel`
+    /// selects the vertical-dock variant where the label may wrap to more
+    /// lines; both keep a real minHeight-44 hit region (review closure 4).
+    private func ctaButton(_ cta: PrimaryCTA, wrapsLabel: Bool) -> some View {
+        Button(action: cta.action) {
+            HStack(spacing: 6) {
+                Image(systemName: cta.systemImage)
+                    .font(.system(size: 15, weight: .semibold))
+                if wrapsLabel {
+                    Text(cta.label)
+                        .ctBody(15, .semibold)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    // Single-line ideal width drives the ViewThatFits choice.
+                    Text(cta.label)
+                        .ctBody(15, .semibold)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: HitTargetMetrics.minimum)
+            .foregroundStyle(cta.isDisabled ? CT.fgMuted : CT.surfaceWhite)
+            .background(
+                Capsule().fill(cta.isDisabled ? CT.surfaceSunken : CT.accent)
+            )
+        }
+        .disabled(cta.isDisabled)
+        .accessibilityLabel(Text(cta.label))
     }
 
     // MARK: - Toolbar
@@ -733,8 +931,9 @@ extension Pace {
     let service = ExperienceService(seed: [mekongExp, watExp])
 
     NavigationStack {
-        RouteDetailView(route: route, onTapStop: { _ in })
+        RouteDetailView(route: route)
             .environment(service)
+            .environment(AIService())
             .environment(UserPreferences())
     }
     .modelContainer(SoloCompassModelContainer.makeInMemory())

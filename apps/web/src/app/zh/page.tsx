@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Solo Compass · 一款为独自旅行者做的地图 app",
   description:
-    "为独自旅行者做的 iOS 地图 app。以体验为单位而非景点列表，跨来源交叉编译数据，AI 只帮你过滤而不替你决定，无广告无追踪。¥118 一次买断，¥198 每年，可先免费试用。",
+    "为独自旅行者做的 iOS 地图 app。以体验为单位而非景点列表，跨来源交叉编译数据，AI 只帮你过滤而不替你决定，无广告，说明数据用途。免费版即真实产品；Pro 为月度/年度订阅，价格以 App Store 实时为准。",
   keywords: [
     "独自旅行 app",
     "一个人旅行 app",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     siteName: "Solo Compass",
     title: "一款为独自旅行者做的地图 app",
     description:
-      '地图为家。以"体验"为单位。AI 只过滤，不替你决定。京都独立开发。永不接广告、永不追踪。',
+      '地图为家。以"体验"为单位。AI 只过滤，不替你决定。京都独立开发。永不接广告、说明数据用途。',
     locale: "zh_CN",
     alternateLocale: "en_US",
     // og image comes from src/app/zh/opengraph-image.tsx (file-based).
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Solo Compass · 一款为独自旅行者做的地图 app",
-    description: "iOS 独行者地图。¥118 一次买断，¥198 每年。无广告，无追踪。",
+    description: "iOS 独行者地图。免费版即真实产品，Pro 按月/按年订阅。无广告，说明数据用途。",
     // twitter image comes from src/app/zh/opengraph-image.tsx.
   },
   alternates: {

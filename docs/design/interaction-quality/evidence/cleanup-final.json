@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-16",
+  "originalWorkspace": "/Users/cubxxw/data/solo-compass",
+  "worktree": "/Users/cubxxw/.codex/worktrees/interaction-quality/solo-compass",
+  "nativeDriverSessionReleased": true,
+  "allowedSimulatorsAllShutdown": true,
+  "simulatorsCreated": 0,
+  "simulatorsDeleted": 0,
+  "nativeDerivedDataRemovedWithReceipt": "native-cache-cleanup.json",
+  "finalArtifactRemoved": "/private/tmp/ai-test-interaction-quality.0Igzij",
+  "finalArtifactRemoveExitCode": 0,
+  "webNextCacheMovedIntoRegisteredArtifactBeforeRemoval": true,
+  "webNextCacheHadOpenFiles": false,
+  "formalEvidencePreservedIn": "docs/design/interaction-quality/evidence",
+  "ownNextDevServerStopped": true,
+  "otherTasksProcessesStopped": false,
+  "sourceWorktreesRemoved": false,
+  "finalResourceSample": {
+    "nodeProcesses": 92,
+    "swapUsedGiB": 13.34,
+    "diskFreeGiB": 32.11
+  },
+  "resourceWarning": "swap remains above diagnostic threshold; existing shared tasks preserved",
+  "pruneSimulators": {
+    "exitCode": 0,
+    "deleted": 0,
+    "kept": 3
+  },
+  "auditNote": "audit/resources return 2 with warnings; not presented as an all-clear",
+  "originalWorkspaceUnrelatedChangesPreserved": true,
+  "finalTouchTargetBuildArtifactRemoved": "/private/tmp/ai-test-interaction-quality-web-final.ChOyxJ",
+  "finalTouchTargetArtifactRemoveExitCode": 0,
+  "ownReportServerStopped": true,
+  "browserViewportAndMediaOverridesReset": true,
+  "finalVerificationTab5AndReportTab2Closed": true,
+  "olderBlockedDataUrlTab": "not reaccessed after browser URL-safety rejection"
+}

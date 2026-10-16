@@ -522,9 +522,9 @@ public enum CompanionServiceError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .featureDisabled: return "Companion mode is not enabled."
-        case .encodingFailed: return "Failed to encode request."
-        case .notSignedIn: return "Sign in to use companion features."
+        case .featureDisabled: return NSLocalizedString("companion.service.featureDisabled", comment: "Companion unavailable")
+        case .encodingFailed: return NSLocalizedString("companion.service.encodingFailed", comment: "Request preparation failed")
+        case .notSignedIn: return NSLocalizedString("companion.service.notSignedIn", comment: "Account connection required")
         }
     }
 }

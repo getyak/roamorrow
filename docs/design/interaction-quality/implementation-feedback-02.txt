@@ -1,0 +1,143 @@
+下一批复核反馈（不要覆盖已有修改）
+
+官网实际截图：1280宽Hero H1高约350px、CTA低于720首屏，手机nav全部消失；请确保主行动首屏可达并克制标题比例。当前city页面已标图仅示意，但右侧For you却宣称用户曾在Porto收藏两个观景台；假个人事实也需明确示例或移除。Pillars与Capabilities重复id=features，锚点必须唯一。globals .sc-halo未覆盖减少动态效果，筛选后的选中halo不应永动。
+
+独立评审最新新增确认：
+- 营销copy EN/ZH No onboarding与OnboardingView.totalSteps=8矛盾；'真实截图'实际CapabilityMock。
+- '位置永不离开手机'与Overpass发送查询coords/AIService发送location矛盾；改为真实数据范围，不写法律条款/不改用户协议。
+- '无限AI'与客户端每日限额矛盾；Lifetime $29无对应SKU（只有monthly/yearly）；iCloud权益无实现支持。不能编新售卖SKU/新服务；页面描述以当前iOS为准，具体价格/资格以App Store实时披露，保留可用Web入口。检查首页metadata/SEO JSONLD/定价/宣言同类声明一致。
+- I24聊天附件提交失败丢草稿：AttachmentInputBar立即清空，ChatView异步send失败alert。ChatService附件上传失败仍可能文字已发，所以不能盲目恢复全部重发。你当前scope限Views/Tests，可先在View层保留待发送草稿直到明确成功；如需结构化服务返回，标出必要接口交由root做，不能擅自越scope。
+- QRScanner晚到相机授权回调会启动已消失的页面采集，补visible/token/scenePhase守卫，离开清理，保留正常扫码。
+- 其它新发现详见下面完整review，I19-I25/ W18-W20都尚未在第一批文本里。
+
+# 交互质量独立审查
+
+审查基线：`924f09a4ea7e3ed9b016ed9a956705a7e576cd5e`。范围：Web 官网、Web 体验与 iOS；重点为 iOS。审查者独立于生产代码实现，只维护本报告及 `scorecard.json`。
+
+## 当前结论
+
+**尚无证据证明所有按钮和功能达到 96 分以上。** 目前完成源码审查，已确认多处可操作性、目的地、恢复和无障碍缺陷。截图、真实点击、VoiceOver、键盘与权限拒绝流程尚未验证。分数是功能风险的暂定观察值，不是审美或用户满意度的测量结果。
+
+`frontend-design` 的判断基准是：让用户理解现在能做什么；边框和层级编码状态；动效回答操作；对失败给出恢复方向；把独行旅行的真实内容作为品牌表达。暖色、圆角、玻璃、杂志感本身既不加分，也不扣分。
+
+## 评分口径
+
+功能质量的 100 分分为以下七项；每项满分须有正面证据，缺证据不能按默认满分处理。
+
+| 维度 | 权重 | 可复核的通过条件 |
+| --- | ---: | --- |
+| 可理解性 | 15 | 名称说明结果；图标有合适标签；动作与反馈用词一致 |
+| 层级与注意力 | 15 | 当前主动作明确；边框表达分组、焦点或状态；装饰不伪装成控件 |
+| 触控与键盘 | 20 | iOS 关键命中区至少 44pt；Web 主要触控动作采用 44px 目标；键盘能到达并执行 |
+| 状态反馈 | 15 | 按下、忙碌、成功、失败与已选状态可区分；异步重复提交受控 |
+| 流程恢复与保留 | 15 | 取消、返回、重试可达；失败不丢输入；切换不丢对话和选择 |
+| 无障碍与动效 | 10 | 辅助操作可执行；信息不只依赖颜色；大字、暗色、减弱动态效果可用 |
+| 产品一致性与信任 | 10 | 地图/对话工作空间连续；推荐保持证据边界；权限只在相关操作后请求且可及时停止 |
+
+评分状态：`provisional` 表示只有部分源码/截图证据；`not_verified` 表示未审或证据不足；`verified` 必须带构建版本、具体状态、操作和结果。未测项目不得写成失败，也不得算通过。
+
+96 分以上的交付条件：每个候选项关联功能及测试状态；最新源码没有未解决 P0/P1；关键路径在运行产品完成正向、拒绝、失败、返回与恢复验证；截图覆盖浅/暗与必要的大字状态。即使这些条件满足，仍只能报告“本轮审查分数”，不能据此声称真实用户满意度 96%。
+
+审美单独记录相对判断，不与功能总分相加：相对于旧版，信息是否更清楚、是否更像独行旅行产品、是否减少无意义描边/装饰、是否保留独有记忆点。没有渲染截图时标为 `not_verified`，不写“品味 98 分”。
+
+## 首轮已确认问题
+
+以下定位以基线为准。P1 是会阻断核心目标或违反产品信任边界的问题；P2 是明确可用性/无障碍缺陷。修复状态将在冻结改动后更新。
+
+| ID | 级别 | 功能及源码 | 观察事实、影响与验收建议 | 状态 |
+| --- | --- | --- | --- | --- |
+| W01 | P1 | 官网下载，`apps/web/src/components/marketing/sections.tsx:21`；`src/app/(marketing)/download/page.tsx:8` | App Store 目的地使用 `id0000000000`；主导航、Hero、定价、下载页均继承占位链接。应统一可用目的地；未有商店链接时给真实 Web 试用入口并明确发布状态。逐个读回 href、点击后确认实际落点。 | open |
+| W02 | P1 | 今日推荐，`apps/web/src/components/TodayBanner.tsx:126` | 排序只使用 soloScore、bestTimes、步行时间，文案却断言营业、无人群和夜间安全。应将文案限制为有依据的推荐，不把最佳时段当实时营业/安全证据。跨城/跨时区亦需核对。 | open |
+| W03 | P2 | 官网导航，`apps/web/src/components/marketing/sections.tsx:53` | 移动断点隐藏 Features/Pricing/Manifesto/语言切换且无替代入口。补可展开导航、展开状态和焦点恢复；320–390px、键盘及菜单内链接实测。 | open |
+| W04 | P2 | Web 语音，`apps/web/src/components/VoiceIntent.tsx:169` | 正常支持语音时只显示 pointer 按住按钮，键盘用户无法开始/停止；用户也无法主动切回文字。提供始终可见文字路径与键盘操作；拒绝权限仍保留草稿。 | open |
+| W05 | P2 | Web 签到，`apps/web/src/components/ExperienceSheet.tsx:48` | 保存失败只回 idle，没有错误或恢复指引。应展示失败、保留评分并提供重试；不显示成功；避免重复提交。 | open |
+| W06 | P2 | Web 评分，`apps/web/src/components/ExperienceSheet.tsx:315` | 1–5 的评分目标为 28×28px，邻近排列，触控容易误选；且选择评分会直接提交签到，标签未解释副作用。应增加目标、明确评分即完成的含义或采用选择后统一提交。 | open |
+| W07 | P2 | Web 命令面板，`apps/web/src/components/lisbon/CommandPalette.tsx:174` | 使用 `aria-modal=true`，初次聚焦输入框，但没有 Tab 约束与关闭后的焦点恢复；输入框仅 placeholder。应保证模态内焦点循环、Esc 返回触发器和可访问名称。 | open |
+| W08 | P2 | Web 暗色交互色，`apps/web/src/app/globals.css:155`；`marketing/primitives.tsx:16` | 暗色变量替换背景/前景，却保留深棕 accent；主按钮文字 `text-bg-warm` 同时变深，焦点环仍深棕。应拆出交互 accent 与固定 on-accent 文本并测实际对比度。 | open |
+| W09 | P2 | Web 附近抽屉，`apps/web/src/components/NearbySheet.tsx:78` | 抓手目标 24px 高，TabButton 未暴露选中状态，Peek 文案偏“pull up”。补44px与 expand/selected semantics；点击与键盘不依赖拖拽。 | open |
+| W10 | P2 | Web 当前推荐，`apps/web/src/components/TodayBanner.tsx:78` | 关闭目标为24×24px；推荐小 chip 也较窄。扩大点击面；关闭与展开体验不抢占同一目标，确认横向小屏不溢出。 | open |
+| I01 | P2 | iOS 录音停止，`apps/ios/SoloCompass/Views/Chat/ChatInputBar.swift:319` | listening 状态替换原麦克风，录音条只 `onTapGesture` 且忽略子元素，没有 default accessibility action；原 mic 的 action 已不存在。为停止操作提供真实 Button 或等价 action；VoiceOver 从开始到停止实测。 | open |
+| I02 | P2 | iOS 文本输入暗色，`apps/ios/SoloCompass/Views/Chat/ChatInputBar.swift:440` | 输入聚焦时填充固定 `CT.surfaceWhite`，无暗色分支；需检查文字与光标在白底的实际颜色。使用适配表面并检查聚焦/失焦浅暗截图。 | open |
+| I03 | P2 | iOS 删除照片，`apps/ios/SoloCompass/Views/Experience/CreateExperienceSheet.swift:183` | 删除按钮只有 xmark 图标，没有明确哪张照片的名称和最小目标。补44pt目标、索引/内容标签；验证删除后剩余照片状态。 | open |
+| I04 | P2 | iOS 发现排序，`apps/ios/SoloCompass/Views/Map/DiscoverWorkspaceView.swift:221` | Menu 标题只有 caption 与上下8pt，未保证44pt。扩大透明命中区、维持轻视觉；选中排序需要可读回。 | open |
+| I05 | P1 | iOS 同行可见性恢复，`apps/ios/SoloCompass/Views/Companion/ItineraryDetailView.swift:144` | “打开个人设置”按钮的 action 仅注释；用户触发可见性阻断后无法按界面指示恢复。应连到真实设置并在返回后重新检查可见性。 | open |
+| I06 | P2 | iOS 类别偏好，`apps/ios/SoloCompass/Views/Settings/SettingsView.swift:945` | 偏好行使用 tap gesture，没有 Button/选中语义；隐藏列表的移除图标也缺名称与目标。改为可执行并读回状态的控件，保留列表滑动行为。 | open |
+| I07 | P2 | iOS 手动坐标，`apps/ios/SoloCompass/Views/Map/LocationPickerSheet.swift:719` | 经纬度使用 decimalPad，没有负数入口，西经/南纬输入困难。提供有符号输入或方向选择；正负、越界和小数分隔符验证须不改变 GeoJSON 顺序。 | open |
+| W11 | P2 | Web 城市排序，`apps/web/src/app/[city]/page.tsx:123`、`:127`、`:511` | `activeSort` 只用于选择样式；传入列表的 `filtered` 只按分类过滤，点“最近编辑/距离”不改变顺序。实现有真实数据依据的排序；字段缺失时不提供假排序。选项、实际顺序和 URL 状态须读回一致。 | open |
+| W12 | P2 | Web 城市列表，`apps/web/src/app/[city]/page.tsx:627` | ListRow 为 `div onClick`，没有角色、tabIndex 和键盘处理。换成语义 Button 或完整等价控件；分类/排序暴露当前状态。Tab/Enter/Space 选择体验应与指针一致。 | open |
+| W13 | P2 | Web 足迹到详情，`apps/web/src/components/TimelineList.tsx:80`；`apps/web/src/app/app/page.tsx:31` | 足迹传出历史体验 ID，但父组件只在当前附近结果中解析详情；历史体验离开当前范围时点击无结果。按 ID 解析独立详情或走真实详情 URL；不存在/加载失败给出可恢复状态。 | open |
+| W14 | P1 | Web 城市加入计划，`apps/web/src/app/[city]/page.tsx:1144` | 可见“加入计划”Button没有onClick或链接，点击无结果。连接真实保存/计划并反馈可读回；未有计划能力时换成准确的现有动作，不能只保留可点外观。 | open |
+| W15 | P2 | Web 行程分享，`apps/web/src/app/trip/[slug]/page.tsx:170` | “分享”Button没有onClick。提供系统分享与不支持时复制URL的真实结果/失败反馈，或在服务端页移除不可用动作；不发消息给任何联系人。 | open |
+| W16 | P2 | Web 体验加入行程，`apps/web/src/app/experience/[id]/page.tsx:467` | “加入行程”与“查看地图”都仅回城市首页；前者不保存，后者不携带当前体验，无法定位。动作名称应与真实结果一致；地图URL带上体验ID并正确恢复选择，保存若未实现不作虚假承诺。 | open |
+| W17 | P1 | Web 城市地图控件，`apps/web/src/app/[city]/page.tsx:273`、`:802` | “+ City”及地图+、−、⌖都是无handler的Button。当前WebLisbonMap为绘制地图，不能通过控件暗示真实缩放/定位。连接真实城市选择/地图操作；做不到时移除不可执行控件并将地图性质说明准确。不得首次加载就为了假定位动作索取权限。 | open |
+| I08 | P2 | iOS 购买恢复，`apps/ios/SoloCompass/Views/Paywall/PaywallView.swift:468` | runRestore 只处理成功；失败或无历史购买没有界面反馈。恢复按钮未被 purchaseInFlight 禁用，可重复发起且与购买并行。增加单一忙碌守卫、成功/无购买/错误反馈，拒绝或取消后可恢复；不得假装解锁。 | open |
+| I09 | P2 | iOS 付费方案语义，`apps/ios/SoloCompass/Views/Paywall/PaywallView.swift:296` | 卡片显式 AX label 只保留产品名称，价格/周期/选中状态没有进入该标签；periodLabel 为硬编码英文。让价格、周期和选择被完整读出，中英一致；只有实际资格已知时才作对应试用承诺。 | open |
+| I10 | P2 | iOS 举报原因，`apps/ios/SoloCompass/Views/Companion/ReportBlockSheet.swift:113` | 原因行只用 onTapGesture，没有按钮或 selected 语义；VoiceOver 无可靠执行路径。使用 Button/Picker 并读出已选；提交成功、失败、取消与封禁确认保持现有真实服务闭环。 | open |
+| I11 | P2 | iOS 分享模式/预览，`apps/ios/SoloCompass/Views/Experience/Share/ShareSheet.swift:105`、`:157` | 模式 chip 没有44pt保证和选中语义；renderPreview 用 try?，渲染失败后始终展示 spinner。补可执行目标/选中状态；失败显示解释与重试或 Markdown 可用路径；系统分享和复制要交付真实内容。 | open |
+| I12 | P2 | iOS 时光胶囊编辑，`apps/ios/SoloCompass/Views/Capsule/CapsuleComposeView.swift:44` | 编辑器缺名称；仅text.isEmpty允许纯空格；取消/划走没有草稿保护；Surface in/months/title/Cancel硬编码英文。trim验证、本地化、明确编辑标签与脏状态保护；持久化失败须保留草稿并给重试。 | open |
+| I13 | P2 | iOS 仪式大字和动效，`apps/ios/SoloCompass/Views/Capsule/CapsuleOpenView.swift:44`；`Blindbox/BlindboxLaunchView.swift:44`；`Omen/OmenCardView.swift:33` | 胶囊/盲盒使用无滚动VStack，长正文/大字可能把操作挤出；胶囊展开和签文翻转不检查 Reduce Motion；多处操作硬编码英文。采用能滚动的内容与稳定操作区、本地化、减弱动态效果；必须用长文与大字运行截图验收。 | open |
+| I14 | P1 | iOS 仪式假动作，`apps/ios/SoloCompass/Views/Archive/ArchiveView.swift:175`–`:231` | Release可达 ritualsHub 的盲盒启动、Brag分享/壁纸/视频、OST分享/重新生成、Insight分享、胶囊回复、Codex解锁只设 ritualsSheet=nil。用户点动作得到关闭而非承诺结果。必须连接现有真实业务能力；若业务尚未就绪，将整个目标明确呈为“预览”，移除假CTA并给真实可用路径。不要为消除审查问题发起未授权购买或发布。 | open |
+| I15 | P1 | iOS 仪式伪状态，`apps/ios/SoloCompass/Views/Archive/ArchiveView.swift:347`、`:369` | CityCodex把同一今日签文放入不同日期并把首项标完成；无胶囊时生成“A note from you”与90天前日期，未标示演示。应只显示真实记录或清楚空态/演示；不可伪装个人历史或完成状态。无记录新用户必须实测。 | open |
+| I16 | P2 | iOS 胶囊保存失败，`apps/ios/SoloCompass/Views/Experience/ExperienceDetailView.swift:316` | CapsuleStore.bury 返回nil后仍关闭编辑器，没有提示或输入恢复。使成功结果驱动关闭；失败留在编辑器、保留内容并能重试；成功消息本地化。 | open |
+| I17 | P2 | iOS AI配置选择，`apps/ios/SoloCompass/Views/Settings/AIProviderSettingsView.swift:49` | provider 行只onTapGesture，缺执行与选中语义；状态仅看key非空就称configured。使用可执行选择控件；配置存在与连接已验证分开表达，不需为此把key打入日志或远程测试。 | open |
+| I18 | P2 | iOS 核实问答，`apps/ios/SoloCompass/Views/CityOS/VerifySheet.swift:108`、`:155` | 关闭按钮30pt；选项按13pt字+vertical9设计无44pt保证；只有medium detent且无滚动，Dynamic Type下正文和操作可能不可达。增加目标，允许large/滚动并保留已答状态；全回答前禁用提交逻辑应保持。 | open |
+| I19 | P1 | iOS 路线申请，`apps/ios/SoloCompass/Views/Companion/JoinRouteRequestSheet.swift:54`、`:251` | `canSubmit`以原始count>=10验证，10个空格可提交；NotImplementedError和其他失败都吞掉，随后震动并关闭。trim后验证；仅成功关闭，失败保留message/pace、解释失败并能重试；未接后端时明确不可用，不作成功表象。 | open |
+| I20 | P2 | iOS 接受申请到对话，`apps/ios/SoloCompass/Views/Companion/RequestInboxView.swift:183` | acceptedConversation赋值后没有被任何呈现或导航读取；接受后只显示OK，注释承诺的打开对话未发生。成功后提供真实对话目的地；错误留在当前请求、不可重复接受并保证无重复对话。 | open |
+| I21 | P2 | iOS 路线分享切换，`apps/ios/SoloCompass/Views/Companion/RouteShareSheet.swift:119` | await渲染之后使用可变selectedStyle写缓存，没有校验任务取消/请求样式；快速切换map→trace时旧结果可能写入新样式缓存和预览。冻结请求style作为渲染/缓存key，过时结果不提交；补44pt和选中语义，实际连点切换核对预览/导出一致。 | open |
+| I22 | P2 | iOS 探索同意，`apps/ios/SoloCompass/Views/Map/ExploreConsentSheet.swift:76` | 同意按钮是白字配浅金CT.sunGold，与现有Paywall已修正的同类配色不一致；取消只有36pt；内容无滚动，大字在medium易挤出。采用清楚对比的on-accent配色、44pt取消目标及可滚动布局；明确何种数据将传给当前真实provider，不能仅更新视觉却保留过期数据用途承诺。 | open |
+| I23 | P2 | iOS 卡片撤销，`apps/ios/SoloCompass/Views/Chat/UndoPill.swift:27` | caption2+vertical4的撤销pill无44pt目标；时限内才出现，辅助技术在读完卡片前可能消失。补命中区；为VoiceOver延长或提供持续可达的撤销路径，避免只加hint却无法及时执行。 | open |
+| I24 | P1 | iOS 消息发送失败丢草稿，`apps/ios/SoloCompass/Views/Chat/AttachmentInputBar.swift:190`；`Companion/ChatView.swift:196`；`Services/ChatService.swift:72` | 输入栏调用Void onSend后立即清空文字/附件，父层只是启动异步发送；鉴权、网络、纯附件上传失败后没有恢复草稿。使用明确异步结果/待发送草稿；仅实际发送的部分清除。尤其当前上传失败会继续发送纯文字，不能以lastError!=nil简单恢复并重发整条导致文字重复；分开表达textSentAttachmentsFailed。使用fake服务验证，不向真实联系人发验收消息。 | open |
+| I25 | P1 | iOS 扫码权限生命周期，`apps/ios/SoloCompass/Views/Friends/QRScannerView.swift:108` | 相机授权回调获准即configure+start，没有可见性/scenePhase/token守卫；viewWillDisappear虽停止session，晚到授权仍可能在被保留的隐藏控制器上重新启动。显式跟踪可见/前台、序列化start/stop并使过时授权失效；模拟迟到授权和离开/后台，session不可再启动。 | open |
+| I26 | P2 | iOS 添加好友失败反馈，`apps/ios/SoloCompass/Views/Friends/AddFriendButton.swift:145` | send忽略服务Result；失败后仅取消isSending，原按钮恢复无失败原因/重试说明。提供错误并保留recipient，busy明确且防重复；成功状态由真实关系读回；紧凑样式亦需44pt命中区。 | open |
+
+### 法律目的地：证据待补，不编造正文
+
+`TermsConsentSheet.swift:90` 指向 `/privacy` 与 `/terms`；仓库存在前者而无后者，亦未见重写。2026-10-16（Asia/Shanghai）只读网络核对中，这两个线上路径和首页都返回HTTP 200、同一标题 `SoloCompass | Travel on your own terms`、同一368815字节SPA壳（SHA-256：`f21aae619d36f27bc4d0143bed0bde6af37a36a7dc806a0ce9866d987db7c571`）。这**不能证明渲染后的条款页面可用，也不应误报404**。根代理应验证实际可见目的地；若无法验证，保留为pending，不凭空撰写法律条款，不用不存在的页面索取同意。可使用已核实的现有公开政策，或诚实移除无法兑现的条款入口及对应宣称，保持接受/拒绝流程含义一致。
+
+## 应保留的基础
+
+- `WorkspaceDock` 的地图/问问/发现有真实 Button、44pt 最小目标、选中语义；中间入口继续使用 Solo 品牌角色。
+- `ConversationPanel` 将抓手、内容、Dock 分开，抓手44pt且提供 default/adjustable action；保留导航连续性，避免为美观重建地图或清空聊天。
+- `ChatSheet` 已在隐藏、离开及后台时 hibernate voice，并在权限返回后检查工作空间及 scenePhase；本轮不得削弱这些守卫。
+- `ItineraryFormView` 有存储失败提示、保留输入、脏状态防误划关闭及城市搜索；应按真实行为补证据。
+- `DiscoverWorkspaceView` 从真实 Experience/Route 构建页面，有离线与重试入口；不能用装饰性假推荐填空。
+
+## 视觉审查的具体方向
+
+| 表面 | 更有品味的方向 | 应减少的噪声 | 需要截图才能判断 |
+| --- | --- | --- | --- |
+| iOS 地图与工作空间 | 地图提供位置关系，Dock 提供稳定导航，对话面板呈现当前任务 | 多套发光、状态条、重复地点标题争夺视线 | 地图顶栏/底栏重叠、首屏有效地图面积、暗色玻璃可读性 |
+| iOS 详情操作 | 保存/已到访用稳定状态；加入行程作为具体主动作；次动作名称可见 | 全部动作都用强调色、每按都庆祝或震动 | 大字时四个动作是否仍能完整阅读；主操作是否压过内容 |
+| iOS 输入 | 文字是稳定入口，语音可发现且可停止，发送明确确认 | “思考中”多处同时闪动、焦点描边过轻或过亮 | 键盘上方间距、录音状态读屏、明暗对比、动态字体换行 |
+| 官网 | 以真实旅行决定/地图场景作为记忆点，页面节奏支持阅读和试用 | 每节眉题、满屏 mono uppercase、无动作卡片 hover 上浮、重复边框 | 首屏是否像旅行产品；手机样机是否与在用的原生产品一致 |
+| Web 研究页 | 列表与地图联动，筛选/选中状态清楚且能分享 | 内部 Scenario A/B/C/D 标记、装饰数据、依赖 hover 才看见的行动 | 双栏密度、窄屏换行、详情关闭后焦点与滚动位置 |
+
+“符合用户观感”需要从实际信息和状态判断：轻边框用于分区；明显边框保留给键盘焦点、当前选中或需修正的输入；不把每张静态卡片都做成会浮起的可点击暗示。所有纯装饰纹理/地图细线须不抢正文对比度，并对辅助技术隐藏。
+
+## 证据缺口与冻结复核
+
+待根代理提供：冻结 head / 改动 diff、Web 移动/桌面截图、iOS Primary iPhone 核心路径截图、相关测试输出与实际点击记录。审查者不另行启动浏览器、构建或模拟器，避免抢占共享资源。
+
+需要实测的最小 iOS 状态：地图初始与返回、Ask Solo 输入/发送/失败/重试、录音权限允许/拒绝/后台停止、附件删除、收藏/到访/加入行程、发现排序、城市切换、同行可见性恢复、偏好读回；增加暗色与必要大字状态。Web 需覆盖移动导航、下载落点、键盘命令面板、文字/语音切换、签到失败重试和抽屉关闭。
+
+盘点已提供43个功能族（W01–W17、I01–I26）；逐源候选会随漏项补全更新。候选包含条件分支、呈现关系与数据驱动模板，不能把候选行数直接当真实按钮数量。scorecard将对齐这些稳定ID，保留每个候选的 `not_verified`，不以功能族平均分代替逐项通过。最终审查必须说明多少项已验证、多少项仅源码审查，以及仍不能诚实声称96分的原因。
+
+Settled I24 interface proposal for the next batch (root may explicitly extend scope to Services/ChatService.swift before resuming): introduce @discardableResult SendOutcome sent / textSentAttachmentsFailed / notSent, preserve all public callers, return from the real send pipeline rather than infer from lastError. Make AttachmentInputBar await a result and retain its snapshot until acknowledged. Fully failed send keeps text+attachments; partial text success clears only the exact sent text and retains failed attachments with an explicit localized message so retry cannot resend text; success removes only sent attachment IDs and clears exact matching sent text, preserving edits made during await. A synchronous pending guard prevents double send. Test actual ChatService through injectable SupabaseClientProtocol and AttachmentUploading fakes; no real credentials/contacts. Tests must cover backend/text-row failure, attachment-only failure, partial text success and true success. Do not silently treat skipped/gated/auth-missing sends as success. If implementing an all-or-nothing upload abort alternative, maintain existing documented degrade behavior unless architecture explicitly changes.
+
+Final before screenshot reviewer advice: map's city/icons -> filters -> large saved/trips strip -> diagnostic card stack occupies roughly upper40%; duplicate Saved/Ask entry points compete with map. Keep recognizable dock. Prefer library shortcuts in Discover (already real), restrained single filter row, context-bound diagnostic explanation in chat with an actionable Settings recovery. Do not break existing map user-story entrypoints/tests: if moving/hiding shortcuts, preserve truly required reachability and update behavioral acceptance rather than only changing selectors. Verify full header with Dynamic Type.
+
+Root actual Web /app run (localhost, intentionally no private env): list loads5 fallback seed experiences, but basemap goes blank and console emits 'valid Mapbox access token required' because clientEnv defaults pk.placeholder_token. A genuine hero /app link must degrade coherently. In MapView detect absent/placeholder token before constructing Mapbox, report default sample center so list still loads, show honest map-unavailable state with reachable sample city/list option; handle runtime map error without permanent invisible failure; don't hide errors as full map success. HomeInner NearbySheet degraded cityName currently 'Paused (AI)' is internal jargon, label sample/fallback state honestly. Do not invent a working map key or log keys. This is a verified local environment gap, not a claim about deployed config. Main map geolocation should be user-triggered and late callbacks ignored after unmount; no gratuitous automatic permission on entry. No personal permissions/test creds used by root.
+
+Checkpoint01 independent review (exact 19-file SHA manifest, actual Xcode build succeeds):
+1. Paywall restore/purchase mutual exclusion incomplete: Restore disabled while purchase/restore, but primary purchase CTA only checks purchaseInFlight and runPurchase has no guard against restoreInFlight. Use one busy condition on both actions + guards so neither path can race/reenter, preserve truthful StoreKit result and error recovery.
+2. 27 newly referenced localization keys (paywall.plan.a11y/period/restore, photo delete, coordinate N/S/E/W, common.selected and others) absent in BOTH en/zh. Add translations as part of next coherent checkpoint, not left to root; no raw keys as labels.
+3. Root test selector corrected for renamed class: PressableButtonStyleFeedbackTests (file remains PressableButtonStyleHapticTest.swift). Don't let source-only tests or empty filters count as passing. Root owns Simulator and native xcodebuild.
+
+Batch boundary: complete remaining confirmed iOS issues first (I10–I25 plus above), including Service SendOutcome with explicit scope expansion below. Prioritize no false success/history, failed-send draft retention, request failures, privacy lifecycle; share/capsule errors; semantic controls/dark/dynamic type. Archive unknown ritual functions may become explicitly labeled preview-only with noninteractive inner illustration and genuine navigation/close rather than inventing new backend capabilities; remove fake personal history and fake completed days. You do not need to implement entirely new rituals/services to close trust defects. Use existing capabilities only. When this native batch is coherent, add EN/ZH keys, parse all changed Swift and run existing pure/host checks if available; RETURN A CHECKPOINT SUMMARY and settle before starting Web. Root will verify/review while same task resumes a separate Web batch. This is phase sequencing within the original user task, not completion of the overall project. Do not restart broad repository exploration; act on the settled findings and your existing context.
+
+Checkpoint01 further confirmed review:
+- SubscriptionService.restorePurchases does not clear lastError. Do NOT consume stale lastError as this restore attempt's failure. Clear the public lastError immediately before restore (or use a real per-operation outcome); preserve service's verified entitlements. The parent has NOT expanded SubscriptionService scope: view can clear public error before invoking, or record exact necessity.
+- ConfidenceBadge must frame(minWidth/minHeight44) BEFORE contentShape so added transparent area is inside tappable shape; current order contentShape -> frame is not sufficient evidence. Actual edge taps will be tested.
+- RouteShareSheet async stale render issue I21 is a DIFFERENT file from Experience/Share/ShareSheet; preserve task identity/cancellation so old style's image cannot overwrite current style and busy remains valid.
+
+Explicit scope is now extended for this SAME task to one exact file apps/ios/SoloCompass/Services/ChatService.swift for SendOutcome. All models/base/counters unchanged. Root recorded scope-changes.md. Implement the settled structured outcome and injectable failure/partial-success tests; no broader service edits.

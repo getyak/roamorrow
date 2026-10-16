@@ -30,9 +30,12 @@ struct SendRequestSheet: View {
     let recipient: Recipient
     let source: Source
     let onSend: (String?) -> Void
+    private var onSendAsync: ((String?) async -> Result<Void, Error>)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var note = ""
+    @State private var isSending = false
+    @State private var sendError: String?
 
     private let maxNoteLength = 200
 
@@ -41,6 +44,14 @@ struct SendRequestSheet: View {
         self.recipient = Recipient(handle: post.handle, blurb: post.blurb)
         self.source = .discover
         self.onSend = onSend
+    }
+
+    /// The acknowledged discovery path retains the draft until durable success.
+    init(post: DiscoverPost, onSendAsync: @escaping (String?) async -> Result<Void, Error>) {
+        self.recipient = Recipient(handle: post.handle, blurb: post.blurb)
+        self.source = .discover
+        self.onSend = { _ in }
+        self.onSendAsync = onSendAsync
     }
 
     /// US-019: compose a meetup invite to an existing friend. No reporterWeight
@@ -75,6 +86,21 @@ struct SendRequestSheet: View {
                     Text(NSLocalizedString("companion.request.post.header", comment: "Post preview section header"))
                 }
 
+                if isSending {
+                    Section {
+                        HStack {
+                            ProgressView()
+                            Text(NSLocalizedString("companion.post.action.sending", value: "Sending…", comment: "Waiting for acknowledgement"))
+                        }
+                    }
+                }
+                if let sendError {
+                    Section {
+                        Label(sendError, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(CT.savedRed)
+                    }
+                }
+
                 // Icebreaker note
                 Section {
                     TextField(
@@ -83,6 +109,7 @@ struct SendRequestSheet: View {
                         axis: .vertical
                     )
                     .lineLimit(3...5)
+                    .disabled(isSending)
                     .onChange(of: note) { _, new in
                         if new.count > maxNoteLength { note = String(new.prefix(maxNoteLength)) }
                     }
@@ -105,20 +132,42 @@ struct SendRequestSheet: View {
                     Button(NSLocalizedString("action.cancel", comment: "Cancel")) {
                         dismiss()
                     }
+                    .disabled(isSending)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(NSLocalizedString("companion.request.send.action", comment: "Send button")) {
-                        onSend(note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : note)
-                        dismiss()
+                        guard !isSending else { return }
+                        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let value = trimmed.isEmpty ? nil : trimmed
+                        if let onSendAsync {
+                            isSending = true
+                            sendError = nil
+                            Task {
+                                let result = await onSendAsync(value)
+                                isSending = false
+                                switch result {
+                                case .success:
+                                    Haptics.notify(.success)
+                                    dismiss()
+                                case .failure(let error):
+                                    sendError = error.localizedDescription
+                                    Haptics.notify(.error)
+                                }
+                            }
+                        } else {
+                            onSend(value)
+                            dismiss()
+                        }
                     }
                     .fontWeight(.semibold)
+                    .disabled(isSending)
                 }
             }
         }
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
         // Protect a typed-but-unsent icebreaker from an accidental swipe-down.
-        .interactiveDismissDisabled(!note.trimmingCharacters(in: .whitespaces).isEmpty)
+        .interactiveDismissDisabled(isSending || !note.trimmingCharacters(in: .whitespaces).isEmpty)
     }
 }
 

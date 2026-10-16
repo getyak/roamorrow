@@ -1,0 +1,32 @@
+{
+  "typecheck-accepted": {
+    "exitCode": 0,
+    "seconds": 4.11,
+    "command": [
+      "pnpm",
+      "--filter",
+      "@solo-compass/web",
+      "typecheck"
+    ]
+  },
+  "tests-accepted": {
+    "exitCode": 0,
+    "seconds": 2.13,
+    "command": [
+      "pnpm",
+      "--filter",
+      "@solo-compass/web",
+      "test"
+    ]
+  },
+  "build-accepted": {
+    "exitCode": 0,
+    "seconds": 30.17,
+    "command": [
+      "pnpm",
+      "--filter",
+      "@solo-compass/web",
+      "build"
+    ]
+  }
+}

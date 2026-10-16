@@ -10,7 +10,7 @@ final class TravelerNoteStoreTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         let container = SoloCompassModelContainer.makeInMemory()
-        store = TravelerNoteStore(context: ModelContext(container))
+        store = TravelerNoteStore(context: ModelContext(container), includeDemonstrationContent: true)
     }
 
     override func tearDown() async throws {

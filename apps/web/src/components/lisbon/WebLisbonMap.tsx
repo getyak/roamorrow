@@ -10,7 +10,8 @@
  * Not Mapbox. Not geographic. Editorial.
  */
 
-import type { CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { projectIllustratedPin } from "@/lib/illustrated-map";
 import { WEB_CATS, type WebCategoryId, type WebExperience } from "@/lib/lisbon-data";
 import type { WebCityMapConfig } from "@/lib/cities-data";
 
@@ -59,6 +60,8 @@ interface WebLisbonMapProps {
   readonly style?: CSSProperties;
   /** Optional per-city config; defaults to Lisbon for back-compat. */
   readonly mapConfig?: WebCityMapConfig;
+  /** Live viewBox (zoom/pan) — defaults to the full illustrated canvas. */
+  readonly viewBox?: string;
 }
 
 export function WebLisbonMap({
@@ -71,7 +74,26 @@ export function WebLisbonMap({
   dark = true,
   style,
   mapConfig = LISBON_DEFAULT_MAP,
+  viewBox = "0 0 1000 700",
 }: WebLisbonMapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const interactive = Boolean(onTap);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !interactive) return;
+    const measure = () => {
+      const { width, height } = container.getBoundingClientRect();
+      setViewport((previous) =>
+        previous.width === width && previous.height === height ? previous : { width, height },
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [interactive]);
+
   const bg = dark ? "#1A1714" : "#F4ECDD";
   const water = dark ? "#221C16" : "#E6D8B6";
   const land = dark ? "#28221B" : "#EFE5CB";
@@ -92,10 +114,17 @@ export function WebLisbonMap({
       : "Illustrated demo · locations and walk times are illustrative";
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", ...style }}>
+    <div
+      ref={containerRef}
+      role={interactive ? "group" : undefined}
+      aria-label={interactive ? mapNotice : undefined}
+      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", ...style }}
+    >
       <svg
-        aria-label={mapNotice}
-        viewBox="0 0 1000 700"
+        role={interactive ? undefined : "img"}
+        aria-hidden={interactive ? true : undefined}
+        aria-label={interactive ? undefined : mapNotice}
+        viewBox={viewBox}
         preserveAspectRatio="xMidYMid slice"
         style={{
           width: "100%",
@@ -244,14 +273,7 @@ export function WebLisbonMap({
           const r = isFocus ? 8 : isHover ? 7 : 5;
           const ringR = isHover || isFocus ? 22 : 14;
           return (
-            <g
-              key={p.id}
-              transform={`translate(${p.x} ${p.y})`}
-              style={{ cursor: "pointer" }}
-              onMouseEnter={() => onHover?.(p.id)}
-              onMouseLeave={() => onHover?.(null)}
-              onClick={() => onTap?.(p.id)}
-            >
+            <g key={p.id} transform={`translate(${p.x} ${p.y})`}>
               {(isHover || isFocus) && (
                 <circle r={ringR} fill={cat.color} opacity="0.18" className="sc-halo" />
               )}
@@ -264,6 +286,46 @@ export function WebLisbonMap({
           );
         })}
       </svg>
+      {onTap &&
+        pins.map((p) => {
+          const point = projectIllustratedPin(p.x, p.y, viewBox, viewport.width, viewport.height);
+          if (
+            !point ||
+            viewport.width < 44 ||
+            viewport.height < 44 ||
+            point.left < 0 ||
+            point.top < 0 ||
+            point.left > viewport.width ||
+            point.top > viewport.height
+          )
+            return null;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              className="illustrated-map-pin"
+              aria-label={`${lang === "zh" ? p.titleZh : p.title} — ${lang === "zh" ? p.placeZh : p.place}, ${p.walkMin} ${lang === "zh" ? "分钟步行" : "min walk"}`}
+              aria-pressed={focusedId === p.id}
+              onClick={() => onTap(p.id)}
+              onMouseEnter={() => onHover?.(p.id)}
+              onMouseLeave={() => onHover?.(null)}
+              onFocus={() => onHover?.(p.id)}
+              onBlur={() => onHover?.(null)}
+              style={{
+                position: "absolute",
+                left: Math.max(0, Math.min(viewport.width - 44, point.left - 22)),
+                top: Math.max(0, Math.min(viewport.height - 44, point.top - 22)),
+                width: 44,
+                height: 44,
+                padding: 0,
+                border: 0,
+                borderRadius: "50%",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            />
+          );
+        })}
       <span
         style={{
           position: "absolute",

@@ -90,8 +90,9 @@ export const WEB_EXPS: readonly WebExperience[] = [
     sources: 14,
     lastVerified: "2026-04-22",
     aiReason:
-      "You saved two viewpoints in Porto. Graça has a wider sky than the others — the river bends, the castle frames it.",
-    aiReasonZh: "你在波尔图收藏过两个观景台。Graça 的天空更开阔——河在这里转弯，城堡正好框住它。",
+      "Wider sky than the other viewpoints in this guide — the river bends here and the castle frames the view. Drawn from 14 cited sources.",
+    aiReasonZh:
+      "比指南里其他观景台天空更开阔——河在这里转弯，城堡正好框住视线。来自 14 条标注来源。",
     tags: ["solo-friendly", "sunset", "no booking"],
     tagsZh: ["一个人也行", "日落", "不用预订"],
     pricePill: "€0",

@@ -53,7 +53,31 @@ struct ActiveRouteBanner: View {
     var onPause: (() -> Void)? = nil
     let onEnd: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                routeSummary
+                Spacer(minLength: 4)
+                controls
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                routeSummary
+                HStack {
+                    Spacer(minLength: 0)
+                    controls
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var routeSummary: some View {
         HStack(spacing: 10) {
             Image(systemName: "figure.walk")
                 .font(.system(size: 15, weight: .semibold))
@@ -62,7 +86,8 @@ struct ActiveRouteBanner: View {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(String(
                     format: NSLocalizedString("route.active.stops", comment: "N stops"),
                     stopCount
@@ -70,7 +95,11 @@ struct ActiveRouteBanner: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 4)
+        }
+    }
+
+    private var controls: some View {
+        HStack(spacing: 4) {
             if let onSkip {
                 circleButton(systemImage: "forward.end.fill",
                              a11y: NSLocalizedString("route.active.skip", comment: "Skip this stop"),
@@ -85,11 +114,6 @@ struct ActiveRouteBanner: View {
                          a11y: NSLocalizedString("route.active.end", comment: "End route"),
                          action: onEnd)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -100,6 +124,8 @@ struct ActiveRouteBanner: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 30, height: 30)
                 .background(Circle().fill(Color.secondary.opacity(0.12)))
+                .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(a11y))
