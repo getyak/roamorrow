@@ -1,0 +1,10 @@
+{
+  "apps/web/src/app/[city]/page.tsx": "45916a5f5eb70cd40a459cbce8adffeee469b37fd597cf572d053f031026425b",
+  "apps/web/src/app/experience/[id]/page.tsx": "abdd79ba51069d404287ae87a0abb986405cf9bad236df4173b32a043635ddd6",
+  "apps/web/src/app/trip/[slug]/page.tsx": "74d0e69220046efb2cef3d99186dbf40a350d56e9891c959ebb8432e2530fd0f",
+  "apps/web/src/app/global-error.tsx": "234a9129dd8528fa6691a1e51ee2153c896f018570fb528ee5aff039ece4b0d2",
+  "apps/web/src/app/globals.css": "2e2a5dac2e7faf175ef3f73487b9ac597421058ee09f96140f0da63703e7121b",
+  "apps/web/src/components/lisbon/WebLisbonMap.tsx": "1f750f1e55286f460980d5ab32cfe23334c5b1a77684be2f3f9de7e07d92ede0",
+  "apps/web/src/lib/illustrated-map.ts": "18a28fe88a81568f927eb4ad841e09394cc0a20f1ab1ced846b1aec80d7fdc9c",
+  "apps/web/src/lib/illustrated-map.test.ts": "a1064850a2744df7314e4c99f3d6f12753775a99931bf7a2ff60f5c52d7b8895"
+}

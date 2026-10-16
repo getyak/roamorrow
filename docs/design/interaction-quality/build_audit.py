@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent
 page = ROOT / "index.html"
 html = page.read_text()
 for name in ("inventory", "scorecard"):
-    source = ROOT / "current" / "inventory.json" if name == "inventory" and (ROOT / "current" / "inventory.json").exists() else ROOT / f"{name}.json"
+    source = ROOT / "current" / "inventory.json" if name == "inventory" and (ROOT / "current" / "inventory.json").exists() else ROOT / "scorecard-round-02.json" if name == "scorecard" and (ROOT / "scorecard-round-02.json").exists() else ROOT / f"{name}.json"
     payload = json.dumps(json.loads(source.read_text()), ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
     block = f'<script type="application/json" id="{name}-data">{payload}</script>'
     pattern = rf'<script type="application/json" id="{name}-data">.*?</script>'

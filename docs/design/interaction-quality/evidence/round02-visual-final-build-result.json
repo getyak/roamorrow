@@ -1,0 +1,31 @@
+{
+  "exitCode": 0,
+  "seconds": 12.63,
+  "command": [
+    "/Users/cubxxw/.local/bin/dev-ios-session",
+    "run",
+    "--timeout",
+    "1200",
+    "--",
+    "xcodebuild",
+    "build-for-testing",
+    "-project",
+    "/Users/cubxxw/.codex/worktrees/interaction-quality/solo-compass/apps/ios/SoloCompass.xcodeproj",
+    "-scheme",
+    "SoloCompass",
+    "-destination",
+    "platform=iOS Simulator,id=02B4F0C1-A92F-469D-9DCC-5ED13F119507",
+    "-derivedDataPath",
+    "/private/tmp/ai-test-interaction-quality-round02-integrated-native.BDWWDS/DerivedData",
+    "-jobs",
+    "2",
+    "ONLY_ACTIVE_ARCH=YES",
+    "ARCHS=arm64",
+    "CODE_SIGNING_ALLOWED=YES",
+    "CODE_SIGN_IDENTITY=-",
+    "DEVELOPMENT_TEAM=",
+    "CODE_SIGN_STYLE=Manual",
+    "-disableAutomaticPackageResolution",
+    "-skipPackageUpdates"
+  ]
+}

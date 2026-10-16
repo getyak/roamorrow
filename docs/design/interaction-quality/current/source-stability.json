@@ -1,0 +1,34 @@
+{
+  "checked_at_utc": "2026-10-16T05:52:05.142652+00:00",
+  "working_tree_head": "efcb8fc523f59c8333b010c9bc710d8d5b2e4559",
+  "counting_note": "静态源码候选；不是运行时独立按钮数，未据本次扫描宣称运行通过或96分。",
+  "source_stable": true,
+  "ui_source_manifest_sha256": "e3e637fd843eeb38b19e679feff277e0fb58ef6921bb61dd2609fe43538d801a",
+  "compared_ui_files": 220,
+  "changed_sources": [],
+  "removed_ui_files": [],
+  "added_ui_files": [],
+  "candidate_count": 974,
+  "candidate_counts_by_platform": {
+    "ios": 864,
+    "web": 110
+  },
+  "manual_function_groups": 44,
+  "ios_manual_groups": 27,
+  "ios_source_files_with_candidates": 124,
+  "unassigned": [],
+  "parsing_diagnostics": [],
+  "ios_candidates_missing_index": [],
+  "manual_source_names_missing": [],
+  "fixed_baseline_unchanged": true,
+  "artifact_sha256": {
+    "docs/design/interaction-quality/inventory.md": "80c49b5b49e8fa1b31da222d9e2822c584e70606613dbaee9866c6b2ce5b036e",
+    "docs/design/interaction-quality/inventory.json": "c67e36180f22c0754d68bb2f06ddc6d750cf82564b4d3bd7cce8570893c9df6f",
+    "docs/design/interaction-quality/generate_inventory.py": "961ea04cf58ea1bfe9b8cba390e4ab8d7a59bcf9935c4cc32dd7ced9b4c07a00",
+    "docs/design/interaction-quality/current/inventory.md": "b50f102b11861db45c7beb4dd87047df609c16e669df57e4d324cb7ec88c543f",
+    "docs/design/interaction-quality/current/inventory.json": "0ffec0f310344968aeb5f16f1924973ed0841690fe3a1d85b5fa9da79d6d6c6f",
+    "docs/design/interaction-quality/current/ios-controls.md": "dd4a71f05476277da19bc2e95ca175940671f0e7c066f40c6723d7dee7a71c5b",
+    "docs/design/interaction-quality/ios-functions.md": "d7eccb6a44127f9ae803799d1bebb24435872ec9b39102e6c63c8b02781398b6"
+  },
+  "validated_source_commit": "7e30bf176fa9ecb2095f0850adbcce911abfe389"
+}

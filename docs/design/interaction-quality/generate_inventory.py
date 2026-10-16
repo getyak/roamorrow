@@ -410,6 +410,8 @@ GROUPS = [
 # source grouping when the files exist in the scanned snapshot; GROUP_DESIGN
 # remains the original design assessment, not a post-fix evaluation.
 CURRENT_SOURCE_GROUP_ADDITIONS = [
+    {"path": "apps/ios/SoloCompass/Views/Today/TodayActionSheets.swift", "group_ids": ["I24"], "reason": "Today与CityOS工具包复用的入境日期/确认停留天数表单、只读胶囊回执详情；由TodayContainer和VisaComplianceControl实际挂载。", "binding_sources": ["apps/ios/SoloCompass/Views/Today/TodayContainer.swift", "apps/ios/SoloCompass/Views/CityOS/KitSheet.swift"]},
+    {"path": "apps/ios/SoloCompass/Views/Companion/CompletionMomentFlow.swift", "group_ids": ["I17"], "reason": "完成仪式状态机：确认、提交、失败重试、成功庆祝与只读回放；本文件不直接声明UI控件。", "binding_source": "apps/ios/SoloCompass/Views/Companion/CompletionMoment.swift"},
     {"path": "apps/web/src/components/marketing/MobileNav.tsx", "group_ids": ["W01", "W03", "W04", "W05", "W06"], "reason": "MarketingNav调用的共享移动导航，覆盖官网及营销子页的菜单/语言/下载入口。", "binding_source": "apps/web/src/components/marketing/sections.tsx"},
     {"path": "apps/web/src/components/marketing/HeroMotif.tsx", "group_ids": ["W02"], "reason": "Hero使用的静态罗盘/路线SVG，仅视觉，无直接交互候选。", "binding_source": "apps/web/src/components/marketing/sections.tsx"},
     {"path": "apps/web/src/components/ShareButton.tsx", "group_ids": ["W07", "W17"], "reason": "共享Web Share/复制链接控件；当前调用方是行程分享页。", "binding_source": "apps/web/src/app/trip/[slug]/page.tsx"},
@@ -937,10 +939,56 @@ def main():
     metadata["output_dir"] = str(output_dir)
     if args.working_tree:
         metadata["working_tree_head"] = git("rev-parse", "HEAD").strip()
+        # Current catalogs supplement the fixed baseline assessment; they never
+        # rewrite GROUP_DESIGN or imply runtime acceptance.
+        metadata["current_ios_function_catalog"] = "docs/design/interaction-quality/ios-functions.md"
+        metadata["current_web_function_catalog"] = "docs/design/interaction-quality/web-functions.md"
+        digest = hashlib.sha256()
+        for source_file in coverage:
+            digest.update(f"{source_file['path']}\0{source_file['source_sha256']}\n".encode())
+        metadata["ui_source_manifest_sha256"] = digest.hexdigest()
+        for group in groups:
+            catalog = metadata["current_ios_function_catalog"] if group["platform"] == "ios" else metadata["current_web_function_catalog"]
+            group["current_function_catalog"] = catalog
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "inventory.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     render_markdown(result, output_dir)
+    if args.working_tree:
+        render_ios_catalog(result, output_dir, read)
     print(json.dumps({"source_ref": ref, "files": len(coverage), "candidates": len(candidates), "platforms": metadata["candidate_counts_by_platform"], "groups": len(groups), "unassigned": len(metadata["unassigned_candidates"]), "output_dir": str(output_dir), "parsing_diagnostics": len(diagnostics)}, ensure_ascii=False))
+
+
+def render_ios_catalog(data, output_dir: Path, read):
+    """逐族可查的当前 iOS 控件索引；命中区只能陈述局部源码声明。"""
+    meta = data["metadata"]
+    rows = ["# 当前 iOS 逐项控件源码索引", "", "这是源码候选索引，不能相加当作运行时按钮数。父级呈现、子控件renderer、复用调用点、条件/列表实例和系统UI必须结合[用户功能目录](../ios-functions.md)阅读。", "", f"本轮 iOS 候选 {meta['candidate_counts_by_platform'].get('ios', 0)}；跨端 UI 文件 {meta['scanned_files']}；UI 文件清单 SHA-256：`{meta.get('ui_source_manifest_sha256', 'unavailable')}`。", "", "运行时状态全部为 `not_verified`。44pt/AX栏只列当前候选完整局部块中可见的声明，未发现不等于没有上层命中区，发现也不等于真实命中范围已验收；手工归并与实际结果见用户目录。空label/上层callback不会使用旧源码补全。", ""]
+    by_id = {c["id"]: c for c in data["candidates"]}
+    sources = {}
+    for group in data["function_groups"]:
+        if group["platform"] != "ios":
+            continue
+        rows.extend([f"## {group['id']} · {group['screen_or_route']}", "", "| 页面 / 控件 / 候选ID | 当前名称 | 真实局部动作或父回调 | 状态 / 动态规则 | 44pt / AX局部声明 | source:line |", "|---|---|---|---|---|---|"])
+        for cid in group["candidate_ids"]:
+            c = by_id[cid]
+            path = c["source"]["path"]
+            if path not in sources:
+                sources[path] = read(path).splitlines()
+            start, end = c["source"]["line"], c["source"]["end_line"]
+            block = "\n".join(sources[path][start - 1:end])
+            traits = []
+            if re.search(r"\.frame\([^)]*(?:44|HitTargetMetrics\.minimum)", block):
+                traits.append("局部frame有44pt/共享minimum；需核对宽高/父级")
+            if ".contentShape(" in block:
+                traits.append("contentShape")
+            for token in ("accessibilityLabel", "accessibilityValue", "accessibilityHint", "accessibilityAction", "accessibilityAddTraits"):
+                if token in block:
+                    traits.append(token)
+            labels = c["labels"].get("zh-Hans") or c["labels"].get("en") or c["labels"].get("literal_candidates") or c["labels"].get("localization_keys")
+            label = " / ".join(labels) if labels else "动态/父级helper名称；本局部未解析"
+            state = "; ".join(c["states"]) + ("；条件/循环/绑定" if c["dynamic_or_conditional"] else "")
+            rows.append(f"| {escape(c['screen'])} · {c['control']} · `{cid}` ({c['category']}) | {escape(compact(label, 300))} | {escape(c['action'])} | {escape(compact(state, 360))} | {escape('；'.join(traits) or '本局部未提取；结合父级与运行时核对')} | `{path}:{start}` |")
+        rows.append("")
+    (output_dir / "ios-controls.md").write_text("\n".join(rows) + "\n")
 
 
 def escape(value):

@@ -1,0 +1,23 @@
+{
+  "exitCode": 0,
+  "seconds": 148.45,
+  "classes": [
+    "UIAuditSnapshotTests/testSoloScoreBadge"
+  ],
+  "command": [
+    "xcodebuild",
+    "test-without-building",
+    "-xctestrun",
+    "/private/tmp/ai-test-interaction-quality-round02-integrated-native.BDWWDS/DerivedData/Build/Products/SoloCompass_iphonesimulator26.5-arm64.xctestrun",
+    "-destination",
+    "platform=iOS Simulator,id=02B4F0C1-A92F-469D-9DCC-5ED13F119507",
+    "-resultBundlePath",
+    "/private/tmp/ai-test-interaction-quality-round02-integrated-native.BDWWDS/visual-badge.xcresult",
+    "-parallel-testing-enabled",
+    "NO",
+    "-only-testing:SoloCompassTests/UIAuditSnapshotTests/testSoloScoreBadge"
+  ],
+  "executedTests": 1,
+  "failures": 0,
+  "note": "Final badge-only affected rerun; does not claim all 33 tests reran on final badge source."
+}

@@ -1,0 +1,22 @@
+{
+  "typecheck-release": {
+    "exitCode": 0,
+    "seconds": 3.96,
+    "command": [
+      "pnpm",
+      "--filter",
+      "@solo-compass/web",
+      "typecheck"
+    ]
+  },
+  "build-release": {
+    "exitCode": 0,
+    "seconds": 25.5,
+    "command": [
+      "pnpm",
+      "--filter",
+      "@solo-compass/web",
+      "build"
+    ]
+  }
+}
