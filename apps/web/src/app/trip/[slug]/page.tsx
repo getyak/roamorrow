@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ShareButton } from "@/components/ShareButton";
 import type { Metadata } from "next";
 import { findTripBySlug, type Trip } from "@/lib/trips-data";
 
@@ -111,6 +112,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
 
   return (
     <main
+      id="main"
       style={{
         minHeight: "100vh",
         background: "#F1ECDF",
@@ -167,21 +169,19 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
             compass.io / {trip.author.toLowerCase().replace(/\s+/g, "-")} / {trip.slug}
           </span>
           <span style={{ flex: 1 }} />
-          <button
-            type="button"
-            style={{
-              padding: "4px 10px",
-              borderRadius: 4,
-              background: "transparent",
-              border: "0.5px solid #D6CEC0",
-              fontFamily: fontStack,
-              fontSize: 11,
-              color: "var(--accent)",
-              cursor: "pointer",
+          <ShareButton
+            title={title}
+            text={intro}
+            labels={{
+              idle: T.share,
+              shared: lang === "zh" ? "已分享" : "Shared",
+              copied: lang === "zh" ? "链接已复制" : "Link copied",
+              failed:
+                lang === "zh"
+                  ? "分享失败，请手动复制地址栏链接"
+                  : "Sharing failed — copy the URL from the address bar",
             }}
-          >
-            ↗ {T.share}
-          </button>
+          />
         </div>
 
         {/* Hero */}

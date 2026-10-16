@@ -102,7 +102,7 @@ struct ChatExperienceCard: View {
                 .frame(width: 28, height: 28)
                 .background(Circle().fill(CT.surfaceSunken))
         }
-        .buttonStyle(PressableButtonStyle(pressedScale: 0.9))
+        .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(Text(NSLocalizedString("chat.card.expand.a11y", comment: "Show more about this place")))
     }
 
@@ -375,7 +375,7 @@ struct ChatRouteProposalCard: View {
                         .background(Circle().fill(stop.category.color))
                         .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
                 }
-                .buttonStyle(PressableButtonStyle(pressedScale: 0.9))
+                .buttonStyle(PressableButtonStyle())
                 .accessibilityLabel(Text("\(index + 1). \(stop.title)"))
             }
             Text(stopsMeta)

@@ -188,10 +188,11 @@ public struct ChatView: View {
                 "companion.chat.input.placeholder",
                 comment: "Message input placeholder"
             )
-        ) { trimmed in
-            // Read staged drafts here (the bar clears them after this returns).
-            let staged = draftAttachments
-            Task { await service.send(trimmed, attachments: staged) }
+        ) { trimmed, staged in
+            // The bar passes the exact snapshot being sent and keeps its draft
+            // until the outcome is known (I24): it clears only what this call
+            // actually wrote, so a failed or degraded send never loses input.
+            await service.send(trimmed, attachments: staged)
         }
     }
 

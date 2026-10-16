@@ -8,30 +8,68 @@ import type { ReactNode, ButtonHTMLAttributes, AnchorHTMLAttributes } from "reac
 type Variant = "primary" | "secondary" | "ghost";
 
 const buttonBase =
-  "inline-flex items-center justify-center h-12 px-6 rounded-full font-body text-body-md font-medium transition-all duration-fast ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
+  // h-12 (48px) clears the 44px touch minimum; labels wrap at 320px instead
+  // of overflowing. Press feedback is a subtle scale — no hover lift.
+  "inline-flex items-center justify-center min-h-[44px] h-12 px-6 rounded-full font-body text-body-md font-medium text-center leading-snug whitespace-normal transition-colors duration-fast ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 aria-busy:opacity-80";
 
 const buttonVariant: Record<Variant, string> = {
   primary:
-    "bg-accent text-bg-warm hover:bg-accent-hover active:scale-[0.98] shadow-sm hover:shadow-lg hover:-translate-y-[1px]",
+    // on-accent is contrast-paired per scheme (W08): cream on the deep amber
+    // in light mode, near-black on the lighter amber in dark mode.
+    "bg-accent-interactive text-on-accent hover:bg-accent-interactive-hover shadow-sm",
   secondary:
-    "bg-transparent text-fg-primary border border-border-default hover:border-fg-primary hover:bg-surface-white active:scale-[0.98]",
+    "bg-transparent text-fg-primary border border-border-default hover:border-fg-primary hover:bg-surface-white",
   ghost: "bg-transparent text-fg-muted hover:text-fg-primary underline-offset-4 hover:underline",
 };
+
+function Spinner() {
+  return (
+    <span
+      aria-hidden
+      className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+    />
+  );
+}
 
 export function Button({
   variant = "primary",
   className = "",
+  busy = false,
+  disabled,
+  children,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
-  return <button className={`${buttonBase} ${buttonVariant[variant]} ${className}`} {...rest} />;
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; busy?: boolean }) {
+  return (
+    <button
+      className={`${buttonBase} ${buttonVariant[variant]} ${className}`}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      {...rest}
+    >
+      {busy && <Spinner />}
+      {children}
+    </button>
+  );
 }
 
 export function ButtonLink({
   variant = "primary",
   className = "",
+  busy = false,
+  children,
   ...rest
-}: AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: Variant }) {
-  return <a className={`${buttonBase} ${buttonVariant[variant]} ${className}`} {...rest} />;
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: Variant; busy?: boolean }) {
+  return (
+    <a
+      className={`${buttonBase} ${buttonVariant[variant]} ${className}`}
+      aria-busy={busy || undefined}
+      aria-disabled={busy || undefined}
+      {...rest}
+    >
+      {busy && <Spinner />}
+      {children}
+    </a>
+  );
 }
 
 /* ============================================================

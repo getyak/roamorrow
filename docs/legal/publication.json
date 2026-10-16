@@ -1,0 +1,19 @@
+{
+  "owner": "kubbot",
+  "visibility": "public",
+  "privacy": {
+    "id": "e177b6ab042c8d5bd79417300031a5c9",
+    "url": "https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9",
+    "filename": "privacy-policy.md",
+    "sha256": "fdaa47227d222a0f01694158b663cc813dcadf4cace8796ed7c2a40437729e47",
+    "updatedAt": "2026-10-16T01:55:46Z"
+  },
+  "terms": {
+    "id": "08f720b1191b6f9c913699c16227581a",
+    "url": "https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a",
+    "filename": "terms-of-service.md",
+    "sha256": "d192072979b29409a0e30d4abf3e7afe7bdaacc7ab655ab68f7ce0e470389e88",
+    "updatedAt": "2026-10-16T01:54:03Z"
+  },
+  "authenticatedReadbackVerified": true
+}

@@ -94,16 +94,29 @@ public struct ReportBlockSheet: View {
     private var reasonSection: some View {
         Section(NSLocalizedString("companion.report.reason.header", comment: "Reason header")) {
             ForEach(CompanionReportReason.allCases, id: \.self) { reason in
-                HStack {
-                    Text(reason.displayName)
-                    Spacer()
-                    if selectedReason == reason {
-                        Image(systemName: "checkmark")
-                            .foregroundStyle(CT.accent)
+                let isSelected = selectedReason == reason
+                // Real Button + selected semantics (I10): VoiceOver can move
+                // through the reasons, activate one, and hear which is chosen.
+                Button {
+                    selectedReason = reason
+                } label: {
+                    HStack {
+                        Text(reason.displayName)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if isSelected {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(CT.accent)
+                        }
                     }
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
-                .onTapGesture { selectedReason = reason }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(reason.displayName))
+                .accessibilityValue(Text(isSelected
+                    ? NSLocalizedString("common.selected", comment: "Selected")
+                    : ""))
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
         }
     }

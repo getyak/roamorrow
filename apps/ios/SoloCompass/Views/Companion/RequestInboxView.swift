@@ -9,6 +9,11 @@ import SwiftUI
 public struct RequestInboxView: View {
     @State private var service: CompanionService
     @State private var acceptedConversation: Conversation?
+    /// Real destination for an accepted request (I20): the conversation the
+    /// accept actually created, opened from the confirmation alert.
+    @State private var conversationToOpen: Conversation?
+    /// Guards against double-accepting the same request while one is in flight.
+    @State private var acceptingRequestID: CompanionRequestId?
     @State private var showingAcceptedConfirm = false
     @State private var reportTarget: CompanionRequest?
     @State private var errorMessage: String?
@@ -86,9 +91,27 @@ public struct RequestInboxView: View {
             NSLocalizedString("companion.inbox.accepted.title", comment: "Request accepted alert title"),
             isPresented: $showingAcceptedConfirm
         ) {
-            Button(NSLocalizedString("action.ok", comment: "OK")) {}
+            Button(NSLocalizedString("companion.inbox.accepted.open", comment: "Open the new conversation")) {
+                // Push the real conversation created by the accept (I20).
+                // Deferred one runloop so the push isn't swallowed by the
+                // alert's own dismissal.
+                let conversation = acceptedConversation
+                acceptedConversation = nil
+                DispatchQueue.main.async {
+                    conversationToOpen = conversation
+                }
+            }
+            Button(NSLocalizedString("action.ok", comment: "OK"), role: .cancel) {
+                acceptedConversation = nil
+            }
         } message: {
             Text(NSLocalizedString("companion.inbox.accepted.message", comment: "Request accepted alert message"))
+        }
+        .navigationDestination(item: $conversationToOpen) { conversation in
+            ChatView(
+                conversation: conversation,
+                currentUserId: FriendService.shared.resolvedUserId
+            )
         }
         .overlay(alignment: .bottom) {
             if let msg = errorMessage {
@@ -177,6 +200,11 @@ public struct RequestInboxView: View {
     // MARK: - Actions
 
     private func acceptRequest(_ request: CompanionRequest) async {
+        // One accept at a time per row: a second tap while the first is in
+        // flight must not create a duplicate conversation (I20).
+        guard acceptingRequestID == nil else { return }
+        acceptingRequestID = request.id
+        defer { acceptingRequestID = nil }
         let result = await service.acceptRequest(request)
         switch result {
         case .success(let conversation):
@@ -184,6 +212,7 @@ public struct RequestInboxView: View {
             showingAcceptedConfirm = true
             Haptics.notify(.success)
         case .failure(let err):
+            // The request stays in the inbox so the user can retry (I20).
             errorMessage = err.localizedDescription
             Haptics.notify(.error)
             Task {

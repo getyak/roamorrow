@@ -1,23 +1,34 @@
 import SwiftUI
 
-/// Scales the label down ~8% on press and springs back, giving tappable
-/// surfaces a physical, tactile feel. Shared between the filter pills and the
-/// chat input bar so the press feedback stays consistent across the app.
+/// Subtly scales the label down on press and springs back, giving tappable
+/// surfaces physical feedback without the old exaggerated squash. Shared by the
+/// filter pills, chat input bar and card actions so press feedback stays
+/// consistent across the app.
 public struct PressableButtonStyle: ButtonStyle {
-    /// Press-down scale. Default 0.92 matches the filter pills; the send button
-    /// passes a slightly punchier value.
-    private let pressedScale: CGFloat
-    /// Whether to fire a light selection haptic. Default is **off** — the audit
-    /// found this style applied to ~34 buttons, of which only 2 opted out, so
-    /// the app buzzed on essentially every button *press-down*, including plain
-    /// navigation taps. That trains users to ignore all haptics (HIG: reserve
-    /// haptics for meaningful commits). Opt in (`haptic: true`) only on genuine
-    /// state-change/commit surfaces — a filter toggling, a message sending.
-    private let haptic: Bool
+    /// Subtle press-down scale used when a call site doesn't pick its own.
+    /// The previous `0.92` default visibly squashed every control; HIG press
+    /// feedback is a small affordance, not a squeeze.
+    public static let defaultPressedScale: CGFloat = 0.97
+
+    /// This style provides scale-only press feedback. Commit haptics belong to
+    /// call-site actions, where a completed outcome is actually known.
+    public static let providesCommitHaptics = false
+
+    /// Press-down scale. Call sites may still pass a specific value for a
+    /// stronger physical affordance (e.g. a large send key).
+    let pressedScale: CGFloat
+
+    /// Retained for source compatibility with existing call sites. A
+    /// `ButtonStyle` cannot observe whether the button's action actually ran —
+    /// `isPressed` also falls on a cancelled press (finger dragged off) — so a
+    /// style-level "release" haptic buzzed even when nothing happened. Meaningful
+    /// commit haptics live at the call site, inside the action closure where the
+    /// outcome is known. This parameter is therefore accepted but never buzzes.
+    let haptic: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    public init(pressedScale: CGFloat = 0.92, haptic: Bool = false) {
+    public init(pressedScale: CGFloat = PressableButtonStyle.defaultPressedScale, haptic: Bool = false) {
         self.pressedScale = pressedScale
         self.haptic = haptic
     }
@@ -25,19 +36,10 @@ public struct PressableButtonStyle: ButtonStyle {
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             // Motion.press: near-critically damped (df 0.82) so the button
-            // settles crisply like a system control instead of the old df-0.6
-            // wobble that overshot on release.
+            // settles crisply like a system control instead of a wobble that
+            // overshoots on release. No haptic is emitted here — see `haptic`.
             .scaleEffect(configuration.isPressed ? pressedScale : 1.0)
             .animation(reduceMotion ? nil : Motion.press, value: configuration.isPressed)
-            .onChange(of: configuration.isPressed) { wasPressed, isPressed in
-                // Fire on release (commit), not press-down: the haptic should
-                // confirm the action, not merely acknowledge a finger landing.
-                if wasPressed && !isPressed && haptic && !reduceMotion {
-                    #if canImport(UIKit)
-                    Haptics.selection()
-                    #endif
-                }
-            }
     }
 }
 
@@ -51,8 +53,8 @@ public struct PressableButtonStyle: ButtonStyle {
             .padding(.vertical, 8)
             .background(Capsule().fill(CT.accent.opacity(0.15)))
 
-        Button("No Haptic") {}
-            .buttonStyle(PressableButtonStyle(haptic: false))
+        Button("Explicit Scale") {}
+            .buttonStyle(PressableButtonStyle(pressedScale: 0.9))
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(Capsule().fill(Color.secondary.opacity(0.15)))

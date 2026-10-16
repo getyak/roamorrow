@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import Observation
+import UIKit
 
 /// Drives one VoiceAgentSession through the think → tool_execute → repeat loop.
 ///
@@ -22,7 +23,10 @@ public final class VoiceAgentOrchestrator: Identifiable {
     /// is a snapshot derived from this ledger — never write to that map
     /// directly, go through `appendCard` / `syncCardsSnapshot()` instead.
     /// `internal` so `ProvisionalCardWiringTests` can assert on it.
-    let provisionalCards = ProvisionalCardLedger()
+    let provisionalCards = ProvisionalCardLedger(undoWindowProvider: {
+        // Read at append time, including VoiceOver enabled after this session opened.
+        UIAccessibility.isVoiceOverRunning ? 60 : 3
+    })
     /// ④ Self-eval Rubric: every completed turn scores itself against
     /// six house dimensions (relevance / factuality / conciseness /
     /// contextUsage / toolHonesty / cardCoverage) and lands in this

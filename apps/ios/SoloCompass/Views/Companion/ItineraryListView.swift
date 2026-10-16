@@ -291,6 +291,15 @@ private struct ItineraryRow: View {
         return "\(Self.dateFormatter.string(from: start)) – \(Self.dateFormatter.string(from: end))"
     }
 
+    private var cityName: String {
+        let code = itinerary.cityCode.lowercased()
+        let canonical = MapViewModel.cityCodeAliases[code] ?? code
+        return MapViewModel.cityNameMap[itinerary.cityCode]
+            ?? MapViewModel.cityNameMap[canonical]
+            ?? MapViewModel.cityNameMap.first { $0.key.caseInsensitiveCompare(canonical) == .orderedSame }?.value
+            ?? itinerary.cityCode
+    }
+
     private var tripStatus: TripStatus {
         TripStatus.from(startDate: itinerary.startDate, endDate: itinerary.endDate)
     }
@@ -312,7 +321,7 @@ private struct ItineraryRow: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text(itinerary.cityCode)
+                Text(cityName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -345,7 +354,7 @@ private struct ItineraryRow: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(
-            "\(itinerary.title), \(itinerary.cityCode), \(dateRangeText), \(tripStatus.label)"
+            "\(itinerary.title), \(cityName), \(dateRangeText), \(tripStatus.label)"
         ))
     }
 }

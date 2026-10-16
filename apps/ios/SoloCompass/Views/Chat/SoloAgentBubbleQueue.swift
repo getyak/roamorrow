@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A single speech-bubble the Solo mascot pushes toward the traveler from the
 /// bottom-right FAB. Bubbles are enqueued by the startup self-diagnostics flow
@@ -98,7 +99,9 @@ public struct SoloAgentBubbleView: View {
                     ))
                     .task(id: bubble.id) {
                         guard bubble.ctaLabel == nil else { return }
-                        try? await Task.sleep(nanoseconds: UInt64(bubble.autoDismissAfter * 1_000_000_000))
+                        let duration = UIAccessibility.isVoiceOverRunning ? max(60, bubble.autoDismissAfter) : bubble.autoDismissAfter
+                        do { try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000)) }
+                        catch { return }
                         if queue.head?.id == bubble.id {
                             withAnimation(.easeOut(duration: 0.2)) {
                                 queue.dismiss(id: bubble.id)
@@ -110,93 +113,66 @@ public struct SoloAgentBubbleView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: queue.head?.id)
     }
 
-    @ViewBuilder
     private func bubbleBody(for bubble: SoloAgentBubble) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: bubble.tone.badge)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(toneColor(bubble.tone))
-                .padding(.top, 2)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(bubble.title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(CT.fgPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let subtitle = bubble.subtitle {
-                    Text(subtitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(CT.fgPrimary.opacity(0.7))
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if let cta = bubble.ctaLabel {
-                    Button {
-                        onTapCTA(bubble)
-                    } label: {
-                        Text(cta)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(CT.surfaceWhite)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(CT.accent)
-                            )
-                    }
-                    // `.borderedProminent` would double-fill; we want the
-                    // brown background above and Apple's default press
-                    // treatment (scale-down + opacity dim) on top of it —
-                    // that's exactly what `.plain` misses.
-                    .buttonStyle(BubbleCTAButtonStyle())
-                    .padding(.top, 6)
-                    .accessibilityIdentifier("solo.agent.bubble.cta")
-                }
-            }
-
-            if bubble.ctaLabel != nil {
+        HStack(spacing: 4) {
+            if let cta = bubble.ctaLabel {
                 Button {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        queue.dismiss(id: bubble.id)
-                    }
+                    onTapCTA(bubble)
                 } label: {
-                    // 32×32 tap target inside a 20pt visual — matches Apple
-                    // HIG's ≥44pt combined-target for close chips while
-                    // keeping the visual glyph small so it doesn't compete
-                    // with the CTA. `.contentShape` extends the hit area
-                    // beyond the icon's tight bounds.
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(CT.fgPrimary.opacity(0.28))
-                        .frame(width: 32, height: 32)
+                    HStack(spacing: 10) {
+                        Image(systemName: bubble.tone.badge)
+                            .foregroundStyle(toneColor(bubble.tone))
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(bubble.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(CT.textPrimaryAdaptive)
+                            Text(cta)
+                                .font(.caption)
+                                .foregroundStyle(CT.textMutedAdaptive)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableButtonStyle())
+                .accessibilityLabel(Text([bubble.title, bubble.subtitle, cta].compactMap { $0 }.joined(separator: ". ")))
+                .accessibilityIdentifier("solo.agent.bubble.cta")
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { queue.dismiss(id: bubble.id) }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(CT.textMutedAdaptive)
+                        .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(Text(NSLocalizedString(
-                    "solo.agent.bubble.dismiss",
-                    value: "关掉",
-                    comment: "Dismiss the Solo Agent bubble"
-                )))
+                .accessibilityLabel(Text(NSLocalizedString("solo.agent.bubble.dismiss", comment: "Dismiss")))
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(bubble.title, systemImage: bubble.tone.badge)
+                        .font(.subheadline.weight(.semibold))
+                    if let subtitle = bubble.subtitle {
+                        Text(subtitle).font(.caption).foregroundStyle(CT.textMutedAdaptive)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(CT.textPrimaryAdaptive)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: 260, alignment: .leading)
-        .background(bubbleShape)
-        .shadow(color: .black.opacity(0.14), radius: 10, y: 4)
-        .accessibilityElement(children: .combine)
+        .padding(.leading, 14)
+        .padding(.trailing, 4)
+        .padding(.vertical, 8)
+        .frame(maxWidth: 420)
+        .background(CT.cardAdaptive, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("solo.agent.bubble")
-    }
-
-    private var bubbleShape: some View {
-        RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .fill(CT.surfaceWhite)
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(CT.accentBorder, lineWidth: 1)
-            )
     }
 
     private func toneColor(_ tone: SoloAgentBubble.Tone) -> Color {
@@ -205,17 +181,6 @@ public struct SoloAgentBubbleView: View {
         case .warn: return Color(red: 0.85, green: 0.55, blue: 0.10)
         case .error: return Color(red: 0.78, green: 0.20, blue: 0.15)
         }
-    }
-}
-
-/// Scale-and-dim press treatment for the bubble CTA. Kept private to this
-/// file so it doesn't compete with the FAB / filter styles used elsewhere.
-private struct BubbleCTAButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .opacity(configuration.isPressed ? 0.85 : 1.0)
-            .animation(.spring(response: 0.18, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 

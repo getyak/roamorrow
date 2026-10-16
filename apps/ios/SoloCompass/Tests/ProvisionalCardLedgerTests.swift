@@ -55,6 +55,18 @@ final class ProvisionalCardLedgerTests: XCTestCase {
         .experiences(id: UUID(), [makeExperience(id)])
     }
 
+    func testAccessibilityWindowIsReadWhenCardAppears() {
+        var requestedWindow: TimeInterval = 60
+        let ledger = ProvisionalCardLedger(undoWindowProvider: { requestedWindow })
+        let first = ledger.append(card: makeCard(), to: UUID(), at: t0)
+        ledger.promoteDueEntries(now: t0.addingTimeInterval(5))
+        XCTAssertTrue(ledger.undo(id: first, at: t0.addingTimeInterval(5)))
+        requestedWindow = 3
+        let second = ledger.append(card: makeCard("next"), to: UUID(), at: t0)
+        ledger.promoteDueEntries(now: t0.addingTimeInterval(5))
+        XCTAssertFalse(ledger.undo(id: second, at: t0.addingTimeInterval(5)))
+    }
+
     // MARK: - Append & initial state
 
     func testAppendedCardStartsProvisional() {

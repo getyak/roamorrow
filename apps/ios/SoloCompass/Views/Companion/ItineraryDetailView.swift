@@ -1,5 +1,26 @@
 import SwiftUI
 
+/// Recovery decision for the visibility-off gate on the companion-post flow.
+///
+/// When a user tries to open an itinerary to companions while their companion
+/// visibility is `.off`, the alert routes them to the real profile editor. On
+/// return the flow re-checks the (possibly edited) visibility and either
+/// resumes the interrupted intent or leaves the itinerary closed. Kept as a
+/// pure decision so XCTest can cover every branch.
+enum VisibilityOffRecovery: Equatable {
+    /// No interrupted intent — nothing to resume.
+    case none
+    /// Visibility is now on and the user was mid-intent: continue the flow.
+    case resumeCompanionPost
+    /// Visibility is still off: keep the itinerary closed.
+    case stillBlocked
+
+    static func decide(visibility: CompanionVisibility, hadPendingIntent: Bool) -> VisibilityOffRecovery {
+        guard hadPendingIntent else { return .none }
+        return visibility == .off ? .stillBlocked : .resumeCompanionPost
+    }
+}
+
 /// Detail view for a single itinerary.
 /// Shows all fields: title, city, dates, note, companion toggle, and pinned experiences.
 /// Supports drag-to-reorder and "Import from Favorites".
@@ -23,6 +44,11 @@ public struct ItineraryDetailView: View {
     @State private var showingCompanionPostSheet = false
     @State private var showingVisibilityOffAlert = false
     @State private var showingRemovePostConfirm = false
+
+    // Visibility recovery (I05): open the real profile editor from the
+    // visibility-off alert, then re-check visibility when the user returns.
+    @State private var showingProfileSettings = false
+    @State private var pendingCompanionPostIntent = false
 
     // Open for companions flow (US-039)
     @State private var showingOpenForCompanionsSheet = false
@@ -142,12 +168,34 @@ public struct ItineraryDetailView: View {
             isPresented: $showingVisibilityOffAlert
         ) {
             Button(NSLocalizedString("companion.post.visibilityOff.action", comment: "Open profile settings")) {
-                // In a full navigation stack this would push CompanionProfileView.
-                // For Phase 2 the user can navigate there from Settings.
+                // The alert is dismissing while this runs, so present the real
+                // profile editor on the next runloop instead of racing it.
+                pendingCompanionPostIntent = true
+                DispatchQueue.main.async {
+                    showingProfileSettings = true
+                }
             }
-            Button(NSLocalizedString("action.cancel", comment: "Cancel"), role: .cancel) {}
+            Button(NSLocalizedString("action.cancel", comment: "Cancel"), role: .cancel) {
+                pendingCompanionPostIntent = false
+            }
         } message: {
             Text(NSLocalizedString("companion.post.visibilityOff.message", comment: "Visibility off alert message"))
+        }
+        .sheet(isPresented: $showingProfileSettings, onDismiss: resumeBlockedFlow) {
+            // The real "My Profile" editor (CompanionProfileView alias) with its
+            // required UserPreferences dependency, in its own stack so the inner
+            // walked-routes push still works from this modal entry point.
+            NavigationStack {
+                MyProfileEditView()
+                    .environment(preferences)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(NSLocalizedString("common.done", comment: "Done")) {
+                                showingProfileSettings = false
+                            }
+                        }
+                    }
+            }
         }
         .sheet(isPresented: $showingCompanionPostSheet) {
             CompanionPostCreationSheet(itinerary: itinerary) { post in
@@ -270,6 +318,7 @@ public struct ItineraryDetailView: View {
                 if newValue {
                     // Block if visibility is off
                     guard preferences.companionVisibility != .off else {
+                        pendingCompanionPostIntent = true
                         showingVisibilityOffAlert = true
                         return
                     }
@@ -280,6 +329,24 @@ public struct ItineraryDetailView: View {
                 }
             }
         )
+    }
+
+    /// Called when the profile editor sheet closes. Re-checks the visibility
+    /// the user just edited: if they turned it on, continue the companion-post
+    /// flow they were in the middle of; if it is still off, leave the itinerary
+    /// closed and drop the pending intent.
+    private func resumeBlockedFlow() {
+        let outcome = VisibilityOffRecovery.decide(
+            visibility: preferences.companionVisibility,
+            hadPendingIntent: pendingCompanionPostIntent
+        )
+        pendingCompanionPostIntent = false
+        switch outcome {
+        case .none, .stillBlocked:
+            break
+        case .resumeCompanionPost:
+            showingCompanionPostSheet = true
+        }
     }
 
     // MARK: - Actions

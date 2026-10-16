@@ -320,14 +320,21 @@ public struct ExperienceDetailView: View {
                         context: nil,
                         monthsFromNow: payload.monthsFromNow
                     ) != nil
-                    if ok {
-                        AnalyticsService.shared.track(
-                            .capsuleBuried,
-                            properties: ["months": .int(payload.monthsFromNow)]
-                        )
-                        capsuleBuryToast = "Buried. It'll surface in \(payload.monthsFromNow) months."
-                    }
-                    isShowingCapsuleCompose = false
+                    // Success drives the close (I16): on failure the editor
+                    // stays open with the draft and offers a retry.
+                    guard ok else { return false }
+                    AnalyticsService.shared.track(
+                        .capsuleBuried,
+                        properties: ["months": .int(payload.monthsFromNow)]
+                    )
+                    capsuleBuryToast = String(
+                        format: NSLocalizedString(
+                            "capsule.buried.toast",
+                            comment: "Buried — it will surface in %d months"
+                        ),
+                        payload.monthsFromNow
+                    )
+                    return true
                 },
                 onCancel: { isShowingCapsuleCompose = false }
             )

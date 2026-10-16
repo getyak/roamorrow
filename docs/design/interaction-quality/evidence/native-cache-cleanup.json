@@ -1,0 +1,14 @@
+{
+  "path": "/private/tmp/ai-test-interaction-quality-native-cache.3j1mid",
+  "reason": "Reproducible DerivedData; all native source snapshots, patches, test summaries and build/test logs preserved in permanent evidence. Primary is shutdown, helper released, lsof verified no open files. Source worktrees and app data are retained.",
+  "formal_evidence": [
+    "snapshot-04b-files.json",
+    "snapshot-04b.patch.gz",
+    "checkpoint-04b-tests.json",
+    "checkpoint-04b-build.log.gz",
+    "021-contrast-tests.log.gz",
+    "snapshot-03-files.json",
+    "snapshot-03.patch.gz",
+    "checkpoint-03-tests.json"
+  ]
+}

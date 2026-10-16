@@ -32,6 +32,11 @@ const config: Config = {
         "accent-hover": "var(--accent-hover)",
         "accent-soft": "var(--accent-soft)",
         "accent-border": "var(--accent-border)",
+        // Interaction roles (W08) — pair `accent-interactive` with `on-accent`.
+        "accent-interactive": "var(--accent-interactive)",
+        "accent-interactive-hover": "var(--accent-interactive-hover)",
+        "on-accent": "var(--on-accent)",
+        "focus-ring": "var(--focus-ring)",
 
         "sun-gold": "var(--sun-gold)",
         "sun-gold-deep": "var(--sun-gold-deep)",

@@ -73,6 +73,27 @@ final class JoinRequestValidationTest: XCTestCase {
         )
     }
 
+    /// I19 regression: ten spaces used to pass `count >= 10` and let users
+    /// submit an empty introduction. Validation must count TRIMMED text.
+    func testSubmitDisabledWhenMessageIsOnlyPaddingWhitespace() {
+        XCTAssertFalse(
+            JoinRequestValidation.canSubmit(pace: .matching, message: "          "),
+            "Ten spaces must not satisfy the minimum-length check"
+        )
+        XCTAssertFalse(
+            JoinRequestValidation.canSubmit(pace: .matching, message: "  \n\t  \n  \t \t "),
+            "Whitespace padding of any shape must not satisfy the check"
+        )
+        XCTAssertEqual(JoinRequestValidation.validatedLength("          "), 0)
+    }
+
+    func testSubmitEnabledWhenLongEnoughAfterTrimming() {
+        XCTAssertTrue(
+            JoinRequestValidation.canSubmit(pace: .matching, message: "   Excited to join this walk!   "),
+            "A genuinely long message stays valid regardless of surrounding whitespace"
+        )
+    }
+
     func testSubmitEnabledWhenBothFieldsValid() {
         XCTAssertTrue(
             JoinRequestValidation.canSubmit(pace: .faster, message: "Excited to join this walk!"),

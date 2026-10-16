@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Drawer } from "vaul";
+import { useMemo, useRef, useState } from "react";
 import type { NearbyResult } from "@/app/api/experiences/nearby/route";
 import { categoryEmoji, categoryLabel } from "@/lib/category";
 import { healthColor, healthLabel } from "@/lib/health";
@@ -14,88 +13,149 @@ interface NearbySheetProps {
   readonly results: readonly NearbyResult[];
   readonly loading: boolean;
   readonly degraded: boolean;
+  readonly offline: boolean;
   readonly selectedId: string | null;
   readonly onSelect: (id: string) => void;
+  readonly error?: string;
+  readonly onRetry?: () => void;
+  readonly onExpandedChange?: (expanded: boolean) => void;
 }
 
 // Three snap points: peek (collapsed pill, ~120px), mid (half), full (95%).
-const SNAP_POINTS = ["120px", 0.55, 0.95] as const;
+type PanelLevel = "peek" | "half" | "full";
 
 export function NearbySheet({
   cityName,
   results,
   loading,
   degraded,
+  offline,
   selectedId,
   onSelect,
+  onExpandedChange,
+  error,
+  onRetry,
 }: NearbySheetProps) {
-  const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]);
+  const [level, setLevel] = useState<PanelLevel>("peek");
+  const dragStart = useRef<number | null>(null);
+  const dragged = useRef(false);
+  function setPanelLevel(next: PanelLevel) {
+    setLevel(next);
+    onExpandedChange?.(next !== "peek");
+  }
   const [tab, setTab] = useState<SheetTab>("nearby");
 
-  const isPeek = snap === SNAP_POINTS[0];
+  const isPeek = level === "peek";
 
   return (
-    <Drawer.Root
-      open
-      modal={false}
-      dismissible={false}
-      snapPoints={SNAP_POINTS as unknown as (number | string)[]}
-      activeSnapPoint={snap}
-      setActiveSnapPoint={setSnap}
+    <section
+      aria-label="Nearby experiences and footprint"
+      className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-h-[95dvh] flex-col rounded-t-2xl bg-paper-cream shadow-2xl ring-1 ring-ink-warm/10 transition-[height] duration-200 motion-reduce:transition-none"
+      style={{ height: level === "peek" ? 120 : level === "half" ? "55dvh" : "95dvh" }}
     >
-      <Drawer.Portal>
-        <Drawer.Content
-          className="fixed inset-x-0 bottom-0 z-20 mx-auto flex h-full max-h-[95dvh] flex-col rounded-t-2xl bg-paper-cream shadow-2xl outline-none ring-1 ring-ink-warm/10"
-          aria-describedby={undefined}
+      {/* Drag handle — 44pt target with expand/collapse semantics (W09). */}
+      <button
+        type="button"
+        onClick={() => {
+          if (dragged.current) {
+            dragged.current = false;
+            return;
+          }
+          setPanelLevel(isPeek ? "half" : "peek");
+        }}
+        onPointerDown={(event) => {
+          dragged.current = false;
+          dragStart.current = event.clientY;
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerUp={(event) => {
+          if (dragStart.current !== null) {
+            const delta = event.clientY - dragStart.current;
+            dragged.current = Math.abs(delta) > 30;
+            if (delta < -30) setPanelLevel(level === "peek" ? "half" : "full");
+            else if (delta > 30) setPanelLevel(level === "full" ? "half" : "peek");
+          }
+          dragStart.current = null;
+        }}
+        onPointerCancel={() => {
+          dragStart.current = null;
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") dragged.current = false;
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setPanelLevel(level === "peek" ? "half" : "full");
+          }
+          if (event.key === "ArrowDown" || event.key === "Escape") {
+            event.preventDefault();
+            setPanelLevel("peek");
+          }
+        }}
+        style={{ touchAction: "none" }}
+        aria-controls="nearby-panel-content"
+        className="mx-auto mt-2 mb-1 flex min-h-[44px] w-24 flex-shrink-0 cursor-grab items-center justify-center"
+        aria-label={isPeek ? "Expand nearby list" : "Collapse nearby list"}
+        aria-expanded={!isPeek}
+      >
+        <span className="h-1.5 w-12 rounded-full bg-ink-warm/30" aria-hidden="true" />
+      </button>
+
+      <PeekHeader
+        cityName={cityName}
+        results={results}
+        loading={loading}
+        degraded={degraded}
+        offline={offline}
+        isPeek={isPeek}
+        onExpand={() => setPanelLevel("half")}
+      />
+
+      {!isPeek && (
+        <div
+          role="tablist"
+          aria-label="Nearby and footprint"
+          className="flex flex-shrink-0 border-b border-ink-warm/10 px-4"
         >
-          <Drawer.Title className="sr-only">Solo Compass — nearby & footprint</Drawer.Title>
+          <TabButton active={tab === "nearby"} onClick={() => setTab("nearby")}>
+            Nearby {results.length > 0 ? `· ${results.length}` : ""}
+          </TabButton>
+          <TabButton active={tab === "timeline"} onClick={() => setTab("timeline")}>
+            My footprint
+          </TabButton>
+        </div>
+      )}
 
-          {/* Drag handle */}
-          <button
-            type="button"
-            onClick={() => setSnap(snap === SNAP_POINTS[0] ? SNAP_POINTS[1] : SNAP_POINTS[0])}
-            className="mx-auto mt-2 mb-1 flex h-6 w-20 flex-shrink-0 cursor-grab items-center justify-center"
-            aria-label={isPeek ? "Expand" : "Collapse"}
-          >
-            <span className="h-1.5 w-12 rounded-full bg-ink-warm/30" aria-hidden="true" />
-          </button>
-
-          <PeekHeader
-            cityName={cityName}
-            results={results}
-            loading={loading}
-            degraded={degraded}
-            isPeek={isPeek}
-            onExpand={() => setSnap(SNAP_POINTS[1])}
-          />
-
-          {!isPeek && (
-            <div className="flex flex-shrink-0 border-b border-ink-warm/10 px-4">
-              <TabButton active={tab === "nearby"} onClick={() => setTab("nearby")}>
-                Nearby {results.length > 0 ? `· ${results.length}` : ""}
-              </TabButton>
-              <TabButton active={tab === "timeline"} onClick={() => setTab("timeline")}>
-                My footprint
-              </TabButton>
+      {!isPeek && (
+        <div
+          id="nearby-panel-content"
+          className="flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-2"
+        >
+          {tab === "nearby" && error ? (
+            <div role="alert" className="p-4 text-sm text-ink-warm">
+              {error}
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-3 block min-h-[44px] rounded-full bg-deep-teal px-5 py-2 text-paper-cream"
+              >
+                Try again
+              </button>
             </div>
+          ) : tab === "nearby" ? (
+            <NearbyList
+              results={results}
+              loading={loading}
+              degraded={degraded}
+              offline={offline}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          ) : (
+            <TimelineList onSelect={onSelect} />
           )}
-
-          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-8 pt-2">
-            {tab === "nearby" ? (
-              <NearbyList
-                results={results}
-                loading={loading}
-                degraded={degraded}
-                selectedId={selectedId}
-                onSelect={onSelect}
-              />
-            ) : (
-              <TimelineList onSelect={onSelect} />
-            )}
-          </div>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -104,6 +164,7 @@ function PeekHeader({
   results,
   loading,
   degraded,
+  offline,
   isPeek,
   onExpand,
 }: {
@@ -111,6 +172,7 @@ function PeekHeader({
   readonly results: readonly NearbyResult[];
   readonly loading: boolean;
   readonly degraded: boolean;
+  readonly offline: boolean;
   readonly isPeek: boolean;
   readonly onExpand: () => void;
 }) {
@@ -120,8 +182,9 @@ function PeekHeader({
     <button
       type="button"
       onClick={onExpand}
-      className="flex flex-shrink-0 items-center gap-3 px-5 pb-3 pt-1 text-left"
-      aria-label={isPeek ? "Pull up to browse experiences" : "Currently viewing experiences"}
+      className="flex min-h-[44px] flex-shrink-0 items-center gap-3 px-5 pb-3 pt-1 text-left"
+      aria-expanded={!isPeek}
+      aria-label={isPeek ? "Show the experience list" : "Experience list is open"}
     >
       <span className="text-base" aria-hidden="true">
         📍
@@ -130,16 +193,16 @@ function PeekHeader({
       <span className="text-ink-warm/40">·</span>
       {loading && count === 0 ? (
         <span className="text-sm text-ink-warm/60">looking…</span>
+      ) : offline ? (
+        <span className="text-sm text-ink-warm/60">offline · showing what loaded</span>
       ) : count === 0 ? (
-        <span className="text-sm text-ink-warm/60">
-          {degraded ? "AI paused" : "no experiences nearby"}
-        </span>
+        <span className="text-sm text-ink-warm/60">no experiences nearby</span>
       ) : (
         <span className="text-sm text-ink-warm">
           {count} experience{count === 1 ? "" : "s"} nearby
         </span>
       )}
-      {isPeek && <span className="ml-auto text-xs text-ink-warm/50">pull up ↑</span>}
+      {isPeek && <span className="ml-auto text-xs text-ink-warm/50">show list ↑</span>}
     </button>
   );
 }
@@ -156,9 +219,11 @@ function TabButton({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
       className={[
-        "relative px-4 py-3 text-sm font-medium transition",
+        "relative min-h-[44px] px-4 py-3 text-sm font-medium transition",
         active ? "text-deep-teal" : "text-ink-warm/60 hover:text-ink-warm",
       ].join(" ")}
     >
@@ -177,12 +242,14 @@ function NearbyList({
   results,
   loading,
   degraded,
+  offline,
   selectedId,
   onSelect,
 }: {
   readonly results: readonly NearbyResult[];
   readonly loading: boolean;
   readonly degraded: boolean;
+  readonly offline: boolean;
   readonly selectedId: string | null;
   readonly onSelect: (id: string) => void;
 }) {
@@ -194,9 +261,11 @@ function NearbyList({
   if (results.length === 0) {
     return (
       <EmptyState>
-        {degraded
-          ? "AI ranker paused. Move the map to refresh."
-          : "Nothing nearby here. Try moving the map."}
+        {offline
+          ? "You're offline, and nothing was loaded yet. Reconnect and move the map to refresh."
+          : degraded
+            ? "Sample data only — the ranking service isn't reachable here. Move the map to try again."
+            : "Nothing nearby here. Try moving the map."}
       </EmptyState>
     );
   }

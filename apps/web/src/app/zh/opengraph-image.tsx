@@ -55,7 +55,7 @@ export default function OGImageZh() {
           maxWidth: 900,
         }}
       >
-        跨来源交叉编译 · 诚实的 AI · 无广告 · 无追踪
+        跨来源交叉编译 · 诚实的 AI · 无广告 · 说明数据用途
       </div>
     </div>,
     { ...size },

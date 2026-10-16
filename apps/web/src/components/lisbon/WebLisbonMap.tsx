@@ -59,6 +59,8 @@ interface WebLisbonMapProps {
   readonly style?: CSSProperties;
   /** Optional per-city config; defaults to Lisbon for back-compat. */
   readonly mapConfig?: WebCityMapConfig;
+  /** Live viewBox (zoom/pan) — defaults to the full illustrated canvas. */
+  readonly viewBox?: string;
 }
 
 export function WebLisbonMap({
@@ -71,6 +73,7 @@ export function WebLisbonMap({
   dark = true,
   style,
   mapConfig = LISBON_DEFAULT_MAP,
+  viewBox = "0 0 1000 700",
 }: WebLisbonMapProps) {
   const bg = dark ? "#1A1714" : "#F4ECDD";
   const water = dark ? "#221C16" : "#E6D8B6";
@@ -95,7 +98,7 @@ export function WebLisbonMap({
     <div style={{ position: "relative", width: "100%", height: "100%", ...style }}>
       <svg
         aria-label={mapNotice}
-        viewBox="0 0 1000 700"
+        viewBox={viewBox}
         preserveAspectRatio="xMidYMid slice"
         style={{
           width: "100%",
@@ -247,10 +250,23 @@ export function WebLisbonMap({
             <g
               key={p.id}
               transform={`translate(${p.x} ${p.y})`}
-              style={{ cursor: "pointer" }}
+              // Static previews do not advertise marker actions they cannot perform.
+              role={onTap ? "button" : undefined}
+              tabIndex={onTap ? 0 : undefined}
+              aria-label={`${lang === "zh" ? p.titleZh : p.title} — ${lang === "zh" ? p.placeZh : p.place}, ${p.walkMin} min walk`}
+              aria-pressed={onTap ? isFocus : undefined}
+              style={{ cursor: onTap ? "pointer" : "default" }}
               onMouseEnter={() => onHover?.(p.id)}
               onMouseLeave={() => onHover?.(null)}
               onClick={() => onTap?.(p.id)}
+              onFocus={() => onHover?.(p.id)}
+              onBlur={() => onHover?.(null)}
+              onKeyDown={(e) => {
+                if (onTap && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  onTap?.(p.id);
+                }
+              }}
             >
               {(isHover || isFocus) && (
                 <circle r={ringR} fill={cat.color} opacity="0.18" className="sc-halo" />

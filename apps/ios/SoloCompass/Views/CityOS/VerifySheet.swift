@@ -24,38 +24,43 @@ struct VerifySheet: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
-            question(
-                text: NSLocalizedString("cityos.verify.q.exists", comment: "它还在、还开着吗？"),
-                options: [
-                    NSLocalizedString("cityos.verify.q.exists.yes", comment: "还在 ✓"),
-                    NSLocalizedString("cityos.verify.q.exists.no", comment: "变了 / 关了"),
-                ],
-                selection: $answers.stillThere
-            )
-            question(
-                text: NSLocalizedString("cityos.verify.q.solo", comment: "一个人去，自在吗？"),
-                options: [
-                    NSLocalizedString("cityos.verify.q.solo.yes", comment: "很自在"),
-                    NSLocalizedString("cityos.verify.q.solo.no", comment: "有点尴尬"),
-                ],
-                selection: $answers.soloComfort
-            )
-            question(
-                text: NSLocalizedString("cityos.verify.q.crowd", comment: "你去的时候人多吗？"),
-                options: [
-                    NSLocalizedString("cityos.verify.q.crowd.few", comment: "人少"),
-                    NSLocalizedString("cityos.verify.q.crowd.many", comment: "挺挤"),
-                ],
-                selection: $answers.crowd
-            )
-            submitButton
+        // Scrollable content + a large detent option: at large Dynamic Type the
+        // questions and submit must stay reachable (I18). Answers live in
+        // `@State`, so scrolling and detent changes never lose them.
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                header
+                question(
+                    text: NSLocalizedString("cityos.verify.q.exists", comment: "它还在、还开着吗？"),
+                    options: [
+                        NSLocalizedString("cityos.verify.q.exists.yes", comment: "还在 ✓"),
+                        NSLocalizedString("cityos.verify.q.exists.no", comment: "变了 / 关了"),
+                    ],
+                    selection: $answers.stillThere
+                )
+                question(
+                    text: NSLocalizedString("cityos.verify.q.solo", comment: "一个人去，自在吗？"),
+                    options: [
+                        NSLocalizedString("cityos.verify.q.solo.yes", comment: "很自在"),
+                        NSLocalizedString("cityos.verify.q.solo.no", comment: "有点尴尬"),
+                    ],
+                    selection: $answers.soloComfort
+                )
+                question(
+                    text: NSLocalizedString("cityos.verify.q.crowd", comment: "你去的时候人多吗？"),
+                    options: [
+                        NSLocalizedString("cityos.verify.q.crowd.few", comment: "人少"),
+                        NSLocalizedString("cityos.verify.q.crowd.many", comment: "挺挤"),
+                    ],
+                    selection: $answers.crowd
+                )
+                submitButton
+            }
+            .padding(20)
         }
-        .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(sheetBackground.ignoresSafeArea())
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
 
@@ -86,13 +91,16 @@ struct VerifySheet: View {
                 Haptics.selection()
                 onDismiss()
             } label: {
+                // 30pt visual close, 44pt transparent hit target (I18).
                 Image(systemName: "xmark")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(CT.fgMuted)
                     .frame(width: 30, height: 30)
                     .background(Circle().fill(optionFill))
+                    .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(PressableButtonStyle(pressedScale: 0.9, haptic: false))
+            .buttonStyle(PressableButtonStyle())
             .accessibilityLabel(Text(NSLocalizedString("common.close", comment: "Close")))
         }
     }
@@ -121,7 +129,9 @@ struct VerifySheet: View {
             Text(label)
                 .ctBody(13, .medium)
                 .foregroundStyle(isSelected ? CT.accent : CT.fgMuted)
-                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: HitTargetMetrics.minimum)
                 .padding(.vertical, 9)
                 .background(
                     Capsule().fill(isSelected ? CT.accentSoft : optionFill)
@@ -132,9 +142,11 @@ struct VerifySheet: View {
                         lineWidth: isSelected ? 1.2 : 0.5
                     )
                 )
+                .contentShape(Capsule())
         }
-        .buttonStyle(PressableButtonStyle(pressedScale: 0.97))
+        .buttonStyle(PressableButtonStyle())
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityValue(Text(isSelected ? NSLocalizedString("common.selected", comment: "Selected") : ""))
     }
 
     private var submitButton: some View {

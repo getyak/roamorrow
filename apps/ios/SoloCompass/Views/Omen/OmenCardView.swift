@@ -8,6 +8,7 @@ public struct OmenCardView: View {
     public let onMicroTaskDone: () -> Void
 
     @State private var flipped = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(data: OmenCardData, onMicroTaskDone: @escaping () -> Void) {
         self.data = data
@@ -25,7 +26,9 @@ public struct OmenCardView: View {
                 .fill(CT.accentSoft)
         )
         .rotation3DEffect(.degrees(flipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
-        .animation(.easeInOut(duration: 0.55), value: flipped)
+        // The 3D flip answers a user action, but Reduce Motion users get an
+        // instant state change instead (I13).
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.55), value: flipped)
         .padding(.horizontal, 20)
     }
 
@@ -50,13 +53,15 @@ public struct OmenCardView: View {
                 .font(.callout)
                 .foregroundColor(CT.fgPrimary)
 
-            Button("Mark done") {
+            Button(NSLocalizedString("omen.markDone", comment: "Mark done")) {
                 flipped = true
                 onMicroTaskDone()
             }
             .font(.callout.weight(.semibold))
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
+            .frame(minHeight: HitTargetMetrics.minimum)
+            .contentShape(Rectangle())
             .background(CT.omenGold)
             .foregroundColor(.white)
             .cornerRadius(16)

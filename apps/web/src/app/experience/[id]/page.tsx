@@ -120,10 +120,9 @@ function ExperienceView({
           whenLabel: ["位置", "最佳时段", "停留", "人多吗", "一人去合适吗", "花费"],
           why: "那一刻",
           nearby: "附近还有",
-          addToTrip: "加进我的行程",
-          viewMap: "在地图上看",
-          metaSeo:
-            "这一页是 Solo Compass 写的——一份只为独自旅行的人做的、由 AI 整理但人去过的指南。",
+          addToTrip: "在城市指南中查看",
+          viewMap: "城市指南",
+          metaSeo: "此页为示例体验内容，出行前请确认当前信息。",
           backToCity: `← 回到 ${city.zh}`,
           mins: "分钟",
         }
@@ -135,10 +134,9 @@ function ExperienceView({
           whenLabel: ["Where", "Best time", "Stay", "Crowded?", "Solo-friendly?", "Cost"],
           why: "The moment",
           nearby: "Nearby",
-          addToTrip: "Add to my trip",
-          viewMap: "View on map",
-          metaSeo:
-            "This page is by Solo Compass — a guide for people traveling alone, organized by AI but written by people who've been there.",
+          addToTrip: "View in city guide",
+          viewMap: "City guide",
+          metaSeo: "An illustrative experience. Confirm current details before travel.",
           backToCity: `← Back to ${city.en}`,
           mins: "min",
         };
@@ -157,6 +155,7 @@ function ExperienceView({
 
   return (
     <main
+      id="main"
       style={{
         minHeight: "100vh",
         background: "#F1ECDF",
@@ -165,6 +164,19 @@ function ExperienceView({
         color: "#1A1612",
       }}
     >
+      <p
+        style={{
+          maxWidth: 760,
+          margin: "0 auto 16px",
+          fontSize: 13,
+          lineHeight: 1.6,
+          color: "#6D6358",
+        }}
+      >
+        {lang === "zh"
+          ? "指南预览 · 本页为示例体验，出行前请确认位置、营业与当前情况。"
+          : "Guide preview · This is an illustrative experience. Confirm location, opening hours and current conditions before travel."}
+      </p>
       <article
         style={{
           maxWidth: 760,
@@ -465,7 +477,7 @@ function ExperienceView({
               }}
             >
               <Link
-                href={`/${city.slug}${lang === "en" ? "?lang=en" : ""}`}
+                href={`/${city.slug}?experience=${encodeURIComponent(exp.id)}${lang === "en" ? "&lang=en" : ""}`}
                 style={{
                   padding: "8px 12px",
                   borderRadius: 5,
@@ -480,7 +492,7 @@ function ExperienceView({
                   textDecoration: "none",
                 }}
               >
-                + {T.addToTrip}
+                {T.addToTrip}
               </Link>
               <Link
                 href={`/${city.slug}${lang === "en" ? "?lang=en" : ""}`}

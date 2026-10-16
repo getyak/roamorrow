@@ -904,10 +904,10 @@
 
 /* Explore consent (US-034) */
 "explore.consent.title" = "Before we explore here";
-"explore.consent.subtitle" = "Solo Compass talks to two services on your behalf. Here's exactly what leaves your phone.";
-"explore.consent.bullet.location" = "Coarse location → OpenStreetMap. Public, no account, no tracking.";
-"explore.consent.bullet.ai" = "OSM tags + city slug → Anthropic, to draft solo-traveler descriptions. No personal data.";
-"explore.consent.bullet.no_pii" = "We never collect contacts, photos, or browsing history. Nothing is shared with advertisers.";
+"explore.consent.subtitle" = "Here is how this exploration request uses your map position and public place information.";
+"explore.consent.bullet.location" = "The map position you choose (coordinates and search radius) goes to OpenStreetMap/Overpass to find nearby places.";
+"explore.consent.bullet.ai" = "Public place details and city context go to your configured AI provider (DeepSeek by default) to draft descriptions.";
+"explore.consent.bullet.no_pii" = "This place lookup does not attach your photos or contacts. You can cancel before it starts.";
 "explore.consent.accept" = "Got it — explore";
 "explore.consent.cancel" = "Not now";
 
@@ -1733,12 +1733,12 @@
 "filter.tip.title" = "Browse by mood";
 "filter.tip.message" = "Tap a category or 'Now' to find places worth going right now — not just everything nearby.";
 "terms.title" = "Welcome to Solo Compass";
-"terms.intro" = "Before you start exploring, here's a one-screen summary of what we collect and how we use it. The full documents are linked below.";
+"terms.intro" = "Before you start exploring, review this summary of how data is used. The full documents are linked below.";
 "terms.dataUse.title" = "What we collect";
-"terms.dataUse.location" = "Your location, used live to show nearby places. Coordinates stay on this device unless you explicitly share a place with a friend.";
-"terms.dataUse.chat" = "Chat content sent to our AI to compose recommendations. Chats are stored on this device; only the messages you send are transmitted to the AI provider.";
-"terms.dataUse.noContacts" = "We do not access your address book, photos, calendar, or browser history.";
-"terms.dataUse.noTrackers" = "No third-party analytics or advertising trackers.";
+"terms.dataUse.location" = "Location supports nearby experiences and, if permitted, background visit detection. Confirmed exploration and AI requests can send selected coordinates and context to the relevant services.";
+"terms.dataUse.chat" = "AI requests can include your message, relevant conversation history, preferences and travel context. Your provider selection or the Pro proxy determines where the request is processed.";
+"terms.dataUse.noContacts" = "Photos, camera, microphone and speech are used for features you choose, with the applicable system permission or content selection.";
+"terms.dataUse.noTrackers" = "Configured services can process account sync, shared messages and diagnostics. The Privacy Policy lists recipients and the controls available to you.";
 "terms.links.title" = "Read the full documents";
 "terms.links.privacy" = "Privacy Policy";
 "terms.links.tos" = "Terms of Service";
@@ -2587,3 +2587,89 @@
 
 "map.coordinates.styleUnverified" = "Positions in this map mode are unverified. Use the standard map or the places list.";
 "map.coordinates.useStandard" = "Standard map";
+
+// Interaction-quality batch — shared control semantics, honest states (EN+ZH parity)
+"ai.provider.status.saved" = "API key saved for %@. Connection not verified here.";
+"archive.capsule.empty" = "No time capsule has ripened yet. Bury one from an experience page.";
+"archive.capsule.open.title" = "A note from you";
+"archive.codex.empty" = "Your city codex fills in as you visit places — nothing recorded yet.";
+"archive.ritual.blindbox.title" = "Blindbox trip";
+"archive.ritual.bookManifest.title" = "Travel Book";
+"archive.ritual.brag.title" = "Solo Brag";
+"archive.ritual.capsuleOpen.title" = "Time capsule";
+"archive.ritual.cityCodex.title" = "City Codex";
+"archive.ritual.insight.title" = "Monthly Insight";
+"archive.ritual.liveActivity.title" = "Live activity preview";
+"archive.ritual.omen.title" = "Today's Omen";
+"archive.ritual.ost.title" = "Today's OST";
+"archive.ritual.preview.badge" = "Preview";
+"archive.ritual.preview.note" = "Preview only — nothing here is saved, sent or sold.";
+"archive.ritual.toolContract.title" = "Tool contract preview";
+"blindbox.launch.duration" = "Duration";
+"blindbox.launch.notNow" = "Not now";
+"brag.metric.days" = "days";
+"brag.metric.km" = "km";
+"brag.metric.places" = "places";
+"brag.share" = "Share";
+"brag.share.a11y" = "Share this card";
+"brag.video.preview" = "Video · preview";
+"brag.video.preview.a11y" = "Video recap, preview only";
+"brag.wallpaper" = "Wallpaper";
+"brag.wallpaper.a11y" = "Save the card to use as a wallpaper";
+"capsule.buried.toast" = "Buried — it will surface in %d months";
+"capsule.compose.discard.confirm" = "Discard";
+"capsule.compose.discard.keep" = "Keep editing";
+"capsule.compose.discard.message" = "Your note has not been buried yet.";
+"capsule.compose.discard.title" = "Discard this note?";
+"capsule.compose.editor.a11y" = "Note to your future self";
+"capsule.compose.months" = "%d months";
+"capsule.compose.saveFailed" = "Couldn't bury this note — it is still here. Tap Bury to try again.";
+"capsule.compose.surfaceIn" = "Surface in";
+"capsule.compose.title" = "Time capsule";
+"capsule.open.reply" = "Reply to yourself";
+"chat.record.stop.hint" = "Stops recording and sends your voice message.";
+"chat.send.attachmentsFailed" = "Message sent, but attachments couldn't be uploaded and stay staged: %@";
+"chat.send.failed" = "Message not sent — it is still in the input field.";
+"common.selected" = "Selected";
+"companion.inbox.accepted.open" = "Open conversation";
+"friend.add.failed" = "Couldn't send the friend request: %@";
+"friend.add.state.sending" = "Sending…";
+"join.submit.failed" = "Request not sent — your draft is kept. %@";
+"join.submit.unavailable" = "Joining routes isn't available yet — your draft is kept.";
+"locationPicker.map.coords.invalid" = "Coordinates are out of range or unreadable.";
+"locationPicker.map.east" = "E";
+"locationPicker.map.north" = "N";
+"locationPicker.map.south" = "S";
+"locationPicker.map.west" = "W";
+"omen.markDone" = "Mark done";
+"paywall.period.day" = "/day";
+"paywall.period.dayN" = "/%1$dd";
+"paywall.period.week" = "/week";
+"paywall.period.weekN" = "/%1$dw";
+"paywall.period.month" = "/month";
+"paywall.period.monthN" = "/%1$dm";
+"paywall.period.year" = "/year";
+"paywall.period.yearN" = "/%1$dy";
+"paywall.plan.a11y" = "%1$@, %2$@%3$@";
+"paywall.plan.selected" = "Selected";
+"paywall.restore.a11y" = "Restore purchases";
+"paywall.restore.failed" = "Restore failed: %@";
+"paywall.restore.none" = "No previous purchases were found for this Apple ID.";
+"settings.category.state.hidden" = "Hidden";
+"settings.category.state.neutral" = "Not set";
+"settings.category.state.preferred" = "Preferred";
+"settings.hidden.remove.a11y" = "Show %@ again";
+"share.preview.failed" = "Preview could not be rendered.";
+"share.preview.retry" = "Retry preview";
+"userLocation.form.photo.remove.a11y" = "Remove photo %1$d of %2$d";
+"companion.chat.attachment.uploadFailed.generic" = "Attachments could not be uploaded";
+
+"chat.send.tooLong" = "Your message is over 1,000 characters. Shorten it and try again; your draft is still here.";
+
+"map.options" = "Map options and library";
+"map.style.title" = "Map style";
+
+"chat.send.pendingAttachments" = "Attachments not sent";
+"chat.send.retryAttachments" = "Retry attachments only";
+"archive.record.readOnly.badge" = "Read-only record";
+"archive.record.readOnly.note" = "Your saved text and dates are available to read. Sharing and replies are not available here yet. Use Close to return.";

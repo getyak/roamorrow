@@ -9,7 +9,7 @@
  * no third-party cmdk dep.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WEB_CATS, type WebExperience } from "@/lib/lisbon-data";
 import { CITIES, CITY_ORDER } from "@/lib/cities-data";
@@ -38,18 +38,18 @@ function buildItems(lang: Lang): readonly PaletteItem[] {
     {
       id: "scenario-home",
       kind: "scenario",
-      title: lang === "zh" ? "首页（手机地图）" : "Home — mobile map",
+      title: lang === "zh" ? "官网首页" : "Website home",
       subtitle: "/",
-      hint: "Scenario · /",
+      hint: "Home",
       href: "/",
       accent: "#C98628",
     },
     {
       id: "scenario-lisbon",
       kind: "scenario",
-      title: lang === "zh" ? "里斯本研究视图" : "Lisbon research view",
+      title: lang === "zh" ? "里斯本指南" : "Lisbon guide",
       subtitle: "/lisbon",
-      hint: "Scenario A · desktop",
+      hint: "City guide",
       href: `/lisbon${langSuffix}`,
       accent: "#C98628",
     },
@@ -67,7 +67,7 @@ function buildItems(lang: Lang): readonly PaletteItem[] {
       kind: "scenario",
       title: lang === "zh" ? "手机浏览器预览" : "Mobile preview",
       subtitle: "/mobile-preview",
-      hint: "Scenario B · 390 × 844",
+      hint: "Mobile layout",
       href: `/mobile-preview${langSuffix}`,
       accent: "#3F4B7A",
     },
@@ -76,7 +76,7 @@ function buildItems(lang: Lang): readonly PaletteItem[] {
       kind: "scenario",
       title: lang === "zh" ? "旅程回顾示例" : "Trip recap sample",
       subtitle: "/trip/sofia-lisbon-may-2025",
-      hint: "Scenario C · share",
+      hint: "Trip recap",
       href: `/trip/sofia-lisbon-may-2025${langSuffix}`,
       accent: "#4C7A3F",
     },
@@ -140,8 +140,23 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onOpenChange, lang }: CommandPaletteProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
+
+  // W07: remember the trigger so closing returns focus where it came from.
+  useEffect(() => {
+    if (open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+    } else {
+      returnFocusRef.current?.focus?.();
+    }
+  }, [open]);
+
+  const close = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   const items = useMemo(() => buildItems(lang), [lang]);
   const expById = useMemo(() => {
@@ -169,6 +184,25 @@ export function CommandPalette({ open, onOpenChange, lang }: CommandPaletteProps
     if (open) inputRef.current?.focus();
   }, [open]);
 
+  // Focus trap: Tab cycles inside the dialog while it is open.
+  const trapTab = useCallback((e: React.KeyboardEvent) => {
+    if (e.key !== "Tab") return;
+    const nodes = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'input, button, a[href], [tabindex]:not([tabindex="-1"])',
+    );
+    if (!nodes || nodes.length === 0) return;
+    const first = nodes[0]!;
+    const last = nodes[nodes.length - 1]!;
+    const active = document.activeElement;
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, []);
+
   // Global ⌘K toggle + in-modal nav.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -181,7 +215,7 @@ export function CommandPalette({ open, onOpenChange, lang }: CommandPaletteProps
       if (!open) return;
       if (e.key === "Escape") {
         e.preventDefault();
-        onOpenChange(false);
+        close();
         return;
       }
       if (e.key === "ArrowDown") {
@@ -194,18 +228,18 @@ export function CommandPalette({ open, onOpenChange, lang }: CommandPaletteProps
         setActiveIdx((i) => Math.max(0, i - 1));
         return;
       }
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && e.target === inputRef.current) {
         const target = filtered[activeIdx];
         if (target) {
           e.preventDefault();
-          onOpenChange(false);
+          close();
           router.push(target.href);
         }
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onOpenChange, filtered, activeIdx, router]);
+  }, [open, close, onOpenChange, filtered, activeIdx, router]);
 
   if (!open) return null;
 
@@ -216,6 +250,8 @@ export function CommandPalette({ open, onOpenChange, lang }: CommandPaletteProps
       role="dialog"
       aria-modal="true"
       aria-label="Command palette"
+      ref={dialogRef}
+      onKeyDown={trapTab}
       style={{
         position: "fixed",
         inset: 0,
@@ -260,8 +296,11 @@ export function CommandPalette({ open, onOpenChange, lang }: CommandPaletteProps
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label={
+              lang === "zh" ? "搜索体验、城市与页面" : "Search experiences, cities and pages"
+            }
             placeholder={
-              lang === "zh" ? "搜场景、体验、城市…" : "Search scenarios, experiences, cities…"
+              lang === "zh" ? "搜索体验、城市与页面…" : "Search experiences, cities and pages…"
             }
             style={{
               flex: 1,

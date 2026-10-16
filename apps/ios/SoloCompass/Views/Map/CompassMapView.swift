@@ -370,11 +370,11 @@ struct CompassMapContentView: View {
     /// draft, scroll intent and the explicit-ask channel. One instance for the
     /// root's lifetime so surface switches never drop work.
     @State private var workspace = ConversationWorkspaceState()
-    @State private var mapLibraryRowHeight: CGFloat = 44
+    @State private var mapChromeBottom: CGFloat = 0
 
     private var mapTransientTopInset: CGFloat {
-        MapOverlayMetrics.filterBarTopOffset + MapOverlayMetrics.filterBarHeight
-            + (workspace.surface == .map ? 8 + mapLibraryRowHeight : 0) + 8
+        (mapChromeBottom > 0 ? mapChromeBottom
+            : MapOverlayMetrics.filterBarTopOffset + MapOverlayMetrics.filterBarHeight) + 8
     }
     /// Height of the map's safe-area container, measured once per layout via a
     /// background GeometryReader (never per drag frame) so the panel detents
@@ -1290,6 +1290,13 @@ struct CompassMapContentView: View {
             }
             // Any modal covering the workspace asks the chat to hibernate (mic +
             // speech) without ending the conversation.
+            .onChange(of: viewModel.isShowingSettings) { _, shown in
+                // Re-check newly saved credentials without dropping this chat
+                // or its draft. start() does not request microphone access.
+                if !shown, let orchestrator = voiceOrchestrator, orchestrator.uiState == .unconfigured {
+                    orchestrator.start()
+                }
+            }
             .onChange(of: anyWorkspaceModalPresented) { _, presented in
                 if presented {
                     workspace.requestHibernation()
@@ -1572,7 +1579,9 @@ struct CompassMapContentView: View {
                     onOpenFavorites: { isShowingFavorites = true },
                     onOpenItineraries: { isShowingItineraries = true }
                 )
-                .onPreferenceChange(MapLibraryRowHeightKey.self) { mapLibraryRowHeight = $0 }
+                .onPreferenceChange(MapChromeBottomKey.self) { bottom in
+                    if bottom > 0 { mapChromeBottom = bottom }
+                }
                 .accessibilityHidden(workspace.detent == .expanded)
                 .allowsHitTesting(workspace.detent != .expanded)
 
@@ -2961,7 +2970,8 @@ struct CompassMapContentView: View {
             // modest choose-city chip instead of auto-opening a picker modal.
             needsCitySelection: viewModel.selectedCity == nil
                 && locationService.currentLocation == nil,
-            onChooseCity: { isShowingCityPicker = true }
+            onChooseCity: { isShowingCityPicker = true },
+            onOpenSettings: { viewModel.isShowingSettings = true }
         )
     }
 
@@ -3396,8 +3406,8 @@ extension String {
     }
 }
 
-private struct MapLibraryRowHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 44
+private struct MapChromeBottomKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())
     }
@@ -3496,6 +3506,7 @@ private struct MapOverlayView: View {
     /// P2.5 #252: "我的菜" toggle on the filter bar. Local UI state.
     @State private var isTasteRankOn: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .subheadline) private var cityRowHeight: CGFloat = 44
 
     private var isFilterActive: Bool {
         viewModel.selectedCategory != nil || viewModel.selectedCustomTag != nil || viewModel.isNowFilter
@@ -3510,19 +3521,6 @@ private struct MapOverlayView: View {
             return NSLocalizedString("filter.now", comment: "Now filter label")
         }
         return ""
-    }
-
-    private func libraryShortcut(_ key: String, icon: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(NSLocalizedString(key, comment: "Map library shortcut"), systemImage: icon)
-                .font(.subheadline.weight(.medium))
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(CT.accent)
-        .background(CT.cardAdaptive, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityIdentifier(id)
     }
 
     var body: some View {
@@ -3557,7 +3555,7 @@ private struct MapOverlayView: View {
                     recenterButton.padding(.trailing, 12)
                 }
             }
-            .frame(height: MapOverlayMetrics.cityPillRowHeight)
+            .frame(minHeight: cityRowHeight)
             .padding(.top, MapOverlayMetrics.cityPillTopPadding)
 
             if showsMapChrome {
@@ -3588,6 +3586,12 @@ private struct MapOverlayView: View {
                 isTasteRankOn: isTasteRankOn,
                 onTasteRankToggle: { isTasteRankOn = $0 }
             )
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(key: MapChromeBottomKey.self,
+                        value: proxy.frame(in: .named("mapChrome")).maxY)
+                }
+            }
             // US-026: reset the GPS-error dismissal once the error clears so a
             // later failure re-surfaces the banner. Anchored on the always-present
             // filter bar (the banner itself is conditional, so its own onChange
@@ -3595,20 +3599,6 @@ private struct MapOverlayView: View {
             .onChange(of: viewModel.locationErrorBannerText) { _, newValue in
                 if newValue == nil { dismissedLocationError = false }
             }
-
-            // Fixed library entry points live in the map's top chrome, outside
-            // the horizontally scrolling filters and clear of bottom previews.
-            HStack(spacing: 10) {
-                libraryShortcut("ux.favorites", icon: "heart", id: "map.favorites", action: onOpenFavorites)
-                libraryShortcut("ux.itineraries", icon: "calendar", id: "map.itineraries", action: onOpenItineraries)
-            }
-            .background {
-                GeometryReader { proxy in
-                    Color.clear.preference(key: MapLibraryRowHeightKey.self, value: proxy.size.height)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
 
             let showEmptyFilterBanner = isFilterActive && viewModel.visibleExperiences.isEmpty
                 && !viewModel.isNowFilter
@@ -3787,6 +3777,7 @@ private struct MapOverlayView: View {
             }
             } // showsMapChrome
         }
+        .coordinateSpace(name: "mapChrome")
         .frame(maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isFilterActive)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.visibleExperiences.count)
@@ -4003,17 +3994,18 @@ private struct MapOverlayView: View {
                 HStack(spacing: 4) {
                     Text(cityName)
                         .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.caption.weight(.semibold))
                 }
-                .foregroundStyle(CT.accent)
+                .foregroundStyle(CT.actionTintAdaptive)
                 // City OS v3 · lifecycle line: mode + day + stage dots. The
                 // pill stays one-line whenever there is nothing honest to add.
                 if let cityModeLine {
                     HStack(spacing: 4) {
                         Text(cityModeLine)
                             .ctMono(9, .medium)
-                            .foregroundStyle(CT.sunGoldDeep)
+                            .foregroundStyle(CT.actionTintAdaptive)
                         if let cityStageIndex {
                             HStack(spacing: 2.5) {
                                 ForEach(0..<4, id: \.self) { dot in
@@ -4029,7 +4021,7 @@ private struct MapOverlayView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, cityModeLine == nil ? 6 : 4)
-            .background(CT.surfaceWhite.opacity(0.78), in: Capsule())
+            .background(CT.cardAdaptive.opacity(0.94), in: Capsule())
             .frame(
                 minWidth: MapOverlayMetrics.cityPillHitTarget,
                 minHeight: MapOverlayMetrics.cityPillHitTarget
@@ -4041,28 +4033,31 @@ private struct MapOverlayView: View {
     }
 
     private var mapStyleButton: some View {
-        // Demoted to secondary affordance (32pt + reduced opacity) so the
-        // top-right cluster reads as a hierarchy — Recenter (44pt primary) >
-        // Avatar (40pt identity) > MapStyle (32pt secondary). The previous
-        // three-equal-circles layout pushed the city pill off-center and made
-        // the column feel cluttered on cold-start screenshots.
-        Button {
-            Haptics.impact(.light)
-            withAnimation(.easeInOut(duration: 0.2)) {
-                mapStyleChoice.cycle()
+        Menu {
+            Button(action: onOpenFavorites) {
+                Label(NSLocalizedString("ux.favorites", comment: "Saved places"), systemImage: "heart")
+            }
+            .accessibilityIdentifier("map.favorites")
+            Button(action: onOpenItineraries) {
+                Label(NSLocalizedString("ux.itineraries", comment: "My trips"), systemImage: "calendar")
+            }
+            .accessibilityIdentifier("map.itineraries")
+            Picker(NSLocalizedString("map.style.title", comment: "Map style"), selection: $mapStyleChoice) {
+                ForEach(MapStyleChoice.allCases, id: \.self) { style in
+                    Text(style.label).tag(style)
+                }
             }
         } label: {
-            Image(systemName: mapStyleChoice.icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(CT.accent.opacity(0.75))
+            Image(systemName: "ellipsis")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(CT.textPrimaryAdaptive)
                 .frame(width: 32, height: 32)
-                .background(
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
-                )
+                .background(.thinMaterial, in: Circle())
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
-        .accessibilityLabel(Text(mapStyleChoice.label))
+        .accessibilityLabel(Text(NSLocalizedString("map.options", comment: "Map options and saved trips")))
+        .accessibilityIdentifier("map.options")
     }
 
     private var recenterButton: some View {

@@ -1,0 +1,17 @@
+{
+  "task": "public-legal-gists",
+  "artifactRemoved": "/private/tmp/ai-test-solo-compass-legal-gists.kBDGou",
+  "artifactRemoveExitCode": 0,
+  "nativeCacheRemoved": "/private/tmp/ai-test-solo-compass-legal-native-cache.MBNI4y",
+  "nativeCacheRemoveExitCode": 0,
+  "formalBuildAndLocalizationLogsPreserved": true,
+  "sourceAndPublicationManifestsPreserved": true,
+  "simulatorBooted": false,
+  "devicesDeleted": 0,
+  "sharedSessionReleased": true,
+  "cuaTemporaryTab6Closed": true,
+  "otherUserProcessesStopped": false,
+  "otherSourceWorktreesRemoved": false,
+  "remoteGistsDeleted": false,
+  "webBuildCacheNoOpenFilesBeforeGuardedRemoval": true
+}

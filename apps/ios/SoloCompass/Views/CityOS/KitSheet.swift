@@ -203,7 +203,7 @@ private struct KitRowCard: View {
                 )
                 .contentShape(Circle())
         }
-        .buttonStyle(PressableButtonStyle(pressedScale: 0.92))
+        .buttonStyle(PressableButtonStyle())
         .animation(.spring(response: 0.25, dampingFraction: 0.8), value: on)
         .accessibilityLabel(Text(on
             ? NSLocalizedString("cityos.kit.todo.done.a11y", comment: "已备")

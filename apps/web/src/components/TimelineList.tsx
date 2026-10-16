@@ -10,7 +10,7 @@ interface TimelineListProps {
 }
 
 export function TimelineList({ onSelect }: TimelineListProps) {
-  const { data, isLoading, isError } = useCompletions();
+  const { data, isLoading, isError, isFetching, refetch } = useCompletions();
   const entries = data?.entries ?? [];
   const groups = useMemo(() => groupByRecency(entries), [entries]);
 
@@ -18,7 +18,21 @@ export function TimelineList({ onSelect }: TimelineListProps) {
     return <EmptyState>Loading your footprint…</EmptyState>;
   }
   if (isError) {
-    return <EmptyState>Could not load your footprint. Try again.</EmptyState>;
+    return (
+      <div role="alert">
+        <EmptyState>Could not load your footprint.</EmptyState>
+        <button
+          type="button"
+          disabled={isFetching}
+          onClick={() => {
+            void refetch();
+          }}
+          className="mx-auto block min-h-[44px] rounded-full bg-deep-teal px-5 py-2 text-sm text-paper-cream disabled:opacity-60"
+        >
+          {isFetching ? "Trying again…" : "Try again"}
+        </button>
+      </div>
+    );
   }
   if (entries.length === 0) {
     return (

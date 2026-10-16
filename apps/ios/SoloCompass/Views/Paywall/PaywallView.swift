@@ -1,6 +1,44 @@
 import SwiftUI
 import StoreKit
 
+/// User-visible outcome of the paywall's restore action (I08). Restore must
+/// never fake an unlock — only a confirmed success unlocks — and a failed or
+/// empty restore must say so instead of silently doing nothing. Pure so tests
+/// can pin all three branches.
+enum RestoreOutcome: Equatable {
+    case unlocked
+    case noPurchases
+    case failed(String)
+
+    static func resolve(success: Bool, lastError: String?) -> RestoreOutcome {
+        guard success else {
+            if let lastError, !lastError.isEmpty {
+                return .failed(lastError)
+            }
+            return .noPurchases
+        }
+        return .unlocked
+    }
+
+    /// Inline status copy; `nil` for success because the sheet dismisses.
+    var message: String? {
+        switch self {
+        case .unlocked:
+            return nil
+        case .noPurchases:
+            return NSLocalizedString(
+                "paywall.restore.none",
+                comment: "No previous purchases found for this Apple ID"
+            )
+        case .failed(let reason):
+            return String(
+                format: NSLocalizedString("paywall.restore.failed", comment: "Restore failed: %@"),
+                reason
+            )
+        }
+    }
+}
+
 /// First user-visible paid moment. Shows the two product cards (yearly
 /// emphasized as "Best value"), the 1-month free trial CTA, restore link,
 /// and fine-print legal copy.
@@ -19,18 +57,35 @@ public struct PaywallView: View {
     @State private var selectedProductID: String = SubscriptionService.monthlyProductID
     @State private var purchaseInFlight = false
     @State private var purchaseError: String?
+    /// Restore progress + result (I08): a single in-flight guard shared with
+    /// purchase so the two StoreKit flows can never run in parallel, and an
+    /// inline status when restore finds nothing or fails.
+    @State private var restoreInFlight = false
+    @State private var restoreMessage: String?
     /// Whether the App Store Apple ID currently looking at this paywall is
     /// still eligible for the monthly Introductory Offer (1 month free).
-    /// Defaults to `true` so the trial banner is visible while we're still
-    /// resolving — false positives are recoverable (StoreKit will fall back
-    /// to the regular price at purchase time and the user will see it in
-    /// Apple's own purchase sheet); false negatives would silently hide our
-    /// most important hook.
-    @State private var introOfferEligible: Bool = true
+    /// Starts `.unknown`: the trial promise is only made once StoreKit has
+    /// actually answered — an optimistic claim would promise a discount that
+    /// may not exist for this account (I09).
+    @State private var introOfferStatus: IntroOfferStatus = .unknown
+
+    enum IntroOfferStatus {
+        case unknown
+        case eligible
+        case ineligible
+    }
+
+    /// Trial affordances only read `true` when eligibility is confirmed.
+    private var introOfferEligible: Bool { introOfferStatus == .eligible }
 
     /// Called after a successful purchase or restore so callers can
     /// resume the action that triggered the paywall.
     var onUnlocked: () -> Void
+
+    /// One in-flight StoreKit flow at a time (I08 + checkpoint review): the
+    /// purchase CTA and restore must share a single busy condition so neither
+    /// path can race or re-enter the other.
+    private var isStoreBusy: Bool { purchaseInFlight || restoreInFlight }
 
     public init(onUnlocked: @escaping () -> Void = {}) {
         self.onUnlocked = onUnlocked
@@ -54,6 +109,14 @@ public struct PaywallView: View {
                 continueFreeButton
                 fineprint
                 actionLinks
+                LegalDocumentLinks()
+                if let restoreMessage {
+                    Text(restoreMessage)
+                        .font(.caption)
+                        .foregroundStyle(CT.bannerError)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isStaticText)
+                }
             }
             .padding(20)
         }
@@ -78,7 +141,7 @@ public struct PaywallView: View {
             // the bullets/CTA from rendering — if it's late, the optimistic
             // default keeps the banner visible until the truth lands.
             if let monthly = subscription.products.first(where: { $0.id == SubscriptionService.monthlyProductID }) {
-                introOfferEligible = await subscription.isEligibleForIntroOffer(monthly)
+                introOfferStatus = await subscription.isEligibleForIntroOffer(monthly) ? .eligible : .ineligible
             }
             // Make sure the mid-trial banner reads from a fresh
             // currentExpirationDate. refreshEntitlement is idempotent.
@@ -295,17 +358,47 @@ public struct PaywallView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(product.displayName))
+        // Announce the full decision: name, price, period and whether this plan
+        // is the current selection (I09).
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(productAccessibilityLabel(product)))
+        .accessibilityValue(Text(isSelected
+            ? NSLocalizedString("paywall.plan.selected", comment: "Selected")
+            : ""))
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    /// "Monthly, $4.99/month" — the full plan meaning for VoiceOver, localized
+    /// in EN and ZH like every other user string.
+    private func productAccessibilityLabel(_ product: Product) -> String {
+        String(
+            format: NSLocalizedString("paywall.plan.a11y", comment: "%1$@, %2$@%3$@"),
+            product.displayName,
+            product.displayPrice,
+            periodLabel(product)
+        )
     }
 
     private func periodLabel(_ product: Product) -> String {
         guard let period = product.subscription?.subscriptionPeriod else { return "" }
         let value = period.value
         switch period.unit {
-        case .day:   return value == 1 ? "/day" : "/\(value)d"
-        case .week:  return value == 1 ? "/week" : "/\(value)w"
-        case .month: return value == 1 ? "/month" : "/\(value)mo"
-        case .year:  return value == 1 ? "/year" : "/\(value)y"
+        case .day:
+            return value == 1
+                ? NSLocalizedString("paywall.period.day", comment: "/day")
+                : String(format: NSLocalizedString("paywall.period.dayN", comment: "/%1$dd"), value)
+        case .week:
+            return value == 1
+                ? NSLocalizedString("paywall.period.week", comment: "/week")
+                : String(format: NSLocalizedString("paywall.period.weekN", comment: "/%1$dw"), value)
+        case .month:
+            return value == 1
+                ? NSLocalizedString("paywall.period.month", comment: "/month")
+                : String(format: NSLocalizedString("paywall.period.monthN", comment: "/%1$dm"), value)
+        case .year:
+            return value == 1
+                ? NSLocalizedString("paywall.period.year", comment: "/year")
+                : String(format: NSLocalizedString("paywall.period.yearN", comment: "/%1$dy"), value)
         @unknown default: return ""
         }
     }
@@ -332,7 +425,7 @@ public struct PaywallView: View {
         // feedback. Instead we keep it tappable and, on tap, retry the product
         // load and surface an explicit error if the catalog is still empty
         // (see `runPurchase()`).
-        let isDisabled = purchaseInFlight
+        let isDisabled = isStoreBusy
         // White text on the gold fill (#D4A843) only reaches ~2.2:1 contrast,
         // below WCAG AA (4.5:1). Use a dark brown that's harmonious with the
         // gold and clears AA comfortably (~6.4:1) for low-vision legibility.
@@ -392,6 +485,12 @@ public struct PaywallView: View {
                 Task { await runRestore() }
             }
             .font(.caption)
+            .frame(minHeight: 44)
+            // One in-flight StoreKit flow at a time (I08): a second tap must
+            // not race a running purchase or restore.
+            .disabled(isStoreBusy)
+            .opacity(isStoreBusy ? 0.5 : 1)
+            .accessibilityLabel(Text(NSLocalizedString("paywall.restore.a11y", comment: "Restore purchases")))
 
             Spacer()
 
@@ -400,6 +499,7 @@ public struct PaywallView: View {
                 destination: URL(string: "https://apps.apple.com/account/subscriptions")!
             )
             .font(.caption)
+            .frame(minHeight: 44)
         }
         .frame(maxWidth: .infinity)
     }
@@ -407,6 +507,8 @@ public struct PaywallView: View {
     // MARK: - Actions
 
     private func runPurchase() async {
+        // Guard re-entry: purchase must not race a running restore or itself.
+        guard !purchaseInFlight, !restoreInFlight else { return }
         purchaseInFlight = true
         defer { purchaseInFlight = false }
 
@@ -448,13 +550,27 @@ public struct PaywallView: View {
     }
 
     private func runRestore() async {
-        purchaseInFlight = true
-        defer { purchaseInFlight = false }
+        // Guard re-entry so restore can't fire twice or run beside a purchase.
+        guard !purchaseInFlight, !restoreInFlight else { return }
+        restoreInFlight = true
+        restoreMessage = nil
+        // The service clears prior errors before this attempt. Comparing
+        // strings here would hide a repeated current failure.
+        defer { restoreInFlight = false }
         let success = await subscription.restorePurchases()
-        if success {
+        let attemptError = subscription.lastError
+        let outcome = RestoreOutcome.resolve(success: success, lastError: attemptError)
+        guard outcome != .unlocked else {
             onUnlocked()
             dismiss()
+            return
         }
+        restoreMessage = outcome.message
+        #if canImport(UIKit)
+        if let message = outcome.message {
+            UIAccessibility.post(notification: .announcement, argument: message)
+        }
+        #endif
     }
 }
 

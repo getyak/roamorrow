@@ -3,15 +3,19 @@ import { copy } from "@/components/marketing/copy";
 import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { ButtonLink, Eyebrow, Section } from "@/components/marketing/primitives";
+import { resolveDistribution, distributionCopy } from "@/lib/distribution";
 
 const SITE_URL = "https://solocompass.app";
-const APP_STORE_URL = "https://apps.apple.com/app/solo-compass/id0000000000";
+
+const dist = resolveDistribution();
+const availability = distributionCopy(dist.primaryKind, "en");
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Download · Solo Compass for iOS",
-  description:
-    "Solo Compass is available on the App Store for iPhone. Requires iOS 17.0 or later. Free tier available with 3 AI cross-references per day. No card needed to try.",
+  // W01: no placeholder store id, no invented price or availability. The
+  // page states where things actually stand and offers the real web entry.
+  description: availability.status,
   alternates: {
     canonical: `${SITE_URL}/download`,
     languages: {
@@ -23,24 +27,23 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: `${SITE_URL}/download`,
-    title: "Download Solo Compass for iOS",
-    description: "iPhone. iOS 17+. Free tier, no card needed. Available on the App Store.",
+    title: "Solo Compass for iOS — availability",
+    description: availability.status,
     images: [{ url: "/og/download.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Download Solo Compass for iOS",
-    description: "iPhone. iOS 17+. On the App Store.",
+    title: "Solo Compass for iOS — availability",
+    description: availability.status,
     images: ["/og/download.png"],
   },
 };
 
 const REQUIREMENTS: [string, string][] = [
   ["Device", "iPhone (iOS 17.0 or later)"],
-  ["Size", "~46 MB download"],
   ["Languages", "English, 简体中文"],
-  ["Region", "Available worldwide"],
-  ["Price", "Free · $29 lifetime · $50/year"],
+  ["Price", "Free tier · Pro is monthly or yearly, priced live in the App Store"],
+  ["Status", availability.status],
 ];
 
 export default function DownloadPage() {
@@ -54,19 +57,23 @@ export default function DownloadPage() {
     <>
       <MarketingNav {...props} />
       <main id="main">
-        <Section className="pt-24 md:pt-32 pb-12">
+        <Section className="pt-24 pb-12 md:pt-32">
           <Container width="narrow" className="text-center">
             <Eyebrow dot="accent" className="justify-center">
               Download
             </Eyebrow>
-            <h1 className="ds-display-xl mt-6 font-display">Get Solo Compass on iPhone.</h1>
-            <p className="ds-body-xl mt-6 text-fg-muted">
-              Free to try. No card, no email. Pay only when Free stops being enough.
-            </p>
-            <div className="mt-10 flex justify-center">
-              <ButtonLink href={APP_STORE_URL} variant="primary">
-                Download on the App Store
-              </ButtonLink>
+            <h1 className="ds-display-xl mt-6 font-display">Solo Compass on iPhone.</h1>
+            <p className="ds-body-xl mt-6 text-fg-muted">{availability.status}</p>
+            <div className="mt-10 flex flex-wrap justify-center gap-4">
+              {dist.iosAvailable ? (
+                <ButtonLink href={dist.primaryHref} variant="primary">
+                  {availability.action}
+                </ButtonLink>
+              ) : (
+                <ButtonLink href="/app" variant="primary">
+                  Open the web map
+                </ButtonLink>
+              )}
             </div>
           </Container>
         </Section>
@@ -79,12 +86,16 @@ export default function DownloadPage() {
               </h2>
               <dl className="mt-8 divide-y divide-border-subtle">
                 {REQUIREMENTS.map(([k, v]) => (
-                  <div key={k} className="flex justify-between py-4">
+                  <div key={k} className="flex justify-between gap-6 py-4">
                     <dt className="font-body text-[15px] font-medium text-fg-primary">{k}</dt>
-                    <dd className="font-body text-[15px] text-fg-muted">{v}</dd>
+                    <dd className="text-right font-body text-[15px] text-fg-muted">{v}</dd>
                   </div>
                 ))}
               </dl>
+              <p className="mt-6 font-body text-[13px] text-fg-subtle">
+                Prices and any free-trial eligibility are shown live in the App Store before you pay
+                — nothing on this page invents a price or an availability date.
+              </p>
             </article>
 
             <article className="mt-16">
@@ -92,13 +103,7 @@ export default function DownloadPage() {
                 Not on Android yet.
               </h2>
               <p className="ds-body-lg mt-4 text-fg-muted">
-                Solo Compass is iOS-only for now. The app is built with SwiftUI and MapKit — porting
-                to Android is not a straight line, and a bad Android version would be worse than
-                none. If you want to be notified when it lands, email{" "}
-                <a className="underline" href="mailto:hello@solocompass.app">
-                  hello@solocompass.app
-                </a>{" "}
-                with subject &ldquo;Android&rdquo;.
+                You can explore the web map on Android. An Android app is not publicly available.
               </p>
             </article>
           </Container>

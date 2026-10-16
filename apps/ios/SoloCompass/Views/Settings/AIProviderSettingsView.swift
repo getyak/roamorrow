@@ -31,22 +31,35 @@ struct AIProviderSettingsView: View {
     private var providerSection: some View {
         Section {
             ForEach(AIProvider.allCases) { provider in
-                HStack(spacing: 12) {
-                    Image(systemName: provider.icon)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background(iconColor(for: provider), in: RoundedRectangle(cornerRadius: 7))
-                    Text(provider.displayName)
-                    Spacer()
-                    if preferences.aiProvider == provider {
-                        Image(systemName: "checkmark")
-                            .foregroundStyle(.blue)
-                            .fontWeight(.semibold)
+                let isSelected = preferences.aiProvider == provider
+                // Real Button + selected semantics (I17): activatable by
+                // VoiceOver / Switch Control and the choice is read back.
+                Button {
+                    preferences.aiProvider = provider
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: provider.icon)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(.white)
+                            .frame(width: 30, height: 30)
+                            .background(iconColor(for: provider), in: Radius.shape(7))
+                        Text(provider.displayName)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if isSelected {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(.blue)
+                                .fontWeight(.semibold)
+                        }
                     }
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
-                .onTapGesture { preferences.aiProvider = provider }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(provider.displayName))
+                .accessibilityValue(Text(isSelected
+                    ? NSLocalizedString("common.selected", comment: "Selected")
+                    : ""))
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
         } header: {
             Label(
@@ -157,7 +170,10 @@ struct AIProviderSettingsView: View {
     private var statusText: String {
         isConfigured
             ? String(
-                format: NSLocalizedString("ai.provider.status.configured", comment: "Status: configured with provider"),
+                // "Key saved" and "connection verified" are different facts
+                // (I17): this screen never contacts the provider, so it must
+                // not claim a working connection.
+                format: NSLocalizedString("ai.provider.status.saved", comment: "Status: key saved, connection not verified — %@"),
                 preferences.aiProvider.displayName
               )
             : NSLocalizedString("ai.provider.status.unconfigured", comment: "Status: no API key")

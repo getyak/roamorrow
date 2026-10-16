@@ -190,6 +190,9 @@ public enum CT {
     public static let sheetAdaptive       = adaptive(light: 0xF3, 0xEE, 0xE6, dark: 0x17, 0x14, 0x10)
     /// Primary text — fgPrimary (light) / fgPrimaryDark (dark).
     public static let textPrimaryAdaptive = adaptive(light: 0x1F, 0x1A, 0x14, dark: 0xF4, 0xEF, 0xE7)
+    /// Action foreground on adaptive cards. Keep `accent` for filled buttons
+    /// with white labels; its fixed brown is unreadable on warm dark cards.
+    public static let actionTintAdaptive = adaptive(light: 0x5D, 0x30, 0x00, dark: 0xE5, 0xC2, 0x8F)
     /// Secondary text — fgMuted (light) / fgMutedDark (dark).
     public static let textMutedAdaptive   = adaptive(light: 0x6D, 0x63, 0x58, dark: 0xB0, 0xA6, 0x97)
     /// Hairline border — borderSubtle (light) / warmBorderDark (dark).

@@ -55,7 +55,7 @@ export default function OGImage() {
           maxWidth: 900,
         }}
       >
-        Cross-referenced sources · Honest AI · No ads · No tracking
+        Cross-referenced sources · Honest AI · No ads · Data use explained
       </div>
     </div>,
     { ...size },

@@ -573,10 +573,10 @@
 
 /* Explore consent (US-034) */
 "explore.consent.title" = "开始探索之前";
-"explore.consent.subtitle" = "Solo Compass 会代你与两个服务通讯。下面是会离开你手机的全部数据。";
-"explore.consent.bullet.location" = "粗略位置 → OpenStreetMap。完全公开，无账号，不追踪。";
-"explore.consent.bullet.ai" = "OSM 标签 + 城市标识 → Anthropic，用于生成独行旅人风格的描述。无任何个人资料。";
-"explore.consent.bullet.no_pii" = "我们不收集通讯录、相册、浏览记录。绝不与广告商共享。";
+"explore.consent.subtitle" = "本次探索会这样使用你选定的地图位置和公开地点信息。";
+"explore.consent.bullet.location" = "你选定的位置坐标和搜索半径会发送给 OpenStreetMap/Overpass，用于查找附近地点。";
+"explore.consent.bullet.ai" = "公开地点资料和城市信息会发送给当前配置的 AI 服务（默认 DeepSeek），用于撰写体验描述。";
+"explore.consent.bullet.no_pii" = "这次地点查询不会附带你的照片或通讯录。开始前，你可以取消。";
 "explore.consent.accept" = "了解了 — 开始探索";
 "explore.consent.cancel" = "暂不";
 
@@ -1669,12 +1669,12 @@
 "filter.tip.title" = "按心情筛选";
 "filter.tip.message" = "点一个分类或「Now」，找此刻最值得去的地方——而不只是附近所有地方。";
 "terms.title" = "欢迎使用 Solo Compass";
-"terms.intro" = "在开始探索之前，先用一屏告诉你我们收集什么数据、怎么用。完整文档在下方链接里。";
+"terms.intro" = "开始探索前，请先了解这份数据使用摘要；完整文档在下方链接中。";
 "terms.dataUse.title" = "我们会收集";
-"terms.dataUse.location" = "你的位置：实时用于展示附近地点。坐标只留在本设备，除非你主动分享某个地方给朋友。";
-"terms.dataUse.chat" = "你和 AI 的对话内容：用于生成推荐。对话本地存储；仅你发送的消息会传给 AI 提供商。";
-"terms.dataUse.noContacts" = "我们不读取你的通讯录、相册、日历或浏览记录。";
-"terms.dataUse.noTrackers" = "无第三方分析或广告追踪。";
+"terms.dataUse.location" = "位置用于附近体验，并可在获得相应授权时进行后台到访检测。确认探索及 AI 请求可能将选定坐标与上下文发送至相关服务。";
+"terms.dataUse.chat" = "AI 请求可能包含你的消息、相关对话历史、偏好与旅行上下文；由所选服务商或 Pro 代理处理。";
+"terms.dataUse.noContacts" = "照片、相机、麦克风与语音用于你选择的功能，并通过相应系统权限或内容选择使用。";
+"terms.dataUse.noTrackers" = "配置的服务可处理账号同步、分享的消息与诊断数据；隐私政策列明接收者和可管理选项。";
 "terms.links.title" = "阅读完整文档";
 "terms.links.privacy" = "隐私政策";
 "terms.links.tos" = "用户协议";
@@ -2597,3 +2597,89 @@
 
 "map.coordinates.styleUnverified" = "此地图模式的位置尚未核实，可切换标准地图或查看地点列表。";
 "map.coordinates.useStandard" = "切换标准地图";
+
+// Interaction-quality batch — shared control semantics, honest states (EN+ZH parity)
+"ai.provider.status.saved" = "已保存 %@ 的 API 密钥。此处未验证连接。";
+"archive.capsule.empty" = "还没有成熟的时间胶囊。可在体验页埋下一个。";
+"archive.capsule.open.title" = "写给自己的话";
+"archive.codex.empty" = "城市图鉴会随到访记录逐步解锁——目前还没有记录。";
+"archive.ritual.blindbox.title" = "盲盒旅行";
+"archive.ritual.bookManifest.title" = "旅行之书";
+"archive.ritual.brag.title" = "独行战报";
+"archive.ritual.capsuleOpen.title" = "时光胶囊";
+"archive.ritual.cityCodex.title" = "城市图鉴";
+"archive.ritual.insight.title" = "月度洞察";
+"archive.ritual.liveActivity.title" = "实时活动预览";
+"archive.ritual.omen.title" = "今日签文";
+"archive.ritual.ost.title" = "今日原声";
+"archive.ritual.preview.badge" = "预览";
+"archive.ritual.preview.note" = "仅为预览——这里不会保存、发送或出售任何内容。";
+"archive.ritual.toolContract.title" = "工具契约预览";
+"blindbox.launch.duration" = "时长";
+"blindbox.launch.notNow" = "暂不";
+"brag.metric.days" = "天";
+"brag.metric.km" = "公里";
+"brag.metric.places" = "个地方";
+"brag.share" = "分享";
+"brag.share.a11y" = "分享这张卡片";
+"brag.video.preview" = "视频 · 预览";
+"brag.video.preview.a11y" = "视频回顾，仅预览";
+"brag.wallpaper" = "壁纸";
+"brag.wallpaper.a11y" = "保存卡片用作壁纸";
+"capsule.buried.toast" = "已埋下——%d 个月后开启";
+"capsule.compose.discard.confirm" = "丢弃";
+"capsule.compose.discard.keep" = "继续编辑";
+"capsule.compose.discard.message" = "这条笔记还没有埋下。";
+"capsule.compose.discard.title" = "丢弃这条笔记？";
+"capsule.compose.editor.a11y" = "写给未来自己的笔记";
+"capsule.compose.months" = "%d 个月";
+"capsule.compose.saveFailed" = "没能埋下这条笔记——内容还在。点击“埋下”重试。";
+"capsule.compose.surfaceIn" = "开启时间";
+"capsule.compose.title" = "时光胶囊";
+"capsule.open.reply" = "给未来的自己回信";
+"chat.record.stop.hint" = "停止录音并发送语音消息。";
+"chat.send.attachmentsFailed" = "消息已发送，但附件未能上传，仍保留在输入栏：%@";
+"chat.send.failed" = "消息未发送——内容仍在输入框中。";
+"common.selected" = "已选择";
+"companion.inbox.accepted.open" = "打开对话";
+"friend.add.failed" = "未能发送好友申请：%@";
+"friend.add.state.sending" = "发送中…";
+"join.submit.failed" = "申请未发送——草稿已保留。%@";
+"join.submit.unavailable" = "暂不支持申请加入路线——草稿已保留。";
+"locationPicker.map.coords.invalid" = "坐标超出范围或无法识别。";
+"locationPicker.map.east" = "东";
+"locationPicker.map.north" = "北";
+"locationPicker.map.south" = "南";
+"locationPicker.map.west" = "西";
+"omen.markDone" = "标记完成";
+"paywall.period.day" = "/天";
+"paywall.period.dayN" = "/%1$d天";
+"paywall.period.week" = "/周";
+"paywall.period.weekN" = "/%1$d周";
+"paywall.period.month" = "/月";
+"paywall.period.monthN" = "/%1$d月";
+"paywall.period.year" = "/年";
+"paywall.period.yearN" = "/%1$d年";
+"paywall.plan.a11y" = "%1$@，%2$@%3$@";
+"paywall.plan.selected" = "已选择";
+"paywall.restore.a11y" = "恢复购买";
+"paywall.restore.failed" = "恢复失败：%@";
+"paywall.restore.none" = "此 Apple ID 未找到可恢复的购买记录。";
+"settings.category.state.hidden" = "已隐藏";
+"settings.category.state.neutral" = "未设置";
+"settings.category.state.preferred" = "已偏好";
+"settings.hidden.remove.a11y" = "重新显示%@";
+"share.preview.failed" = "预览渲染失败。";
+"share.preview.retry" = "重试预览";
+"userLocation.form.photo.remove.a11y" = "移除第 %1$d 张照片，共 %2$d 张";
+"companion.chat.attachment.uploadFailed.generic" = "附件未能上传";
+
+"chat.send.tooLong" = "消息超过 1,000 字。请缩短后重试，草稿仍保留在输入框中。";
+
+"map.options" = "地图选项与资料库";
+"map.style.title" = "地图样式";
+
+"chat.send.pendingAttachments" = "尚未发送的附件";
+"chat.send.retryAttachments" = "仅重试附件";
+"archive.record.readOnly.badge" = "只读记录";
+"archive.record.readOnly.note" = "这里可阅读你保存的文字和日期。分享与回复尚未开放，点击顶部关闭可返回归档。";

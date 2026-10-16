@@ -58,6 +58,7 @@ public struct ChatSheet: View {
     /// asks guide them to pick a city instead of guessing one.
     private let needsCitySelection: Bool
     private let onChooseCity: (() -> Void)?
+    private let onOpenSettings: (() -> Void)?
 
     /// Optional first-turn seed. When non-nil, the sheet submits this string as
     /// the user's first message once the orchestrator finishes seeding. Used
@@ -144,7 +145,8 @@ public struct ChatSheet: View {
         resolveExperience: ((String) -> Experience?)? = nil,
         needsCitySelection: Bool = false,
         onChooseCity: (() -> Void)? = nil,
-        initialUserPrompt: String? = nil
+        initialUserPrompt: String? = nil,
+        onOpenSettings: (() -> Void)? = nil
     ) {
         self.orchestrator = orchestrator
         self.voiceService = voiceService
@@ -161,6 +163,7 @@ public struct ChatSheet: View {
         self.needsCitySelection = needsCitySelection
         self.onChooseCity = onChooseCity
         self.initialUserPrompt = initialUserPrompt
+        self.onOpenSettings = onOpenSettings
     }
 
     public var body: some View {
@@ -315,9 +318,6 @@ public struct ChatSheet: View {
         } else {
             messageList
             VStack(spacing: 0) {
-                if orchestrator.uiState == .unconfigured {
-                    unconfiguredBanner
-                }
                 if let hint = sendHint {
                     sendHintBanner(hint)
                 }
@@ -384,7 +384,9 @@ public struct ChatSheet: View {
                 "chat.unconfigured.subtitle",
                 comment: "Subtitle explaining the user needs to add a key"
             ),
-            icon: "key.fill"
+            icon: "key.fill",
+            ctaLabel: onOpenSettings == nil ? nil : NSLocalizedString("common.settings", comment: "Settings"),
+            onCTA: onOpenSettings
         )
         .padding(.horizontal, 12)
         .padding(.bottom, 6)
@@ -514,8 +516,10 @@ public struct ChatSheet: View {
             // it does not swap in a different, giant empty state. A place-scoped
             // chat still leads with its place hero.
             ScrollView {
-                emptyState
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 12) {
+                    if orchestrator.uiState == .unconfigured { unconfiguredBanner }
+                    emptyState.frame(maxWidth: .infinity)
+                }
             }
             .scrollBounceBehavior(.basedOnSize)
             .background(emptyStateBackground)
@@ -527,6 +531,7 @@ public struct ChatSheet: View {
                     // which would drop the preference and falsely read as
                     // "at the bottom".
                     VStack(spacing: 0) {
+                        if orchestrator.uiState == .unconfigured { unconfiguredBanner }
                         // Editorial rhythm: 18pt between turns reads as paragraphs,
                         // not chat-density. Serif assistant text and bubble-less
                         // replies need the breathing room (Claude.ai / GPT-5
@@ -862,7 +867,7 @@ public struct ChatSheet: View {
             Button(action: switchToTextMode) {
                 Text(NSLocalizedString("chat.voice.tap.toType", comment: "Switch to typing"))
                     .font(.footnote.weight(.medium))
-                    .foregroundStyle(CT.accent)
+                    .foregroundStyle(CT.actionTintAdaptive)
             }
             .padding(.bottom, 24)
 
@@ -974,7 +979,7 @@ public struct ChatSheet: View {
                     .padding(.vertical, 9)
                     .background(Capsule().fill(CT.accentSoft))
                 }
-                .buttonStyle(PressableButtonStyle(pressedScale: 0.94))
+                .buttonStyle(PressableButtonStyle())
                 .accessibilityIdentifier("workspace.chooseCity")
             }
         }
@@ -989,7 +994,7 @@ public struct ChatSheet: View {
         .init(
             label: NSLocalizedString("chat.empty.half.tag.nearby", comment: "Nearby short tag"),
             icon: "mappin.and.ellipse",
-            tint: CT.accent,
+            tint: CT.actionTintAdaptive,
             fullPrompt: NSLocalizedString("chat.empty.prompt.nearby", comment: "Starter chip — what's good around me")
         ),
         .init(

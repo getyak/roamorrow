@@ -157,15 +157,33 @@ public struct CreateExperienceSheet: View {
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 72, height: 72)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipShape(Radius.shape(Radius.sm))
                                 .overlay(alignment: .topTrailing) {
+                                    // 44pt hit target with a small visible glyph,
+                                    // and a contextual label so VoiceOver knows
+                                    // WHICH photo the button removes.
                                     Button {
                                         images.remove(at: idx)
                                     } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundStyle(.white, .black.opacity(0.5))
+                                        Color.clear
+                                            .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                                            .overlay(alignment: .topTrailing) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.system(size: 18, weight: .semibold))
+                                                    .foregroundStyle(.white, .black.opacity(0.55))
+                                                    .padding(4)
+                                            }
+                                            .contentShape(Rectangle())
                                     }
-                                    .padding(2)
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel(Text(String(
+                                        format: NSLocalizedString(
+                                            "userLocation.form.photo.remove.a11y",
+                                            comment: "Remove photo %1$d of %2$d"
+                                        ),
+                                        idx + 1,
+                                        images.count
+                                    )))
                                 }
                         }
                     }
