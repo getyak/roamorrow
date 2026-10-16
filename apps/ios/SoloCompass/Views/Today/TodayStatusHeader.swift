@@ -27,11 +27,11 @@ struct TodayStatusHeader: View {
     @State private var archive: ArchiveViewModel?
     @State private var compliance: ComplianceService?
     @State private var cityStore: CityOSStore?
+    @Environment(\.scenePhase) private var scenePhase
 
     /// Called when the traveler taps the unset visa ring — the entry-date
-    /// confirm hook (design decision C: empty state is the ledger's first
-    /// onboarding hook, not a hidden block). Wired in a later slice.
-    var onConfirmEntryDate: () -> Void = {}
+    /// confirmation form owned by TodayContainer.
+    let onConfirmEntryDate: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: Space.lg) {
@@ -51,6 +51,9 @@ struct TodayStatusHeader: View {
         .background(CT.pageAdaptive)
         .task { rebuildSources() }
         .onChange(of: preferences.lastSelectedCity) { _, _ in rebuildSources() }
+        .onChange(of: preferences.visaEntryDate) { _, _ in rebuildSources() }
+        .onChange(of: preferences.visaLengthDays) { _, _ in rebuildSources() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { rebuildSources() } }
     }
 
     // MARK: Derived values
@@ -135,7 +138,8 @@ struct TodayStatusHeader: View {
                         .multilineTextAlignment(.center)
                 }
                 .foregroundStyle(CT.accent)
-                .frame(width: 56)
+                .frame(minWidth: 56, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }

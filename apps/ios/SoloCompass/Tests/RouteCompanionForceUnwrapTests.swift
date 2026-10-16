@@ -4,7 +4,7 @@ import SwiftData
 
 // MARK: - US-001: route.companion force-unwrap safety
 //
-// Verifies every mutation path in `LocalRouteCompanionRemote` no-ops cleanly
+// Verifies every mutation path in `LocalRouteCompanionRemote` rejects with a recoverable error
 // (no crash, no data mutation) when the persisted route has `companion == nil`.
 // These paths previously force-unwrapped `route.companion!` and would trap.
 
@@ -62,13 +62,18 @@ final class RouteCompanionForceUnwrapTests: XCTestCase {
         )
     }
 
+    private func assertUnavailable(_ operation: () async throws -> Void) async {
+        do { try await operation(); XCTFail("missing companion must reject") }
+        catch { XCTAssertEqual(error as? LocalRouteCompanionRemote.MutationError, .missingCompanion) }
+    }
+
     // MARK: - sendJoinRequest
 
     func testSendJoinRequestNoOpsWhenCompanionNil() async throws {
         let route = makeSoloRoute()
         routeStore.save(route)
 
-        try await remote.sendJoinRequest(routeId: route.id, message: "hi", pace: "relaxed")
+        await assertUnavailable { try await remote.sendJoinRequest(routeId: route.id, message: "hi", pace: "relaxed") }
 
         let updated = try XCTUnwrap(routeStore.get(route.id))
         XCTAssertNil(updated.companion, "companion must remain nil — no mutation on the nil path")
@@ -80,7 +85,7 @@ final class RouteCompanionForceUnwrapTests: XCTestCase {
         let route = makeSoloRoute()
         routeStore.save(route)
 
-        try await remote.accept(makeRequest(), route: route)
+        await assertUnavailable { try await remote.accept(makeRequest(), route: route) }
 
         let updated = try XCTUnwrap(routeStore.get(route.id))
         XCTAssertNil(updated.companion, "companion must remain nil on accept's nil path")
@@ -92,7 +97,7 @@ final class RouteCompanionForceUnwrapTests: XCTestCase {
         let route = makeSoloRoute()
         routeStore.save(route)
 
-        try await remote.decline(makeRequest(), route: route)
+        await assertUnavailable { try await remote.decline(makeRequest(), route: route) }
 
         let updated = try XCTUnwrap(routeStore.get(route.id))
         XCTAssertNil(updated.companion, "companion must remain nil on decline's nil path")
@@ -104,7 +109,7 @@ final class RouteCompanionForceUnwrapTests: XCTestCase {
         let route = makeSoloRoute()
         routeStore.save(route)
 
-        try await remote.withdraw(makeRequest(), route: route)
+        await assertUnavailable { try await remote.withdraw(makeRequest(), route: route) }
 
         let updated = try XCTUnwrap(routeStore.get(route.id))
         XCTAssertNil(updated.companion, "companion must remain nil on withdraw's nil path")
@@ -116,8 +121,8 @@ final class RouteCompanionForceUnwrapTests: XCTestCase {
         let route = makeSoloRoute()
         routeStore.save(route)
 
-        // Must not throw and must not crash when companion is nil.
-        try await remote.markCompleted(routeId: route.id)
+        // Reject explicitly without crashing or pretending the action succeeded.
+        await assertUnavailable { try await remote.markCompleted(routeId: route.id) }
 
         let updated = try XCTUnwrap(routeStore.get(route.id))
         XCTAssertNil(updated.companion, "companion must remain nil on markCompleted's nil path")

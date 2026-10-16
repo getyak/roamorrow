@@ -53,8 +53,8 @@ public struct PendingCheckInBanner: View {
     /// True when ~2 s remain; drives amber color shift on the bar and Yes button.
     @State private var isExpiringSoon = false
 
-    /// 12 s under VoiceOver (reader needs more time), 6 s otherwise.
-    var autoDismissSeconds: Double { voiceOverOn ? 12 : 6 }
+    /// VoiceOver keeps the prompt available until an explicit action.
+    var autoDismissSeconds: Double { 10 }
 
     public var body: some View {
         ZStack(alignment: .bottom) {
@@ -106,6 +106,8 @@ public struct PendingCheckInBanner: View {
                         .scaleEffect(reduceMotion ? 1.0 : (confirmed ? 1.0 : (pulse ? 1.04 : 1.0)))
                         .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.6), value: confirmed)
                         .animation(reduceMotion ? nil : .easeInOut(duration: 1.3).repeatForever(autoreverses: true), value: pulse)
+                        .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .disabled(confirmed)
@@ -120,6 +122,8 @@ public struct PendingCheckInBanner: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 28, height: 28)
                             .background(Circle().fill(Color(.secondarySystemFill)))
+                            .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .disabled(confirmed)
@@ -130,7 +134,7 @@ public struct PendingCheckInBanner: View {
             .padding(.top, 12)
             .padding(.bottom, reduceMotion ? 12 : 18)
 
-            if !reduceMotion {
+            if !reduceMotion && !voiceOverOn {
                 GeometryReader { geo in
                     Capsule()
                         .fill(isInteracting ? CT.fgMuted : (isExpiringSoon ? CT.warningText : Color.accentColor))
@@ -200,8 +204,15 @@ public struct PendingCheckInBanner: View {
             autoDismissTask?.cancel()
             autoDismissTask = nil
         }
+        .onChange(of: voiceOverOn) { _, enabled in
+            if enabled {
+                pauseCountdown()
+            } else if !confirmed && !isInteracting {
+                startCountdown(remainingFraction: 1)
+            }
+        }
         .transition(.move(edge: .bottom).combined(with: .opacity))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(String(
             format: NSLocalizedString("checkin.banner.a11y", comment: "Did you visit %@?"),
             experienceTitle
@@ -248,6 +259,8 @@ public struct PendingCheckInBanner: View {
     }
 
     private func scheduleAutoDismiss(remainingFraction: CGFloat) {
+        autoDismissTask?.cancel()
+        guard !voiceOverOn else { return }
         let seconds = autoDismissSeconds * Double(remainingFraction)
         autoDismissTask = Task {
             // Arm the amber warning ~2 s before auto-dismiss (skip under reduceMotion or VoiceOver).

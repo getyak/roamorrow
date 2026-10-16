@@ -89,6 +89,18 @@ private struct TodayHomeScaffold: View {
     /// never tears down and rebuilds the map (that would be expensive and
     /// re-trigger its bootstrap).
     @State private var mapEverRevealed = false
+    @State private var activeSheet: TodaySheet?
+
+    private enum TodaySheet: Identifiable {
+        case entryDate
+        case receipt(TimeCapsule)
+        var id: String {
+            switch self {
+            case .entryDate: return "entryDate"
+            case .receipt(let capsule): return capsule.id.uuidString
+            }
+        }
+    }
 
     /// Height of the peek handle that stays visible when the map is parked.
     private let handlePeek: CGFloat = 96
@@ -133,6 +145,14 @@ private struct TodayHomeScaffold: View {
             }
         }
         .ignoresSafeArea(.keyboard)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .entryDate:
+                TodayEntryDateSheet(preferences: preferences) { activeSheet = nil }
+            case .receipt(let capsule):
+                TodayCapsuleReceiptDetail(capsule: capsule) { activeSheet = nil }
+            }
+        }
     }
 
     // MARK: Today home (real content lands slice by slice — three-things = B1-c)
@@ -148,7 +168,7 @@ private struct TodayHomeScaffold: View {
                 .padding(.top, Space.sm)
 
             // Sticky status header (B1-b) — stays out of the scroll region.
-            TodayStatusHeader()
+            TodayStatusHeader(onConfirmEntryDate: { activeSheet = .entryDate })
 
             // Scrolling body. NavigationStack so the nearby row can push the
             // full discovery list; its own bar is hidden to keep Today chrome
@@ -161,7 +181,7 @@ private struct TodayHomeScaffold: View {
 
                         // Yesterday's seal receipt (B1-d) — renders only when a
                         // capsule was buried yesterday, else takes no space.
-                        TodaySealReceipt()
+                        TodaySealReceipt(onOpen: { activeSheet = .receipt($0) })
 
                         // Today's three things (B1-c): work / now / tonight,
                         // picked from the current city's experiences.

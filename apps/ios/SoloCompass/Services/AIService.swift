@@ -262,6 +262,10 @@ public final class AIService {
     /// identity or walking order. When the model is unavailable, the exact same
     /// planned stops are returned with local copy.
     ///
+    /// Compatibility wrapper over `generateRouteDetailed` — returns just the
+    /// route. Note the fallback route is now honestly sourced `.userCreated`
+    /// (a deterministic local plan is NOT model output), not `.aiGenerated`.
+    ///
     /// - Parameters:
     ///   - candidates: nearby experiences to choose stops from.
     ///   - cityCode: city the route belongs to (VTE/HAN/…).
@@ -274,6 +278,43 @@ public final class AIService {
         userCoordinate: CLLocationCoordinate2D?,
         now: Date = Date()
     ) async throws -> Route {
+        try await generateRouteDetailed(
+            from: candidates,
+            cityCode: cityCode,
+            userCoordinate: userCoordinate,
+            now: now
+        ).route
+    }
+
+    /// Where generated route copy actually came from (R2-11 transparency).
+    public enum RouteProvenance: String, Sendable, Equatable {
+        /// The model authored the title/summary in a successful round trip.
+        case model
+        /// The deterministic local plan was returned because the model was
+        /// unavailable or its response unusable. NOT AI output — the UI must
+        /// say so and offer a deliberate retry.
+        case localFallback
+    }
+
+    /// A generated route plus its provenance. `fallbackReason` is non-nil only
+    /// for `.localFallback` and explains what happened (for logs, tests and
+    /// the honest UI line).
+    public struct GeneratedRoute: Sendable {
+        public let route: Route
+        public let provenance: RouteProvenance
+        public let fallbackReason: String?
+    }
+
+    /// Same deterministic stop plan as `generateRoute`, but reports whether
+    /// the copy is model-authored or a local fallback — and why. The fallback
+    /// keeps the useful local result (`route` is always present on success)
+    /// while the caller can surface `fallbackReason` and offer a retry.
+    public func generateRouteDetailed(
+        from candidates: [Experience],
+        cityCode: String,
+        userCoordinate: CLLocationCoordinate2D?,
+        now: Date = Date()
+    ) async throws -> GeneratedRoute {
         let routeId = RouteId(rawValue: "ai-\(UUID().uuidString.prefix(8))")
         let ordered = RouteBuilder.rankedWalk(candidates, from: userCoordinate, now: now)
         guard !ordered.isEmpty else { throw AIError.decodingFailed("no candidates to build a route") }
@@ -291,7 +332,7 @@ public final class AIService {
             let prompt = Self.routeGenerationPrompt(candidates: ordered, cityCode: cityCode)
             let raw = try await sendMessage(prompt: prompt, kind: .synthesis)
             let plan = try Self.parseRoutePlan(raw)
-            return RouteBuilder.makeRoute(
+            let route = RouteBuilder.makeRoute(
                 id: routeId,
                 title: plan.title.isEmpty ? Self.fallbackRouteTitle(ordered) : plan.title,
                 summary: plan.summary,
@@ -303,6 +344,7 @@ public final class AIService {
                 bestStartHour: nowHour,
                 reasonNow: plan.reasonNow?.isEmpty == false ? plan.reasonNow : nil
             )
+            return GeneratedRoute(route: route, provenance: .model, fallbackReason: nil)
         } catch {
             // #66: Surface JSON parse failures to Sentry so we can spot the
             // model drifting away from the route-plan schema before the
@@ -326,8 +368,10 @@ public final class AIService {
                 )
             }
             // Local fallback uses the same deterministic plan, only without
-            // model-authored copy.
-            return RouteBuilder.makeRoute(
+            // model-authored copy. It is honest LOCAL output — source
+            // `.userCreated`, never `.aiGenerated` (R2-11): a non-empty
+            // fallback summary must not read as "the model finished this".
+            let route = RouteBuilder.makeRoute(
                 id: routeId,
                 title: Self.fallbackRouteTitle(ordered),
                 summary: NSLocalizedString("route.generate.fallback.summary",
@@ -336,8 +380,13 @@ public final class AIService {
                 cityCode: cityCode,
                 pace: .relaxed,
                 tags: Self.tags(from: ordered),
-                source: .aiGenerated,
+                source: .userCreated,
                 bestStartHour: nowHour
+            )
+            return GeneratedRoute(
+                route: route,
+                provenance: .localFallback,
+                fallbackReason: captureErr
             )
         }
     }

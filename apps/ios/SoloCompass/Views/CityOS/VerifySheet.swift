@@ -17,10 +17,11 @@ struct VerifySheet: View {
     }
 
     let placeName: String
-    let onSubmit: (Answers) -> Void
+    let onSubmit: (Answers) throws -> Void
     let onDismiss: () -> Void
 
     @State private var answers = Answers()
+    @State private var saveError: String?
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -54,6 +55,9 @@ struct VerifySheet: View {
                     ],
                     selection: $answers.crowd
                 )
+                if let saveError {
+                    Text(saveError).font(.subheadline).foregroundStyle(CT.savedRed)
+                }
                 submitButton
             }
             .padding(20)
@@ -142,7 +146,8 @@ struct VerifySheet: View {
                         lineWidth: isSelected ? 1.2 : 0.5
                     )
                 )
-                .contentShape(Capsule())
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
@@ -151,9 +156,15 @@ struct VerifySheet: View {
 
     private var submitButton: some View {
         Button {
-            Haptics.notify(.success)
-            onSubmit(answers)
-            onDismiss()
+            saveError = nil
+            do {
+                try onSubmit(answers)
+                Haptics.notify(.success)
+                onDismiss()
+            } catch {
+                saveError = NSLocalizedString("notes.save.failed", value: "Couldn’t save. Your answers are still here. Please retry.", comment: "Verification persistence failure")
+                Haptics.notify(.error)
+            }
         } label: {
             Text(NSLocalizedString("cityos.verify.submit", comment: "提交印证"))
                 .ctBody(14.5, .semibold)

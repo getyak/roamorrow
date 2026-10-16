@@ -6,9 +6,18 @@ public struct VoiceButton: View {
     let onTranscript: (String) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private let maxRecordingDuration: TimeInterval = 60
 
+    /// Injectable lifecycle guard (contract 4): owns the permission token so a
+    /// late permission callback can never start recording after release,
+    /// disappearance or backgrounding — and so VoiceOver's default activation
+    /// really starts/stops like the hint advertises.
+    @State private var lifecycle = VoiceInteractionLifecycle()
+    /// The owned permission task. Cancelled on release / disappear /
+    /// background; the token guard backstops anything that slips through.
+    @State private var startTask: Task<Void, Never>?
     @State private var isRecording = false
     @State private var liveTranscript: String = ""
     @State private var showPermissionAlert = false
@@ -16,6 +25,7 @@ public struct VoiceButton: View {
     @State private var pulse = false
     @State private var ringPulse = false
     @State private var streamTask: Task<Void, Never>?
+    @State private var activeRecordingToken: Int?
     @State private var elapsed: TimeInterval = 0
     @State private var timerTask: Task<Void, Never>?
     @State private var didAutoStop = false
@@ -96,7 +106,7 @@ public struct VoiceButton: View {
         }
         .gesture(
             LongPressGesture(minimumDuration: 0.2)
-                .onEnded { _ in startRecording() }
+                .onEnded { _ in apply(lifecycle.beginStart()) }
         )
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
@@ -121,14 +131,7 @@ public struct VoiceButton: View {
                         Haptics.selection()
                     }
                 }
-                .onEnded { _ in
-                    guard isRecording else { return }
-                    if isInCancelZone {
-                        cancelRecording()
-                    } else {
-                        stopRecording()
-                    }
-                }
+                .onEnded { _ in handlePointerRelease() }
         )
         .accessibilityLabel(Text(NSLocalizedString("voice.button", comment: "Voice input")))
         .accessibilityHint(Text(NSLocalizedString("voice.button.hint", comment: "Double tap to start recording, double tap again to stop")))
@@ -136,8 +139,14 @@ public struct VoiceButton: View {
             ? NSLocalizedString("voice.button.value.recording", comment: "Recording")
             : NSLocalizedString("voice.button.value.idle", comment: "Idle")))
         .accessibilityAddTraits(.startsMediaSession)
+        // VoiceOver's DEFAULT activation (double-tap) must actually start and
+        // stop recording — the advertised hint promises exactly that. The
+        // named action alone was not a reliable activation path (contract 4).
+        .accessibilityAction(.default) {
+            apply(lifecycle.accessibilityToggle())
+        }
         .accessibilityAction(named: Text(NSLocalizedString("voice.a11y.toggle", comment: "Start/Stop voice input"))) {
-            if isRecording { stopRecording() } else { startRecording() }
+            apply(lifecycle.accessibilityToggle())
         }
         .alert(NSLocalizedString("voice.permission.title", comment: ""), isPresented: $showPermissionAlert) {
             Button(NSLocalizedString("common.ok", comment: ""), role: .cancel) { }
@@ -149,6 +158,26 @@ public struct VoiceButton: View {
             Button(NSLocalizedString("common.ok", comment: ""), role: .cancel) { recognitionError = nil }
         } message: {
             Text(recognitionError ?? "")
+        }
+        // Contract 4 lifecycle guards: leaving the screen or losing the
+        // foreground stops recording WITHOUT sending and kills any pending
+        // permission callback — no late start, no silent send.
+        .onAppear {
+            apply(lifecycle.visibilityChanged(true))
+            apply(lifecycle.sceneActivityChanged(scenePhase == .active))
+        }
+        .onDisappear {
+            apply(lifecycle.visibilityChanged(false))
+            startTask?.cancel()
+            startTask = nil
+        }
+        .onChange(of: scenePhase) { _, phase in
+            let active = phase == .active
+            apply(lifecycle.sceneActivityChanged(active))
+            if !active {
+                startTask?.cancel()
+                startTask = nil
+            }
         }
         .overlay(alignment: .top) {
             if isRecording || autoStopMessage != nil || emptyHint != nil {
@@ -235,64 +264,114 @@ public struct VoiceButton: View {
 
     // MARK: - Actions
 
-    private func startRecording() {
-        Task {
-            let granted = await voiceService.requestPermission()
-            guard granted else {
-                permissionDeniedGenerator.notificationOccurred(.warning)
-                showPermissionAlert = true
-                return
+    /// Apply a lifecycle effect — the ONE place recording state flips. Keeps
+    /// the decision logic in `VoiceInteractionLifecycle` (injectable, tested)
+    /// and the side effects here.
+    private func apply(_ effect: VoiceInteractionLifecycle.Effect) {
+        switch effect {
+        case .none:
+            break
+        case .requestPermission(let token):
+            // Owned permission task (contract 4): cancelled by release /
+            // disappearance / background; a late resolve is token-checked.
+            startTask?.cancel()
+            startTask = Task { @MainActor in
+                let granted = await voiceService.requestPermission()
+                guard !Task.isCancelled else { return }
+                apply(lifecycle.permissionResolved(token: token, granted: granted))
             }
-            do {
-                isRecording = true
-                isInCancelZone = false
-                if !reduceMotion { pulse = true }
-                liveTranscript = ""
-                elapsed = 0
-                didAutoStop = false
-                autoStopMessage = nil
-                didWarnCountdown = false
-                didDetectSpeech = false
-                recordStartGenerator.impactOccurred()
-                if UIAccessibility.isVoiceOverRunning {
-                    UIAccessibility.post(notification: .announcement,
-                        argument: NSLocalizedString("voice.announcement.listening", comment: "Listening…"))
-                }
-                startElapsedTimer()
-                let stream = try voiceService.startListening()
-                streamTask = Task {
-                    do {
-                        for try await text in stream {
-                            let animate = !reduceMotion
-                            await MainActor.run {
-                                withAnimation(animate ? .easeOut(duration: 0.18) : nil) { liveTranscript = text }
-                                if VoiceButton.shouldFireSpeechHaptic(alreadyFired: didDetectSpeech, transcript: text) {
-                                    didDetectSpeech = true
-                                    speechDetectedGenerator.impactOccurred()
-                                }
+        case .permissionDenied:
+            permissionDeniedGenerator.notificationOccurred(.warning)
+            showPermissionAlert = true
+        case .startRecording(let token):
+            beginRecordingSession(token: token)
+        case .stopAndSend:
+            stopRecording()
+        case .stopWithoutSending:
+            cancelRecording()
+        }
+    }
+
+    /// Pointer release: sends the recording, cancels a slide-cancel, or —
+    /// critically — kills a pending start when the finger lifted before the
+    /// permission prompt resolved (no late recording, contract 4).
+    private func handlePointerRelease() {
+        let effect: VoiceInteractionLifecycle.Effect
+        if isRecording && isInCancelZone {
+            effect = lifecycle.cancelRequested()
+        } else {
+            effect = lifecycle.pressReleased()
+        }
+        if !lifecycle.isRecording && !lifecycle.wantsRecording {
+            startTask?.cancel()
+            startTask = nil
+        }
+        apply(effect)
+    }
+
+    /// Permission granted + lifecycle says go: open the stream and run the
+    /// recording UI. Everything below is the pre-existing behavior
+    /// (transcript draft, auto-stop timer, empty hints, haptics).
+    private func beginRecordingSession(token: Int) {
+        activeRecordingToken = nil
+        streamTask?.cancel()
+        activeRecordingToken = token
+        do {
+            isRecording = true
+            isInCancelZone = false
+            if !reduceMotion { pulse = true }
+            liveTranscript = ""
+            elapsed = 0
+            didAutoStop = false
+            autoStopMessage = nil
+            didWarnCountdown = false
+            didDetectSpeech = false
+            recordStartGenerator.impactOccurred()
+            if UIAccessibility.isVoiceOverRunning {
+                UIAccessibility.post(notification: .announcement,
+                    argument: NSLocalizedString("voice.announcement.listening", comment: "Listening…"))
+            }
+            startElapsedTimer()
+            let stream = try voiceService.startListening()
+            streamTask = Task { @MainActor in
+                do {
+                    for try await text in stream {
+                        guard !Task.isCancelled, activeRecordingToken == token, isRecording else { return }
+                        let animate = !reduceMotion
+                        await MainActor.run {
+                            withAnimation(animate ? .easeOut(duration: 0.18) : nil) { liveTranscript = text }
+                            if VoiceButton.shouldFireSpeechHaptic(alreadyFired: didDetectSpeech, transcript: text) {
+                                didDetectSpeech = true
+                                speechDetectedGenerator.impactOccurred()
                             }
                         }
-                    } catch {
-                        guard !(error is CancellationError) else { return }
-                        // Surface recognition errors to the user via alert.
-                        await MainActor.run {
-                            isRecording = false
-                            pulse = false
-                            stopElapsedTimer()
-                            recognitionError = error.localizedDescription
-                        }
+                    }
+                } catch {
+                    guard !Task.isCancelled, !(error is CancellationError), activeRecordingToken == token, isRecording else { return }
+                    // Surface recognition errors to the user via alert.
+                    await MainActor.run {
+                        _ = lifecycle.recordingAborted()
+                        activeRecordingToken = nil
+                        voiceService.stopListening()
+                        isRecording = false
+                        pulse = false
+                        stopElapsedTimer()
+                        recognitionError = error.localizedDescription
                     }
                 }
-            } catch {
-                isRecording = false
-                pulse = false
-                stopElapsedTimer()
-                recognitionError = error.localizedDescription
             }
+        } catch {
+            activeRecordingToken = nil
+            _ = lifecycle.recordingAborted()
+            isRecording = false
+            pulse = false
+            stopElapsedTimer()
+            recognitionError = error.localizedDescription
         }
     }
 
     private func stopRecording(suppressStoppedAnnouncement: Bool = false) {
+        activeRecordingToken = nil
         voiceService.stopListening()
         isRecording = false
         pulse = false
@@ -332,6 +411,7 @@ public struct VoiceButton: View {
     /// of `stopRecording`, minus the `onTranscript` callback and success haptic.
     /// A soft impact + spoken announcement confirm the discard.
     private func cancelRecording() {
+        activeRecordingToken = nil
         voiceService.stopListening()
         isRecording = false
         pulse = false
@@ -377,6 +457,9 @@ public struct VoiceButton: View {
                         UIAccessibility.post(notification: .announcement,
                             argument: NSLocalizedString("voice.recording.maxReached.a11y", comment: "Maximum recording length reached — transcript saved"))
                     }
+                    // Auto-stop keeps the pre-existing behavior: deliver the
+                    // transcript (lifecycle agrees — not a discard).
+                    _ = lifecycle.autoStopElapsed()
                     stopRecording(suppressStoppedAnnouncement: true)
                     // Keep the pill visible briefly before the timer resets it.
                     let capturedMessage = autoStopMessage

@@ -18,7 +18,9 @@ import CoreLocation
 @MainActor
 final class UIAuditSnapshotTests: XCTestCase {
 
-    private static let outDir = URL(fileURLWithPath: "/tmp/sc-audit/xctest", isDirectory: true)
+    private static let outDir = ProcessInfo.processInfo.environment["UI_AUDIT_OUTPUT_DIR"]
+        .map { URL(fileURLWithPath: $0, isDirectory: true) }
+        ?? FileManager.default.temporaryDirectory.appendingPathComponent("interaction-audit", isDirectory: true)
 
     // MARK: - Render helpers
 
@@ -141,8 +143,8 @@ final class UIAuditSnapshotTests: XCTestCase {
             bar.padding(.top, 24)
         }
         let full = renderPage(page, settle: 0.4)
-        // Crop the top ~120pt strip (×2 scale) to isolate the bar.
-        let cropRect = CGRect(x: 0, y: 0, width: full.size.width * full.scale, height: 120 * full.scale)
+        // Crop the top ~190pt strip (×2 scale) to isolate the bar.
+        let cropRect = CGRect(x: 0, y: 0, width: full.size.width * full.scale, height: 190 * full.scale)
         let cropped = full.cgImage.flatMap { $0.cropping(to: cropRect) }.map {
             UIImage(cgImage: $0, scale: full.scale, orientation: .up)
         }
@@ -203,7 +205,7 @@ final class UIAuditSnapshotTests: XCTestCase {
     // MARK: - 5. PaywallView
 
     func testPaywallPage() throws {
-        let page = PaywallView()
+        let page = NavigationStack { PaywallView() }
             .environment(SubscriptionService())
         try write(renderPage(page), "paywall")
     }
@@ -243,7 +245,7 @@ final class UIAuditSnapshotTests: XCTestCase {
         let card = ChatRouteProposalCard(proposal: proposal, onAdopt: {}, onTapStop: { _ in })
             .padding(12)
             .background(CT.bgWarm)
-        try write(render(card), "chat-route-proposal")
+        try write(renderPage(withServices(card), settle: 0.6), "chat-route-proposal")
     }
 
     func testChatReasoningTracePanel() throws {
@@ -285,7 +287,7 @@ final class UIAuditSnapshotTests: XCTestCase {
         }
         .padding()
         .background(Color.white)
-        try write(render(stack), "solo-score-badge")
+        try write(renderPage(stack, settle: 1.2), "solo-score-badge")
     }
 
     func testConfidenceBadge() throws {
@@ -315,7 +317,7 @@ final class UIAuditSnapshotTests: XCTestCase {
             .frame(width: 280, height: 280)
             .padding()
             .background(Color.white)
-        try write(render(chart, width: 320), "solo-score-radar")
+        try write(renderPage(chart, settle: 1.2), "solo-score-radar")
     }
 
     func testLocationCard() throws {
@@ -332,4 +334,61 @@ final class UIAuditSnapshotTests: XCTestCase {
         .environment(locationService)
         try write(render(card), "location-card")
     }
+
+    /// Empty city data still offers a useful personal countdown. These PNGs
+    /// are review artifacts; nonempty pixels do not certify interaction quality.
+    func testKitWithoutCityData() throws {
+        let suite = "InteractionKitSnapshot.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = UserPreferences(defaults: defaults)
+        let page = KitSheet(kit: [], preferences: preferences,
+                            complianceService: ComplianceService(preferences: preferences),
+                            onDismiss: {})
+        try write(renderPage(page), "kit-without-city-data")
+        try write(renderPage(page.environment(\.dynamicTypeSize, .accessibility3)), "kit-without-city-data-large")
+    }
+
+    func testPersonalCountdownForm() throws {
+        let suite = "InteractionEntrySnapshot.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = UserPreferences(defaults: defaults)
+        let page = TodayEntryDateSheet(preferences: preferences, onDismiss: {})
+        try write(renderPage(page), "personal-countdown-form")
+        try write(renderPage(page.environment(\.dynamicTypeSize, .accessibility5)), "personal-countdown-form-largest")
+        preferences.visaLengthDays = 30
+        preferences.visaEntryDate = Date()
+        let filled = TodayEntryDateSheet(preferences: preferences, onDismiss: {})
+        try write(renderPage(filled), "personal-countdown-form-filled")
+    }
+    func testRouteDetailDock() throws {
+        let stops = Array(ExperienceService.hardcodedSeed.prefix(3))
+        let route = Route(id: RouteId(rawValue: "audit-route-detail"),
+                          title: "黄昏河畔漫步", summary: "从老城出发，沿河走到日落观景点。",
+                          experienceIds: stops.map(\.id), cityCode: stops.first?.location.cityCode ?? "VTE",
+                          region: "Riverfront", estimatedDuration: 75, distanceMeters: 1400,
+                          pace: .relaxed, tags: ["nature"], source: .aiGenerated)
+        let page = withServices(NavigationStack { RouteDetailView(route: route) })
+        try write(renderPage(page), "route-detail-dock")
+        try write(renderPage(page.environment(\.dynamicTypeSize, .accessibility3)), "route-detail-dock-large")
+    }
+
+    func testCreateRouteForm() throws {
+        let stops = Array(ExperienceService.hardcodedSeed.prefix(3))
+        let page = withServices(NavigationStack {
+            CreateRouteView(candidates: stops, cityCode: stops.first?.location.cityCode ?? "VTE",
+                            userCoordinate: nil, onSave: { _ in })
+        })
+        try write(renderPage(page), "create-route-form")
+    }
+
+    func testActualAgentStatusLine() throws {
+        let panel = VStack(alignment: .leading, spacing: 16) {
+            AgentStatusLine(label: NSLocalizedString("agent.step.exploreNearby", comment: ""))
+            ReasoningSummaryChip(summary: ReasoningSummary(summary: "找到 3 个合适的地方", detail: ["已搜索附近地点"]))
+        }.padding().background(CT.bgWarm)
+        try write(renderPage(panel, settle: 0.8), "chat-actual-status")
+    }
+
 }

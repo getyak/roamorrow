@@ -49,7 +49,7 @@ public struct OnboardingView: View {
         #endif
         return 0
     }()
-    @State private var paywallPurchaseInFlight: Bool = false
+    @State private var showingSubscriptionPlans = false
 
     /// UserDefaults flag set the first time the user finishes (or skips) the
     /// onboarding paywall step. We never re-show the onboarding paywall after
@@ -447,7 +447,7 @@ public struct OnboardingView: View {
         .accessibilityElement(children: .contain)
     }
 
-    // MARK: - Step 7: Paywall (1-month free trial via StoreKit)
+    // MARK: - Step 7: Optional Pro plans
 
     /// True if we should bypass the onboarding paywall and finish immediately.
     /// Covers three cases that all share the same UX rule: the user has
@@ -571,15 +571,10 @@ public struct OnboardingView: View {
 
             VStack(spacing: 12) {
                 Button {
-                    Task { await runOnboardingPurchase() }
+                    showingSubscriptionPlans = true
                 } label: {
                     HStack(spacing: 8) {
-                        if paywallPurchaseInFlight {
-                            ProgressView()
-                                .progressViewStyle(.circular)
-                                .tint(CT.accent)
-                        }
-                        Text(NSLocalizedString("onboarding.paywall.cta", comment: "Start free month CTA"))
+                        Text(NSLocalizedString("onboarding.paywall.cta", comment: "View Pro plans CTA"))
                             .font(.headline)
                     }
                     .frame(maxWidth: .infinity)
@@ -590,14 +585,11 @@ public struct OnboardingView: View {
                     )
                     .foregroundStyle(CT.accent)
                 }
-                .disabled(paywallPurchaseInFlight)
                 .accessibilitySortPriority(OnboardingA11ySortPriority.primaryCTA)
                 .accessibilityIdentifier("onboarding.paywall.cta")
 
-                // Apple legally requires the trial price disclosure to be
-                // visible near the CTA, not buried in fine print. Resolved
-                // from the live StoreKit product when available; falls back
-                // to a generic copy when products haven't loaded yet.
+                // Prices are previews; the next screen shows the actual plan
+                // and Apple confirmation. Unknown offers stay neutral.
                 Text(trialFinePrintCopy)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -608,7 +600,7 @@ public struct OnboardingView: View {
                 Button {
                     finishOnboardingPaywall()
                 } label: {
-                    Text(NSLocalizedString("onboarding.paywall.later", comment: "Skip trial"))
+                    Text(NSLocalizedString("onboarding.paywall.later", comment: "Continue for free"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -619,6 +611,11 @@ public struct OnboardingView: View {
             .padding(.bottom, 40)
         }
         .accessibilityElement(children: .contain)
+        .sheet(isPresented: $showingSubscriptionPlans) {
+            NavigationStack {
+                PaywallView(onUnlocked: finishOnboardingPaywall)
+            }
+        }
         .task {
             // Eager product load so the price is rendered before the user
             // even reads the bullets — no "loading…" flash on tap.
@@ -655,29 +652,6 @@ public struct OnboardingView: View {
         }
         return NSLocalizedString("onboarding.paywall.fineprint.fallback",
                                  comment: "Trial fineprint without price")
-    }
-
-    private func runOnboardingPurchase() async {
-        guard let product = subscription.products.first(where: { $0.id == SubscriptionService.monthlyProductID })
-                ?? subscription.products.first
-        else {
-            // StoreKit catalog empty (sandbox not configured / offline). In
-            // DEBUG SubscriptionService._setEntitlementForTesting could be
-            // called here, but the cleaner UX in Release is to finish
-            // onboarding silently so the user isn't trapped on a dead button.
-            #if DEBUG
-            subscription._setEntitlementForTesting(.proTrial)
-            #endif
-            finishOnboardingPaywall()
-            return
-        }
-        paywallPurchaseInFlight = true
-        defer { paywallPurchaseInFlight = false }
-        let unlocked = await subscription.purchase(product)
-        // Whether purchase succeeded or the user cancelled at the StoreKit
-        // sheet, the onboarding paywall is "done" — we don't re-prompt.
-        finishOnboardingPaywall()
-        _ = unlocked  // status reflected via subscription.entitlement everywhere else
     }
 
     @ViewBuilder

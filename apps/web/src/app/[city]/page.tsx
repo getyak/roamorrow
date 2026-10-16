@@ -61,11 +61,11 @@ function strings(lang: Lang, city: WebCity): Strings {
         nearby: `${city.zh} · ${city.experiences.length} 个体验`,
         search: "搜地点、心情、时间…",
         sortBy: "排序",
-        recent: "最近核实",
+        recent: "示例日期",
         curated: "编辑精选",
         distance: "步行时间",
         sources: "来源",
-        forYou: "为你",
+        forYou: "指南提示",
         allCats: "全部",
         verified: "核实于",
         lastEdit: "核实于",
@@ -83,11 +83,11 @@ function strings(lang: Lang, city: WebCity): Strings {
         nearby: `${city.en} · ${city.experiences.length} experiences`,
         search: "Search places, moods, times…",
         sortBy: "Sort",
-        recent: "Recently verified",
+        recent: "Sample date",
         curated: "Curated",
         distance: "Walk time",
         sources: "Sources",
-        forYou: "For you",
+        forYou: "Guide note",
         allCats: "All",
         verified: "Verified",
         lastEdit: "Verified",
@@ -815,7 +815,7 @@ function ListRow({
             color: "var(--dark-fg-faint)",
           }}
         >
-          {exp.sources} src
+          {lang === "zh" ? "示例" : "Sample"}
         </span>
       </div>
     </button>
@@ -1032,7 +1032,6 @@ function DetailDock({
   const place = lang === "zh" ? exp.placeZh : exp.place;
   const why = lang === "zh" ? exp.whyZh : exp.why;
   const moment = lang === "zh" ? exp.momentZh : exp.moment;
-  const aiReason = lang === "zh" ? exp.aiReasonZh : exp.aiReason;
   const tags = lang === "zh" ? exp.tagsZh : exp.tags;
   const detailHref = `/experience/${exp.id}${lang === "en" ? "?lang=en" : ""}`;
   return (
@@ -1116,7 +1115,10 @@ function DetailDock({
         />
         <MetaRow k={T.stay} v={`${exp.durationMin} min`} />
         <MetaRow k={T.price} v={exp.pricePill} />
-        <MetaRow k={T.crowd} v={exp.crowd} />
+        <MetaRow
+          k={T.crowd}
+          v={lang === "zh" ? { quiet: "安静", calm: "舒适", busy: "较热闹" }[exp.crowd] : exp.crowd}
+        />
         <div style={{ flex: 1 }} />
         <div
           style={{
@@ -1126,9 +1128,7 @@ function DetailDock({
             lineHeight: 1.5,
           }}
         >
-          {T.verified} {exp.lastVerified}
-          <br />
-          {exp.sources} {T.sources.toLowerCase()}
+          {lang === "zh" ? "示例资料 · 出行前请核对" : "Guide sample · check current details"}
         </div>
       </div>
 
@@ -1259,7 +1259,7 @@ function DetailDock({
             flex: 1,
           }}
         >
-          {aiReason}
+          {(lang === "zh" ? exp.tagsZh : exp.tags).join(" · ")}
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
           <Link

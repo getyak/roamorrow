@@ -18,6 +18,11 @@ public struct ChatView: View {
     @State private var inputText = ""
     /// Draft attachments staged in the Instagram-style input bar before send.
     @State private var draftAttachments: [LocalAttachment] = []
+    /// Optional pre-reviewed draft to start the composer with (e.g. a friend
+    /// invitation opened from the profile). User-controlled: NOTHING is
+    /// auto-sent — the text is a normal editable draft the traveler sends from
+    /// here (round 2 follow-up).
+    let initialDraft: String?
     @State private var showingReportSheet = false
     @State private var pinnedRoute: Route?
 
@@ -34,12 +39,15 @@ public struct ChatView: View {
     public init(
         conversation: Conversation,
         currentUserId: String? = nil,
+        initialDraft: String? = nil,
         onBlocked: (() -> Void)? = nil
     ) {
         self.conversation = conversation
         self.currentUserId = currentUserId
+        self.initialDraft = initialDraft
         self.otherUserId = conversation.participantIds.first { $0 != currentUserId }
         self.onBlocked = onBlocked
+        _inputText = State(initialValue: initialDraft ?? "")
         _service = State(
             initialValue: ChatService(conversationId: conversation.id)
         )

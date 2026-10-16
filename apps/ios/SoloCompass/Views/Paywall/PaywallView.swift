@@ -40,7 +40,7 @@ enum RestoreOutcome: Equatable {
 }
 
 /// First user-visible paid moment. Shows the two product cards (yearly
-/// emphasized as "Best value"), the 1-month free trial CTA, restore link,
+/// emphasized as "Best value"), an eligibility-aware CTA, restore link,
 /// and fine-print legal copy.
 ///
 /// Driven by `SubscriptionService` from the environment. On a successful
@@ -50,20 +50,18 @@ public struct PaywallView: View {
     @Environment(SubscriptionService.self) private var subscription
     @Environment(\.dismiss) private var dismiss
 
-    // Default selection = monthly because the Introductory Offer (1-month
-    // free trial) is configured on the monthly SKU. Pre-selecting yearly
-    // would suppress the trial pitch — bad funnel design even though yearly
-    // has higher LTV.
+    // Start with monthly; never infer a free period from a SKU name.
     @State private var selectedProductID: String = SubscriptionService.monthlyProductID
     @State private var purchaseInFlight = false
     @State private var purchaseError: String?
+    @State private var errorTitleKey = "paywall.error.title"
     /// Restore progress + result (I08): a single in-flight guard shared with
     /// purchase so the two StoreKit flows can never run in parallel, and an
     /// inline status when restore finds nothing or fails.
     @State private var restoreInFlight = false
     @State private var restoreMessage: String?
     /// Whether the App Store Apple ID currently looking at this paywall is
-    /// still eligible for the monthly Introductory Offer (1 month free).
+    /// eligible for the monthly introductory offer, if that product has one.
     /// Starts `.unknown`: the trial promise is only made once StoreKit has
     /// actually answered — an optimistic claim would promise a discount that
     /// may not exist for this account (I09).
@@ -76,7 +74,11 @@ public struct PaywallView: View {
     }
 
     /// Trial affordances only read `true` when eligibility is confirmed.
-    private var introOfferEligible: Bool { introOfferStatus == .eligible }
+    private var introOfferEligible: Bool {
+        introOfferStatus == .eligible && subscription.products.contains {
+            $0.id == SubscriptionService.monthlyProductID && $0.subscription?.introductoryOffer != nil
+        }
+    }
 
     /// Called after a successful purchase or restore so callers can
     /// resume the action that triggered the paywall.
@@ -100,7 +102,7 @@ public struct PaywallView: View {
                 // left" + manage, not the upsell pitch again.
                 if subscription.entitlement == .proTrial {
                     midTrialBanner
-                } else if introOfferEligible {
+                } else if introOfferEligible && selectedProductID == SubscriptionService.monthlyProductID {
                     trialBanner
                 }
                 bullets
@@ -127,6 +129,7 @@ public struct PaywallView: View {
                     dismiss()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
+                        .frame(minWidth: 44, minHeight: 44)
                         .foregroundStyle(.secondary)
                         .accessibilityLabel(NSLocalizedString("paywall.close", comment: "Close paywall"))
                 }
@@ -137,9 +140,7 @@ public struct PaywallView: View {
                 await subscription.loadProducts()
             }
             // Refresh intro-offer eligibility after products are in hand.
-            // Done in a separate Task so a slow StoreKit call doesn't block
-            // the bullets/CTA from rendering — if it's late, the optimistic
-            // default keeps the banner visible until the truth lands.
+            // Unknown stays neutral while StoreKit resolves eligibility.
             if let monthly = subscription.products.first(where: { $0.id == SubscriptionService.monthlyProductID }) {
                 introOfferStatus = await subscription.isEligibleForIntroOffer(monthly) ? .eligible : .ineligible
             }
@@ -148,7 +149,7 @@ public struct PaywallView: View {
             await subscription.refreshEntitlement()
         }
         .alert(
-            NSLocalizedString("paywall.error.title", comment: "Purchase error"),
+            NSLocalizedString(errorTitleKey, comment: "Contextual plan-loading or purchase error"),
             isPresented: .constant(purchaseError != nil),
             actions: {
                 Button(NSLocalizedString("common.ok", comment: "OK")) {
@@ -174,29 +175,19 @@ public struct PaywallView: View {
         }
     }
 
-    /// "Get 1 month free" pitch banner shown to eligible Apple IDs.
-    /// Pulls live monthly displayPrice so the price disclosure satisfies
-    /// App Store 3.1.2 without us hard-coding currency-localized strings.
+    /// An offer exists and eligibility is confirmed. No free-period promise
+    /// is inferred; product cards and Apple confirmation carry actual terms.
     private var trialBanner: some View {
         let amber = CT.sunGold
-        let monthly = subscription.products.first(where: { $0.id == SubscriptionService.monthlyProductID })
-        let priceCopy: String = {
-            if let monthly {
-                let fmt = NSLocalizedString("paywall.trialBanner.format",
-                                            comment: "Trial banner with %@ monthly price")
-                return String(format: fmt, monthly.displayPrice)
-            }
-            return NSLocalizedString("paywall.trialBanner.fallback",
-                                     comment: "Trial banner without price")
-        }()
+        let priceCopy = NSLocalizedString("paywall.offer.details", comment: "Offer details are verified in the Apple confirmation")
         return HStack(alignment: .center, spacing: 12) {
             Image(systemName: "gift.fill")
                 .font(.title3)
                 .foregroundStyle(amber)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 2) {
-                Text(NSLocalizedString("paywall.trialBanner.headline",
-                                       comment: "Trial banner headline"))
+                Text(NSLocalizedString("paywall.offer.headline",
+                                       comment: "Confirmed introductory offer exists"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                 Text(priceCopy)
@@ -288,6 +279,12 @@ public struct PaywallView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 24)
+            } else if subscription.products.isEmpty {
+                Text(NSLocalizedString("paywall.products.unavailable", comment: "No plan prices are available yet"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
             } else {
                 ForEach(subscription.products, id: \.id) { product in
                     productCard(product)
@@ -313,8 +310,8 @@ public struct PaywallView: View {
                         Text(product.displayName)
                             .font(.headline)
                         if showTrialBadge {
-                            Text(NSLocalizedString("paywall.trialBadge",
-                                                   comment: "1-month free trial badge"))
+                            Text(NSLocalizedString("paywall.offer.badge",
+                                                   comment: "Confirmed introductory offer badge"))
                                 .font(.caption2.weight(.bold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -403,15 +400,18 @@ public struct PaywallView: View {
         }
     }
 
-    /// Dynamic CTA copy: emphasize the free month when eligible, fall back
-    /// to "Subscribe" for ineligible Apple IDs (returning users who already
-    /// burned the introductory offer) so we don't promise what StoreKit
-    /// won't deliver.
+    /// Offer copy requires an actual offer and confirmed eligibility.
     private var ctaTitle: String {
+        if subscription.isLoading && subscription.products.isEmpty {
+            return NSLocalizedString("paywall.products.loading", comment: "Plan catalog is loading")
+        }
+        if subscription.products.isEmpty {
+            return NSLocalizedString("paywall.products.retry", comment: "Retry loading plans before subscribing")
+        }
         let isMonthly = selectedProductID == SubscriptionService.monthlyProductID
         if isMonthly && introOfferEligible && subscription.entitlement != .proTrial {
-            return NSLocalizedString("paywall.cta.startMonthFree",
-                                     comment: "Start 1-month free trial CTA")
+            return NSLocalizedString("paywall.cta.offer",
+                                     comment: "Subscribe with the verified introductory offer")
         }
         return NSLocalizedString("paywall.cta.subscribe",
                                  comment: "Plain subscribe CTA")
@@ -425,7 +425,7 @@ public struct PaywallView: View {
         // feedback. Instead we keep it tappable and, on tap, retry the product
         // load and surface an explicit error if the catalog is still empty
         // (see `runPurchase()`).
-        let isDisabled = isStoreBusy
+        let isDisabled = isStoreBusy || (subscription.isLoading && subscription.products.isEmpty)
         // White text on the gold fill (#D4A843) only reaches ~2.2:1 contrast,
         // below WCAG AA (4.5:1). Use a dark brown that's harmonious with the
         // gold and clears AA comfortably (~6.4:1) for low-vision legibility.
@@ -457,23 +457,15 @@ public struct PaywallView: View {
             Text(NSLocalizedString("paywall.continueFree", comment: "Continue with Free"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.plain)
     }
 
     private var fineprint: some View {
-        // Re-resolve copy by trial vs no-trial so the legal disclosure
-        // matches what the CTA actually offers — Apple's Reviewer #1 thing.
-        let key: String
-        if selectedProductID == SubscriptionService.monthlyProductID
-            && introOfferEligible
-            && subscription.entitlement != .proTrial {
-            key = "paywall.fineprint.month"
-        } else {
-            key = "paywall.fineprint"
-        }
-        return Text(NSLocalizedString(key, comment: "Subscription fine print"))
+        // A catalog/eligibility answer does not establish a free trial or
+        // its duration. Only the store's actual offer/confirmation does.
+        Text(NSLocalizedString("paywall.fineprint", comment: "Neutral subscription fine print"))
             .font(.caption2)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.leading)
@@ -509,6 +501,7 @@ public struct PaywallView: View {
     private func runPurchase() async {
         // Guard re-entry: purchase must not race a running restore or itself.
         guard !purchaseInFlight, !restoreInFlight else { return }
+        errorTitleKey = "paywall.error.title"
         purchaseInFlight = true
         defer { purchaseInFlight = false }
 
@@ -516,27 +509,18 @@ public struct PaywallView: View {
         // (or the network blipped) during `.task`'s initial load. Retry once
         // before giving up so the user isn't stuck behind a transient miss.
         if subscription.products.isEmpty {
+            errorTitleKey = "paywall.products.errorTitle"
             await subscription.loadProducts()
+            // A retry only loads the catalog. Show its prices before a
+            // separate, explicit Subscribe action can open Apple confirmation.
+            if !subscription.products.isEmpty { return }
         }
 
         guard let product = subscription.products.first(where: { $0.id == selectedProductID })
             ?? subscription.products.first
         else {
-            #if DEBUG
-            // DEBUG-only escape hatch: when StoreKit returned no products
-            // (e.g. simulator without a .storekit config), flip entitlement
-            // locally so the rest of the flow is testable.
-            subscription._setEntitlementForTesting(.proTrial)
-            onUnlocked()
-            dismiss()
-            #else
-            // Release: no products even after a retry — surface an explicit,
-            // actionable error instead of a silent dead button. Common causes
-            // are an unsigned Paid Apps Agreement or products not yet "Ready
-            // to Submit" in App Store Connect.
             purchaseError = subscription.lastError
                 ?? NSLocalizedString("paywall.error.unavailable", comment: "Products unavailable")
-            #endif
             return
         }
 

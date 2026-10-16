@@ -37,6 +37,29 @@ struct LocationCard: View {
         return (d.isFinite && d < .greatestFiniteMagnitude) ? d : nil
     }
 
+    /// Visible label of the single copy action — names the exact payload.
+    private var copyButtonTitle: String {
+        if didCopy {
+            return copyPayload.isAddress
+                ? NSLocalizedString("location.copiedAddress", comment: "Address copied confirmation")
+                : NSLocalizedString("location.copied", comment: "Coordinates copied confirmation")
+        }
+        return copyPayload.isAddress
+            ? NSLocalizedString("location.copyAddress", comment: "Copy the address to the clipboard")
+            : NSLocalizedString("location.copyCoords", comment: "Copy coordinates to clipboard")
+    }
+
+    private var copyButtonAccessibilityLabel: String {
+        if didCopy {
+            return copyPayload.isAddress
+                ? NSLocalizedString("location.copiedAddress.a11y", comment: "VoiceOver: address was copied")
+                : NSLocalizedString("location.copied.a11y", comment: "VoiceOver: coordinates were copied")
+        }
+        return copyPayload.isAddress
+            ? NSLocalizedString("location.copyAddress.a11y", comment: "Copy address to clipboard")
+            : NSLocalizedString("location.copyCoords", comment: "Copy coordinates to clipboard")
+    }
+
     /// Tapping Navigate should be a single tap when there's no choice to make.
     /// With one installed maps app we launch it directly; the confirmation
     /// dialog only earns its extra tap when the traveler has more than one app.
@@ -82,32 +105,13 @@ struct LocationCard: View {
                         .font(.subheadline.weight(.semibold))
                         .fixedSize(horizontal: false, vertical: true)
                     if let hint = addressHint, !hint.isEmpty {
-                        // The address is tap-to-copy, but a bare Text gives no
-                        // hint that it's interactive. Pair it with a small copy
-                        // glyph (swapping to a green check on success) so the
-                        // affordance is discoverable, and give the row a 32pt
-                        // tappable height instead of the hairline text bounds.
-                        Button { performCopy() } label: {
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text(hint)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Image(systemName: didCopy ? "checkmark.circle.fill" : "doc.on.doc")
-                                    .font(.caption2)
-                                    .foregroundStyle(didCopy ? CT.verifiedGreen : Color.secondary.opacity(0.6))
-                                    .contentTransition(.symbolEffect(.replace))
-                                    .accessibilityHidden(true)
-                            }
-                            .frame(minHeight: 32, alignment: .topLeading)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text(hint))
-                        .accessibilityValue(didCopy
-                            ? Text(NSLocalizedString("location.copiedAddress.a11y", comment: "VoiceOver: address was copied"))
-                            : Text(""))
-                        .accessibilityHint(Text(NSLocalizedString("location.copyAddress.a11y", comment: "Copy address to clipboard")))
+                        // Readable static text — copying is ONE explicit action
+                        // beside Navigate (below), not a hidden tap target on the
+                        // address itself.
+                        Text(hint)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     } else {
                         // Raw lat/long means nothing to a traveler, so only fall
                         // back to coordinates when there's no address at all —
@@ -143,7 +147,7 @@ struct LocationCard: View {
                     )
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
+                    .frame(minHeight: HitTargetMetrics.minimum)
                     .background(
                         LinearGradient(
                             colors: [CT.accent, CT.accent.opacity(0.85)],
@@ -159,31 +163,36 @@ struct LocationCard: View {
                     ? NSLocalizedString("location.navigate.choose.a11y", comment: "Navigate hint when multiple maps apps installed")
                     : NSLocalizedString("location.navigate.walk.a11y", comment: "Navigate hint when one maps app installed")))
 
-                // US-010: Ghost copy button — icon only, no fill
+                // The ONE copy action (the address row is static text). Labelled
+                // explicitly — "Copy address" or "Copy coordinates" — so the
+                // clipboard payload is never ambiguous, and quieter than the
+                // filled Navigate pill. Same payload + same success feedback as
+                // before; 44pt hit target.
                 Button {
                     performCopy()
                 } label: {
-                    VStack(spacing: 2) {
+                    HStack(spacing: 5) {
                         Image(systemName: didCopy ? "checkmark.circle.fill" : "doc.on.doc")
+                            .font(.system(size: 12, weight: .semibold))
                             .contentTransition(.symbolEffect(.replace))
-                            .foregroundStyle(didCopy ? CT.verifiedGreen : Color.secondary)
-                        if didCopy {
-                            Text(copyPayload.isAddress
-                                ? NSLocalizedString("location.copiedAddress", comment: "Address copied confirmation")
-                                : NSLocalizedString("location.copied", comment: "Coordinates copied confirmation")
-                            )
-                            .font(.caption2)
-                            .foregroundStyle(CT.verifiedGreen)
-                        }
+                        Text(copyButtonTitle)
+                            .font(.subheadline.weight(.semibold))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .frame(width: 44, height: 44)
+                    .foregroundStyle(didCopy ? CT.verifiedGreen : CT.actionTintAdaptive)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: HitTargetMetrics.minimum)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(
+                                didCopy ? CT.verifiedGreen.opacity(0.35) : CT.borderDefault,
+                                lineWidth: 1
+                            )
+                    )
+                    .contentShape(Rectangle())
                 }
-                .accessibilityLabel(Text(didCopy
-                    ? (copyPayload.isAddress
-                        ? NSLocalizedString("location.copiedAddress.a11y", comment: "VoiceOver: address was copied")
-                        : NSLocalizedString("location.copied.a11y", comment: "VoiceOver: coordinates were copied"))
-                    : NSLocalizedString("location.copyCoords", comment: "Copy coordinates to clipboard")
-                ))
+                .buttonStyle(PressableButtonStyle())
+                .accessibilityLabel(Text(copyButtonAccessibilityLabel))
             }
         }
         .padding(12)

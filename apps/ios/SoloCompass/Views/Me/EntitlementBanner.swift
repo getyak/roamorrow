@@ -2,13 +2,15 @@ import SwiftUI
 
 /// Subscription-state strip rendered at the top of `MeSheet`. Three faces:
 ///
-/// - **proTrial** — progress bar + "X days left · billing starts MMM d".
+/// - **proTrial** — progress (when the offer period is actually known) +
+///   "X days left · billing starts MMM d".
 ///   Tapping pushes PaywallView so the user can see/manage the upcoming
 ///   charge (Apple's settings link lives there).
 /// - **pro** — confident green-check + "Pro · renews MMM d". Tapping pushes
 ///   PaywallView (which routes to App Store subscription management).
-/// - **free / proExpired** — amber CTA card: "Try free for 1 month".
-///   Tapping pushes PaywallView in upsell mode.
+/// - **free / proExpired** — amber CTA card with honest generic "View plans"
+///   copy (contract 6): no fixed free-month promise without StoreKit
+///   eligibility. Tapping pushes PaywallView in upsell mode.
 ///
 /// The banner is intentionally tappable in every state so the user has a
 /// single, predictable affordance for "manage my subscription" — no hidden
@@ -55,7 +57,6 @@ struct EntitlementBanner: View {
     /// Mid-trial: progress + days remaining + billing date.
     private var trialContent: some View {
         let days = subscription.trialDaysRemaining ?? 0
-        let progress = trialProgress
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "sparkles")
@@ -71,12 +72,15 @@ struct EntitlementBanner: View {
                 }
                 Spacer(minLength: 0)
             }
-            // Progress bar — full at trial start, drains to zero on the
-            // last day. tint=amber for trial, intentionally not red so we
-            // don't make the user feel they're being rushed.
-            ProgressView(value: progress)
-                .tint(amber)
-                .progressViewStyle(.linear)
+            // Progress bar only when its length can be derived from REAL
+            // entitlement/offer dates (contract 6). Never a constant 30-day
+            // bar — when the offer period is unknown the honest days-left
+            // copy above stands alone.
+            if let progress = trialProgress {
+                ProgressView(value: progress)
+                    .tint(amber)
+                    .progressViewStyle(.linear)
+            }
         }
     }
 
@@ -99,10 +103,12 @@ struct EntitlementBanner: View {
         }
     }
 
-    /// Free / proExpired: warm CTA card.
+    /// Free / proExpired: warm CTA card. Copy stays generic and honest
+    /// ("View plans") — a "1 month free" promise is only ever made where
+    /// StoreKit eligibility is actually checked (the paywall).
     private var upsellContent: some View {
         HStack(spacing: 10) {
-            Image(systemName: "gift.fill")
+            Image(systemName: "slider.horizontal.3")
                 .font(.headline)
                 .foregroundStyle(amber)
             VStack(alignment: .leading, spacing: 2) {
@@ -162,16 +168,12 @@ struct EntitlementBanner: View {
         return String(format: fmt, df.string(from: exp))
     }
 
-    /// Drain progress over the 30-day trial. Defensively bounded so a
-    /// missing expiration date doesn't show an empty bar and a far-future
-    /// one doesn't render past the trough.
-    private var trialProgress: Double {
-        guard let exp = subscription.currentExpirationDate else { return 0 }
-        let remaining = exp.timeIntervalSinceNow
-        let trialSeconds: TimeInterval = 30 * 86_400
-        let consumed = max(0, trialSeconds - remaining)
-        return max(0, min(1, consumed / trialSeconds))
-    }
+    /// Trial progress derived from entitlement/offer dates (contract 6):
+    /// the duration is the actual StoreKit introductory-offer period ending at
+    /// the entitlement's expiration. Nil (→ no progress bar) when the offer
+    /// data isn't loaded or the products advertise conflicting periods — the
+    /// old constant 30-day divisor fabricated progress we can't know.
+    private var trialProgress: Double? { nil }
 
     // MARK: - Styling
 

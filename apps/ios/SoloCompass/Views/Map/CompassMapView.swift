@@ -420,6 +420,7 @@ struct CompassMapContentView: View {
     // avatar bubble in the map overlay. Friend state is read live so the
     // bubble can show a pending-request dot.
     @State private var isShowingMe: Bool = false
+    @State private var pendingCitySelection = false
     // US-024: when a `message` push is tapped, the personal hub opens with this
     // conversation id so its Messages list auto-pushes the matching ChatView.
     // `nil` when the hub was opened any other way (avatar bubble, inbox).
@@ -680,8 +681,7 @@ struct CompassMapContentView: View {
     /// VerifySheet submit: record the verification (idempotent), feed the
     /// answers into the co-build layer as a note authored by "你", and confirm
     /// with a toast — the 消费者→贡献者 loop closing in one tap.
-    private func submitVerification(_ answers: VerifySheet.Answers, for experience: Experience) {
-        cityOSStore.markVerified(experience.id)
+    private func submitVerification(_ answers: VerifySheet.Answers, for experience: Experience) throws {
         let parts = [
             answers.stillThere == 0
                 ? NSLocalizedString("cityos.verify.note.exists", comment: "还在营业")
@@ -694,10 +694,11 @@ struct CompassMapContentView: View {
                 : NSLocalizedString("cityos.verify.note.crowded", comment: "挺挤"),
         ]
         let prefix = NSLocalizedString("cityos.verify.note.prefix", comment: "印证：")
-        TravelerNoteStore().addNote(
+        try TravelerNoteStore().addNotePersisted(
             experienceId: experience.id,
             text: prefix + parts.joined(separator: " · ")
         )
+        cityOSStore.markVerified(experience.id)
         showCityOSToast(NSLocalizedString(
             "cityos.verify.toast",
             comment: "已印证 · 这个点的信心 +1，谢谢你"
@@ -1392,7 +1393,7 @@ struct CompassMapContentView: View {
             .sheet(item: $verifyTarget) { experience in
                 VerifySheet(
                     placeName: experience.shortName,
-                    onSubmit: { answers in submitVerification(answers, for: experience) },
+                    onSubmit: { answers in try submitVerification(answers, for: experience) },
                     onDismiss: { verifyTarget = nil }
                 )
             }
@@ -1428,7 +1429,7 @@ struct CompassMapContentView: View {
             // US-025 regression: the Routes-section commit (6655422) accidentally
             // dropped this line, leaving the bottom-left settings FAB inert — its
             // `isShowingSettings = true` had no presenter to observe it.
-            .sheet(isPresented: settingsSheetBinding) { settingsSheetContent }
+            .sheet(isPresented: settingsSheetBinding, onDismiss: consumePendingCitySelection) { settingsSheetContent }
             // Deep cross-compile live feed: presented the instant the user taps
             // "deep cross-compile" (before any network call), streaming each
             // stage of the enrichment agent loop instead of a silent spinner.
@@ -1443,15 +1444,52 @@ struct CompassMapContentView: View {
             // on the inner BottomInfoSheet ZStack — so SwiftUI arbitrates it
             // alongside the other top-level sheets instead of silently dropping a
             // deeply-nested presenter (which left RouteCards un-openable).
-            .sheet(item: $routeSheet) { sheet in routeSheetContent(sheet) }
+            .sheet(item: $routeSheet, onDismiss: consumePendingCitySelection) { sheet in routeSheetContent(sheet) }
             // US-007: personal hub presented from the top-right map avatar bubble.
-            .sheet(isPresented: $isShowingMe) {
+            .sheet(isPresented: $isShowingMe, onDismiss: consumePendingCitySelection) {
                 MeSheet(
                     pendingRequestCount: friendService.incomingRequests.count,
                     deepLinkConversationId: deepLinkConversationId
                 )
             }
             .modifier(ExploreConsentSheetModifier(viewModel: viewModel, preferences: preferences))
+            // Unified route-start request (R2-03): presentation sites that
+            // can't draw the route themselves (chat's pinned route, Me/Settings
+            // route lists, discover) post this instead of inheriting a dead
+            // no-op callback. Dismiss the presenting Me/chat/route surfaces
+            // FIRST, then draw — the camera must never fight a live sheet.
+            .onReceive(NotificationCenter.default.publisher(for: RouteNavigationRequest.didRequestStart)) { note in
+                guard let route = RouteNavigationRequest.route(from: note) else { return }
+                routeSheet = nil
+                isShowingMe = false
+                if viewModel.isShowingSettings {
+                    viewModel.isShowingSettings = false
+                }
+                if workspace.surface != .map {
+                    _ = workspace.selectSurface(.map)
+                }
+                // Commit the dismissals to the view state before drawing.
+                DispatchQueue.main.async {
+                    startRouteOnMap(route)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: RouteNavigationRequest.didRequestCitySelection)) { _ in
+                let waitsForDismissal = isShowingMe || viewModel.isShowingSettings || routeSheet != nil
+                pendingCitySelection = true
+                routeSheet = nil
+                isShowingMe = false
+                viewModel.isShowingSettings = false
+                if workspace.surface != .map { _ = workspace.selectSurface(.map) }
+                if !waitsForDismissal { consumePendingCitySelection() }
+            }
+    }
+
+    /// Presentation completion owns the handoff; no timer races an outgoing
+    /// Me, settings or route sheet against the city picker.
+    private func consumePendingCitySelection() {
+        guard pendingCitySelection, !isShowingMe, !viewModel.isShowingSettings, routeSheet == nil else { return }
+        pendingCitySelection = false
+        isShowingCityPicker = true
     }
 
     /// Content for the route detail / create sheet, driven by `routeSheet`.
@@ -1492,7 +1530,10 @@ struct CompassMapContentView: View {
                 // Persist + open the new route's detail; RouteStore.didChange
                 // refreshes the sheet's routes section automatically. Swapping
                 // `routeSheet` from .create → .detail replaces content in place.
-                routeStore.save(route)
+                // Throwing save (R2-07): on failure CreateRouteView keeps the
+                // draft on screen with a retry instead of opening a detail for
+                // a route that never hit disk.
+                try routeStore.savePersisted(route)
                 routeSheet = .detail(route)
             }
             .environment(aiService)
@@ -2519,11 +2560,13 @@ struct CompassMapContentView: View {
 
     @ViewBuilder
     private var paywallSheetContent: some View {
-        PaywallView(onUnlocked: {
-            let resume = viewModel.onPaywallUnlocked
-            viewModel.onPaywallUnlocked = nil
-            resume?()
-        })
+        NavigationStack {
+            PaywallView(onUnlocked: {
+                let resume = viewModel.onPaywallUnlocked
+                viewModel.onPaywallUnlocked = nil
+                resume?()
+            })
+        }
         .environment(subscriptionService)
     }
 
@@ -2948,7 +2991,7 @@ struct CompassMapContentView: View {
             },
             // Adopting a proposed route saves it and opens its detail sheet.
             onAdoptRoute: { proposal in
-                routeStore.save(proposal.route)
+                // ChatRouteProposalCard has already acknowledged durable save.
                 refreshNearbyRoutes(cityCode: viewModel.selectedCity)
                 routeSheet = .detail(proposal.route)
             },

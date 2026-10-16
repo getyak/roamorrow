@@ -11,6 +11,9 @@ import SwiftUI
 /// from all discovery queries.
 public struct ReportBlockSheet: View {
     let targetUserId: String
+    private var targetPostId: String? = nil
+    @State private var reportActionId = UUID().uuidString
+    @State private var blockActionId = UUID().uuidString
     /// Display label for the target (e.g., their emoji handle). Shown in UI only.
     let targetLabel: String
     /// Called on successful block so the parent can dismiss or refresh.
@@ -37,6 +40,15 @@ public struct ReportBlockSheet: View {
         _service = State(initialValue: service)
     }
 
+    /// Discovery exposes post IDs, never treat them as auth user IDs.
+    public init(targetPostId: String, targetLabel: String, onBlocked: (() -> Void)? = nil) {
+        self.targetUserId = ""
+        self.targetPostId = targetPostId
+        self.targetLabel = targetLabel
+        self.onBlocked = onBlocked
+        _service = State(initialValue: .shared)
+    }
+
     public var body: some View {
         NavigationStack {
             Form {
@@ -55,6 +67,7 @@ public struct ReportBlockSheet: View {
                 }
             }
             .disabled(isSubmitting)
+            .interactiveDismissDisabled(isSubmitting || !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .alert(
                 NSLocalizedString("companion.report.success.title", comment: "Report success title"),
                 isPresented: $showSuccess
@@ -151,6 +164,7 @@ public struct ReportBlockSheet: View {
                 }
             }
             .disabled(isSubmitting)
+            .interactiveDismissDisabled(isSubmitting || !details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
     }
 
@@ -181,14 +195,23 @@ public struct ReportBlockSheet: View {
     // MARK: - Actions
 
     private func submitReport() async {
+        guard !isSubmitting else { return }
         isSubmitting = true
         defer { isSubmitting = false }
 
-        let result = await service.reportUser(
+        let result: Result<Void, Error>
+        if let targetPostId {
+            result = await CompanionPostActionService.shared.perform(
+                .report, postId: targetPostId, actionId: reportActionId,
+                reason: selectedReason, details: details.isEmpty ? nil : details
+            )
+        } else {
+            result = await service.reportUser(
             targetUserId: targetUserId,
             reason: selectedReason,
             details: details.isEmpty ? nil : details
-        )
+            )
+        }
 
         switch result {
         case .success:
@@ -199,10 +222,16 @@ public struct ReportBlockSheet: View {
     }
 
     private func confirmBlock() async {
+        guard !isSubmitting else { return }
         isSubmitting = true
         defer { isSubmitting = false }
 
-        let result = await service.blockUser(blockedId: targetUserId)
+        let result: Result<Void, Error>
+        if let targetPostId {
+            result = await CompanionPostActionService.shared.perform(.block, postId: targetPostId, actionId: blockActionId)
+        } else {
+            result = await service.blockUser(blockedId: targetUserId)
+        }
         switch result {
         case .success:
             onBlocked?()

@@ -53,6 +53,12 @@ public struct ItineraryDetailView: View {
     // Open for companions flow (US-039)
     @State private var showingOpenForCompanionsSheet = false
 
+    // Save-failure recovery (contract 3): a failed publish / unpublish / reorder
+    // keeps the previous values, explains, and offers a retry that re-runs the
+    // exact failed write. Success feedback only after the durable ack.
+    @State private var saveErrorMessage: String?
+    @State private var retryAction: (() -> Void)?
+
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .long
@@ -131,7 +137,7 @@ public struct ItineraryDetailView: View {
                         experienceIds.count
                     ))
                     Spacer()
-                    if !preferences.favoritedExperiences.isEmpty {
+                    if !preferences.favoritedExperiences.subtracting(Set(experienceIds)).isEmpty {
                         Button {
                             showingImportConfirm = true
                         } label: {
@@ -210,8 +216,55 @@ public struct ItineraryDetailView: View {
                 importedToast(count: count)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 16)
+            } else if let saveErrorMessage {
+                saveErrorToast(message: saveErrorMessage)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 16)
             }
         }
+    }
+
+    /// Inline failure toast with a real retry (contract 3) — the previous
+    /// value/order is already restored by the action that failed.
+    private func saveErrorToast(message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(CT.sunGoldDeep)
+            Text(message)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            if retryAction != nil {
+                Button(NSLocalizedString("itinerary.detail.save.retry", comment: "Retry the failed itinerary write")) {
+                    let retry = retryAction
+                    saveErrorMessage = nil
+                    retryAction = nil
+                    retry?()
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(CT.accent)
+                .frame(minHeight: HitTargetMetrics.minimum)
+            }
+            Button {
+                withAnimation {
+                    saveErrorMessage = nil
+                    retryAction = nil
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(NSLocalizedString("common.ok", comment: "Dismiss")))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Capsule().fill(Color(.systemBackground)).shadow(radius: 4))
     }
 
     // MARK: - Experience row
@@ -352,9 +405,6 @@ public struct ItineraryDetailView: View {
     // MARK: - Actions
 
     private func activateCompanionPost(_ post: CompanionPost) {
-        openToCompanions = true
-        preferences.activeCompanionPosts[itinerary.id.rawValue] = post
-        // Persist openToCompanions on the itinerary value
         let now = ISO8601DateFormatter().string(from: Date())
         let updated = Itinerary(
             id: itinerary.id,
@@ -369,13 +419,28 @@ public struct ItineraryDetailView: View {
             createdAt: itinerary.createdAt,
             updatedAt: now
         )
-        try? store.update(updated)
+        do {
+            // Durable ack first (contract 3): only a successful write flips
+            // the UI state, records the post and fires the haptic.
+            try store.update(updated)
+        } catch {
+            openToCompanions = false
+            withAnimation {
+                saveErrorMessage = NSLocalizedString(
+                    "itinerary.detail.save.error",
+                    comment: "Shown when an itinerary write fails"
+                )
+                retryAction = { activateCompanionPost(post) }
+            }
+            return
+        }
+        openToCompanions = true
+        preferences.activeCompanionPosts[itinerary.id.rawValue] = post
+        withAnimation { saveErrorMessage = nil; retryAction = nil }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     private func removeCompanionPost() {
-        openToCompanions = false
-        preferences.activeCompanionPosts.removeValue(forKey: itinerary.id.rawValue)
         let now = ISO8601DateFormatter().string(from: Date())
         let updated = Itinerary(
             id: itinerary.id,
@@ -390,15 +455,54 @@ public struct ItineraryDetailView: View {
             createdAt: itinerary.createdAt,
             updatedAt: now
         )
-        try? store.update(updated)
+        do {
+            try store.update(updated)
+        } catch {
+            // Stay open (the previous value) and offer a retry — closing
+            // without a write would claim a state that never persisted.
+            openToCompanions = true
+            withAnimation {
+                saveErrorMessage = NSLocalizedString(
+                    "itinerary.detail.save.error",
+                    comment: "Shown when an itinerary write fails"
+                )
+                retryAction = { removeCompanionPost() }
+            }
+            return
+        }
+        openToCompanions = false
+        preferences.activeCompanionPosts.removeValue(forKey: itinerary.id.rawValue)
+        withAnimation { saveErrorMessage = nil; retryAction = nil }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func moveExperience(from source: IndexSet, to destination: Int) {
         var ids = experienceIds
         ids.move(fromOffsets: source, toOffset: destination)
+        let previous = experienceIds
         experienceIds = ids
-        try? store.reorderExperiences(ids, in: itinerary.id)
+        persistOrder(ids, previous: previous)
+    }
+
+    /// Persist a reorder; on failure restore the previous visible order and
+    /// offer a retry of the exact new order (contract 3).
+    private func persistOrder(_ ids: [String], previous: [String]) {
+        do {
+            try store.reorderExperiences(ids, in: itinerary.id)
+            withAnimation { saveErrorMessage = nil; retryAction = nil }
+        } catch {
+            experienceIds = previous
+            withAnimation {
+                saveErrorMessage = NSLocalizedString(
+                    "itinerary.detail.save.error",
+                    comment: "Shown when an itinerary write fails"
+                )
+                retryAction = {
+                    experienceIds = ids
+                    persistOrder(ids, previous: previous)
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -453,13 +557,29 @@ public struct ItineraryDetailView: View {
 
     private func importFavorites() {
         let favIds = preferences.favoritedExperiences
-        guard let count = try? store.importFavorites(favIds, into: itinerary.id), count > 0 else { return }
-        experienceIds = store.load(id: itinerary.id)?.experienceIds ?? experienceIds
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        withAnimation { importedCount = count }
-        Task {
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            withAnimation { importedCount = nil }
+        do {
+            let count = try store.importFavorites(favIds, into: itinerary.id)
+            guard count > 0 else { return }
+            experienceIds = store.load(id: itinerary.id)?.experienceIds ?? experienceIds
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            withAnimation {
+                importedCount = count
+                saveErrorMessage = nil
+                retryAction = nil
+            }
+            Task {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                withAnimation { importedCount = nil }
+            }
+        } catch {
+            // Keep the current list untouched and offer a retry (contract 3).
+            withAnimation {
+                saveErrorMessage = NSLocalizedString(
+                    "itinerary.detail.save.error",
+                    comment: "Shown when an itinerary write fails"
+                )
+                retryAction = { importFavorites() }
+            }
         }
     }
 

@@ -40,6 +40,17 @@ struct KitSheet: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 12) {
+                        if !orderedKit.contains(where: { $0.kind == .visa }) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(NSLocalizedString("today.entry.personalCountdown", value: "Personal stay countdown", comment: "Countdown is available without city kit data"))
+                                    .font(.headline)
+                                VisaComplianceControl(preferences: preferences, complianceService: complianceService, kitAction: nil)
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(CT.cardAdaptive, in: RoundedRectangle(cornerRadius: 16))
+                            .id(CityKitItem.Kind.visa)
+                        }
                         ForEach(orderedKit) { item in
                             KitRowCard(
                                 item: item,
@@ -54,6 +65,7 @@ struct KitSheet: View {
                         }
                     }
                     .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .background(groupBackground.ignoresSafeArea())
                 .onAppear {
@@ -63,6 +75,7 @@ struct KitSheet: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle(planMode
                 ? NSLocalizedString("cityos.kit.title.plan", comment: "行前清单 sheet title")
                 : NSLocalizedString("cityos.kit.title", comment: "落地包 sheet title"))
@@ -86,17 +99,16 @@ struct KitSheet: View {
 
     private func openLink(_ url: URL, label: String) {
         #if canImport(UIKit)
-        UIApplication.shared.open(url)
-        #endif
-        let text = String(
-            format: NSLocalizedString("cityos.kit.link.toast", comment: "已为你打开 %@ · 回来继续"),
-            label
-        )
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { toast = text }
-        Task {
-            try? await Task.sleep(for: .seconds(2.4))
-            withAnimation(.easeInOut(duration: 0.3)) { toast = nil }
+        UIApplication.shared.open(url, options: [:]) { opened in
+            Task { @MainActor in
+                toast = opened
+                    ? String(format: NSLocalizedString("cityos.kit.link.toast", comment: "Opened %@"), label)
+                    : String(format: NSLocalizedString("cityos.kit.link.failed", value: "Couldn’t open %@. Check that its app is installed, then try again.", comment: "System link failed"), label)
+                try? await Task.sleep(for: .seconds(5))
+                toast = nil
+            }
         }
+        #endif
     }
 
     @ViewBuilder
@@ -201,11 +213,13 @@ private struct KitRowCard: View {
                         lineWidth: 1.5
                     )
                 )
-                .contentShape(Circle())
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(PressableButtonStyle())
         .animation(.spring(response: 0.25, dampingFraction: 0.8), value: on)
-        .accessibilityLabel(Text(on
+        .accessibilityLabel(Text(item.name))
+        .accessibilityValue(Text(on
             ? NSLocalizedString("cityos.kit.todo.done.a11y", comment: "已备")
             : NSLocalizedString("cityos.kit.todo.pending.a11y", comment: "标记已备")))
         .accessibilityAddTraits(on ? [.isSelected] : [])
@@ -263,6 +277,8 @@ private struct KitRowCard: View {
                 .padding(.horizontal, 11)
                 .padding(.vertical, 6)
                 .background(Capsule().fill(lensFill))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(PressableButtonStyle(pressedScale: 0.96))
             .accessibilityLabel(Text(String(
@@ -326,12 +342,35 @@ private struct VisaComplianceControl: View {
     let kitAction: CityKitAction?
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var showsSetup = false
 
     var body: some View {
-        if let state = complianceService.state() {
-            counters(state)
-        } else {
-            entrySetup
+        VStack(alignment: .leading, spacing: 8) {
+            if let state = complianceService.state() {
+                counters(state)
+            }
+            Button {
+                showsSetup = true
+            } label: {
+                HStack(spacing: 10) {
+                    Label(NSLocalizedString(
+                        preferences.visaEntryDate == nil ? "today.header.setEntryDate" : "today.entry.edit",
+                        value: preferences.visaEntryDate == nil ? "Set entry date" : "Edit countdown",
+                        comment: "Explicit stay confirmation"), systemImage: "calendar")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.forward")
+                        .font(.caption.weight(.semibold))
+                        .accessibilityHidden(true)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(CT.actionTintAdaptive)
+        }
+        .sheet(isPresented: $showsSetup) {
+            TodayEntryDateSheet(preferences: preferences) { showsSetup = false }
         }
     }
 
@@ -375,49 +414,6 @@ private struct VisaComplianceControl: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("\(label): \(value)"))
-    }
-
-    private var entrySetup: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            DatePicker(
-                NSLocalizedString("cityos.visa.entryDate", comment: "入境日期"),
-                selection: entryDateBinding,
-                displayedComponents: .date
-            )
-            .ctBody(13, .medium)
-            Stepper(
-                value: visaLengthBinding,
-                in: 1...365
-            ) {
-                Text(String(
-                    format: NSLocalizedString("cityos.visa.length", comment: "签证 N 天"),
-                    visaLengthBinding.wrappedValue
-                ))
-                .ctBody(13, .medium)
-                .foregroundStyle(primaryText)
-            }
-        }
-    }
-
-    /// Setting an entry date flips the row to counter mode (state becomes
-    /// non-nil once both entry date and length are stored).
-    private var entryDateBinding: Binding<Date> {
-        Binding(
-            get: { preferences.visaEntryDate ?? Date() },
-            set: { newValue in
-                preferences.visaEntryDate = newValue
-                if preferences.visaLengthDays == nil {
-                    preferences.visaLengthDays = kitAction?.visaDays ?? 30
-                }
-            }
-        )
-    }
-
-    private var visaLengthBinding: Binding<Int> {
-        Binding(
-            get: { preferences.visaLengthDays ?? kitAction?.visaDays ?? 30 },
-            set: { preferences.visaLengthDays = $0 }
-        )
     }
 
     private var primaryText: Color { colorScheme == .dark ? CT.fgPrimaryDark : CT.fgPrimary }

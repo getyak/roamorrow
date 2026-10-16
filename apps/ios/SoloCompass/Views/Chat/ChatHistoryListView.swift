@@ -14,6 +14,8 @@ public struct ChatHistoryListView: View {
 
     @State private var sessions: [ChatSessionRecord] = []
     @State private var displayTitles: [String: String] = [:]
+    @State private var pendingDeletionIds: [String] = []
+    @State private var deleteFailed = false
     @Environment(\.colorScheme) private var colorScheme
 
     public init(
@@ -45,6 +47,27 @@ public struct ChatHistoryListView: View {
             .background(backgroundColor)
         }
         .onAppear(perform: reload)
+        .confirmationDialog(
+            NSLocalizedString("chat.history.delete.confirm", comment: "Delete selected conversations?"),
+            isPresented: Binding(get: { !pendingDeletionIds.isEmpty }, set: { if !$0 { pendingDeletionIds = [] } }),
+            titleVisibility: .visible
+        ) {
+            Button(NSLocalizedString("itinerary.action.delete", comment: "Delete"), role: .destructive) {
+                let ids = pendingDeletionIds
+                pendingDeletionIds = []
+                do {
+                    for id in ids { try store.deletePersisted(sessionId: id) }
+                    Haptics.impact(.soft)
+                } catch {
+                    deleteFailed = true
+                }
+                reload()
+            }
+            Button(NSLocalizedString("action.cancel", comment: "Cancel"), role: .cancel) { pendingDeletionIds = [] }
+        }
+        .alert(NSLocalizedString("chat.history.delete.failed", comment: "Conversation could not be deleted. Try again."), isPresented: $deleteFailed) {
+            Button(NSLocalizedString("action.ok", comment: "OK"), role: .cancel) { }
+        }
     }
 
     private var list: some View {
@@ -112,12 +135,7 @@ public struct ChatHistoryListView: View {
     }
 
     private func deleteRows(_ offsets: IndexSet) {
-        let ids = offsets.map { sessions[$0].id }
-        for id in ids { store.delete(sessionId: id) }
-        reload()
-        #if canImport(UIKit)
-        Haptics.impact(.soft)
-        #endif
+        pendingDeletionIds = offsets.compactMap { sessions.indices.contains($0) ? sessions[$0].id : nil }
     }
 
     // MARK: - Helpers

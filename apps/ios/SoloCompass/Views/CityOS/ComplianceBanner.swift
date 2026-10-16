@@ -19,6 +19,7 @@ struct ComplianceBanner: View {
                 .foregroundStyle(CT.warningText)
 
             label
+                .accessibilityLabel(Text(a11yLabel))
 
             Spacer(minLength: 8)
 
@@ -29,6 +30,8 @@ struct ComplianceBanner: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(Capsule().fill(CT.accent))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(PressableButtonStyle(pressedScale: 0.96))
 
@@ -36,7 +39,8 @@ struct ComplianceBanner: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(CT.fgMuted)
-                    .frame(width: 28, height: 28)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel(Text(NSLocalizedString("common.dismiss", comment: "Dismiss")))
         }
@@ -52,8 +56,7 @@ struct ComplianceBanner: View {
         )
         .shadow(color: CT.scrimShadow, radius: 8, y: 2)
         .padding(.horizontal, 16)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(a11yLabel))
+        .accessibilityElement(children: .contain)
     }
 
     /// "签证还剩 N 天" with the number in mono bold. Overstay (negative) reads

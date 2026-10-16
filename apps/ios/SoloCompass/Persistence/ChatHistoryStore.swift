@@ -17,9 +17,11 @@ public final class ChatHistoryStore {
     public static let didChange = Notification.Name("SoloCompass.ChatHistoryStore.didChange")
 
     let context: ModelContext
+    private let saveDeletion: () throws -> Void
 
-    public init(context: ModelContext) {
+    public init(context: ModelContext, saveDeletion: (() throws -> Void)? = nil) {
         self.context = context
+        self.saveDeletion = saveDeletion ?? { try context.save() }
     }
 
     /// Convenience init using the shared on-disk container.
@@ -120,14 +122,35 @@ public final class ChatHistoryStore {
 
     /// Delete one session and all of its messages. No-op if not found.
     public func delete(sessionId: String) {
-        deleteRows(sessionId: sessionId)
-        if let session = existingSession(sessionId) {
-            context.delete(session)
+        try? deletePersisted(sessionId: sessionId)
+    }
+
+    /// Delete only after a successful durable commit. Restore these rows on
+    /// failure without rolling back unrelated edits in the shared context.
+    public func deletePersisted(sessionId: String) throws {
+        let rows = try context.fetch(FetchDescriptor<ChatMessageRecord>(
+            predicate: #Predicate { $0.sessionId == sessionId }
+        ))
+        let session = existingSession(sessionId)
+        let restoredRows = rows.map { row in
+            ChatMessageRecord(id: row.id, sessionId: row.sessionId, role: row.role,
+                              content: row.content, orderIndex: row.orderIndex,
+                              createdAt: row.createdAt, toolCallsBlob: row.toolCallsBlob,
+                              toolCallId: row.toolCallId, toolName: row.toolName)
         }
+        let restoredSession = session.map { row in
+            ChatSessionRecord(id: row.id, scopedExperienceId: row.scopedExperienceId,
+                              title: row.title, createdAt: row.createdAt,
+                              updatedAt: row.updatedAt, messageCount: row.messageCount)
+        }
+        for row in rows { context.delete(row) }
+        if let session { context.delete(session) }
         do {
-            try context.save()
+            try saveDeletion()
         } catch {
-            assertionFailure("ChatHistoryStore.delete failed: \(error)")
+            for row in restoredRows { context.insert(row) }
+            if let restoredSession { context.insert(restoredSession) }
+            throw error
         }
         postChange()
     }

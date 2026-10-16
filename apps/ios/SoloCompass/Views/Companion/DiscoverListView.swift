@@ -12,6 +12,7 @@ public struct DiscoverListView: View {
     @Environment(UserPreferences.self) private var preferences
     @State private var service: CompanionService
     @State private var selectedPost: DiscoverPost?
+    @State private var requestActionIds: [String: String] = [:]
     /// US-016: post tapped to open the trust-gated [Add Friend] detail.
     @State private var addFriendTarget: DiscoverPost?
     @State private var sentRequestIds: Set<String> = []
@@ -87,16 +88,16 @@ public struct DiscoverListView: View {
         }
         .animation(.easeInOut, value: successMessage)
         .sheet(item: $selectedPost) { post in
-            SendRequestSheet(post: post) { note in
-                Task { await sendRequest(to: post, note: note) }
-            }
+            SendRequestSheet(post: post, onSendAsync: { note in
+                await sendRequest(to: post, note: note)
+            })
         }
         .sheet(isPresented: $showPostSheet) {
             OpenForCompanionsSheet(itinerary: Self.newAvailabilityItinerary(cityCode: cityCode))
         }
         .sheet(item: $reportTarget) { post in
             ReportBlockSheet(
-                targetUserId: post.id,
+                targetPostId: post.id,
                 targetLabel: post.handle
             ) {
                 // Remove blocked post from the list immediately.
@@ -165,10 +166,10 @@ public struct DiscoverListView: View {
     private static func newAvailabilityItinerary(cityCode: String) -> Itinerary {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
-        fmt.timeZone = TimeZone(identifier: "UTC")
+        fmt.timeZone = .current
         let now = Date()
         let startDate = fmt.string(from: now)
-        let endDate = fmt.string(from: now.addingTimeInterval(86400 * 7))
+        let endDate = fmt.string(from: Calendar.current.date(byAdding: .day, value: 7, to: now) ?? now)
         let isoFmt = ISO8601DateFormatter()
         let ts = isoFmt.string(from: now)
         return Itinerary(
@@ -192,14 +193,11 @@ public struct DiscoverListView: View {
         await service.fetchDiscovery(params: params)
     }
 
-    private func sendRequest(to post: DiscoverPost, note: String?) async {
-        // The post's real author_id is not exposed in DiscoverPost (anonymized).
-        // We pass the post id; the Edge Function/backend resolves the recipient.
-        // For local-first mode (companion FF off), sendRequest is a no-op.
-        let result = await service.sendRequest(
-            postId: CompanionPostId(rawValue: post.id),
-            recipientId: post.id, // placeholder — resolved server-side
-            note: note
+    private func sendRequest(to post: DiscoverPost, note: String?) async -> Result<Void, Error> {
+        let actionId = requestActionIds[post.id] ?? UUID().uuidString
+        requestActionIds[post.id] = actionId
+        let result = await CompanionPostActionService.shared.perform(
+            .request, postId: post.id, actionId: actionId, note: note
         )
         switch result {
         case .success:
@@ -212,14 +210,10 @@ public struct DiscoverListView: View {
                 try? await Task.sleep(for: .seconds(3))
                 successMessage = nil
             }
-        case .failure(let err):
-            errorMessage = err.localizedDescription
-            Haptics.notify(.error)
-            Task {
-                try? await Task.sleep(for: .seconds(3))
-                errorMessage = nil
-            }
+        case .failure:
+            break // The sheet owns its retained draft and retry feedback.
         }
+        return result
     }
 }
 

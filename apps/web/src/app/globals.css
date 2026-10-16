@@ -593,3 +593,125 @@ body:lang(zh) {
     transition: none !important;
   }
 }
+
+/* ============================================================
+   Trip recap (/trip/[slug]) + experience detail (/experience/[id])
+   Phone-safe responsive layout (interaction round 2). The fixed 56px
+   gutters and wide grids broke 320–390px; these scoped rules keep the
+   editorial layout on desktop and single-column, 16–20px-gutter reading
+   on phones. Clickable labels keep real 44px targets; focus rings stay
+   on the global :focus-visible treatment.
+   ============================================================ */
+.trip-recap,
+.experience-detail {
+  padding: 48px 24px 80px;
+}
+.trip-recap .trip-section {
+  padding-left: 56px;
+  padding-right: 56px;
+}
+.trip-recap .trip-topbar,
+.experience-detail .exp-topbar {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.trip-recap .trip-crumb,
+.experience-detail .exp-crumb {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.trip-recap .trip-stat {
+  flex: 1;
+  padding: 0 16px;
+}
+.trip-recap .trip-stat:first-child {
+  padding-left: 0;
+}
+.experience-detail .exp-body-grid {
+  gap: 36px;
+}
+.trip-recap .trip-day-grid {
+  display: grid;
+  grid-template-columns: 60px 1fr 80px;
+}
+.trip-recap .trip-day-km {
+  text-align: right;
+}
+.trip-recap .trip-cta {
+  margin: 0 56px 40px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.trip-recap .trip-topbar button,
+.trip-recap .trip-cta-button,
+.experience-detail .exp-cta,
+.experience-detail .exp-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+}
+.experience-detail .exp-pad {
+  padding-left: 56px;
+  padding-right: 56px;
+}
+.experience-detail .exp-body-grid {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+}
+.experience-detail .exp-nearby-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.experience-detail .exp-footer {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .trip-recap,
+  .experience-detail {
+    padding: 20px 0 48px;
+  }
+  .trip-recap .trip-section,
+  .experience-detail .exp-pad {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .trip-recap .trip-stats {
+    flex-wrap: wrap;
+  }
+  .trip-recap .trip-stat {
+    flex: 1 1 45%;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .trip-recap .trip-day-grid {
+    grid-template-columns: 1fr;
+  }
+  .trip-recap .trip-day-km {
+    text-align: left;
+  }
+  .trip-recap .trip-cta {
+    margin: 0 18px 24px;
+    padding: 20px 18px !important;
+    gap: 14px;
+  }
+  .experience-detail .exp-body-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .experience-detail .exp-nearby-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .experience-detail .exp-topbar {
+    padding: 8px 18px !important;
+  }
+}
+
+.illustrated-map-pin:focus-visible { outline: 3px solid var(--accent-amber, #a46a20); outline-offset: -3px; }

@@ -19,6 +19,11 @@ public struct FriendsListView: View {
     @State private var showAddFriend = false
     @State private var justConnectedId: String?
     @State private var friendToRemove: Friendship?
+    /// In-flight remove guard — one delete at a time, no duplicate requests
+    /// (contract 3).
+    @State private var removingFriendId: FriendshipId?
+    /// Friendship whose delete failed, retained for an explicit retry.
+    @State private var failedRemoval: Friendship?
 
     /// When false, the on-appear `refresh()` is skipped. Production always uses
     /// the default (true); tests/previews pass false to render fixture-backed
@@ -118,6 +123,17 @@ public struct FriendsListView: View {
                     Text(msg)
                         .font(.subheadline)
                         .lineLimit(2)
+                    if let failedRemoval {
+                        Button(NSLocalizedString("friends.list.remove.retry", comment: "Retry removing a friend")) {
+                            let friendship = failedRemoval
+                            self.failedRemoval = nil
+                            errorMessage = nil
+                            Task { await removeFriend(friendship) }
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(CT.accent)
+                        .frame(minHeight: HitTargetMetrics.minimum)
+                    }
                 }
                 .foregroundStyle(CT.savedRed)
                 .padding(.horizontal, 16)
@@ -129,6 +145,36 @@ public struct FriendsListView: View {
             }
         }
         .animation(.easeInOut, value: errorMessage)
+    }
+
+    // MARK: - Friend removal (contract 3)
+
+    /// Delete a friendship with durable-ack feedback: on failure the row
+    /// stays, the error explains and offers a retry; the success haptic and
+    /// VoiceOver announcement run only after the confirmed removal.
+    private func removeFriend(_ friendship: Friendship) async {
+        guard removingFriendId == nil else { return }
+        removingFriendId = friendship.id
+        defer { removingFriendId = nil }
+        let result = await service.unfriend(friendship, block: false)
+        switch result {
+        case .success:
+            failedRemoval = nil
+            Haptics.notify(.success)
+            #if canImport(UIKit)
+            UIAccessibility.post(
+                notification: .announcement,
+                argument: String(format: NSLocalizedString("friends.removed.a11y", comment: "VoiceOver: removed a friend"), friendship.otherUserId(viewer: currentUserId))
+            )
+            #endif
+        case .failure:
+            failedRemoval = friendship
+            errorMessage = String(
+                format: NSLocalizedString("friends.list.remove.error", comment: "Shown when removing a friend fails"),
+                friendship.otherUserId(viewer: currentUserId)
+            )
+            Haptics.notify(.error)
+        }
     }
 
     // MARK: - Subviews
@@ -215,16 +261,7 @@ public struct FriendsListView: View {
                         Button(NSLocalizedString("friends.list.remove.confirm.action", comment: "Confirm remove friend button"), role: .destructive) {
                             guard let friendship = friendToRemove else { return }
                             friendToRemove = nil
-                            Task {
-                                await service.unfriend(friendship, block: false)
-                                Haptics.notify(.success)
-                                #if canImport(UIKit)
-                                UIAccessibility.post(
-                                    notification: .announcement,
-                                    argument: String(format: NSLocalizedString("friends.removed.a11y", comment: "VoiceOver: removed a friend"), friendship.otherUserId(viewer: currentUserId))
-                                )
-                                #endif
-                            }
+                            Task { await removeFriend(friendship) }
                         }
                         Button(NSLocalizedString("action.cancel", comment: "Cancel"), role: .cancel) {
                             friendToRemove = nil
@@ -334,10 +371,16 @@ private struct FriendProfileContainer: View {
     @State private var conversation: Conversation?
     @State private var isOpening = false
     @State private var errorMessage: String?
-    /// US-019: presents the meetup-invite composer (no trust gate).
+    /// Presents the local, user-controlled invitation-draft composer
+    /// (round 2 follow-up) — no synthetic companion post, no invented FK.
     @State private var showInvite = false
-    /// US-019: companion meetup invites bypass the discover trust gate.
-    private let companion: CompanionService = .shared
+    /// Draft to prefill in ChatView once the invite handoff conversation is
+    /// pushed. Consumed on first appear so later [Message] opens stay empty.
+    @State private var pendingInvitationDraft: String?
+    /// Conversation held until the composer sheet is fully dismissed.
+    @State private var pendingInvitationConversation: Conversation?
+    /// Open failure shown INSIDE the composer — its draft is retained.
+    @State private var inviteOpenError: String?
 
     private var currentUserId: String? {
         SupabaseClient.shared.currentSession?.userId
@@ -352,19 +395,31 @@ private struct FriendProfileContainer: View {
             profile: profile,
             relation: .accepted,
             onMessage: { Task { await openConversation() } },
-            // US-019: invite an existing friend straight to a meetup. No
-            // reporterWeight gate and no safety consent — those only guard
-            // stranger requests from Discover.
-            onInvite: { showInvite = true }
+            // Round 2 follow-up: the invite action opens the LOCAL draft
+            // composer; the reviewed text is prefilled in the existing
+            // friendDirect chat and the user sends it themselves.
+            onInvite: {
+                inviteOpenError = nil
+                showInvite = true
+            }
         )
-        .sheet(isPresented: $showInvite) {
-            SendRequestSheet(
-                recipient: .init(
-                    handle: profile.avatarEmoji,
-                    blurb: profile.displayHandle
-                ),
-                source: .friend,
-                onSend: { note in Task { await sendInvite(note: note) } }
+        .sheet(isPresented: $showInvite, onDismiss: {
+            // Push the chat only after the composer is fully gone — never
+            // stack presentation on a dismissing sheet.
+            if let conv = pendingInvitationConversation {
+                pendingInvitationConversation = nil
+                conversation = conv
+            }
+        }) {
+            FriendInviteDraftComposer(
+                friendLabel: otherUserId,
+                isOpening: isOpening,
+                openError: inviteOpenError,
+                onOpenDraft: { draft in Task { await openConversationWithDraft(draft) } },
+                onCancel: {
+                    inviteOpenError = nil
+                    showInvite = false
+                }
             )
         }
         .overlay(alignment: .center) {
@@ -378,11 +433,15 @@ private struct FriendProfileContainer: View {
             ChatView(
                 conversation: conv,
                 currentUserId: currentUserId,
+                // Friend-invite handoff: a user-REVIEWED draft prefilled in the
+                // composer. The traveler sends it themselves — no auto-send.
+                initialDraft: pendingInvitationDraft,
                 // friendDirect: blocking from the Report/Block menu also unfriends.
                 onBlocked: {
                     Task { await service.unfriend(friendship, block: false) }
                 }
             )
+            .onAppear { pendingInvitationDraft = nil }
         }
         .alert(
             NSLocalizedString("friends.list.error.title", comment: "Friends error title"),
@@ -408,28 +467,158 @@ private struct FriendProfileContainer: View {
         }
     }
 
-    /// US-019: send a companion meetup request to an existing friend. This goes
-    /// straight through `CompanionService.sendRequest` — deliberately skipping
-    /// `FriendService.sendDiscoverRequest`'s reporterWeight gate and safety
-    /// consent, which only guard stranger requests. Acceptance on the other
-    /// side runs the existing `CompanionService.acceptRequest`, which builds the
-    /// one-on-one conversation with a `requestId`.
-    private func sendInvite(note: String?) async {
-        // Invites have no originating discover post; synthesize a stable id so
-        // the request row still carries a non-empty postId.
-        let syntheticPostId = CompanionPostId(rawValue: "friend-invite:\(otherUserId)")
-        let result = await companion.sendRequest(
-            postId: syntheticPostId,
-            recipientId: otherUserId,
-            note: note
-        )
+    /// Open the existing authenticated friendDirect conversation with the
+    /// user-reviewed invitation draft prefilled (round 2 follow-up).
+    ///
+    /// Honest replacement for the old `sendInvite`, which synthesized a
+    /// `friend-invite:<userId>` companion-post id — a fake foreign key the
+    /// real `companion_requests.post_id` cannot satisfy — and reported success
+    /// for a request that never existed. Here NOTHING is sent automatically
+    /// and no post/row is created: the traveler sends the message themselves
+    /// from chat. On failure the composer keeps the draft for retry.
+    private func openConversationWithDraft(_ draft: String) async {
+        guard !isOpening else { return }
+        isOpening = true
+        inviteOpenError = nil
+        defer { isOpening = false }
+        let result = await service.openDirectConversation(with: friendship)
         switch result {
-        case .success:
-            Haptics.notify(.success)
+        case .success(let conv):
+            pendingInvitationDraft = draft
+            pendingInvitationConversation = conv
+            showInvite = false
         case .failure(let err):
-            errorMessage = err.localizedDescription
+            // Draft retained in the open composer; nothing sent, nothing
+            // claimed. The error explains so the user can retry.
+            inviteOpenError = err.localizedDescription
             Haptics.notify(.error)
         }
+    }
+}
+
+// MARK: - FriendInviteDraftComposer
+
+/// Local, user-controlled friend-invitation composer (round 2 follow-up).
+///
+/// The traveler reviews/edits the draft here, then the explicit
+/// "Open invitation draft" action opens the existing authenticated friendDirect
+/// chat with the text prefilled — the user sends it from chat. No auto-send, no
+/// companion post, no invented foreign key. A failed open keeps the sheet and
+/// its draft exactly as edited, with the error visible for retry.
+private struct FriendInviteDraftComposer: View {
+    let friendLabel: String
+    let isOpening: Bool
+    let openError: String?
+    let onOpenDraft: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var draft: String
+    @FocusState private var draftFocused: Bool
+
+    init(
+        friendLabel: String,
+        isOpening: Bool,
+        openError: String?,
+        onOpenDraft: @escaping (String) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.friendLabel = friendLabel
+        self.isOpening = isOpening
+        self.openError = openError
+        self.onOpenDraft = onOpenDraft
+        self.onCancel = onCancel
+        _draft = State(initialValue: NSLocalizedString(
+            "friends.invite.draft.default",
+            comment: "Default invitation draft the traveler can edit before opening it in chat"
+        ))
+    }
+
+    private var trimmed: String {
+        draft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextEditor(text: $draft)
+                        .disabled(isOpening)
+                        .frame(minHeight: 110)
+                        .focused($draftFocused)
+                        .accessibilityLabel(Text(NSLocalizedString(
+                            "friends.invite.composer.title",
+                            comment: "Invitation draft editor"
+                        )))
+                } header: {
+                    Text(String(
+                        format: NSLocalizedString("friends.invite.composer.header", comment: "Invitation draft for %@"),
+                        friendLabel
+                    ))
+                } footer: {
+                    Text(NSLocalizedString(
+                        "friends.invite.composer.hint",
+                        comment: "Nothing is sent until the traveler sends it from chat"
+                    ))
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let openError {
+                    Section {
+                        Label(openError, systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(CT.sunGoldDeep)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Section {
+                    Button {
+                        onOpenDraft(trimmed)
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isOpening {
+                                ProgressView()
+                            } else {
+                                Text(NSLocalizedString(
+                                    "friends.invite.open",
+                                    comment: "Open the reviewed invitation draft in chat (sends nothing)"
+                                ))
+                                .font(.subheadline.weight(.semibold))
+                            }
+                            Spacer()
+                        }
+                        .frame(minHeight: HitTargetMetrics.minimum)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isOpening || trimmed.isEmpty)
+                    .accessibilityLabel(Text(NSLocalizedString(
+                        "friends.invite.open",
+                        comment: "Open the reviewed invitation draft in chat (sends nothing)"
+                    )))
+                    .accessibilityHint(Text(NSLocalizedString(
+                        "friends.invite.composer.hint",
+                        comment: "Nothing is sent until the traveler sends it from chat"
+                    )))
+                }
+            }
+            .navigationTitle(NSLocalizedString(
+                "friends.invite.composer.title",
+                comment: "Invitation draft"
+            ))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(NSLocalizedString("action.cancel", comment: "Cancel"), action: onCancel)
+                        .disabled(isOpening)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        // The draft is the traveler's text — never discard it on a stray swipe.
+        .interactiveDismissDisabled(true)
     }
 }
 

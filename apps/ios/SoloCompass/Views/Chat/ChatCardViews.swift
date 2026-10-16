@@ -204,18 +204,21 @@ struct ChatExperienceCard: View {
 
 /// In-chat card for a route the agent proposed but has NOT saved. Lists the
 /// stops in walk order with an optional per-stop reason, and offers an explicit
-/// "采用这条路线" action — only then is the route persisted and opened. The
+/// "View route" action — only then is the route persisted and opened. The
 /// user, not the agent, commits the route.
 @MainActor
 struct ChatRouteProposalCard: View {
     let proposal: RouteProposal
-    /// User tapped "Open" — persist + open the route detail.
+    /// User tapped "View route" — persist + open the route detail.
     let onAdopt: () -> Void
     /// User tapped a single stop bead — reveal that place on the map.
     let onTapStop: (Experience) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
-    @State private var saved = false
+    @Environment(UserPreferences.self) private var preferences
+    @Environment(\.modelContext) private var modelContext
+    @State private var saveError = false
+    private var saved: Bool { preferences.isRouteFavorited(route.id.rawValue) }
 
     private var route: Route { proposal.route }
 
@@ -252,12 +255,17 @@ struct ChatRouteProposalCard: View {
             RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
                 .fill(cardFill)
         )
+        // ONE quiet card boundary: a warm hairline, no shadow stack under it.
+        // The rationale strip and stop thumbnails sit inside this single
+        // edge instead of each adding their own border/shadow layer.
         .overlay(
             RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
                 .strokeBorder(CT.accentBorder, lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.05), radius: 3, y: 1)
         .accessibilityElement(children: .contain)
+        .alert(NSLocalizedString("chat.route.saveFailed", comment: "Route save failure"), isPresented: $saveError) {
+            Button(NSLocalizedString("action.ok", comment: "Dismiss error"), role: .cancel) {}
+        }
     }
 
     /// "⚑ DRAFT ROUTE" / "⚑ VERIFIED ROUTE … ✓ N walked" — display-face caps with
@@ -291,6 +299,8 @@ struct ChatRouteProposalCard: View {
         .foregroundStyle(CT.accent)
     }
 
+    /// The "why now" rationale: one quiet warm strip, plain fill — no border
+    /// or shadow of its own inside the card's single boundary.
     private var reasonNowBanner: some View {
         HStack(spacing: 6) {
             Image(systemName: "sparkles")
@@ -359,8 +369,12 @@ struct ChatRouteProposalCard: View {
     /// Color-bead strip: each stop is a small category disc, joined by hairline
     /// connectors, with a mono "N stops · duration" tail. Tapping a bead reveals
     /// that stop on the map (the stops stay reachable without a long list).
+    /// The beads are plain category discs — no ring/shadow layer of their own —
+    /// and each keeps a 44pt-tall hit target while the visible disc stays small.
     private var beadStrip: some View {
-        HStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 2) {
+            ScrollView(.horizontal) {
+                HStack(spacing: 0) {
             ForEach(Array(proposal.stops.enumerated()), id: \.element.id) { index, stop in
                 if index > 0 {
                     Rectangle()
@@ -373,41 +387,56 @@ struct ChatRouteProposalCard: View {
                         .foregroundStyle(.white)
                         .frame(width: 20, height: 20)
                         .background(Circle().fill(stop.category.color))
-                        .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
+                        .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableButtonStyle())
                 .accessibilityLabel(Text("\(index + 1). \(stop.title)"))
             }
+                }
+            }
+            .scrollIndicators(.hidden)
             Text(stopsMeta)
                 .font(.system(size: 10.5, design: .monospaced))
                 .tracking(0.2)
                 .foregroundStyle(.secondary)
-                .padding(.leading, 10)
-                .lineLimit(1)
-            Spacer(minLength: 0)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    /// Actions: one clear route CTA ("View route"), one quieter secondary
+    /// save toggle. The callbacks are the real adopt / stop-tap handlers.
     private var actions: some View {
         HStack(spacing: 8) {
-            Button(action: onAdopt) {
-                HStack(spacing: 5) {
-                    Text(NSLocalizedString("chat.route.open", comment: "Open route"))
-                        .font(.system(size: 13, weight: .semibold))
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 9)
-                .background(Capsule().fill(CT.accent))
+            Button {
+                do {
+                    let store = RouteStore(context: modelContext)
+                    if store.get(route.id) == nil { try store.savePersisted(route) }
+                    // The host may dismiss only AFTER the route is durable.
+                    onAdopt()
+                } catch { saveError = true }
+            } label: {
+                Text(NSLocalizedString("chat.route.saveAndView", comment: "Save and view the proposed route"))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: HitTargetMetrics.minimum)
+                    .background(Capsule().fill(CT.accent))
             }
             .buttonStyle(PressableButtonStyle(pressedScale: 0.97))
             .accessibilityHint(Text(NSLocalizedString("chat.route.adopt.a11y", comment: "Double tap to save this route and open it")))
 
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { saved = true }
-                Haptics.notify(.success)
+                do {
+                    // Keep the route itself recoverable before marking the
+                    // persisted local favorite. Never replace a newer route.
+                    let store = RouteStore(context: modelContext)
+                    if store.get(route.id) == nil { try store.savePersisted(route) }
+                    _ = preferences.toggleRouteFavorite(route.id.rawValue)
+                    Haptics.notify(.success)
+                } catch {
+                    saveError = true
+                }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: saved ? "checkmark" : "heart")
@@ -418,10 +447,16 @@ struct ChatRouteProposalCard: View {
                     ))
                     .font(.system(size: 13, weight: .medium))
                 }
-                .foregroundStyle(saved ? CT.verifiedGreen : .primary)
+                .foregroundStyle(saved ? CT.verifiedGreen : CT.actionTintAdaptive)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 9)
-                .background(Capsule().fill(saved ? CT.successSoft : CT.surfaceSunken))
+                .frame(minHeight: HitTargetMetrics.minimum)
+                .background(
+                    Capsule().strokeBorder(
+                        saved ? CT.verifiedGreen.opacity(0.35) : CT.accentBorder,
+                        lineWidth: 1
+                    )
+                )
+                .contentShape(Rectangle())
             }
             .buttonStyle(PressableButtonStyle(pressedScale: 0.97))
             .disabled(saved)
