@@ -28,7 +28,8 @@
     "docs/design/interaction-quality/current/inventory.md": "b50f102b11861db45c7beb4dd87047df609c16e669df57e4d324cb7ec88c543f",
     "docs/design/interaction-quality/current/inventory.json": "0ffec0f310344968aeb5f16f1924973ed0841690fe3a1d85b5fa9da79d6d6c6f",
     "docs/design/interaction-quality/current/ios-controls.md": "dd4a71f05476277da19bc2e95ca175940671f0e7c066f40c6723d7dee7a71c5b",
-    "docs/design/interaction-quality/ios-functions.md": "d7eccb6a44127f9ae803799d1bebb24435872ec9b39102e6c63c8b02781398b6"
+    "docs/design/interaction-quality/ios-functions.md": "522c1633a27ebd5dfcc383f5fc0acd886f8f05ab99fe6dfd7d3e5e4e493120f4"
   },
-  "validated_source_commit": "7e30bf176fa9ecb2095f0850adbcce911abfe389"
+  "validated_source_commit": "7e30bf176fa9ecb2095f0850adbcce911abfe389",
+  "merge_preflight_note": "Authored Markdown formatted for repository CI; generated exports and raw evidence keep captured bytes. Product sources and UI manifest unchanged."
 }

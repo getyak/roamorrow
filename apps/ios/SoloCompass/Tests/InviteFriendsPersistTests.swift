@@ -2,7 +2,7 @@ import SwiftData
 import XCTest
 @testable import SoloCompass
 
-/// Invite-friend persistence (review closure 3): one staged route +
+/// Atomic route and conversation persistence: one staged route +
 /// conversation snapshot committed ATOMICALLY ONCE — never per-friend partial
 /// commits. A real injected commit failure must leave the route, its group
 /// conversation AND unrelated rows exactly as they were.

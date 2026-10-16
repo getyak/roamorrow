@@ -20,3 +20,12 @@ apps/ios/**/*.xcassets/**
 
 # Raw native probe output; preserve the captured bytes and evidence hashes.
 docs/development/evidence/map-food-accuracy-followup-20261015/boundary/*-result.json
+
+# Generated interaction audit exports and immutable captured evidence.
+# Keep authored reports subject to formatting; preserve export/capture bytes.
+docs/design/interaction-quality/current/
+docs/design/interaction-quality/inventory.json
+docs/design/interaction-quality/inventory.md
+docs/design/interaction-quality/scorecard*.json
+docs/design/interaction-quality/implementation-contract.json
+docs/design/interaction-quality/evidence/
