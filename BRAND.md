@@ -63,7 +63,9 @@ Values in example files are not deployment configuration. Transfer credentials
 through secure provider settings or CLI stdin; do not put them in source, shell
 arguments or release evidence. The web basemap additionally requires a real
 `NEXT_PUBLIC_MAPBOX_TOKEN`; a placeholder must keep the explicit imagery-unavailable
-state. Analytics remains optional.
+state. Use Mapbox's `light-v11` style through that configured token. Verify actual
+roads and labels in a rendered screenshot: an HTTP 200 tile can still be an
+authentication placeholder. Analytics remains optional.
 
 Native sync and the web use distinct tables in the same existing Supabase
 project. `0018_web_bootstrap.sql` initializes the web's missing tables without
