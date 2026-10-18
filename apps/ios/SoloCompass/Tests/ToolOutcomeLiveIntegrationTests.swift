@@ -38,7 +38,7 @@ final class ToolOutcomeLiveIntegrationTests: XCTestCase {
         // called explore_nearby with a small radius, tool returned a
         // retryable envelope pointing at radius 3000.
         let system = """
-        You are Solo Compass, a warm travel companion. When a tool returns
+        You are Roamorrow, a warm travel companion. When a tool returns
         outcome:"retryable", read the hint, adjust the offending argument
         (retryable_with fields suggest concrete values), and try the SAME tool
         one more time. NEVER retry with identical args. NEVER give up after one
@@ -122,7 +122,7 @@ final class ToolOutcomeLiveIntegrationTests: XCTestCase {
         try skipIfNoKey()
 
         let system = """
-        You are Solo Compass. TOOL OUTCOMES:
+        You are Roamorrow. TOOL OUTCOMES:
         - "fatal" → do not call the same tool again. Explain briefly to the user or, if genuinely useful, call a different tool.
         """
         let fatalJSON = """

@@ -8,13 +8,15 @@
  */
 
 import { ImageResponse } from "next/og";
+import { BRAND } from "@/lib/brand";
+import { RoamorrowMark } from "@/components/brand/RoamorrowMark";
 import { WEB_CATS } from "@/lib/lisbon-data";
 import { findExperienceAcrossCities } from "@/lib/cities-data";
 
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Solo Compass — Lisbon experience";
+export const alt = `${BRAND.name} — local experience`;
 
 interface Props {
   readonly params: Promise<{ id: string }>;
@@ -38,7 +40,7 @@ export default async function ExperienceOgImage({ params }: Props) {
           fontSize: 48,
         }}
       >
-        Solo Compass
+        {BRAND.name}
       </div>,
       size,
     );
@@ -117,7 +119,7 @@ export default async function ExperienceOgImage({ params }: Props) {
           display: "flex",
         }}
       >
-        {exp.titleZh}
+        {exp.title}
       </div>
 
       {/* English subtitle */}
@@ -180,7 +182,7 @@ export default async function ExperienceOgImage({ params }: Props) {
               marginTop: 4,
             }}
           >
-            compass.io / {city.slug} / {exp.id}
+            roamorrow.com / {city.slug} / {exp.id}
           </div>
         </div>
         <div style={{ flex: 1 }} />
@@ -199,7 +201,7 @@ export default async function ExperienceOgImage({ params }: Props) {
               textTransform: "uppercase",
             }}
           >
-            Solo Compass
+            <RoamorrowMark size={28} /> {BRAND.name}
           </div>
           <div
             style={{

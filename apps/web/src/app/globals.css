@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ============================================================
-   Solo Compass · Design Tokens (v2 — CT parity)
+   Roamorrow · Design Tokens (v2 — CT parity)
    -------------------------------------------------------------
    SoT: apps/ios/SoloCompass/Views/Shared/CompareTokens.swift
    Doc: docs/WEB_LANDING_DESIGN.md §1
@@ -103,12 +103,9 @@
 
   /* ---------- Shadow (warm-tinted, not neutral black) ---------- */
   --shadow-xs: 0 1px 2px 0 rgba(31, 26, 20, 0.04);
-  --shadow-sm: 0 1px 3px 0 rgba(31, 26, 20, 0.06),
-    0 1px 2px -1px rgba(31, 26, 20, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(31, 26, 20, 0.06),
-    0 2px 4px -2px rgba(31, 26, 20, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(31, 26, 20, 0.06),
-    0 4px 6px -4px rgba(31, 26, 20, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(31, 26, 20, 0.06), 0 1px 2px -1px rgba(31, 26, 20, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(31, 26, 20, 0.06), 0 2px 4px -2px rgba(31, 26, 20, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(31, 26, 20, 0.06), 0 4px 6px -4px rgba(31, 26, 20, 0.05);
   --shadow-2xl: 0 25px 50px -12px rgba(31, 26, 20, 0.1);
 
   /* ---------- Motion (editorial, not spring) ---------- */

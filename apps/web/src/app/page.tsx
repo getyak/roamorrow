@@ -12,11 +12,11 @@ import {
 import { copy } from "@/components/marketing/copy";
 import { HomeJsonLd } from "./_seo";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Solo Compass · A map for people who travel alone",
+  title: { absolute: `${BRAND.name} · ${BRAND.tagline}` },
   description:
     "A map-first companion for solo travelers on iOS. Cross-referenced sources, honest AI, no ads, no tracking. $29 one-time or $50 a year.",
   keywords: [
@@ -28,12 +28,12 @@ export const metadata: Metadata = {
     "AI travel assistant",
     "digital nomad app",
   ],
-  authors: [{ name: "Solo Compass" }],
+  authors: [{ name: BRAND.name }],
   openGraph: {
     type: "website",
     url: SITE_URL,
-    siteName: "Solo Compass",
-    title: "A map for people who travel alone.",
+    siteName: BRAND.name,
+    title: BRAND.tagline,
     description:
       "Map-first. Experience-as-unit. AI that filters — never decides. Made in Kyoto. No ads, no tracking, ever.",
     locale: "en_US",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass · A map for people who travel alone",
+    title: `${BRAND.name} · ${BRAND.tagline}`,
     description:
       "Map-first companion for solo travelers on iOS. No ads. No tracking. $29 one-time or $50 a year.",
     // twitter image comes from src/app/opengraph-image.tsx (Next reuses it).

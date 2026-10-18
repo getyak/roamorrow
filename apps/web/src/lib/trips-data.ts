@@ -1,7 +1,7 @@
 /**
  * Trips dataset — frontend-only.
  *
- * Hardcoded sample trips for Solo Compass web Scenario C (`/trip/[slug]`).
+ * Hardcoded sample trips for Roamorrow web Scenario C (`/trip/[slug]`).
  * One sample seeded: `sofia-lisbon-may-2025`.
  *
  * monthLabel / monthLabelZh are display strings, not ISO dates — they are
@@ -49,8 +49,8 @@ export const TRIPS: Readonly<Record<string, Trip>> = {
     monthLabelZh: "2025 年 5 月",
     titleEn: "Four days, in Lisbon",
     titleZh: "四天 · 在里斯本",
-    intro: "I didn't plan. I opened compass.io/lisbon and followed it for four days.",
-    introZh: "我没做攻略。打开了 compass.io/lisbon，跟着它走了四天。",
+    intro: "I didn't plan. I opened roamorrow.com/lisbon and followed it for four days.",
+    introZh: "我没做攻略。打开了 roamorrow.com/lisbon，跟着它走了四天。",
     quote:
       "I got lost in Alfama three times. Each time, the AI told me not to worry — this alley leads to another miradouro, quieter than the one on the map.",
     quoteZh:

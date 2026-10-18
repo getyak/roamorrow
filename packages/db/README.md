@@ -1,6 +1,6 @@
 # @solo-compass/db
 
-Drizzle ORM schema and migrations for the Solo Compass Postgres database.
+Drizzle ORM schema and migrations for the Roamorrow Postgres database.
 
 ## Setup
 

@@ -4,13 +4,13 @@ import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Privacy · Solo Compass",
+  title: "Privacy",
   description:
-    "What Solo Compass collects, what it doesn't, and where your data lives. Location stays on device. No advertising SDKs. No third-party trackers. Written in plain English.",
+    "What Roamorrow collects, what it doesn't, and where your data lives. Location stays on device. No advertising SDKs. No third-party trackers. Written in plain English.",
   alternates: {
     canonical: `${SITE_URL}/privacy`,
     languages: {
@@ -22,15 +22,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/privacy`,
-    title: "Solo Compass · Privacy",
+    title: "Roamorrow · Privacy",
     description: "Location stays on device. No ads. No third-party trackers. Plain English.",
-    images: [{ url: "/og/privacy.png", width: 1200, height: 630 }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass · Privacy",
+    title: "Roamorrow · Privacy",
     description: "Location on device. No ads. No trackers.",
-    images: ["/og/privacy.png"],
+    images: ["/opengraph-image"],
   },
 };
 
@@ -60,7 +60,7 @@ const NEVER_COLLECT: [string, string][] = [
   ],
   [
     "Your voice recordings",
-    'The "Ask Solo" voice input transcribes on-device via Apple\'s SFSpeechRecognizer. The audio never leaves your phone. Only the transcribed text is sent to the AI, and only for that one query.',
+    'The "Ask" voice input transcribes on-device via Apple\'s SFSpeechRecognizer. The audio never leaves your phone. Only the transcribed text is sent to the AI, and only for that one query.',
   ],
   [
     "Contacts, calendar, photos",
@@ -164,8 +164,8 @@ export default function PrivacyEn() {
               <p className="ds-body-lg mt-4 text-fg-muted">
                 You can delete your account from Settings inside the app — this removes your email
                 and any server-side sync data within 30 days. You can also email{" "}
-                <a className="underline" href="mailto:privacy@solocompass.app">
-                  privacy@solocompass.app
+                <a className="underline" href={`mailto:${BRAND.privacyEmail}`}>
+                  {BRAND.privacyEmail}
                 </a>{" "}
                 to request a copy of everything we hold, or to have it deleted immediately. GDPR and
                 CCPA apply and we honor them for everyone, not just EU and California residents.

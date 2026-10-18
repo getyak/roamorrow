@@ -8,6 +8,8 @@
  * stiff. See WEB_LANDING_DESIGN.md §6.3 for CN discipline.
  */
 
+import { BRAND } from "@/lib/brand";
+
 export type Locale = "en" | "zh";
 
 export interface Copy {
@@ -145,13 +147,13 @@ export const copy: Record<Locale, Copy> = {
       blog: "Journal",
       manifesto: "Manifesto",
       signIn: "Sign in",
-      getApp: "Get on App Store",
+      getApp: "Open web map",
     },
     hero: {
       eyebrow: "since 2026 · made for iOS 17+",
-      h1Lines: ["A map where", "every dot is worth", "a solo detour."],
-      sub: "Solo Compass is a map-first companion for people traveling alone. No feed. No ads. Just experiences worth your afternoon.",
-      ctaPrimary: "Get on App Store",
+      h1Lines: ["Find your way.", "Feel at home."],
+      sub: "Roamorrow is your companion for solo travel and life on the move. Find local experiences worth your afternoon, and make a new place feel like yours.",
+      ctaPrimary: "Open web map",
       ctaSecondary: "See how it works",
     },
     problem: {
@@ -172,13 +174,13 @@ export const copy: Record<Locale, Copy> = {
           muted: ["ChatGPT"],
         },
         {
-          text: "We built Solo Compass because none of those felt like what an old friend who knew the city would tell you.",
+          text: "We built Roamorrow because none of those felt like what an old friend who knew the city would tell you.",
         },
       ],
     },
     pillars: {
       eyebrow: "Three non-negotiables",
-      title: "How Solo Compass is different.",
+      title: "How Roamorrow is different.",
       sub: "Three design pillars from day one. If a feature pulls away from any of them, it doesn't ship.",
       items: [
         {
@@ -223,9 +225,9 @@ export const copy: Record<Locale, Copy> = {
       intro: "Every tile below is a real screen from the app.",
     },
     askSolo: {
-      eyebrow: "01 · Ask Solo",
+      eyebrow: "01 · Ask",
       title: "The friend in every city, in your pocket.",
-      body: "Long-press anywhere on the map, or hold to talk. Solo reads the neighborhood, the time of day, the weather — and answers in cards, not walls of text. Every recommendation cites its sources.",
+      body: "Long-press anywhere on the map, or hold to talk. Roamorrow reads the neighborhood, the time of day, the weather — and answers in cards, not walls of text. Every recommendation cites its sources.",
       bullets: [
         "Voice-first — hold to talk, release to send",
         "Grounded on the map you're looking at, not the world",
@@ -239,7 +241,7 @@ export const copy: Record<Locale, Copy> = {
     blindbox: {
       eyebrow: "02 · Blindbox",
       title: "For the days you can't choose.",
-      body: "Some afternoons the tyranny of choice is the enemy. Tap the blindbox and Solo picks one experience for you, based on where you are and what fits this hour. You can't preview it. That's the point.",
+      body: "Some afternoons the tyranny of choice is the enemy. Tap the blindbox and Roamorrow picks one experience for you, based on where you are and what fits this hour. You can't preview it. That's the point.",
       bullets: [
         "One decision, taken out of your hands",
         "Only opens experiences that match this hour of this day",
@@ -265,7 +267,7 @@ export const copy: Record<Locale, Copy> = {
     omen: {
       eyebrow: "04 · Daily Omen",
       title: "One small prompt, every morning.",
-      body: "Not a horoscope. One quiet card at breakfast — a nudge Solo drew from your city, your rhythm, the weather. A gentle direction for the day, not a schedule.",
+      body: "Not a horoscope. One quiet card at breakfast — a nudge Roamorrow drew from your city, your rhythm, the weather. A gentle direction for the day, not a schedule.",
       bullets: [
         "Draws once per morning — no scroll, no feed",
         "Reads local weather, calendar, and your last week",
@@ -279,7 +281,7 @@ export const copy: Record<Locale, Copy> = {
     bestNow: {
       eyebrow: "05 · Best Now",
       title: "Every place has a golden hour. We show it.",
-      body: "Solo Compass knows when each experience is best — not \"open,\" but at its peak. A café's quiet window is 8–10 AM. A viewpoint's is 5:47 PM sharp. Every card shows a live heatmap of when to go.",
+      body: "Roamorrow knows when each experience is best — not \"open,\" but at its peak. A café's quiet window is 8–10 AM. A viewpoint's is 5:47 PM sharp. Every card shows a live heatmap of when to go.",
       bullets: [
         "Learned from solo travelers' honest reports, not vendor claims",
         "Live now-badge when you're inside the peak window",
@@ -292,7 +294,7 @@ export const copy: Record<Locale, Copy> = {
     brag: {
       eyebrow: "06 · Brag Card",
       title: "A travel passport, not a highlight reel.",
-      body: "At the end of a trip Solo compiles what you actually did — the walks, the peaks you hit, the places nobody else on the app has been. One shareable card. Zero engagement optimization.",
+      body: "At the end of a trip Roamorrow compiles what you actually did — the walks, the peaks you hit, the places nobody else on the app has been. One shareable card. Zero engagement optimization.",
       bullets: [
         "Auto-composed from your archive — you don't caption anything",
         "Shows genuine rarity, not likes",
@@ -314,7 +316,7 @@ export const copy: Record<Locale, Copy> = {
         price: "$29",
         pricePer: "one time",
         tagline: "Every feature today. Forever yours.",
-        cta: "Buy Once",
+        cta: "Check iPhone availability",
         features: [
           "Unlimited AI cross-referencing",
           "Custom routes across cities",
@@ -330,7 +332,7 @@ export const copy: Record<Locale, Copy> = {
         price: "$50",
         pricePer: "per year",
         tagline: "Everything in Lifetime, plus first access to what's next.",
-        cta: "Start Yearly",
+        cta: "Check iPhone availability",
         features: [
           "Everything in Lifetime",
           "First access to new AI models",
@@ -343,8 +345,7 @@ export const copy: Record<Locale, Copy> = {
       free: "Or try Free first — no card, no signup",
     },
     footer: {
-      tagline:
-        "Solo Compass is made by one person, in Kyoto. No VC. No ads. No tracking. Answerable to you.",
+      tagline: BRAND.tagline,
       columns: [
         {
           heading: "Product",
@@ -358,15 +359,19 @@ export const copy: Record<Locale, Copy> = {
           heading: "Company",
           links: [
             { label: "Manifesto", href: "/manifesto" },
-            { label: "Contact", href: "mailto:hello@solocompass.app" },
+            { label: "Contact", href: `mailto:${BRAND.supportEmail}` },
           ],
         },
         {
           heading: "Legal",
-          links: [{ label: "Privacy", href: "/privacy" }],
+          links: [
+            { label: "Privacy", href: "/privacy" },
+            { label: "Terms", href: "/terms" },
+            { label: "Support", href: "/support" },
+          ],
         },
       ],
-      bottom: "© 2026 Solo Compass · Made with respect for solo travelers.",
+      bottom: "© 2026 Roamorrow · Made with respect for solo travelers.",
     },
     langSwitch: "中文",
   },
@@ -378,13 +383,13 @@ export const copy: Record<Locale, Copy> = {
       blog: "刊物",
       manifesto: "宣言",
       signIn: "登录",
-      getApp: "App Store 下载",
+      getApp: "打开网页地图",
     },
     hero: {
       eyebrow: "since 2026 · 面向 iOS 17+",
-      h1Lines: ["每一个点", "都值得你", "独自绕路一趟。"],
-      sub: "Solo Compass 是为独自旅行者做的地图。没有信息流，没有广告，只有值得你度过一个下午的体验。",
-      ctaPrimary: "App Store 下载",
+      h1Lines: ["一个人出发，", "也能在远方", "过好日常。"],
+      sub: "Roamorrow 是你的独自旅行与旅居伙伴。发现值得花一个下午的本地体验，让陌生的地方也有熟悉的日常。",
+      ctaPrimary: "打开网页地图",
       ctaSecondary: "看看它是什么样",
     },
     problem: {
@@ -405,13 +410,13 @@ export const copy: Record<Locale, Copy> = {
           muted: ["ChatGPT"],
         },
         {
-          text: "我们做 Solo Compass，是因为以上都不像一个熟悉这座城的本地朋友会告诉你的话。",
+          text: "我们做 Roamorrow，是因为以上都不像一个熟悉这座城的本地朋友会告诉你的话。",
         },
       ],
     },
     pillars: {
       eyebrow: "三条不可动摇的原则",
-      title: "Solo Compass 和别人不一样，在哪。",
+      title: "Roamorrow 和别人不一样，在哪。",
       sub: "从第一天起就定下三条设计准则。任何功能只要偏离其一，就不会被做进产品。",
       items: [
         {
@@ -456,9 +461,9 @@ export const copy: Record<Locale, Copy> = {
       intro: "下面每张卡都是 App 里的真实界面。",
     },
     askSolo: {
-      eyebrow: "01 · 問 Solo",
+      eyebrow: "01 · 问",
       title: "每座城市都有的那个懂行朋友。",
-      body: "长按地图任意处，或按住语音键。Solo 会读取当前街区、时间、天气 —— 用卡片回答你，而不是一大段文字。每条建议都标注来源。",
+      body: "长按地图任意处，或按住语音键。Roamorrow 会读取当前街区、时间、天气 —— 用卡片回答你，而不是一大段文字。每条建议都标注来源。",
       bullets: [
         "语音优先 —— 按住说话，松开发送",
         "锚定在你正看的地图上，不是漫无边际",
@@ -471,7 +476,7 @@ export const copy: Record<Locale, Copy> = {
     blindbox: {
       eyebrow: "02 · 盲盒",
       title: "选择困难的时候，交给它。",
-      body: "有些下午，选择本身是敌人。点开盲盒，Solo 根据你所在的位置和此刻的时间，替你挑一件事。事前不能预览。这就是重点。",
+      body: "有些下午，选择本身是敌人。点开盲盒，Roamorrow 根据你所在的位置和此刻的时间，替你挑一件事。事前不能预览。这就是重点。",
       bullets: [
         '把"选什么"从你手上拿走',
         "只推此时此地此刻合适的体验",
@@ -497,7 +502,7 @@ export const copy: Record<Locale, Copy> = {
     omen: {
       eyebrow: "04 · 每日签",
       title: "每天早上，一句轻推。",
-      body: "不是星座运势。早餐时一张安静的卡片 —— Solo 结合你的城市、你的节奏和天气写的一句提醒。给今天一个方向，不是一份日程。",
+      body: "不是星座运势。早餐时一张安静的卡片 —— Roamorrow 结合你的城市、你的节奏和天气写的一句提醒。给今天一个方向，不是一份日程。",
       bullets: [
         "每天早上抽一张 —— 无信息流，无红点",
         "读取当地天气、日程和你过去一周",
@@ -510,7 +515,7 @@ export const copy: Record<Locale, Copy> = {
     bestNow: {
       eyebrow: "05 · 此刻最佳",
       title: "每个地方都有黄金时刻。我们标出来。",
-      body: "Solo Compass 知道每个体验在哪个时段最好 —— 不是「营业中」，是「正在最佳」。咖啡馆的安静窗口是早 8-10 点，观景台是傍晚 5:47。每张卡片都有一张实时的最佳时段热力图。",
+      body: "Roamorrow 知道每个体验在哪个时段最好 —— 不是「营业中」，是「正在最佳」。咖啡馆的安静窗口是早 8-10 点，观景台是傍晚 5:47。每张卡片都有一张实时的最佳时段热力图。",
       bullets: [
         "从独行者的诚实反馈里学，不是店主自吹",
         "在黄金窗口内会亮出一个 Now 徽章",
@@ -523,7 +528,7 @@ export const copy: Record<Locale, Copy> = {
     brag: {
       eyebrow: "06 · 旅记名片",
       title: "旅行护照，不是精彩集锦。",
-      body: "一次旅行结束，Solo 会把你真实走过的路线、你踩到的最佳时刻、别人都没去过的地方汇成一张可分享的卡片。不做话题，不做点赞。",
+      body: "一次旅行结束，Roamorrow 会把你真实走过的路线、你踩到的最佳时刻、别人都没去过的地方汇成一张可分享的卡片。不做话题，不做点赞。",
       bullets: [
         "自动从你的档案里编 —— 不用你写任何标题",
         "呈现真实的稀有度，不是点赞数",
@@ -545,7 +550,7 @@ export const copy: Record<Locale, Copy> = {
         price: "¥118",
         pricePer: "一次付清",
         tagline: "现有全部功能，永远归你。",
-        cta: "一次买断",
+        cta: "查看 iPhone 版发布状态",
         features: [
           "无限次 AI 交叉编译",
           "跨城市自定义路线",
@@ -561,7 +566,7 @@ export const copy: Record<Locale, Copy> = {
         price: "¥198",
         pricePer: "每年",
         tagline: "包含一次买断全部功能 · 首发新功能",
-        cta: "订阅年度",
+        cta: "查看 iPhone 版发布状态",
         features: [
           "包含一次买断所有内容",
           "第一时间用上新 AI 模型",
@@ -574,7 +579,7 @@ export const copy: Record<Locale, Copy> = {
       free: "或先免费试用 —— 无需信用卡，无需注册",
     },
     footer: {
-      tagline: "Solo Compass 由一个人在京都独立开发。没有 VC，没有广告，没有追踪。只对你负责。",
+      tagline: BRAND.supportingLineZh,
       columns: [
         {
           heading: "产品",
@@ -588,15 +593,19 @@ export const copy: Record<Locale, Copy> = {
           heading: "关于",
           links: [
             { label: "宣言", href: "/zh/manifesto" },
-            { label: "联系", href: "mailto:hello@solocompass.app" },
+            { label: "联系", href: `mailto:${BRAND.supportEmail}` },
           ],
         },
         {
           heading: "法律",
-          links: [{ label: "隐私", href: "/zh/privacy" }],
+          links: [
+            { label: "隐私", href: "/zh/privacy" },
+            { label: "用户协议", href: "/terms" },
+            { label: "支持", href: "/support" },
+          ],
         },
       ],
-      bottom: "© 2026 Solo Compass · 尊重每一位独自出发的人。",
+      bottom: "© 2026 Roamorrow · 尊重每一位独自出发的人。",
     },
     langSwitch: "English",
   },

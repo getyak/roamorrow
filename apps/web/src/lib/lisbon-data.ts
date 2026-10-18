@@ -1,7 +1,7 @@
 /**
  * Lisbon dataset — frontend-only.
  *
- * Prototype dataset for Solo Compass web Scenario A (`/lisbon`) and
+ * Prototype dataset for Roamorrow web Scenario A (`/lisbon`) and
  * Scenario D (`/experience/[id]`). Intentionally NOT mapped to
  * `@solo-compass/core`'s `Experience` type — the design uses richer fields
  * (zh/en bilingual, AI reason, magazine "moment" prose, sources count) that

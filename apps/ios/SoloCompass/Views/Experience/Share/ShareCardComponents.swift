@@ -49,8 +49,12 @@ struct BrandFooter: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "location.north.circle.fill")
-                .font(.system(size: 16, weight: .bold))
+            Image("RoamorrowMark")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .accessibilityHidden(true)
             Text(NSLocalizedString("sharecard.brand", comment: "Brand label rendered on share-card images"))
                 .font(.system(size: 14, weight: .bold))
             Spacer()

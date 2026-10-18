@@ -176,7 +176,7 @@ struct TurnPlanner {
         let toolNames = VoiceAgentToolRouter.allTools.map(\.name).joined(separator: ", ")
         let lang = locale.identifier.hasPrefix("zh") ? "Chinese" : "the user's language"
         let system = """
-        You are the planner sub-agent of Solo Compass. Given the user's next
+        You are the planner sub-agent of Roamorrow. Given the user's next
         turn transcript, decide whether it is one small ask (`single`), a
         clearly multi-step ask (`compound`), or so ambiguous it needs one
         clarifying question (`clarify`).

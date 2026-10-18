@@ -15,7 +15,7 @@
 // disable it to preserve non-thinking latency/tool compatibility. It must be
 // top-level, never nested under `extra_body`.
 
-/** Built-in DeepSeek model for all Solo Compass AI routes. */
+/** Built-in DeepSeek model for all Roamorrow AI routes. */
 export const DEFAULT_DEEPSEEK_MODEL = "deepseek-flash";
 
 /** OpenAI-compatible DeepSeek base URL (no trailing slash). */

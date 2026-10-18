@@ -4,13 +4,13 @@ import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "隐私 · Solo Compass",
+  title: "隐私",
   description:
-    "Solo Compass 会收集什么、不会收集什么、你的数据存在哪里。位置留在设备上，不接广告 SDK，不做第三方追踪。用大白话写给普通人看，不是律师版本。",
+    "Roamorrow 会收集什么、不会收集什么、你的数据存在哪里。位置留在设备上，不接广告 SDK，不做第三方追踪。用大白话写给普通人看，不是律师版本。",
   alternates: {
     canonical: `${SITE_URL}/zh/privacy`,
     languages: {
@@ -22,17 +22,17 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/zh/privacy`,
-    title: "Solo Compass · 隐私",
+    title: "Roamorrow · 隐私",
     description: "位置留在设备上，不接广告 SDK，不做第三方追踪。",
     locale: "zh_CN",
     alternateLocale: "en_US",
-    images: [{ url: "/og/privacy-zh.png", width: 1200, height: 630 }],
+    images: [{ url: "/zh/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass · 隐私",
+    title: "Roamorrow · 隐私",
     description: "位置留在设备上，不接广告 SDK，不做第三方追踪。",
-    images: ["/og/privacy-zh.png"],
+    images: ["/zh/opengraph-image"],
   },
 };
 
@@ -62,7 +62,7 @@ const NEVER_COLLECT: [string, string][] = [
   ],
   [
     "你的语音录音",
-    "「问 Solo」的语音输入通过 Apple 的 SFSpeechRecognizer 在设备上转文字。音频永远不会离开你的手机。只有转好的文字才会发给 AI，而且只用于那一次查询。",
+    "「问」的语音输入通过 Apple 的 SFSpeechRecognizer 在设备上转文字。音频永远不会离开你的手机。只有转好的文字才会发给 AI，而且只用于那一次查询。",
   ],
   [
     "通讯录、日历、照片",
@@ -161,8 +161,8 @@ export default function PrivacyZh() {
               <p className="ds-body-lg mt-4 text-fg-muted">
                 你可以在 app 内 设置 里删除账号——这会在 30 天内清除你的邮箱和所有服务端同步数据。
                 也可以邮件{" "}
-                <a className="underline" href="mailto:privacy@solocompass.app">
-                  privacy@solocompass.app
+                <a className="underline" href={`mailto:${BRAND.privacyEmail}`}>
+                  {BRAND.privacyEmail}
                 </a>{" "}
                 要一份我们持有的全部数据副本，或者立刻删除。 GDPR 和 CCPA
                 适用，我们对所有人一视同仁，不只是欧盟和加州居民。

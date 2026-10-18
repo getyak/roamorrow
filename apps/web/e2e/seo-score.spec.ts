@@ -29,7 +29,7 @@ const LOCALES: { locale: "en" | "zh"; path: string; expectHtmlLang: string }[] =
   { locale: "zh", path: "/zh", expectHtmlLang: "zh-CN" },
 ];
 
-test.describe("Solo Compass — SEO 100 rubric", () => {
+test.describe("Roamorrow — SEO 100 rubric", () => {
   test("both locales", async ({ page, baseURL }) => {
     const audits: PageAudit[] = [];
 
@@ -51,7 +51,7 @@ test.describe("Solo Compass — SEO 100 rubric", () => {
       /* 1. title 30–60 chars incl. brand */
       const title = await page.title();
       const titleLen = title.length;
-      const titleHasBrand = /Solo Compass/i.test(title);
+      const titleHasBrand = /Roamorrow/i.test(title);
       const titleOk = titleLen >= 30 && titleLen <= 60 && titleHasBrand;
       const titleScore = titleOk ? 5 : titleHasBrand && titleLen > 0 ? 3 : 0;
       record(
@@ -456,7 +456,7 @@ test.describe("Solo Compass — SEO 100 rubric", () => {
     );
 
     const md = [
-      `# Solo Compass — SEO Score`,
+      `# Roamorrow — SEO Score`,
       ``,
       `**${total} / ${maxTotal}** (${pct.toFixed(1)}%)  — avg of EN + ZH`,
       ``,
@@ -483,5 +483,63 @@ test.describe("Solo Compass — SEO 100 rubric", () => {
     console.log(`SEO_SCORE=${total}/${maxTotal} (${pct.toFixed(1)}%)\n`);
 
     expect(total, `SEO score should be perfect: ${total}/${maxTotal}\n${md}`).toBe(maxTotal);
+  });
+});
+
+test.describe("Roamorrow public identity", () => {
+  test("canonical metadata and reachable brand assets", async ({ page, request }) => {
+    test.setTimeout(180_000);
+    for (const path of ["/", "/zh", "/download", "/support", "/terms"]) {
+      const response = await page.goto(path, { waitUntil: "domcontentloaded" });
+      expect(response?.ok(), path).toBeTruthy();
+      await expect(page).toHaveTitle(/Roamorrow/);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        path === "/" ? /^https:\/\/roamorrow\.com\/?$/ : `https://roamorrow.com${path}`,
+      );
+      const hrefs = await page
+        .locator("a[href]")
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href") ?? ""));
+      expect(hrefs.some((href) => /id0000000000|solocompass\.app|compass\.io/.test(href))).toBe(
+        false,
+      );
+    }
+    for (const path of ["/icon", "/apple-icon", "/opengraph-image", "/brand/roamorrow-mark.svg"]) {
+      const response = await request.get(path);
+      expect(response.ok(), path).toBeTruthy();
+      expect(response.headers()["content-type"], path).toMatch(/image\//);
+    }
+    const robots = await request.get("/robots.txt");
+    expect(await robots.text()).toContain("https://roamorrow.com/sitemap.xml");
+    const sitemap = await request.get("/sitemap.xml");
+    expect(await sitemap.text()).not.toMatch(/solocompass\.app|\/zh\/(download|terms|support)</);
+  });
+
+  test("public share pages default to English and retain explicit Chinese", async ({ page }) => {
+    for (const [path, english, chinese] of [
+      ["/experience/miradouro-graca", "Quick facts", "速览"],
+      ["/trip/sofia-lisbon-may-2025", "A trip by", "作者"],
+    ]) {
+      await page.goto(path!, { waitUntil: "domcontentloaded" });
+      await expect(page.locator("main")).toContainText(english!);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        `https://roamorrow.com${path}`,
+      );
+      await page.goto(`${path}?lang=zh`, { waitUntil: "domcontentloaded" });
+      await expect(page.locator("main")).toContainText(chinese!);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        `https://roamorrow.com${path}?lang=zh`,
+      );
+    }
+  });
+
+  test("Chinese city navigation keeps the selected language", async ({ page }) => {
+    await page.goto("/lisbon?lang=zh", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('a[href^="/experience/"]').first()).toHaveAttribute(
+      "href",
+      /\?lang=zh$/,
+    );
   });
 });

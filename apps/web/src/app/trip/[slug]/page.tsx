@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { BRAND, publicUrl } from "@/lib/brand";
 import { findTripBySlug, type Trip } from "@/lib/trips-data";
 
 const FONT_DISPLAY = '-apple-system, "SF Pro Display", "Inter", system-ui, sans-serif';
@@ -27,7 +28,7 @@ interface PageProps {
 function resolveLang(searchParams: Record<string, string | string[] | undefined>): Lang {
   const v = searchParams.lang;
   const single = Array.isArray(v) ? v[0] : v;
-  return single === "en" ? "en" : "zh";
+  return single === "zh" ? "zh" : "en";
 }
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
@@ -35,20 +36,21 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const sp = await searchParams;
   const lang = resolveLang(sp);
   const trip = findTripBySlug(slug);
-  if (!trip) return { title: "Solo Compass — Not found" };
+  if (!trip) return { title: "Roamorrow — Not found" };
 
   const title = lang === "zh" ? trip.titleZh : trip.titleEn;
   const description = lang === "zh" ? trip.introZh : trip.intro;
-  const fullTitle = `${title} — ${trip.author} · Solo Compass`;
+  const fullTitle = `${title} — ${trip.author} · Roamorrow`;
 
   return {
-    title: fullTitle,
+    title: { absolute: fullTitle },
     description,
     openGraph: {
       title: fullTitle,
       description,
       type: "article",
-      siteName: "Solo Compass",
+      url: publicUrl(`/trip/${slug}${lang === "zh" ? "?lang=zh" : ""}`),
+      siteName: BRAND.name,
       locale: lang === "zh" ? "zh_CN" : "en_US",
     },
     twitter: {
@@ -57,9 +59,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       description,
     },
     alternates: {
+      canonical: publicUrl(`/trip/${slug}${lang === "zh" ? "?lang=zh" : ""}`),
       languages: {
-        en: `/trip/${slug}?lang=en`,
-        zh: `/trip/${slug}`,
+        en: publicUrl(`/trip/${slug}`),
+        "zh-CN": publicUrl(`/trip/${slug}?lang=zh`),
+        "x-default": publicUrl(`/trip/${slug}`),
       },
     },
   };
@@ -87,7 +91,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
           cta1: "想做你自己的？",
           cta2: "免费 · 不用账号",
           cta3: "从你在的地方开始",
-          poweredBy: "由 Solo Compass 整理 · 你的故事，你拥有",
+          poweredBy: "由 Roamorrow 整理 · 你的故事，你拥有",
           share: "分享",
           km: "公里",
         }
@@ -99,7 +103,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
           cta1: "Want to make yours?",
           cta2: "Free · no account",
           cta3: "Start from where you are",
-          poweredBy: "Made with Solo Compass · Your story, yours",
+          poweredBy: "Made with Roamorrow · Your story, yours",
           share: "Share",
           km: "km",
         };
@@ -164,7 +168,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
               letterSpacing: 0.5,
             }}
           >
-            compass.io / {trip.author.toLowerCase().replace(/\s+/g, "-")} / {trip.slug}
+            roamorrow.com / {trip.author.toLowerCase().replace(/\s+/g, "-")} / {trip.slug}
           </span>
           <span style={{ flex: 1 }} />
           <button
@@ -445,7 +449,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
             </div>
           </div>
           <Link
-            href={`/${trip.citySlug}${lang === "en" ? "?lang=en" : ""}`}
+            href={`/${trip.citySlug}${lang === "zh" ? "?lang=zh" : ""}`}
             style={{
               padding: "10px 18px",
               borderRadius: 6,
@@ -460,7 +464,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
               textDecoration: "none",
             }}
           >
-            compass.io →
+            roamorrow.com →
           </Link>
         </div>
 

@@ -3,7 +3,7 @@
 > Last updated 2026-07-01. Ground truth lives here; the bot's `/privacy`
 > command and the web app's privacy footer link to this file.
 
-Solo Compass is built for solo travelers. People moving through unfamiliar
+Roamorrow is built for solo travelers. People moving through unfamiliar
 places under their own name carry asymmetric privacy risk — so we collect as
 little as possible, hash what we have to keep, and surface the opt-out paths
 in the same flow that creates the data.
@@ -102,7 +102,7 @@ engagement events (no `streak_extended`, no `daily_open`, no
 
 ## Data deletion requests
 
-Email `privacy@solo-compass.app` from any address with a description of the
+Email `privacy@roamorrow.com` from any address with a description of the
 request. We rotate the analytics salt monthly, which already invalidates
 older hashed ids — for a hard request, we'll rotate immediately.
 
@@ -136,7 +136,7 @@ All types are declared with purpose **App Functionality** only, not linked to id
 | System boot time | `NSPrivacyAccessedAPICategorySystemBootTime` | 35F9.1      | Transitive use via URLSession / OS networking frameworks    |
 | Disk space       | `NSPrivacyAccessedAPICategoryDiskSpace`      | E174.1      | Transitive use via SwiftData ModelContainer storage probing |
 
-Privacy policy URL declared in `Info.plist`: `https://solocompass.app/privacy`
+Privacy policy URL declared in `Info.plist`: `https://roamorrow.com/privacy`
 
 ## Changes to this document
 

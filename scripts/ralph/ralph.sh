@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ralph - Autonomous AI agent loop for Solo Compass
+# Ralph - Autonomous AI agent loop for Roamorrow
 # Each iteration: fresh Claude Code instance → implement single story → test → commit
 # Usage: ./ralph.sh [--tool claude] [max_iterations]
 
@@ -24,7 +24,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Init progress file
 if [ ! -f "$PROGRESS_FILE" ]; then
-  echo "# Solo Compass — Ralph Progress Log" > "$PROGRESS_FILE"
+  echo "# Roamorrow — Ralph Progress Log" > "$PROGRESS_FILE"
   echo "Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$PROGRESS_FILE"
   echo "Tool: $TOOL" >> "$PROGRESS_FILE"
   echo "---" >> "$PROGRESS_FILE"
@@ -134,9 +134,9 @@ You MUST:
   fi
 
   # Build the Claude Code prompt
-  PROMPT="${LINUX_BANNER}You are implementing a SINGLE user story for the Solo Compass Progressive Explore + Enrichment PRD.
+  PROMPT="${LINUX_BANNER}You are implementing a SINGLE user story for the Roamorrow Progressive Explore + Enrichment PRD.
 
-PROJECT: Solo Compass (独行罗盘) — map-first companion app for solo travelers.
+PROJECT: Roamorrow (Roamorrow) — map-first companion app for solo travelers.
 Current PRD: Progressive Explore + cross-channel compilation + agent orchestration — small-radius-first ladder (5→10→25→100km) that auto-expands when sparse, incrementally drops map pins, cross-compiles each place across OSM/Foursquare/MapKit/web, and is drivable by natural-language chat/voice. Source: tasks/prd-progressive-explore-enrichment.md.
 Tech stack: pnpm monorepo; iOS app under apps/ios/SoloCompass (SwiftUI + MapKit, XcodeGen); web/bot/packages in TypeScript strict.
 Skim CLAUDE.md only if you need a convention you don't already know. Choose the relevant target from the story acceptance criteria.

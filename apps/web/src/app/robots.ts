@@ -5,7 +5,7 @@ import type { MetadataRoute } from "next";
  * Doc: SEO_STRATEGY.md §6
  */
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export default function robots(): MetadataRoute.Robots {
   return {

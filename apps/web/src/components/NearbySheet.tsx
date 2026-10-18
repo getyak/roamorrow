@@ -48,7 +48,7 @@ export function NearbySheet({
           className="fixed inset-x-0 bottom-0 z-20 mx-auto flex h-full max-h-[95dvh] flex-col rounded-t-2xl bg-paper-cream shadow-2xl outline-none ring-1 ring-ink-warm/10"
           aria-describedby={undefined}
         >
-          <Drawer.Title className="sr-only">Solo Compass — nearby & footprint</Drawer.Title>
+          <Drawer.Title className="sr-only">Roamorrow — nearby & footprint</Drawer.Title>
 
           {/* Drag handle */}
           <button

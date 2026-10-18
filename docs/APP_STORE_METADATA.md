@@ -1,197 +1,155 @@
-# App Store Metadata — Solo Compass v1.1
+# App Store Metadata — Roamorrow
 
-Source-of-truth for App Store Connect listing fields, TestFlight beta description, and reviewer notes. Update here first, then paste into ASC.
-
----
+Draft listing copy for the Roamorrow rebrand. These are intended submission
+fields, not confirmation that App Store Connect or TestFlight has been updated.
+Read provider settings back before marking publication complete.
 
 ## Build identity
 
-| Field                   | Value                                                                        |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| Bundle ID               | `com.solocompass.app`                                                        |
-| MARKETING_VERSION       | `1.1.0`                                                                      |
-| CURRENT_PROJECT_VERSION | `2`                                                                          |
-| Minimum iOS             | `17.0`                                                                       |
-| Primary language        | `English (U.S.)`                                                             |
-| Localizations           | `English`, `Simplified Chinese (zh-Hans)`                                    |
-| Category — Primary      | Travel                                                                       |
-| Category — Secondary    | Lifestyle                                                                    |
-| Encryption              | `ITSAppUsesNonExemptEncryption = false` (only HTTPS over standard libraries) |
-| Content rights          | "Does not use third-party content"                                           |
-| Age rating              | 4+                                                                           |
+| Field | Value |
+| --- | --- |
+| Public app name | `Roamorrow` |
+| Bundle ID | `com.solocompass.app` — retained for existing installs |
+| Marketing version | `1.1.0` in `apps/ios/project.yml`; release workflow may override |
+| Build number | `2` in `apps/ios/project.yml`; release workflow may override |
+| Minimum iOS | `17.0` |
+| Primary language | English (U.S.) |
+| Localizations | English, Simplified Chinese (`zh-Hans`) |
+| Primary / secondary category | Travel / Lifestyle — confirm in App Store Connect |
+| Encryption | `ITSAppUsesNonExemptEncryption = false` |
+| Content rights / age rating | Reconfirm the current questionnaire and source licenses before submission |
 
----
+Signing, bundle IDs, StoreKit product IDs, persistence, Keychain namespaces,
+and the existing `solocompass://` links retain their technical identities.
+The public name is Roamorrow in both languages.
 
-## App name + subtitle
+## App name and subtitle
 
-- **App name (30 char max)**: `Solo Compass`
-- **Subtitle (30 char max)**: `Solo travel, mapped`
+| Field | English | Simplified Chinese |
+| --- | --- | --- |
+| App name (30 characters) | `Roamorrow` | `Roamorrow` |
+| Subtitle (30 characters) | `Find your way. Feel at home.` | `一个人出发，也能在远方过好日常` |
 
-zh-Hans:
+## Promotional text (170 characters)
 
-- **应用名称**: `Solo Compass`
-- **副标题**: `属于一个人的旅行地图`
-
----
-
-## Promotional text (170 char, editable any time)
-
-> AI exploration in any city worldwide. Real places from OpenStreetMap, enriched with solo-traveler context: comfort, vibe, what to expect when you walk in alone.
+> Find your way. Feel at home. Explore local experiences, save places you want to return to, and make a new city feel more familiar.
 
 zh-Hans:
 
-> 在世界任意城市用 AI 探索。来自 OpenStreetMap 的真实地点,结合独行视角的解读:氛围、舒适度、一个人推门进去会遇到什么。
+> 一个人出发，也能在远方过好日常。发现当地体验，收藏想再去的地方，慢慢熟悉一座新的城市。
 
----
+## Description (4000 characters)
 
-## Description (4000 char)
-
-> Solo Compass is a map-first companion for people who travel — and live — alone.
+> Roamorrow is a personal companion for solo travel and life on the move.
 >
-> Every spot on the map is an experience worth being at by yourself. Quiet cafes where staff leave you alone. Markets where solo eaters get a seat. Temples timed for the morning light. Viewpoints with a bench, not a tour group.
+> Start with a map of experiences: a quiet café, a walk by the water, a market worth taking your time in. Save what interests you and return to it when the moment feels right.
 >
-> ### Explore here
+> Explore nearby
 >
-> Tap one button anywhere on Earth and Solo Compass pulls real public places from OpenStreetMap, then asks AI to draft solo-traveler descriptions: comfort, pace, what to bring, when to skip. Works in cities we have never seen before.
+> Discover public places from OpenStreetMap and browse curated experiences. AI can help describe an experience from a solo traveler's perspective. Sources and confidence help you judge the information; opening hours, conditions, and suitability can change.
 >
-> ### Solo Score
+> Find your own pace
 >
-> Each place gets a 0–10 score across six dimensions: seating, solo patrons, staff pressure, portion size for one, ambiance, and safety. Built from real user feedback, not a rating system.
+> Browse Solo Score dimensions, save favorites, record visits, and share an experience or a route. Use voice input when you would rather speak than type.
 >
-> ### Voice intent
+> Optional AI assistance
 >
-> Hold the mic, describe what you want — "a quiet bookshop with coffee" — and the map rearranges itself.
+> Ask for suggestions in your own words. Available AI features depend on your subscription, configured services, and network access. Review the in-app disclosure before sending information to external services.
 >
-> ### Free vs Pro
+> Your travel, your choices
 >
-> Free: full curated map, OSM-only Explore (skeleton mode), all your favorites and check-ins.
-> Pro: AI-enriched Explore in any city, voice intent, per-experience AI insights. 7-day free trial.
->
-> ### Privacy
->
-> No accounts. No tracking. Coarse location goes to OpenStreetMap; OSM tags + city slug go to Anthropic for the description draft. That's it. Nothing for sale, nothing for advertisers.
+> Location, microphone, camera, and photo access are requested for the features that use them. Review the Privacy Policy for information about AI processing, optional sync, diagnostics, and data controls.
 
 zh-Hans:
 
-> Solo Compass 是为独行者设计的地图工具——无论你是旅行,还是日常生活。
+> Roamorrow 陪你一个人旅行，也陪你在流动中生活。
 >
-> 地图上的每一处都值得一个人前往。安静的咖啡馆、对单人友好的市集、晨光最好的寺庙、有长椅没有旅行团的观景台。
+> 从地图上的体验开始：一家安静的咖啡馆，一段沿水边的散步，一个值得慢慢逛的市集。收藏感兴趣的地方，等合适的时候再去。
 >
-> ### 在这里探索
+> 探索附近
 >
-> 在地球上任意位置点一下按钮, Solo Compass 会从 OpenStreetMap 抓取真实公开地点,再请 AI 用独行视角写描述:氛围如何、节奏怎样、带什么、什么时候应该绕开。新城市也照样工作。
+> 浏览精选体验，发现来自 OpenStreetMap 的公开地点。AI 可以从独自旅行的角度补充体验描述。查看来源和置信度，再判断信息是否适合你；营业时间、现场条件和体验感受都可能变化。
 >
-> ### 独行评分
+> 找到自己的节奏
 >
-> 每处都有六维 0–10 评分:座位友好度、独行客比例、员工压力、一人份量、氛围、安全感。来自真实用户反馈,而非评论系统。
+> 查看独行评分的各个维度，收藏地点、记录到访，分享体验或路线。不想打字时，也可以用语音表达。
 >
-> ### 语音意图
+> 按需使用 AI
 >
-> 按住麦克风,说"安静的书店,有咖啡",地图会自动重新排列。
+> 用自己的话说出想法，获取建议。AI 功能的可用性取决于订阅、服务配置和网络连接。向外部服务发送信息前，请先阅读应用内的数据说明。
 >
-> ### 免费 vs Pro
+> 自己决定如何旅行
 >
-> 免费:精选地图、OSM 骨架版探索、收藏与签到。
-> Pro:任意城市的 AI 增强探索、语音意图、按需 AI 洞察。7 天免费试用。
->
-> ### 隐私
->
-> 不需要账号,不做追踪。粗略位置发给 OpenStreetMap;OSM 标签 + 城市标识发给 Anthropic 用于生成描述。仅此而已。不出售,不给广告商。
+> 位置、麦克风、相机和照片权限会在相应功能需要时请求。有关 AI 处理、可选同步、诊断和数据管理的说明，请阅读《隐私政策》。
 
----
-
-## Keywords (100 char, comma-separated, no spaces)
+## Keywords (100 characters, comma-separated)
 
 `solo,travel,map,nomad,cafe,quiet,explore,coworking,wellness,nearby`
 
----
+## Public destinations
 
-## Support URL + Marketing URL
+| Field | Intended value |
+| --- | --- |
+| Support URL | `https://roamorrow.com/support` |
+| Marketing URL | `https://roamorrow.com` |
+| Privacy URL | `https://roamorrow.com/privacy` |
+| Terms URL | `https://roamorrow.com/terms` |
+| Support email | `hello@roamorrow.com` |
+| Privacy email | `privacy@roamorrow.com` |
 
-| Field         | Value (v1.1 placeholder)                  |
-| ------------- | ----------------------------------------- |
-| Support URL   | `https://solo-compass.vercel.app/support` |
-| Marketing URL | `https://solo-compass.vercel.app`         |
-| Privacy URL   | `https://solo-compass.vercel.app/privacy` |
+Verify HTTPS pages and email forwarding before submission. No App Store or
+TestFlight download URL is recorded until the destination is verified.
 
-(Custom domain deferred to v1.2 per founder decision.)
+## In-app purchases
 
----
+| Product ID — unchanged | Intended display name | Local StoreKit introductory offer |
+| --- | --- | --- |
+| `com.solocompass.pro.monthly` | Roamorrow Pro Monthly | 7 days |
+| `com.solocompass.pro.yearly` | Roamorrow Pro Yearly | 7 days |
 
-## In-App Purchases (StoreKit Configuration source-of-truth)
+Intended subscription group display name: `Roamorrow Pro`. The group ID,
+product IDs, and receipt compatibility are unchanged. The checked-in StoreKit
+configuration supports local testing; confirm current prices, trial eligibility,
+family sharing, and localized display names in App Store Connect before publishing.
 
-| Product ID                    | Display name | Apple price tier | Family shareable | Trial      |
-| ----------------------------- | ------------ | ---------------- | ---------------- | ---------- |
-| `com.solocompass.pro.monthly` | Pro Monthly  | Tier 2           | Yes              | 7-day free |
-| `com.solocompass.pro.yearly`  | Pro Yearly   | Tier 11          | Yes              | 7-day free |
+## Screenshots
 
-Subscription group: `Solo Compass Pro`.
+Capture the actual release build in English first, then Simplified Chinese.
+Use the device sizes required by the current App Store Connect submission.
 
-App Review note: free users still get the curated map + OSM-only Explore. Pro unlocks AI synthesis on top.
+1. Welcome screen with the route and rising sun mark, Roamorrow name, and tagline.
+2. Map with representative experiences and visible source information.
+3. Experience detail with Solo Score and confidence.
+4. An experience or route share card with `roamorrow.com`.
+5. Voice input and its permission explanation.
+6. Subscription screen with prices and offers from the current store environment.
 
----
+## TestFlight beta description (draft)
 
-## Screenshots checklist (App Store Connect requires)
-
-- [ ] 6.9" iPhone (Pro Max class, e.g. iPhone 17 Pro Max) — minimum 3, recommended 6
-- [ ] 6.5" iPhone (legacy, optional but recommended)
-- [ ] 12.9" / 13" iPad Pro (only if shipping iPad in v1.1; current project.yml allows iPad orientations, so include)
-
-Required scenes:
-
-1. Map with curated experiences in Chiang Mai
-2. Explore here in a fresh city (Hanoi recommended) — AI-enriched
-3. Experience detail with Solo Score
-4. Paywall with monthly/yearly cards
-5. Voice intent listening state
-6. Settings with Travel Style picker
-
-zh-Hans screenshots: re-take #1, #2, #3 with system language set to Simplified Chinese.
-
----
-
-## TestFlight beta description (4000 char)
-
-> v1.1 introduces full SwiftData persistence, AI cost control, freemium with 7-day free trial, cross-device sync via Supabase, and Simplified Chinese localization.
+> This build introduces the Roamorrow name and route-and-rising-sun identity. Existing app data, purchases, and legacy app links keep their technical identities.
 >
-> Test focus this round:
+> Please check the welcome screen, system permission prompts, English and Simplified Chinese text, shared cards, exported files, and the Privacy Policy and Terms links.
 >
-> 1. Explore Here in a city you have never seen on the curated map (Hanoi, Da Nang, Ubud are good targets).
-> 2. The first-run consent sheet — does the language make sense?
-> 3. Paywall flow: tap Explore as a free user, start trial, exit, restore.
-> 4. Switch system language to Simplified Chinese and walk through the same flows.
+> Also check that saved experiences and settings survive an upgrade, previously purchased entitlements restore, and existing app links still open the correct experience or route.
 >
-> Known limitations:
->
-> - Domain is `solo-compass.vercel.app` until v1.2.
-> - Support email is a Gmail alias for now.
->
-> Email feedback to xiong3293172751@outlook.com or use the in-app Report an issue from any experience detail.
+> Send feedback through the in-app reporting flow or hello@roamorrow.com once support forwarding has been verified.
 
----
+## Reviewer notes (draft)
 
-## Reviewer notes (App Review submission)
-
-> Solo Compass is a paid travel/lifestyle app with a free curated tier and Pro subscription.
+> Roamorrow was previously named Roamorrow. This is a public rebrand of the existing app; the bundle ID and in-app purchase product IDs are unchanged.
 >
-> AI features (Explore Here, voice intent, per-experience insights) call Anthropic. The first time the user invokes any AI feature we surface an in-app consent sheet describing exactly what data leaves the phone. No PII is sent: only OpenStreetMap tag dictionaries and a city slug.
+> The app offers a free experience map and optional Pro features. AI and sync availability depend on the submitted build's service configuration. Please review the in-app data disclosure and the Privacy Policy for the processing used by this build.
 >
-> Free demo for review:
->
-> - Open the app in any city and explore the curated map (no purchase required).
-> - To exercise Pro paths during review, use Sandbox account; the Configuration.storekit file ships with a 7-day intro trial.
->
-> No accounts, no tracking, no third-party SDKs. Anonymous Supabase user IDs are used only to sync completions/favorites across the same person's devices.
+> Provide any required review credentials and sandbox purchase instructions with the actual submission. The local Configuration.storekit file is a development fixture and does not establish App Store availability or an introductory offer for a reviewer account.
 
----
+## Submission gates
 
-## Pre-submit checklist
-
-- [ ] `xcodebuild test` passes on iPhone 17 simulator
-- [ ] `pnpm parity:check` passes (TS↔Swift, TS↔DB, SQL↔Swift)
-- [ ] PrivacyInfo.xcprivacy bundled in `.app` (verified in DerivedData)
-- [ ] Both `en.lproj/Localizable.strings` and `zh-Hans.lproj/Localizable.strings` bundled
-- [ ] Configuration.storekit products visible in StoreKit configuration
-- [ ] All `NSLocationWhenInUseUsageDescription`, `NSMicrophoneUsageDescription`, `NSSpeechRecognitionUsageDescription` strings reviewed for clarity
-- [ ] App icon: all required sizes filled in `Assets.xcassets/AppIcon.appiconset`
-- [ ] Privacy URL + Support URL reachable
+- [ ] Native build and relevant tests pass on the release candidate.
+- [ ] Real Simulator or device captures verify both languages and the home-screen display name.
+- [ ] Upgrade preserves saved data, preferences, purchases, and legacy app links.
+- [ ] Localized `InfoPlist.strings`, privacy manifest, and app-icon sizes are bundled.
+- [ ] Public support, privacy, and terms pages are reachable over HTTPS.
+- [ ] Support and privacy email forwarding are verified.
+- [ ] StoreKit names, offers, prices, privacy labels, content rights, and age rating are reviewed in App Store Connect.
+- [ ] App Store Connect and TestFlight branding are read back after provider changes.
+- [ ] Submitted build, review status, and verified download URL are recorded separately from source changes.

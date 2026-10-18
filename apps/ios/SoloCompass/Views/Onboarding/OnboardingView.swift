@@ -167,9 +167,10 @@ public struct OnboardingView: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 24) {
-                Image(systemName: "map.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(CT.accent)
+                Image("RoamorrowMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 88, height: 88)
                     .accessibilityHidden(true)
 
                 VStack(spacing: 8) {

@@ -14,9 +14,8 @@ import { DayPageMock } from "./DayPageMock";
 import { HeroCanvas } from "./HeroCanvas";
 import { CapabilityMock } from "./CapabilityMocks";
 import type { Copy, Locale } from "./copy";
-
-// App Store link — replaced when SKU ships.
-const APP_STORE_URL = "https://apps.apple.com/app/solo-compass/id0000000000";
+import { RoamorrowWordmark } from "@/components/brand/RoamorrowMark";
+import { BRAND } from "@/lib/brand";
 
 interface Props {
   copy: Copy;
@@ -46,8 +45,7 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
             href={homePath}
             className="flex items-center gap-2 font-display text-[20px] font-medium tracking-tight"
           >
-            <SoloCompassMark />
-            <span>Solo Compass</span>
+            <RoamorrowWordmark />
           </Link>
           <div className="hidden items-center gap-1 md:flex">
             {items.map((it) => (
@@ -71,23 +69,13 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
             >
               {copy.langSwitch}
             </Link>
-            <ButtonLink href={APP_STORE_URL} variant="primary" className="hidden md:inline-flex">
+            <ButtonLink href={BRAND.webAppPath} variant="primary" className="hidden md:inline-flex">
               {copy.nav.getApp}
             </ButtonLink>
           </div>
         </div>
       </Container>
     </nav>
-  );
-}
-
-function SoloCompassMark() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden>
-      <circle cx="12" cy="12" r="11" fill="none" stroke="var(--accent)" strokeWidth="1.4" />
-      <circle cx="12" cy="12" r="2.6" fill="var(--sun-gold)" />
-      <path d="M12 2 L14 12 L12 22 L10 12 Z" fill="var(--accent)" opacity="0.85" />
-    </svg>
   );
 }
 
@@ -123,9 +111,8 @@ export function Hero({ copy }: Props) {
               className="ds-reveal mt-12 flex flex-wrap items-center gap-6"
               style={{ animationDelay: "1040ms" }}
             >
-              <ButtonLink href={APP_STORE_URL} variant="primary">
-                <AppleGlyph />
-                <span className="ml-2">{copy.hero.ctaPrimary}</span>
+              <ButtonLink href={BRAND.webAppPath} variant="primary">
+                {copy.hero.ctaPrimary}
               </ButtonLink>
               <a
                 href="#features"
@@ -148,14 +135,6 @@ export function Hero({ copy }: Props) {
         </div>
       </Container>
     </Section>
-  );
-}
-
-function AppleGlyph() {
-  return (
-    <svg width="18" height="20" viewBox="0 0 18 20" fill="currentColor" aria-hidden>
-      <path d="M14.7 15.4c-.2.5-.4 1-.7 1.4-.4.6-.7 1-1 1.3-.4.5-.9.7-1.4.7-.4 0-.8-.1-1.4-.3-.6-.2-1.1-.3-1.5-.3-.5 0-1 .1-1.6.3-.6.2-1.1.3-1.4.3-.5 0-1-.2-1.5-.7-.3-.3-.7-.7-1.1-1.4C3.6 15.9 3.3 15 3 14 2.6 12.9 2.5 11.9 2.5 10.9c0-1.1.2-2.1.7-2.9.4-.7.9-1.2 1.5-1.6.6-.4 1.3-.6 2.1-.6.4 0 .9.1 1.5.3.6.2 1 .3 1.2.3.1 0 .5-.1 1.3-.4.7-.3 1.3-.4 1.8-.3 1.4.1 2.5.7 3.2 1.7-1.3.8-1.9 1.9-1.9 3.3 0 1.1.4 2 1.2 2.8.4.3.7.6 1.1.8-.1.2-.2.5-.4.8Zm-3.5-11c0 .8-.3 1.6-.9 2.3-.7.8-1.6 1.3-2.6 1.2 0-.9.3-1.7.9-2.4.3-.4.7-.7 1.2-.9.4-.2.8-.3 1.2-.3.1.1.1.1.2.1Z" />
-    </svg>
   );
 }
 
@@ -415,7 +394,7 @@ export function Pricing({ copy, locale }: Props) {
               ))}
             </ul>
             <div className="mt-10">
-              <ButtonLink href={APP_STORE_URL} variant="secondary" className="w-full">
+              <ButtonLink href="/download" variant="secondary" className="w-full">
                 {copy.pricing.lifetime.cta}
               </ButtonLink>
             </div>
@@ -446,7 +425,7 @@ export function Pricing({ copy, locale }: Props) {
               ))}
             </ul>
             <div className="mt-10">
-              <ButtonLink href={APP_STORE_URL} variant="primary" className="w-full">
+              <ButtonLink href="/download" variant="primary" className="w-full">
                 {copy.pricing.yearly.cta}
               </ButtonLink>
             </div>
@@ -499,8 +478,7 @@ export function Footer({ copy }: Props) {
         <div className="mt-16 grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 font-display text-[18px] font-medium">
-              <SoloCompassMark />
-              Solo Compass
+              <RoamorrowWordmark />
             </div>
           </div>
           {copy.footer.columns.map((col) => (

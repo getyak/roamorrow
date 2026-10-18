@@ -9,7 +9,7 @@ import type { MetadataRoute } from "next";
  * once those routes exist.
  */
 
-const SITE_URL = "https://solocompass.app";
+import { SITE_URL } from "@/lib/brand";
 const NOW = new Date();
 
 type Freq = MetadataRoute.Sitemap[number]["changeFrequency"];
@@ -25,6 +25,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/privacy", priority: 0.6, freq: "monthly" },
     { path: "/zh/privacy", priority: 0.6, freq: "monthly" },
     { path: "/download", priority: 0.8, freq: "monthly" },
+    { path: "/terms", priority: 0.5, freq: "monthly" },
+    { path: "/support", priority: 0.6, freq: "monthly" },
   ];
 
   return staticPaths.map((s) => ({
@@ -32,18 +34,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: NOW,
     changeFrequency: s.freq,
     priority: s.priority,
-    alternates: s.path.startsWith("/zh")
-      ? {
-          languages: {
-            en: `${SITE_URL}${s.path.replace(/^\/zh/, "") || "/"}`,
-            "zh-CN": `${SITE_URL}${s.path}`,
+    alternates: ["/download", "/terms", "/support"].includes(s.path)
+      ? undefined
+      : s.path.startsWith("/zh")
+        ? {
+            languages: {
+              en: `${SITE_URL}${s.path.replace(/^\/zh/, "") || "/"}`,
+              "zh-CN": `${SITE_URL}${s.path}`,
+            },
+          }
+        : {
+            languages: {
+              en: `${SITE_URL}${s.path}`,
+              "zh-CN": `${SITE_URL}/zh${s.path === "/" ? "" : s.path}`,
+            },
           },
-        }
-      : {
-          languages: {
-            en: `${SITE_URL}${s.path}`,
-            "zh-CN": `${SITE_URL}/zh${s.path === "/" ? "" : s.path}`,
-          },
-        },
   }));
 }

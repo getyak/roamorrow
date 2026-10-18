@@ -1,5 +1,5 @@
 /**
- * LLMContext — the snapshot passed to every LLM call in Solo Compass.
+ * LLMContext — the snapshot passed to every LLM call in Roamorrow.
  *
  * Assembled by ContextManager (iOS) and serialized as JSON into the
  * system-prompt block. Shared between TS (packages/core) and Swift

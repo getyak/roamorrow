@@ -33,7 +33,7 @@ enum ShareCardRenderer {
             throw RenderError.pngEncodingFailed
         }
         let dir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        let filename = "solocompass-\(style.rawValue)-\(UUID().uuidString.prefix(8)).png"
+        let filename = "roamorrow-\(style.rawValue)-\(UUID().uuidString.prefix(8)).png"
         let url = dir.appendingPathComponent(filename)
         do {
             try data.write(to: url, options: .atomic)

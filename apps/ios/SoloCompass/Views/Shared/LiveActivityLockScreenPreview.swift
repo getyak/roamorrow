@@ -64,7 +64,7 @@ public struct LiveActivityLockScreenPreview: View {
 
     @ViewBuilder private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(NSLocalizedString("liveActivity.brand", comment: "Solo Compass brand wordmark"))
+            Text(NSLocalizedString("liveActivity.brand", comment: "Roamorrow brand wordmark"))
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .tracking(1.4)
                 .foregroundStyle(Color(white: 0.85).opacity(0.5))
@@ -77,10 +77,10 @@ public struct LiveActivityLockScreenPreview: View {
 
     private var titleText: String {
         switch kind {
-        case .soloAgentHint: return "Solo · 一个想法"
+        case .soloAgentHint: return "Roamorrow · 一个想法"
         case .timeCapsule:   return "时空胶囊 · 就在附近"
         case .dailyOmen:     return "今日城市签"
-        default:             return "SoloCompass"
+        default:             return "Roamorrow"
         }
     }
 

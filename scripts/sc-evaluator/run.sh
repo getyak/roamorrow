@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sc-evaluator/run.sh — Solo Compass evaluator runtime.
+# sc-evaluator/run.sh — Roamorrow evaluator runtime.
 #
 # Boots an iOS simulator (iPhone 17 Pro / iOS 26.4 preferred), installs the
 # freshly built SoloCompass.app, launches it, and walks through a named

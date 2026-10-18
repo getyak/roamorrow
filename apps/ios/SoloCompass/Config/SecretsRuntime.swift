@@ -203,8 +203,8 @@ extension Secrets {
         return (url, key)
     }
 
-    /// Root URL for the authenticated Solo Compass web API (for example,
-    /// `https://solo-compass.app`). Resolution chain mirrors Supabase config:
+    /// Root URL for the authenticated Roamorrow web API (for example,
+    /// `https://roamorrow.com`). Resolution chain mirrors Supabase config:
     /// process env → bundled Secrets.plist → build-time generated value.
     /// There is intentionally no localhost or public-service fallback.
     static func resolvedAPIBaseURL() -> URL? {

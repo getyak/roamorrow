@@ -29,7 +29,7 @@
 //     stream?:  boolean,
 //     max_tokens?: number,
 //     temperature?: number,
-//     // Solo Compass extension — picks the daily quota bucket:
+//     // Roamorrow extension — picks the daily quota bucket:
 //     kind?: "voice" | "explanation" | "synthesis"
 //   }
 

@@ -21,7 +21,7 @@ const record = (key: string, label: string, max: number, earned: number, note: s
   results.push({ key, label, max, earned, note });
 };
 
-test.describe("Solo Compass landing — quality rubric", () => {
+test.describe("Roamorrow landing — quality rubric", () => {
   test("all dimensions", async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on("console", (msg) => {
@@ -210,7 +210,7 @@ test.describe("Solo Compass landing — quality rubric", () => {
       JSON.stringify({ total, maxTotal, percent: pct, results }, null, 2),
     );
     const md = [
-      `# Solo Compass — Landing Score`,
+      `# Roamorrow — Landing Score`,
       ``,
       `**${total} / ${maxTotal}** (${pct.toFixed(1)}%)`,
       ``,

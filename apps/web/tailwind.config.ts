@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Solo Compass · Tailwind config
+ * Roamorrow · Tailwind config
  *
  * Colors, radii, shadows, motion mirror the CT palette
  * (source: apps/ios/SoloCompass/Views/Shared/CompareTokens.swift

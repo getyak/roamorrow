@@ -6,12 +6,14 @@
  */
 
 import { ImageResponse } from "next/og";
+import { BRAND } from "@/lib/brand";
+import { RoamorrowMark } from "@/components/brand/RoamorrowMark";
 import { findTripBySlug } from "@/lib/trips-data";
 
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Solo Compass — trip recap";
+export const alt = `${BRAND.name} — trip recap`;
 
 interface Props {
   readonly params: Promise<{ slug: string }>;
@@ -35,7 +37,7 @@ export default async function TripOgImage({ params }: Props) {
           fontSize: 48,
         }}
       >
-        Solo Compass
+        {BRAND.name}
       </div>,
       size,
     );
@@ -95,7 +97,7 @@ export default async function TripOgImage({ params }: Props) {
           display: "flex",
         }}
       >
-        {trip.titleZh}
+        {trip.titleEn}
       </div>
 
       <div
@@ -186,10 +188,10 @@ export default async function TripOgImage({ params }: Props) {
             textTransform: "uppercase",
           }}
         >
-          Solo Compass · trip recap
+          <RoamorrowMark size={28} /> {BRAND.name} · trip recap
         </div>
         <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 16, color: "#A39F99" }}>compass.io / {trip.slug}</div>
+        <div style={{ fontSize: 16, color: "#A39F99" }}>roamorrow.com / {trip.slug}</div>
       </div>
     </div>,
     size,

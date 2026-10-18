@@ -61,7 +61,7 @@ function exp(args: {
     sources: [
       {
         type: "field_visit",
-        attribution: "Solo Compass — dev fixture",
+        attribution: "Roamorrow — dev fixture",
         verifiedAt: "2026-04-01T00:00:00Z",
       },
     ],

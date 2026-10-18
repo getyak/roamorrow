@@ -1,30 +1,24 @@
 import { ImageResponse } from "next/og";
+import { RoamorrowMark } from "@/components/brand/RoamorrowMark";
+import { BRAND } from "@/lib/brand";
 
-// Next.js file-based apple-touch-icon: auto-served at /apple-icon and
-// injected as <link rel="apple-touch-icon"> in <head>.
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-export default function AppleIcon() {
+export default function Icon() {
   return new ImageResponse(
     <div
       style={{
-        fontSize: 120,
-        background: "#FAF8F6",
-        width: "100%",
-        height: "100%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "#B8935B",
-        fontFamily: "sans-serif",
-        fontWeight: 700,
-        letterSpacing: -4,
-        borderRadius: 40,
+        width: "100%",
+        height: "100%",
+        background: BRAND.colors.paper,
       }}
     >
-      SC
+      <RoamorrowMark size={size.width * 0.9} />
     </div>,
-    { ...size },
+    size,
   );
 }

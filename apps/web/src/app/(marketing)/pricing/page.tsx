@@ -5,11 +5,11 @@ import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 import { HomeJsonLd } from "../../_seo";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Pricing · Solo Compass",
+  title: "Pricing",
   description:
     "$29 one-time lifetime, or $50 yearly. No ads. No data selling. No subscription bloat. Free tier to try before you buy.",
   alternates: {
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: `${SITE_URL}/pricing`,
-    title: "Solo Compass · Pricing",
+    title: "Roamorrow · Pricing",
     description: "$29 lifetime or $50 yearly. Honest pricing, no ads.",
-    images: [{ url: "/og/pricing.png", width: 1200, height: 630 }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
 };
 
@@ -51,7 +51,7 @@ const FAQ_EN = [
   },
   {
     q: "Can I try before I buy?",
-    a: "Yes. Free tier is genuinely useful, not a demo. Download from the App Store, use it for a week, then decide.",
+    a: "You can explore the web map before deciding. Check the download page for the current iPhone release status.",
   },
 ];
 

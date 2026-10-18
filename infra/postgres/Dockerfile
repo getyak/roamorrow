@@ -1,6 +1,6 @@
 FROM pgvector/pgvector:pg16
 
-# Solo Compass needs both extensions: PostGIS for map queries and pgvector for
+# Roamorrow needs both extensions: PostGIS for map queries and pgvector for
 # the existing review-enrichment pipeline. The upstream pgvector image keeps
 # the regular Postgres entrypoint, so local development can still use the
 # documented `solo` role and database.

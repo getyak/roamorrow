@@ -1,6 +1,6 @@
 # SEO Strategy
 
-> Solo Compass · 搜索引擎获客战略
+> Roamorrow · 搜索引擎获客战略
 >
 > Status: v1 — 2026-07-02。任何 URL 结构、meta 模板、内容页模板变动前来这里对齐。
 >
@@ -10,14 +10,14 @@
 
 ## 1. SEO 目标的诚实定义
 
-Solo Compass 的 SEO 不追求"抢流量"，追求"抢定位"。
+Roamorrow 的 SEO 不追求"抢流量"，追求"抢定位"。
 
 **成功定义（12 个月）**:
 
 - 搜索 `"solo travel app"` (US) → 官网出现在 App Store 结果之下的第一屏
 - 搜索 `"独自旅行 app"` (CN) → 小红书 / 知乎结果之上出现
 - 搜索 `"quiet café Chiang Mai"` / `"清迈 独自 咖啡"` → 我们的城市 + 体验页出现在第一页
-- Google 品牌搜索 `"Solo Compass"` 月均 500+ 次
+- Google 品牌搜索 `"Roamorrow"` 月均 500+ 次
 
 **不追求什么**:
 
@@ -85,7 +85,7 @@ Solo Compass 的 SEO 不追求"抢流量"，追求"抢定位"。
 | 关键词       | Vol | Target |
 | ------------ | --- | ------ |
 | solo compass | -   | `/zh`  |
-| 独行罗盘 app | -   | `/zh`  |
+| Roamorrow app | -   | `/zh`  |
 
 ### Tier 2 · 品类
 
@@ -158,9 +158,9 @@ Solo Compass 的 SEO 不追求"抢流量"，追求"抢定位"。
 每个页面的 `<head>` 里输出：
 
 ```html
-<link rel="alternate" hreflang="en" href="https://solocompass.app/city/chiang-mai" />
-<link rel="alternate" hreflang="zh-CN" href="https://solocompass.app/zh/city/chiang-mai" />
-<link rel="alternate" hreflang="x-default" href="https://solocompass.app/city/chiang-mai" />
+<link rel="alternate" hreflang="en" href="https://roamorrow.com/city/chiang-mai" />
+<link rel="alternate" hreflang="zh-CN" href="https://roamorrow.com/zh/city/chiang-mai" />
+<link rel="alternate" hreflang="x-default" href="https://roamorrow.com/city/chiang-mai" />
 ```
 
 **共同错误规避**：`x-default` 必须指英文，不能省略；`hreflang="zh"` 而不是 `hreflang="zh-CN"` 会被 Google 判无效（对中文区域必须显式）。
@@ -177,7 +177,7 @@ Google Rich Result 的入场券。三类页面三种 schema：
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "Solo Compass",
+  "name": "Roamorrow",
   "operatingSystem": "iOS 17.0+",
   "applicationCategory": "TravelApplication",
   "offers": [
@@ -232,7 +232,7 @@ Google Rich Result 的入场券。三类页面三种 schema：
 ### 首发必做（launch blocker）
 
 - [ ] Next.js `sitemap.ts` 输出 `/sitemap.xml`，含所有静态路径 + 城市 + 体验
-- [ ] Next.js `robots.ts` 输出 `/robots.txt`，`Allow: /`, `Sitemap: https://solocompass.app/sitemap.xml`
+- [ ] Next.js `robots.ts` 输出 `/robots.txt`，`Allow: /`, `Sitemap: https://roamorrow.com/sitemap.xml`
 - [ ] `<link rel="canonical">` 每页
 - [ ] hreflang 全部就绪
 - [ ] OpenGraph + Twitter Card `next/og` 动态生成
@@ -267,7 +267,7 @@ Lighthouse 目标：Performance ≥ 95, Accessibility ≥ 95, SEO 100, Best Prac
 
 ### Month 1 · 5 篇（品牌与立场）
 
-1. `/manifesto` — Why we built Solo Compass（独立开发者叙事，独立域名的护城河）
+1. `/manifesto` — Why we built Roamorrow（独立开发者叙事，独立域名的护城河）
 2. `/blog/why-chatgpt-fails-solo-travelers` — Tier 3 高流量 + 立场
 3. `/blog/solo-compass-vs-google-maps` — Tier 3，直接对位
 4. `/blog/the-honest-confidence-signal` — Trust 深度技术叙事（fresh/verified/degraded 机制）
@@ -293,7 +293,7 @@ Chiang Mai / Lisbon / Tokyo / Kyoto / Bali 全部上线，每城 30-50 个体验
 
 1. **Product Hunt / IndieHackers / MakerLog** — 首发即上，Hunter 用真人独立开发者，不刷票
 2. **Reddit `/r/solotravel`, `/r/digitalnomad`, `/r/onebag`** — 真实分享自己造这个 App 的故事（用户 flair 保持诚意），不群发链接
-3. **HackerNews Show HN** — 首发选周三 UTC 09:00 发，标题 `Show HN: Solo Compass – A map-first companion for people who travel alone`
+3. **HackerNews Show HN** — 首发选周三 UTC 09:00 发，标题 `Show HN: Roamorrow – A map-first companion for people who travel alone`
 
 中文外链：
 

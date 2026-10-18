@@ -1,6 +1,6 @@
 # Product Brief
 
-> Solo Compass · 独行罗盘
+> Roamorrow
 >
 > One sentence: **从一句旅行需求开始，在同一个对话和地图空间里探索附近、挑选体验、规划路线，为独自旅行者提供有依据的选择。**
 > One sentence (EN): **Start with a travel question, explore nearby experiences, and plan a route in one continuous conversation and map.**

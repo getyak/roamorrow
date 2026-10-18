@@ -196,7 +196,7 @@ public struct ArchiveView: View {
                     )
                     .padding(.vertical, 24)
                 }
-                .navigationTitle("Solo Brag")
+                .navigationTitle(NSLocalizedString("ux.ritual.brag", comment: "Share a memory"))
                 .navigationBarTitleDisplayMode(.inline)
             }
         case .ost:

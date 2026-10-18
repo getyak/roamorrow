@@ -41,6 +41,7 @@ targets:
       path: SoloCompass/Resources/Info.plist
       properties:
         CFBundleDevelopmentRegion: en
+        CFBundleDisplayName: Roamorrow
         CFBundleLocalizations:
           - en
           - zh-Hans
@@ -61,8 +62,8 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         CFBundleIconName: AppIcon
         ITSAppUsesNonExemptEncryption: false
-        NSLocationWhenInUseUsageDescription: "Solo Compass uses your location to show experiences near you on the map."
-        NSLocationAlwaysAndWhenInUseUsageDescription: "Solo Compass uses background location to alert you when you're near a place worth visiting — even when the app is closed."
+        NSLocationWhenInUseUsageDescription: "Roamorrow uses your location to show experiences near you on the map."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Roamorrow uses background location to alert you when you're near a place worth visiting — even when the app is closed."
         UIBackgroundModes:
           - location
           # US-021: APNs background push (`remote-notification`) is temporarily
@@ -70,10 +71,10 @@ targets:
           # the Push Notifications capability (Apple Developer portal + `match
           # appstore --force`). Re-add once the profile in solo-compass-certs
           # includes aps-environment, otherwise Release archive code-signing fails.
-        NSSpeechRecognitionUsageDescription: "Solo Compass uses speech recognition so you can describe what you're looking for by voice."
-        NSMicrophoneUsageDescription: "Solo Compass uses the microphone for voice search."
-        NSCameraUsageDescription: "Solo Compass uses the camera so you can photograph a place when you add it to the map."
-        NSPhotoLibraryUsageDescription: "Solo Compass needs access to your photos so you can attach an image to a place you add."
+        NSSpeechRecognitionUsageDescription: "Roamorrow uses speech recognition so you can describe what you're looking for by voice."
+        NSMicrophoneUsageDescription: "Roamorrow uses the microphone for voice search."
+        NSCameraUsageDescription: "Roamorrow uses the camera so you can photograph a place when you add it to the map."
+        NSPhotoLibraryUsageDescription: "Roamorrow needs access to your photos so you can attach an image to a place you add."
         LSApplicationQueriesSchemes:
           - comgooglemaps
           - iosamap
@@ -156,7 +157,7 @@ targets:
     info:
       path: SoloCompassWidgets/Info.plist
       properties:
-        CFBundleDisplayName: SoloCompass
+        CFBundleDisplayName: Roamorrow
         # Inherit version/build from the target's build settings so the embedded
         # extension always matches the host app — App Store rejects a mismatch.
         # The TestFlight workflow rewrites MARKETING_VERSION / CURRENT_PROJECT_VERSION

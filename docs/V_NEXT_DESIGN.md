@@ -1,7 +1,7 @@
-# Solo Compass — Next Major Version Design (v1.0)
+# Roamorrow — Next Major Version Design (v1.0)
 
 > 状态: Draft v0.2 (已过代码级验证) · 2026-07-01
-> 目标: 把 Solo Compass 从"地图工具"演化成"独行者沉迷的 AI 旅伴",建立可付费、可留存、可病毒传播的产品形态
+> 目标: 把 Roamorrow 从"地图工具"演化成"独行者沉迷的 AI 旅伴",建立可付费、可留存、可病毒传播的产品形态
 > 范围: iOS only (利用 Live Activity + 灵动岛 + Apple Music 的平台壁垒)
 > 实施清单: 见仓库根 [`todo.md`](../todo.md) (92 个任务 ID,P1.0–P3.6 + 横向 X.1-X.4)
 

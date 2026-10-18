@@ -157,7 +157,7 @@ public final class StartupDiagnosticsService {
                 severity: .warn,
                 title: L.title("diagnostics.anthropic.missing.title", "AI 大脑没接上"),
                 detail: L.detail("diagnostics.anthropic.missing.detail",
-                    "没检测到 AI API key，Solo 现在只会用离线排序推荐地点，不会跟你自然对话。"),
+                    "没检测到 AI API key，Roamorrow 现在只会用离线排序推荐地点，不会跟你自然对话。"),
                 suggestedFix: L.fix("diagnostics.anthropic.missing.fix",
                     "去 设置 → AI Provider 填一个 Anthropic 或 DeepSeek 的 key。")
             ))
@@ -171,7 +171,7 @@ public final class StartupDiagnosticsService {
                 severity: .warn,
                 title: L.title("diagnostics.amap.missing.title", "高德地图没接上"),
                 detail: L.detail("diagnostics.amap.missing.detail",
-                    "在中国区域，Solo 优先用高德查周边。当前没检测到高德 key，会回退到 Overpass 公共数据，结果可能不全。"),
+                    "在中国区域，Roamorrow 优先用高德查周边。当前没检测到高德 key，会回退到 Overpass 公共数据，结果可能不全。"),
                 suggestedFix: L.fix("diagnostics.amap.missing.fix",
                     "在设置或环境变量里配一个 AMAP_API_KEY，再重启 App。")
             ))
@@ -204,7 +204,7 @@ public final class StartupDiagnosticsService {
                 detail: L.detail("diagnostics.location.denied.detail",
                     "地图不知道你在哪，附近推荐、Now 排序、Live Activity 都会失效。"),
                 suggestedFix: L.fix("diagnostics.location.denied.fix",
-                    "去 系统设置 → Solo Compass → 位置 → 使用期间。")
+                    "去 系统设置 → Roamorrow → 位置 → 使用期间。")
             ))
         case .notDetermined:
             out.append(Finding(
@@ -212,7 +212,7 @@ public final class StartupDiagnosticsService {
                 severity: .info,
                 title: L.title("diagnostics.location.pending.title", "还没授权定位"),
                 detail: L.detail("diagnostics.location.pending.detail",
-                    "点一下右下角 Solo 或者定位按钮，我会请求一次位置授权。"),
+                    "点一下“问问”或定位按钮，应用会请求位置授权。"),
                 suggestedFix: L.fix("diagnostics.location.pending.fix",
                     "触发一次定位授权弹窗。")
             ))
@@ -227,9 +227,9 @@ public final class StartupDiagnosticsService {
                 severity: .warn,
                 title: L.title("diagnostics.mic.denied.title", "语音识别被关了"),
                 detail: L.detail("diagnostics.mic.denied.detail",
-                    "长按 Solo 说话没法转成文字，只能打字聊。"),
+                    "语音输入暂时无法转成文字，你仍可以打字与 Roamorrow 聊天。"),
                 suggestedFix: L.fix("diagnostics.mic.denied.fix",
-                    "去 系统设置 → Solo Compass → 语音识别 打开。")
+                    "去 系统设置 → Roamorrow → 语音识别 打开。")
             ))
         default:
             break
@@ -245,7 +245,7 @@ public final class StartupDiagnosticsService {
                 detail: L.detail("diagnostics.notification.denied.detail",
                     "拿不到孤独时段提醒、灵动岛胶囊、每月洞察推送。"),
                 suggestedFix: L.fix("diagnostics.notification.denied.fix",
-                    "去 系统设置 → Solo Compass → 通知 打开。")
+                    "去 系统设置 → Roamorrow → 通知 打开。")
             ))
         default:
             break

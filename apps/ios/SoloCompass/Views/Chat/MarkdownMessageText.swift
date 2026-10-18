@@ -161,7 +161,7 @@ struct MarkdownMessageText: View {
 
     > Travel light — the map is the home screen.
 
-    More at [Solo Compass](https://example.com).
+    More at [Roamorrow](https://roamorrow.com).
     """
 
     ScrollView {
@@ -186,7 +186,7 @@ struct MarkdownMessageText: View {
 
     > Travel light — the map is the home screen.
 
-    More at [Solo Compass](https://example.com).
+    More at [Roamorrow](https://roamorrow.com).
     """
 
     ScrollView {

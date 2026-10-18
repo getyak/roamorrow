@@ -947,7 +947,7 @@ struct CompassMapContentView: View {
                         check: .locationAuth, severity: .error,
                         title: NSLocalizedString("diagnostics.location.denied.title", value: "定位被拒了", comment: ""),
                         detail: NSLocalizedString("diagnostics.location.denied.detail", value: "地图不知道你在哪。", comment: ""),
-                        suggestedFix: NSLocalizedString("diagnostics.location.denied.fix", value: "去设置 → Solo Compass → 位置。", comment: "")
+                        suggestedFix: NSLocalizedString("diagnostics.location.denied.fix", value: "去设置 → Roamorrow → 位置。", comment: "")
                     )
                     let warn = StartupDiagnosticsService.Finding(
                         check: .anthropicKey, severity: .warn,
@@ -2607,7 +2607,7 @@ struct CompassMapContentView: View {
                     check: .locationAuth, severity: .error,
                     title: NSLocalizedString("diagnostics.location.denied.title", value: "定位被拒了", comment: ""),
                     detail: NSLocalizedString("diagnostics.location.denied.detail", value: "地图不知道你在哪。", comment: ""),
-                    suggestedFix: NSLocalizedString("diagnostics.location.denied.fix", value: "去设置 → Solo Compass → 位置。", comment: "")
+                    suggestedFix: NSLocalizedString("diagnostics.location.denied.fix", value: "去设置 → Roamorrow → 位置。", comment: "")
                 )
                 let warn = StartupDiagnosticsService.Finding(
                     check: .anthropicKey, severity: .warn,
@@ -2672,7 +2672,7 @@ struct CompassMapContentView: View {
             subtitle: subtitle,
             ctaLabel: NSLocalizedString(
                 "solo.agent.bubble.diagnostics.cta",
-                value: "问 Solo 怎么修 →",
+                value: "问问怎么修复 →",
                 comment: "Bubble CTA to open ChatSheet with the findings seeded"
             )
         )

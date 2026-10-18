@@ -12,18 +12,18 @@ import {
 import { copy } from "@/components/marketing/copy";
 import { HomeJsonLd } from "../_seo";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Solo Compass · 一款为独自旅行者做的地图 app",
+  title: { absolute: `${BRAND.name} · 独自旅行地图，一个人出发也能在远方过好日常` },
   description:
     "为独自旅行者做的 iOS 地图 app。以体验为单位而非景点列表，跨来源交叉编译数据，AI 只帮你过滤而不替你决定，无广告无追踪。¥118 一次买断，¥198 每年，可先免费试用。",
   keywords: [
     "独自旅行 app",
     "一个人旅行 app",
-    "独行罗盘",
-    "Solo Compass",
+    "独自旅行地图",
+    "Roamorrow",
     "iOS 旅行 app",
     "隐私 旅行 app",
     "AI 旅行规划",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: `${SITE_URL}/zh`,
-    siteName: "Solo Compass",
+    siteName: BRAND.name,
     title: "一款为独自旅行者做的地图 app",
     description:
       '地图为家。以"体验"为单位。AI 只过滤，不替你决定。京都独立开发。永不接广告、永不追踪。',
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass · 一款为独自旅行者做的地图 app",
+    title: "Roamorrow · 一款为独自旅行者做的地图 app",
     description: "iOS 独行者地图。¥118 一次买断，¥198 每年。无广告，无追踪。",
     // twitter image comes from src/app/zh/opengraph-image.tsx.
   },

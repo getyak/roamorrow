@@ -1,12 +1,14 @@
-# Solo Compass · 独行罗盘
+# Roamorrow
 
-> A living map for solo travelers.
+> Find your way. Feel at home.
 >
-> 为独自旅行者设计的"活地图"——打开就是地图,地图上自动显示周边值得做的事。
+> A personal companion for solo travel and life on the move.
+>
+> [roamorrow.com](https://roamorrow.com) · 为独立旅行与旅居者发现附近值得体验的生活。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![pnpm](https://img.shields.io/badge/pnpm-workspaces-orange)](https://pnpm.io/workspaces)
-[![Status](https://img.shields.io/badge/status-pre--alpha-red)](https://github.com/kubbot/solo-compass)
+[![Status](https://img.shields.io/badge/status-pre--alpha-red)](https://github.com/getyak/roamorrow)
 
 ---
 
@@ -33,7 +35,7 @@ For the full product brief, see [`docs/PRODUCT_BRIEF.md`](./docs/PRODUCT_BRIEF.m
 ## Repo layout (monorepo)
 
 ```
-solo-compass/
+roamorrow/
 ├── apps/
 │   ├── web/              # Pre-MVP: Next.js + Mapbox (Phase 2)
 │   ├── ios/              # Native iOS app (Phase 3)
@@ -58,8 +60,8 @@ solo-compass/
 
 ```bash
 # Clone
-git clone https://github.com/kubbot/solo-compass.git
-cd solo-compass
+git clone https://github.com/getyak/roamorrow.git
+cd roamorrow
 
 # Install all workspaces
 pnpm install

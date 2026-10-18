@@ -163,7 +163,7 @@ bot.start(async (ctx) => {
   await track(ctx.from.id, "session_start");
   await ctx.reply(
     [
-      "Solo Compass.",
+      "Roamorrow.",
       "",
       "Drop a pin (📎 → Location) or type a place name to start.",
       "Then send a 5–30 second voice note saying what you feel like doing — or type it.",
@@ -191,7 +191,7 @@ bot.command("privacy", async (ctx) => {
       "• Errors reported to Sentry have transcripts and message bodies stripped.",
       "",
       "Type /optout to stop all analytics from this device. /start to resume.",
-      "Full doc: https://github.com/getyak/solo-compass/blob/main/docs/PRIVACY.md",
+      "Full doc: https://github.com/getyak/roamorrow/blob/main/docs/PRIVACY.md",
     ].join("\n"),
   );
 });

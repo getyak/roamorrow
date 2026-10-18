@@ -1,5 +1,5 @@
 /**
- * Experience — the core unit of Solo Compass.
+ * Experience — the core unit of Roamorrow.
  *
  * NOT a place. NOT a POI. An experience is a *concrete, time-bound, story-rich
  * thing worth doing*, anchored to a place but not reducible to it.

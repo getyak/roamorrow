@@ -13,8 +13,8 @@
 "filter.all" = "All";
 "filter.saved" = "Saved";
 "filter.saved.a11y" = "Saved, %d favourited experiences";
-"filter.solo.agent" = "Ask Solo";
-"filter.solo.agent.a11y" = "Ask Solo Agent for a nearby suggestion";
+"filter.solo.agent" = "Ask";
+"filter.solo.agent.a11y" = "Ask Roamorrow for a nearby suggestion";
 "filter.solo.agent.seed" = "What's worth doing near me right now?";
 "filter.taste.rank" = "My taste";
 "filter.taste.rank.a11y" = "Sort results by your taste profile";
@@ -185,20 +185,20 @@
 "voice.result.filtered" = "Showing %@ nearby";
 "voice.result.none" = "No matching places nearby — try a different search";
 "voice.permission.title" = "Microphone access needed";
-"voice.permission.message" = "Solo Compass needs microphone and speech permission to take voice input.";
+"voice.permission.message" = "Roamorrow needs microphone and speech permission to take voice input.";
 
 /* AI */
 "ai.explanation.loading" = "Loading insight…";
 "ai.explanation.title" = "AI Insight";
 "ai.error.missingKey" = "AI features are not configured.";
-"ai.error.request" = "Solo couldn't think that through just now — give it another try in a moment.";
+"ai.error.request" = "Roamorrow couldn't think that through just now — give it another try in a moment.";
 "amap.error.missingKey" = "Amap key not configured; using global data source.";
 "amap.error.request" = "Couldn't reach the map just now — try again in a moment.";
 "amap.error.api" = "Amap API error %@: %@";
 "ai.fallback.explanation" = "Recommended for solo travelers based on quiet seating, low staff pressure, and a strong local signal.";
 "ai.fallback.voice" = "Showing solo-friendly experiences nearby.";
-"ai.skeleton.pill" = "Solo is still listening…";
-"ai.skeleton.pill.a11y" = "Solo is still gathering details for this place. Full insight loads when sources arrive.";
+"ai.skeleton.pill" = "Gathering details…";
+"ai.skeleton.pill.a11y" = "Roamorrow is still gathering details for this place. Full insight loads when sources arrive.";
 "card.source.verified" = "verified";
 "card.source.multi" = "multi-source";
 "card.source.single" = "1 source";
@@ -373,7 +373,7 @@
 /* Long-press context menu on a place card */
 "menu.viewDetails" = "View details";
 "menu.showOnMap" = "Show on map";
-"menu.askSolo" = "Ask Solo";
+"menu.askSolo" = "Ask";
 "menu.favorite" = "Save";
 "menu.unfavorite" = "Remove from saved";
 "menu.navigate" = "Directions";
@@ -537,11 +537,11 @@
 "detail.source.openHint" = "Opens the original source";
 
 /* US-004: Ask Solo about this experience (Pro chat) */
-"experience.askSolo.cta" = "Ask Solo about this";
+"experience.askSolo.cta" = "Ask about this";
 
 /* Onboarding */
-"onboarding.welcome.title" = "Places worth being alone.";
-"onboarding.welcome.subtitle" = "A map of things worth doing solo, wherever you are.";
+"onboarding.welcome.title" = "Roamorrow";
+"onboarding.welcome.subtitle" = "Find your way. Feel at home.";
 "onboarding.welcome.cta" = "Find me on the map";
 "onboarding.welcome.skip" = "Browse first";
 "onboarding.style.title" = "How do you travel?";
@@ -694,7 +694,7 @@
 /* Notifications */
 "settings.notifications" = "Notify me when I'm nearby";
 "settings.notifications.header" = "Notifications";
-"settings.notifications.footer" = "Solo Compass sends a quiet nudge when you walk past a saved experience. No marketing, ever.";
+"settings.notifications.footer" = "Roamorrow sends a quiet nudge when you walk past a saved experience. No marketing, ever.";
 "notification.checkin.title" = "You're nearby";
 "notification.checkin.body" = "You're standing near %@. Want to check it out?";
 
@@ -798,7 +798,7 @@
 "exploreMode.handoff.summary" = "%1$d places · %2$d km · %3$@";
 "exploreMode.handoff.summaryNoCity" = "%1$d places · %2$d km";
 "exploreMode.handoff.verifiedSuffix" = "%d verified across sources";
-"exploreMode.handoff.askSolo" = "Ask Solo about these";
+"exploreMode.handoff.askSolo" = "Ask about these places";
 "exploreMode.handoff.saveWalk" = "Save as a walk";
 "exploreMode.handoff.expand" = "Expand radius";
 "exploreMode.handoff.clear" = "Clear these";
@@ -827,7 +827,7 @@
 "explore.expand.alreadyMax" = "Already exploring the maximum radius (100 km).";
 
 /* Paywall */
-"paywall.hero.title" = "Unlock Solo Compass Pro";
+"paywall.hero.title" = "Unlock Roamorrow Pro";
 "paywall.hero.subtitle" = "AI exploration anywhere on Earth, voice intent, and per-place AI insights.";
 "paywall.feature.explore" = "Explore here — AI-enriched real places in any city";
 "paywall.feature.voice" = "Voice intent — describe what you want, get a filtered map";
@@ -859,7 +859,7 @@
 "me.entitlement.trial.lastDay" = "Last day of trial";
 "me.entitlement.trial.detail.format" = "Billing starts %@";
 "me.entitlement.trial.detail.fallback" = "Cancel anytime before the trial ends";
-"me.entitlement.pro.title" = "Solo Compass Pro";
+"me.entitlement.pro.title" = "Roamorrow Pro";
 "me.entitlement.pro.detail.format" = "Renews %@";
 "me.entitlement.pro.detail.fallback" = "Auto-renewing subscription";
 "me.entitlement.upsell.title" = "Try Pro free for 1 month";
@@ -867,7 +867,7 @@
 
 /* Onboarding — paywall step (step 5) */
 "onboarding.paywall.title" = "Your free month, on us";
-"onboarding.paywall.subtitle" = "Solo Compass Pro is free for 30 days. Cancel before the trial ends and you won't be charged.";
+"onboarding.paywall.subtitle" = "Roamorrow Pro is free for 30 days. Cancel before the trial ends and you won't be charged.";
 "onboarding.paywall.bullet.explore" = "Explore here — AI-enriched real places, in any city";
 "onboarding.paywall.bullet.voice" = "Describe what you want by voice, get a filtered map";
 "onboarding.paywall.bullet.insight" = "Per-experience AI insight on demand";
@@ -904,7 +904,7 @@
 
 /* Explore consent (US-034) */
 "explore.consent.title" = "Before we explore here";
-"explore.consent.subtitle" = "Solo Compass talks to two services on your behalf. Here's exactly what leaves your phone.";
+"explore.consent.subtitle" = "Roamorrow talks to two services on your behalf. Here's exactly what leaves your phone.";
 "explore.consent.bullet.location" = "Coarse location → OpenStreetMap. Public, no account, no tracking.";
 "explore.consent.bullet.ai" = "OSM tags + city slug → Anthropic, to draft solo-traveler descriptions. No personal data.";
 "explore.consent.bullet.no_pii" = "We never collect contacts, photos, or browsing history. Nothing is shared with advertisers.";
@@ -913,12 +913,12 @@
 
 /* In-app language switcher */
 "settings.language" = "Language";
-"settings.language.footer" = "Choose the language Solo Compass speaks. The app restarts to apply your choice.";
+"settings.language.footer" = "Choose the language Roamorrow speaks. The app restarts to apply your choice.";
 "settings.language.system" = "Follow system";
 "settings.language.english" = "English";
 "settings.language.zh-Hans" = "简体中文";
 "settings.language.restart.title" = "Restart required";
-"settings.language.restart.message" = "Quit and reopen Solo Compass to finish switching languages.";
+"settings.language.restart.message" = "Quit and reopen Roamorrow to finish switching languages.";
 "settings.language.restart.ok" = "OK";
 
 /* Voice agent conversation sheet (US-VA-04) */
@@ -958,7 +958,7 @@
 "chat.sources.title" = "Sources";
 "chat.sources.a11y" = "Source %1$d: %2$@, from %3$@";
 "chat.thinking.title" = "Thinking it through";
-"chat.thinking.a11y" = "Solo Compass is thinking";
+"chat.thinking.a11y" = "Roamorrow is thinking";
 
 /* Collapsed reasoning summary (the one-line chip pinned under a finished turn) */
 "agent.trace.summary.steps" = "Reasoned through %d step(s)";
@@ -990,7 +990,7 @@
 "chat.route.fallbacks" = "Alternatives ready: %d";
 
 /* Voice agent inline overlay (VoiceAgentOverlay) */
-"voiceAgent.orb.a11y" = "Hold to speak to Solo Compass";
+"voiceAgent.orb.a11y" = "Hold to speak to Roamorrow";
 "voiceAgent.orb.hint" = "Double tap and hold to speak";
 "voiceAgent.orb.listening" = "Listening…";
 "voiceAgent.orb.release" = "Release to send";
@@ -1001,12 +1001,12 @@
 "voiceAgent.tts.fallback" = "Response ready";
 
 /* "+" quick-action button — single chat entry point */
-"plus.button.a11y" = "Chat with Solo";
+"plus.button.a11y" = "Chat with Roamorrow";
 "plus.button.hint" = "Tap to type, hold to talk";
 "plus.button.label" = "Ask";
 
 /* Voice-first state view shown inside ChatSheet on voice entry */
-"chat.voice.title" = "Talk to Solo";
+"chat.voice.title" = "Talk to Roamorrow";
 "chat.voice.tap.toType" = "Tap to type instead";
 "chat.voice.idle" = "Hold the mic to speak";
 "chat.voice.listening" = "I'm listening…";
@@ -1015,7 +1015,7 @@
 "chat.voice.responding" = "Responding…";
 
 /* Chat sheet — Messenger-style assistant surface */
-"chat.title" = "Solo Compass";
+"chat.title" = "Roamorrow";
 "chat.empty.title" = "Ask me anything about places near you";
 "chat.empty.subtitle" = "Try 'what's good around me?' or hold the mic to talk.";
 
@@ -1038,7 +1038,7 @@
 /* Half-detent empty state — a minimal "companion is waiting" entry */
 "chat.empty.half.invite" = "Ask me where to go";
 "chat.empty.half.micHint" = "Hold to talk";
-"chat.empty.half.mic.a11y" = "Hold to talk to Solo";
+"chat.empty.half.mic.a11y" = "Hold to talk to Roamorrow";
 "chat.empty.half.tag.nearby" = "Nearby";
 "chat.empty.half.tag.coffee" = "Coffee";
 "chat.empty.half.tag.sunset" = "Sunset";
@@ -1068,9 +1068,9 @@
 "chat.state.thinking" = "Thinking…";
 "chat.error.retry" = "Retry";
 "chat.bubble.user.a11y" = "You said: %@";
-"chat.bubble.assistant.a11y" = "Solo said: %@";
+"chat.bubble.assistant.a11y" = "Roamorrow said: %@";
 "chat.bubble.copy" = "Copy";
-"chat.typing.a11y" = "Solo Compass is thinking…";
+"chat.typing.a11y" = "Roamorrow is thinking…";
 "chat.tool.exploreNearby" = "Searched nearby";
 "chat.tool.filter" = "Filtered the map";
 "chat.tool.showDetails" = "Opened a place";
@@ -1117,7 +1117,7 @@
 "chat.error.unknown" = "Something went wrong — please try again.";
 
 /* Send-rejected hints + unconfigured banner shown above the chat input bar */
-"chat.send.hint.notReady" = "Just a sec — waking Solo up. Tap send again.";
+"chat.send.hint.notReady" = "The travel assistant is starting. Tap send again in a moment.";
 "chat.send.hint.unconfigured" = "Add a DeepSeek key in Settings to start chatting.";
 "chat.send.hint.sessionEnded" = "Couldn't reconnect — check your network and try again.";
 "chat.unconfigured.title" = "Chat is not configured yet";
@@ -1161,7 +1161,7 @@
 "share.style.minimalText" = "Minimal 9:16";
 /* Route share sheet (route detail → share). */
 "route.share.title" = "Share Route";
-"route.share.kicker" = "Route · Solo Compass";
+"route.share.kicker" = "Route · Roamorrow";
 "route.share.mode.card" = "Card";
 "route.share.mode.text" = "Text";
 "route.share.style.map" = "Map";
@@ -1172,8 +1172,8 @@
 "route.share.stops" = "stops";
 /* %d = number of travelers who have walked this route. */
 "route.share.walkedBy" = "Walked by %d travelers";
-/* Share-card image brand label (US-038) — kept as "Solo Compass" in both locales, but routed through l10n. */
-"sharecard.brand" = "Solo Compass";
+/* Share-card image brand label (US-038) — kept as "Roamorrow" in both locales, but routed through l10n. */
+"sharecard.brand" = "Roamorrow";
 /* Share-card score suffix (US-039) — rendered after the numeric Solo Score on the share card. */
 "sharecard.score.suffix" = "/100  Solo Score";
 
@@ -1188,7 +1188,7 @@
 "settings.appearance" = "Appearance";
 "settings.theme" = "Theme";
 "settings.haptics" = "Haptic Feedback";
-"settings.haptics.footer" = "When on, Solo Compass taps your device on favorites, check-ins, filter changes, and map peeks.";
+"settings.haptics.footer" = "When on, Roamorrow taps your device on favorites, check-ins, filter changes, and map peeks.";
 "settings.haptics.toggle" = "Haptic Feedback";
 "settings.haptics.toggle.a11y" = "Toggle haptic feedback";
 
@@ -1212,7 +1212,7 @@
 
 "ai.provider.section.apiKey" = "API Key";
 "ai.provider.apiKey.placeholder" = "Paste your API key…";
-"ai.provider.apiKey.footer" = "Stored locally on your device. Never shared with Solo Compass servers.";
+"ai.provider.apiKey.footer" = "Stored locally on your device. Never shared with Roamorrow servers.";
 
 "ai.provider.section.baseURL" = "Base URL";
 "ai.provider.baseURL.placeholder" = "https://api.example.com/v1";
@@ -1537,7 +1537,7 @@
  * Safety consent (CompanionSafetyConsentSheet) — first-run gate
  * ============================================================ */
 "companion.safety.title" = "Before you connect";
-"companion.safety.heading" = "Solo Compass is a travel companion app, not a dating app.";
+"companion.safety.heading" = "Roamorrow is a travel companion app, not a dating app.";
 "companion.safety.subtitle" = "Please review and accept these basics so everyone stays safe.";
 "companion.safety.age.header" = "Age";
 "companion.safety.age.body" = "You must be 18 or older to use Companion features.";
@@ -1708,7 +1708,7 @@
 "route.create.entry.subtitle" = "String a few stops together · optionally invite a companion";
 
 /* Direction 3 — warm cold-start placeholder for the Now routes section */
-"routes.now.empty.title" = "Today’s walk · let Solo string one together";
+"routes.now.empty.title" = "Today’s walk · ask for a route";
 "routes.now.empty.cta" = "I’ll pick three nearby stops you’ll actually like — tap to start.";
 "route.duration.hours" = "%dh";
 "route.duration.hoursMinutes" = "%dh %dmin";
@@ -1732,7 +1732,7 @@
 "route.active.pause" = "Pause route";
 "filter.tip.title" = "Browse by mood";
 "filter.tip.message" = "Tap a category or 'Now' to find places worth going right now — not just everything nearby.";
-"terms.title" = "Welcome to Solo Compass";
+"terms.title" = "Welcome to Roamorrow";
 "terms.intro" = "Before you start exploring, here's a one-screen summary of what we collect and how we use it. The full documents are linked below.";
 "terms.dataUse.title" = "What we collect";
 "terms.dataUse.location" = "Your location, used live to show nearby places. Coordinates stay on this device unless you explicitly share a place with a friend.";
@@ -1745,7 +1745,7 @@
 "terms.button.accept" = "I agree, continue";
 "terms.button.decline" = "Not now";
 "terms.declined.title" = "Consent required to continue";
-"terms.declined.body" = "Solo Compass cannot show the map, fetch nearby places, or use AI without your agreement to the Privacy Policy and Terms. Nothing has been collected. Tap below to review again.";
+"terms.declined.body" = "Roamorrow cannot show the map, fetch nearby places, or use AI without your agreement to the Privacy Policy and Terms. Nothing has been collected. Tap below to review again.";
 "terms.declined.review" = "Review again";
 "nearby.chip.closingNow" = "Closing now";
 
@@ -2176,7 +2176,7 @@
 /* Settings — Forget me (P2.0 #204) */
 "settings.forgetMe" = "Forget me";
 "settings.forgetMe.confirm.title" = "Forget your taste and memory?";
-"settings.forgetMe.confirm.message" = "Clears the on-device taste profile and everything the Solo Agent remembers about you. Your favorites, routes, and preferences stay intact.";
+"settings.forgetMe.confirm.message" = "Clears the on-device taste profile and everything Roamorrow remembers about you. Your favorites, routes, and preferences stay intact.";
 "settings.forgetMe.confirm.action" = "Forget me";
 "settings.forgetMe.toast.success" = "Done — the agent will start fresh next time you chat.";
 "settings.forgetMe.toast.failure" = "Couldn't clear right now. Try again in a moment.";
@@ -2186,23 +2186,23 @@
 
 /* Startup self-diagnostics (StartupDiagnosticsService + SoloAgentBubble) */
 "diagnostics.anthropic.missing.title" = "AI brain isn't wired up";
-"diagnostics.anthropic.missing.detail" = "No AI API key detected — Solo can only rank places with the offline scorer and won't hold a real conversation.";
+"diagnostics.anthropic.missing.detail" = "No AI API key detected — Roamorrow can only rank places with the offline scorer and won't hold a real conversation.";
 "diagnostics.anthropic.missing.fix" = "Head to Settings → AI Provider and paste an Anthropic or DeepSeek key.";
 "diagnostics.amap.missing.title" = "Amap isn't wired up";
-"diagnostics.amap.missing.detail" = "In China, Solo prefers Amap for nearby lookups. Without a key we fall back to Overpass public data — results may be thin.";
+"diagnostics.amap.missing.detail" = "In China, Roamorrow prefers Amap for nearby lookups. Without a key we fall back to Overpass public data — results may be thin.";
 "diagnostics.amap.missing.fix" = "Set AMAP_API_KEY in Settings or your env file and relaunch.";
 "diagnostics.location.denied.title" = "Location is turned off";
 "diagnostics.location.denied.detail" = "The map can't tell where you are, so nearby picks, the Now filter and Live Activities all go quiet.";
-"diagnostics.location.denied.fix" = "Open Settings → Solo Compass → Location → While Using.";
+"diagnostics.location.denied.fix" = "Open Settings → Roamorrow → Location → While Using.";
 "diagnostics.location.pending.title" = "Location isn't authorized yet";
-"diagnostics.location.pending.detail" = "Tap the Solo mascot or the locate button — I'll ask for permission.";
+"diagnostics.location.pending.detail" = "Tap Ask or the locate button to request location access.";
 "diagnostics.location.pending.fix" = "Trigger a location prompt.";
 "diagnostics.mic.denied.title" = "Speech recognition is off";
-"diagnostics.mic.denied.detail" = "Holding the Solo mascot to talk won't transcribe — typing is the only way in.";
-"diagnostics.mic.denied.fix" = "Open Settings → Solo Compass → Speech Recognition.";
+"diagnostics.mic.denied.detail" = "Voice input can't be transcribed. You can still type to Roamorrow.";
+"diagnostics.mic.denied.fix" = "Open Settings → Roamorrow → Speech Recognition.";
 "diagnostics.notification.denied.title" = "Notifications are blocked";
 "diagnostics.notification.denied.detail" = "You'll miss lonely-hour nudges, Dynamic Island capsules and monthly-insight pushes.";
-"diagnostics.notification.denied.fix" = "Open Settings → Solo Compass → Notifications.";
+"diagnostics.notification.denied.fix" = "Open Settings → Roamorrow → Notifications.";
 "diagnostics.onboarding.incomplete.title" = "Onboarding isn't finished";
 "diagnostics.onboarding.incomplete.detail" = "Without a vibe / city / taste, recommendations fall back to a generic list.";
 "diagnostics.onboarding.incomplete.fix" = "Head back to onboarding and finish the three steps.";
@@ -2211,7 +2211,7 @@
 "diagnostics.seed.empty.fix" = "Reinstall the app or file a bug.";
 "diagnostics.seed.header" = "At launch you ran a quick health check on my behalf and turned up the issues below. Walk me through each one — the impact and how to fix it.";
 "solo.agent.bubble.dismiss" = "Dismiss";
-"solo.agent.bubble.diagnostics.cta" = "Ask Solo how to fix it →";
+"solo.agent.bubble.diagnostics.cta" = "Ask how to fix it →";
 "solo.agent.bubble.diagnostics.subtitle.multi" = "%d more to talk through — tap and I'll explain.";
 
 /* MARK: - Developer Options (tester-email unlock only) */
@@ -2368,7 +2368,7 @@
 "cityos.base.recall.empty" = "Look back at this stay";
 "cityos.base.section.ask" = "Still wondering";
 "cityos.base.ask.title" = "Visa, weather, is it worth it";
-"cityos.base.ask.hint" = "Ask Solo — instant answer";
+"cityos.base.ask.hint" = "Ask Roamorrow for help";
 "cityos.base.ask.prompt" = "I'm planning a remote-work stay in %@. What are the visa options, what's the weather like right now, and how good is it for working remotely?";
 "cityos.base.section.visa" = "Visa";
 "cityos.base.section.weather" = "Weather";
@@ -2485,11 +2485,11 @@
 "today.seal.type.text" = "a note, waiting to resurface";
 
 /* Localization gate repairs + ritual surfaces */
-"diagnostics.seed.ask" = "Ask Solo how to fix this";
+"diagnostics.seed.ask" = "Ask Roamorrow how to fix this";
 "agent.step.clarify" = "Clarifying what you need";
 "agent.step.planning" = "Planning the next steps";
 "diagnostics.card.header" = "Startup check";
-"diagnostics.card.ask" = "Ask Solo";
+"diagnostics.card.ask" = "Ask";
 "chat.bubble.expand" = "Show full message";
 "chat.bubble.collapse" = "Collapse message";
 "archive.rituals.title" = "Rituals";
@@ -2512,7 +2512,7 @@
 "ost.today.title" = "Today's OST";
 "settings.notifications.proactive.header" = "Proactive nudges";
 "settings.notifications.proactive.footer" = "You'll never get more than 3 nudges in a day, regardless of type.";
-"liveActivity.brand" = "SOLOCOMPASS";
+"liveActivity.brand" = "Roamorrow";
 "liveActivity.preview.allKindsTitle" = "Live Activity · 3 new kinds";
 "toolRouter.preview.title" = "Tool Router · 7 new tools";
 "toolRouter.preview.subtitle" = "Runs inside the chat agent — no standalone UI. This is the audit contract.";
@@ -2527,7 +2527,7 @@
 
 /* Conversation workspace (map / chat / discover) */
 "workspace.dock.map" = "Map";
-"workspace.dock.ask" = "Ask Solo";
+"workspace.dock.ask" = "Ask";
 "workspace.dock.discover" = "Discover";
 "workspace.handle.a11y" = "Conversation panel";
 "workspace.handle.hint" = "Drag up or down to resize the conversation and map";
@@ -2543,7 +2543,7 @@
 "discover.offline.title" = "You're offline";
 "discover.offline.subtitle" = "Showing what's already on the map.";
 "discover.empty.title" = "Nothing to discover here yet";
-"discover.empty.subtitle" = "Try another area, or ask Solo what's nearby.";
+"discover.empty.subtitle" = "Try another area, or ask Roamorrow what's nearby.";
 "sort.a11y" = "Sort";
 
 /* Chat recommendation card — editorial evidence */

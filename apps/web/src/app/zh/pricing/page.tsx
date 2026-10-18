@@ -5,11 +5,11 @@ import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 import { HomeJsonLd } from "../../_seo";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "价格 · Solo Compass",
+  title: "价格",
   description:
     "一次买断 ¥118，年度 ¥198。永不接广告，永不卖数据，永不做订阅膨胀。可以先免费试用，再决定。",
   alternates: {
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: `${SITE_URL}/zh/pricing`,
-    title: "Solo Compass · 价格",
+    title: "Roamorrow · 价格",
     description: "¥118 一次买断，¥198 每年。诚实定价，无广告。",
-    images: [{ url: "/og/pricing-zh.png", width: 1200, height: 630 }],
+    images: [{ url: "/zh/opengraph-image", width: 1200, height: 630 }],
   },
 };
 
@@ -51,7 +51,7 @@ const FAQ_ZH = [
   },
   {
     q: "可以先试用吗？",
-    a: "可以。Free 版本本身就有用，不是 demo。从 App Store 下载，用一周，再决定。",
+    a: "可以先探索网页地图。iPhone 版的当前发布状态请查看下载页面。",
   },
 ];
 

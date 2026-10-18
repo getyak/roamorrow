@@ -2,7 +2,7 @@
   "name": "@solo-compass/routing",
   "version": "0.0.1",
   "private": true,
-  "description": "Deterministic time-window and fallback route planning for Solo Compass",
+  "description": "Deterministic time-window and fallback route planning for Roamorrow",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {

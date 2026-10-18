@@ -78,9 +78,9 @@ public struct TermsConsentSheet: View {
                         .font(.headline)
 
                     Link(NSLocalizedString("terms.links.privacy", comment: "Privacy policy link"),
-                         destination: URL(string: "https://solocompass.app/privacy")!)
+                         destination: URL(string: "https://roamorrow.com/privacy")!)
                     Link(NSLocalizedString("terms.links.tos", comment: "Terms of service link"),
-                         destination: URL(string: "https://solocompass.app/terms")!)
+                         destination: URL(string: "https://roamorrow.com/terms")!)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)

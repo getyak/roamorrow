@@ -3,7 +3,7 @@ name: solo-compass
 description: Repository-specific development guide for the solo-compass monorepo. Use when implementing, debugging, reviewing, or testing changes in this repository, especially SwiftUI iOS work, TypeScript workspace changes, schema parity updates, localization, or XcodeGen project changes.
 ---
 
-# Solo Compass Development Guide
+# Roamorrow Development Guide
 
 ## Product Boundaries
 

@@ -16,6 +16,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { BRAND, publicUrl } from "@/lib/brand";
 import { WEB_CATS, type WebExperience } from "@/lib/lisbon-data";
 import { findExperienceAcrossCities, type WebCity } from "@/lib/cities-data";
 
@@ -34,7 +35,7 @@ interface PageProps {
 function resolveLang(searchParams: Record<string, string | string[] | undefined>): Lang {
   const v = searchParams.lang;
   const single = Array.isArray(v) ? v[0] : v;
-  return single === "en" ? "en" : "zh";
+  return single === "zh" ? "zh" : "en";
 }
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
@@ -42,22 +43,23 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const sp = await searchParams;
   const lang = resolveLang(sp);
   const found = findExperienceAcrossCities(id);
-  if (!found) return { title: "Solo Compass — Not found" };
+  if (!found) return { title: "Roamorrow — Not found" };
   const { exp, city } = found;
 
   const title = lang === "zh" ? exp.titleZh : exp.title;
   const place = lang === "zh" ? exp.placeZh : exp.place;
   const description = lang === "zh" ? exp.whyZh : exp.why;
-  const fullTitle = `${title} — ${place} · ${lang === "zh" ? city.zh : city.en} · Solo Compass`;
+  const fullTitle = `${title} — ${place} · ${lang === "zh" ? city.zh : city.en} · Roamorrow`;
 
   return {
-    title: fullTitle,
+    title: { absolute: fullTitle },
     description,
     openGraph: {
       title: fullTitle,
       description,
       type: "article",
-      siteName: "Solo Compass",
+      url: publicUrl(`/experience/${id}${lang === "zh" ? "?lang=zh" : ""}`),
+      siteName: BRAND.name,
       locale: lang === "zh" ? "zh_CN" : "en_US",
     },
     twitter: {
@@ -66,9 +68,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       description,
     },
     alternates: {
+      canonical: publicUrl(`/experience/${id}${lang === "zh" ? "?lang=zh" : ""}`),
       languages: {
-        en: `/experience/${id}?lang=en`,
-        zh: `/experience/${id}`,
+        en: publicUrl(`/experience/${id}`),
+        "zh-CN": publicUrl(`/experience/${id}?lang=zh`),
+        "x-default": publicUrl(`/experience/${id}`),
       },
     },
   };
@@ -122,8 +126,7 @@ function ExperienceView({
           nearby: "附近还有",
           addToTrip: "加进我的行程",
           viewMap: "在地图上看",
-          metaSeo:
-            "这一页是 Solo Compass 写的——一份只为独自旅行的人做的、由 AI 整理但人去过的指南。",
+          metaSeo: "这一页是 Roamorrow 写的——一份只为独自旅行的人做的、由 AI 整理但人去过的指南。",
           backToCity: `← 回到 ${city.zh}`,
           mins: "分钟",
         }
@@ -138,7 +141,7 @@ function ExperienceView({
           addToTrip: "Add to my trip",
           viewMap: "View on map",
           metaSeo:
-            "This page is by Solo Compass — a guide for people traveling alone, organized by AI but written by people who've been there.",
+            "This page is by Roamorrow — a guide for people traveling alone, organized by AI but written by people who've been there.",
           backToCity: `← Back to ${city.en}`,
           mins: "min",
         };
@@ -212,10 +215,10 @@ function ExperienceView({
               letterSpacing: 0.3,
             }}
           >
-            compass.io / {city.slug} / {exp.id}
+            roamorrow.com / {city.slug} / {exp.id}
           </div>
           <Link
-            href={`/${city.slug}${lang === "en" ? "?lang=en" : ""}`}
+            href={`/${city.slug}${lang === "zh" ? "?lang=zh" : ""}`}
             style={{
               fontFamily: FONT_MONO,
               fontSize: 10.5,
@@ -465,7 +468,7 @@ function ExperienceView({
               }}
             >
               <Link
-                href={`/${city.slug}${lang === "en" ? "?lang=en" : ""}`}
+                href={`/${city.slug}${lang === "zh" ? "?lang=zh" : ""}`}
                 style={{
                   padding: "8px 12px",
                   borderRadius: 5,
@@ -483,7 +486,7 @@ function ExperienceView({
                 + {T.addToTrip}
               </Link>
               <Link
-                href={`/${city.slug}${lang === "en" ? "?lang=en" : ""}`}
+                href={`/${city.slug}${lang === "zh" ? "?lang=zh" : ""}`}
                 style={{
                   padding: "8px 12px",
                   borderRadius: 5,
@@ -547,7 +550,7 @@ function ExperienceView({
                 return (
                   <Link
                     key={it.id}
-                    href={`/experience/${it.id}${lang === "en" ? "?lang=en" : ""}`}
+                    href={`/experience/${it.id}${lang === "zh" ? "?lang=zh" : ""}`}
                     style={{
                       padding: 16,
                       background: "#FFF",

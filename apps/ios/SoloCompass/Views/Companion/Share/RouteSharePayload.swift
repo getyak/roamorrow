@@ -37,7 +37,7 @@ struct RouteSharePayload: Hashable {
         walkedByCount: Int,
         tags: [String],
         coordinates: [CLLocationCoordinate2D] = [],
-        brandHandle: String = "solocompass.app"
+        brandHandle: String = "roamorrow.com"
     ) {
         self.title = title
         self.summary = summary

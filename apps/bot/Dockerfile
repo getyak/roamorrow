@@ -1,4 +1,4 @@
-# Solo Compass Telegram bot
+# Roamorrow Telegram bot
 #
 # Long-polling locally; webhook in prod (set WEBHOOK_URL).
 

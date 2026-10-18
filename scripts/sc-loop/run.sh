@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sc-loop/run.sh — Solo Compass dual-agent optimization loop.
+# sc-loop/run.sh — Roamorrow dual-agent optimization loop.
 #
 # Drives one evaluator → executor → evaluator cycle until either:
 #   (a) the evaluator exits 0 — all journey steps pass (success);

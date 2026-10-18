@@ -1,6 +1,6 @@
 # Supabase infrastructure
 
-> Source of truth for the Solo Compass backend schema. Apply migrations
+> Source of truth for the Roamorrow backend schema. Apply migrations
 > to a fresh project via the Supabase CLI; each migration is forward-only.
 
 ## Required env

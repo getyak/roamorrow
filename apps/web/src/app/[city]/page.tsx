@@ -6,11 +6,13 @@
  *
  * Layout:  [TopBar] / [ListColumn (480) | RightSurface map + DetailDock] / [StatusBar]
  *
- * Language toggle stored in URL: `?lang=zh|en` (default zh).
+ * Language toggle stored in URL: `?lang=zh|en` (default en).
  * City data resolved at runtime from `cities-data.ts`.
  */
 
 import Link from "next/link";
+import { RoamorrowMark } from "@/components/brand/RoamorrowMark";
+import { BRAND } from "@/lib/brand";
 import { useMemo, useState } from "react";
 import { notFound, useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -112,7 +114,7 @@ export default function CityPage() {
   const city = citySlug ? CITIES[citySlug] : undefined;
   if (!city) notFound();
 
-  const lang: Lang = searchParams.get("lang") === "en" ? "en" : "zh";
+  const lang: Lang = searchParams.get("lang") === "zh" ? "zh" : "en";
   const T = useMemo(() => strings(lang, city), [lang, city]);
   const fontStack = lang === "zh" ? FONT_CN : FONT_DISPLAY;
 
@@ -134,7 +136,7 @@ export default function CityPage() {
 
   const setLang = (next: Lang) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (next === "en") params.set("lang", "en");
+    if (next === "zh") params.set("lang", "zh");
     else params.delete("lang");
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
@@ -238,7 +240,7 @@ function TopBar({
           return (
             <Link
               key={slug}
-              href={`/${slug}${lang === "en" ? "?lang=en" : ""}`}
+              href={`/${slug}${lang === "zh" ? "?lang=zh" : ""}`}
               style={{
                 padding: "5px 11px",
                 borderRadius: 6,
@@ -394,10 +396,7 @@ function Logo() {
         textDecoration: "none",
       }}
     >
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <circle cx="9" cy="9" r="7.5" stroke="#C98628" strokeWidth="1.2" />
-        <path d="M9 3 L11 9 L9 15 L7 9 Z" fill="#C98628" />
-      </svg>
+      <RoamorrowMark size={22} strokeColor="#F4EFE7" />
       <span
         style={{
           fontFamily: FONT_DISPLAY,
@@ -407,7 +406,7 @@ function Logo() {
           letterSpacing: "-0.2px",
         }}
       >
-        Solo Compass
+        {BRAND.name}
       </span>
     </Link>
   );
@@ -914,7 +913,7 @@ function DetailDock({
   const moment = lang === "zh" ? exp.momentZh : exp.moment;
   const aiReason = lang === "zh" ? exp.aiReasonZh : exp.aiReason;
   const tags = lang === "zh" ? exp.tagsZh : exp.tags;
-  const detailHref = `/experience/${exp.id}${lang === "en" ? "?lang=en" : ""}`;
+  const detailHref = `/experience/${exp.id}${lang === "zh" ? "?lang=zh" : ""}`;
   return (
     <div
       style={{
@@ -1217,7 +1216,7 @@ function StatusBar({ T, lang, city }: { T: Strings; lang: Lang; city: WebCity })
       }}
     >
       <span style={{ color: "var(--accent-amber)" }}>●</span>
-      <span>compass.io / {city.slug}</span>
+      <span>roamorrow.com / {city.slug}</span>
       <span style={{ color: "var(--dark-border-strong)" }}>·</span>
       <span>
         {city.experiences.length} exp · {Object.keys(WEB_CATS).length} cats

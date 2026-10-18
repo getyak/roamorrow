@@ -2,7 +2,7 @@ import XCTest
 
 /// US-038: The share-card brand label must be routed through `NSLocalizedString`
 /// via the `sharecard.brand` key. The string is intentionally identical in both
-/// locales ("Solo Compass"), but the key must resolve in each `Localizable.strings`
+/// locales ("Roamorrow"), but the key must resolve in each `Localizable.strings`
 /// so the branding goes through the localization pipeline rather than a hardcoded literal.
 final class ShareCardComponentsL10nTest: XCTestCase {
 
@@ -28,7 +28,7 @@ final class ShareCardComponentsL10nTest: XCTestCase {
         guard let enValue = localizedValue(forKey: "sharecard.brand", localization: "en") else {
             throw XCTSkip("en.lproj/Localizable.strings not found in test host bundle")
         }
-        XCTAssertEqual(enValue, "Solo Compass",
+        XCTAssertEqual(enValue, "Roamorrow",
             "en sharecard.brand must resolve to the brand label, got: \(enValue)")
     }
 
@@ -36,7 +36,7 @@ final class ShareCardComponentsL10nTest: XCTestCase {
         guard let zhValue = localizedValue(forKey: "sharecard.brand", localization: "zh-Hans") else {
             throw XCTSkip("zh-Hans.lproj/Localizable.strings not found in test host bundle")
         }
-        XCTAssertEqual(zhValue, "Solo Compass",
+        XCTAssertEqual(zhValue, "Roamorrow",
             "zh-Hans sharecard.brand must resolve to the brand label, got: \(zhValue)")
     }
 }

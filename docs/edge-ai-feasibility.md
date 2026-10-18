@@ -1,4 +1,4 @@
-# Edge AI Feasibility Spike — Solo Compass
+# Edge AI Feasibility Spike — Roamorrow
 
 **Date:** 2026-05-20  
 **Author:** Engineering  
@@ -10,7 +10,7 @@
 
 ### Capabilities
 
-`NaturalLanguage.framework` ships in every iOS 17+ device with no additional download or API key. Relevant APIs for Solo Compass:
+`NaturalLanguage.framework` ships in every iOS 17+ device with no additional download or API key. Relevant APIs for Roamorrow:
 
 | API                             | Use case                                         |
 | ------------------------------- | ------------------------------------------------ |
@@ -21,7 +21,7 @@
 
 ### Accuracy Benchmark — 20 Sample Utterances
 
-The following 20 utterances were classified into Solo Compass intents (`FindExperience`, `GetRecommendation`, `Settings`, `SmallTalk`) using a simple NLEmbedding cosine-nearest-neighbour approach with 4 seed sentences as class centroids.
+The following 20 utterances were classified into Roamorrow intents (`FindExperience`, `GetRecommendation`, `Settings`, `SmallTalk`) using a simple NLEmbedding cosine-nearest-neighbour approach with 4 seed sentences as class centroids.
 
 | #   | Utterance                          | Expected          | NL Predicted      | Match |
 | --- | ---------------------------------- | ----------------- | ----------------- | ----- |
@@ -73,7 +73,7 @@ A dedicated intent classifier can be trained and compiled with Create ML's `MLTe
 | BERT-mini fine-tune  | 120MB     | ~30MB          |
 | DistilBERT fine-tune | 260MB     | ~65MB          |
 
-**Recommendation**: BoW+MLP is the pragmatic choice for Solo Compass — model size <1MB, training time <5 minutes on a laptop, inference <1ms, and accuracy comparable to NLEmbedding on short utterances. BERT-mini is worthwhile only if accuracy drops below 80% on a larger held-out set.
+**Recommendation**: BoW+MLP is the pragmatic choice for Roamorrow — model size <1MB, training time <5 minutes on a laptop, inference <1ms, and accuracy comparable to NLEmbedding on short utterances. BERT-mini is worthwhile only if accuracy drops below 80% on a larger held-out set.
 
 ### Latency
 
@@ -85,7 +85,7 @@ On an iPhone 15 Pro, Core ML inference for a BoW+MLP classifier is <1ms. For BER
 
 ### What is MLX?
 
-Apple's [MLX framework](https://github.com/ml-explore/mlx) is an array framework for Apple Silicon, allowing on-device inference of larger open-weight models. `nomic-embed-text-v1.5` (~80MB INT8) produces 768-dim embeddings compatible with existing Solo Compass similarity logic.
+Apple's [MLX framework](https://github.com/ml-explore/mlx) is an array framework for Apple Silicon, allowing on-device inference of larger open-weight models. `nomic-embed-text-v1.5` (~80MB INT8) produces 768-dim embeddings compatible with existing Roamorrow similarity logic.
 
 ### Performance on iPhone 15 Pro
 

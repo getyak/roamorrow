@@ -38,7 +38,7 @@ Three of these five are Web's home turf. iOS owns the middle one — the live, i
 
 ### Scenario B — On-the-ground quick-check (zero install)
 
-**Posture:** phone browser, standing on a street, just heard about Solo Compass.
+**Posture:** phone browser, standing on a street, just heard about Roamorrow.
 
 **User's mental model:** "Let me try this without installing anything. If it's good, I'll get the app."
 
