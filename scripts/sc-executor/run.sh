@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sc-executor/run.sh — Solo Compass executor runtime.
+# sc-executor/run.sh — Roamorrow executor runtime.
 #
 # Reads the most recent sc-evaluator findings file from
 # scripts/sc-evaluator/findings/*.md and either:

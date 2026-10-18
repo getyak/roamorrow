@@ -5,14 +5,14 @@ import { Container } from "@/components/marketing/Container";
 import { ButtonLink, Eyebrow, Section } from "@/components/marketing/primitives";
 import { resolveDistribution, distributionCopy } from "@/lib/distribution";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 const dist = resolveDistribution();
 const availability = distributionCopy(dist.primaryKind, "en");
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Download · Solo Compass for iOS",
+  title: { absolute: `${BRAND.name} for iOS · Availability` },
   // W01: no placeholder store id, no invented price or availability. The
   // page states where things actually stand and offers the real web entry.
   description: availability.status,
@@ -27,15 +27,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: `${SITE_URL}/download`,
-    title: "Solo Compass for iOS — availability",
+    title: "Roamorrow for iOS — availability",
     description: availability.status,
-    images: [{ url: "/og/download.png", width: 1200, height: 630 }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass for iOS — availability",
+    title: "Roamorrow for iOS — availability",
     description: availability.status,
-    images: ["/og/download.png"],
+    images: ["/opengraph-image"],
   },
 };
 
@@ -62,7 +62,7 @@ export default function DownloadPage() {
             <Eyebrow dot="accent" className="justify-center">
               Download
             </Eyebrow>
-            <h1 className="ds-display-xl mt-6 font-display">Solo Compass on iPhone.</h1>
+            <h1 className="ds-display-xl mt-6 font-display">Roamorrow on iPhone.</h1>
             <p className="ds-body-xl mt-6 text-fg-muted">{availability.status}</p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               {dist.iosAvailable ? (

@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Public, bilingual documents hosted independently of the marketing domain.
-/// URLs are validated against their published Gist contents in legal delivery evidence.
+/// Canonical public documents. Their bilingual content retains the published
+/// legal documents; verify the deployed destinations before release.
 enum LegalDocuments {
-    static let privacyPolicy = URL(string: "https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9")
-    static let termsOfService = URL(string: "https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a")
+    static let privacyPolicy = URL(string: "https://roamorrow.com/privacy")
+    static let termsOfService = URL(string: "https://roamorrow.com/terms")
 }
 
 /// Keep the same semantic links reachable before consent, in Settings and before purchase.

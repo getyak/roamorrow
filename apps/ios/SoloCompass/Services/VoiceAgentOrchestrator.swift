@@ -1244,7 +1244,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
         let experienceBlock = experience.map { Self.renderExperienceContext($0) } ?? ""
 
         return """
-        You are Solo Compass, a warm and knowledgeable travel companion for solo travelers.
+        You are Roamorrow, a warm and knowledgeable travel companion for solo travelers.
         The user is at approximately (\(String(format: "%.4f", coord.latitude)), \(String(format: "%.4f", coord.longitude))).\(contextBlock)\(memoryBlock)\(temporalBlock)\(experienceBlock)
 
         CURRENT VISIBLE EXPERIENCES (use ONLY these IDs when calling tools):
@@ -1296,7 +1296,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
 
         CITATION (Beta v0.9 evidence rule):
         - Any place you recommend by name MUST be tagged immediately after the name with [exp:<id>] using an id from CURRENT VISIBLE EXPERIENCES or from a tool result. Example: "The east-facing wat at Wat Phra Singh [exp:cmi-wat-phra-singh] catches the morning light."
-        - If you do NOT have a backing id for a claim, prefix the sentence with "Guess —" so the user knows it is a hunch rather than something Solo Compass actually has in its index. NEVER fabricate an id.
+        - If you do NOT have a backing id for a claim, prefix the sentence with "Guess —" so the user knows it is a hunch rather than something Roamorrow actually has in its index. NEVER fabricate an id.
         - Do not over-tag: tag a place only once per reply, at first mention. Conversation flow comes first.
         """
     }

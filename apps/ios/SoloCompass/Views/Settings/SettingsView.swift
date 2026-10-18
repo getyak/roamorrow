@@ -652,7 +652,7 @@ public struct SettingsView: View {
 
     /// Write each exported `File` to a uniquely-scoped temp directory and
     /// return the URLs for the share sheet. A per-export subdirectory keeps
-    /// filenames stable (the share target shows `solo-compass-visits-….csv`,
+    /// filenames stable (the share target shows `roamorrow-visits-….csv`,
     /// not a UUID) while still avoiding collisions across repeat exports. A
     /// file that fails to write is skipped rather than aborting the whole
     /// export — the user still gets whatever assets serialized cleanly.

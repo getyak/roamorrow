@@ -1,4 +1,5 @@
-import { LEGAL_URLS, SUPPORT_EMAIL } from "@/lib/legal";
+import { SUPPORT_EMAIL } from "@/lib/legal";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Marketing copy — English + Simplified Chinese.
@@ -154,8 +155,8 @@ export const copy: Record<Locale, Copy> = {
     },
     hero: {
       eyebrow: "since 2026 · made for iOS 17+",
-      h1Lines: ["A map where", "every dot is worth", "a solo detour."],
-      sub: "Solo Compass is a map-first companion for people traveling alone. No feed. No ads. Just experiences worth your afternoon.",
+      h1Lines: ["Find your way.", "Feel at home."],
+      sub: `${BRAND.name} is your companion for solo travel and life on the move. Find local experiences worth your afternoon, and make a new place feel like yours.`,
       ctaPrimaryStore: "Get on App Store",
       ctaPrimaryWeb: "Open the web map",
       iosStatus: "The iPhone app is built but not publicly listed yet — the web map is open today.",
@@ -183,13 +184,13 @@ export const copy: Record<Locale, Copy> = {
           muted: ["ChatGPT"],
         },
         {
-          text: "We built Solo Compass because none of those felt like what an old friend who knew the city would tell you.",
+          text: "We built Roamorrow because none of those felt like what an old friend who knew the city would tell you.",
         },
       ],
     },
     pillars: {
       eyebrow: "Three non-negotiables",
-      title: "How Solo Compass is different.",
+      title: "How Roamorrow is different.",
       sub: "Three design pillars from day one. If a feature pulls away from any of them, it doesn't ship.",
       items: [
         {
@@ -234,9 +235,9 @@ export const copy: Record<Locale, Copy> = {
       intro: "Illustrations, not live results or product screenshots.",
     },
     askSolo: {
-      eyebrow: "01 · Ask Solo",
+      eyebrow: "01 · Ask",
       title: "The friend in every city, in your pocket.",
-      body: "Ask a question about your city or a selected experience. Solo uses the available map context and returns suggestions you can inspect before deciding.",
+      body: "Ask a question about your city or a selected experience. Roamorrow uses the available map context and returns suggestions you can inspect before deciding.",
       bullets: [
         "Type a question or choose voice input",
         "Keep the selected place in context",
@@ -329,7 +330,7 @@ export const copy: Record<Locale, Copy> = {
         tagline: "Everything Pro, month to month.",
         cta: "See it in the App Store",
         features: [
-          "Ask Solo AI — up to 30 answers a day (60 explanations)",
+          "Ask AI — up to 30 answers a day (60 explanations)",
           "Available route tools",
           "Some rituals and archive views remain previews",
           "Current entitlements are shown before purchase",
@@ -390,16 +391,17 @@ export const copy: Record<Locale, Copy> = {
           links: [
             {
               label: "Privacy",
-              href: LEGAL_URLS.privacy,
+              href: "/privacy",
             },
             {
               label: "Terms",
-              href: LEGAL_URLS.terms,
+              href: "/terms",
             },
+            { label: "Support", href: "/support" },
           ],
         },
       ],
-      bottom: "© 2026 Solo Compass · Made with respect for solo travelers.",
+      bottom: "© 2026 Roamorrow · Made with respect for solo travelers.",
     },
     langSwitch: "中文",
   },
@@ -415,8 +417,8 @@ export const copy: Record<Locale, Copy> = {
     },
     hero: {
       eyebrow: "since 2026 · 面向 iOS 17+",
-      h1Lines: ["每一个点", "都值得你", "独自绕路一趟。"],
-      sub: "Solo Compass 是为独自旅行者做的地图。没有信息流，没有广告，只有值得你度过一个下午的体验。",
+      h1Lines: ["一个人出发，", "也能在远方", "过好日常。"],
+      sub: `${BRAND.name} 是你的独自旅行与旅居伙伴。发现值得花一个下午的本地体验，让陌生的地方也有熟悉的日常。`,
       ctaPrimaryStore: "App Store 下载",
       ctaPrimaryWeb: "打开网页地图",
       iosStatus: "iPhone 版已开发完成，尚未公开上架 —— 网页地图今天就能用。",
@@ -444,13 +446,13 @@ export const copy: Record<Locale, Copy> = {
           muted: ["ChatGPT"],
         },
         {
-          text: "我们做 Solo Compass，是因为以上都不像一个熟悉这座城的本地朋友会告诉你的话。",
+          text: "我们做 Roamorrow，是因为以上都不像一个熟悉这座城的本地朋友会告诉你的话。",
         },
       ],
     },
     pillars: {
       eyebrow: "三条不可动摇的原则",
-      title: "Solo Compass 和别人不一样，在哪。",
+      title: "Roamorrow 和别人不一样，在哪。",
       sub: "从第一天起就定下三条设计准则。任何功能只要偏离其一，就不会被做进产品。",
       items: [
         {
@@ -495,9 +497,9 @@ export const copy: Record<Locale, Copy> = {
       intro: "以下均为示意，不是实时结果或产品截图。",
     },
     askSolo: {
-      eyebrow: "01 · 問 Solo",
+      eyebrow: "01 · 问",
       title: "每座城市都有的那个懂行朋友。",
-      body: "围绕所在城市或选定体验提问。Solo 使用已有地图上下文提供建议，你可以先查看依据，再决定下一步。",
+      body: "围绕所在城市或选定体验提问。Roamorrow 使用已有地图上下文提供建议，你可以先查看依据，再决定下一步。",
       bullets: ["文字与语音均有入口", "保留选定地点的上下文", "查看已有来源和置信度"],
       demoUser: "找个安静地方读书 2 小时，别是连锁店。",
       demoAgent: "8 分钟步行内 3 个候选。",
@@ -564,7 +566,7 @@ export const copy: Record<Locale, Copy> = {
         tagline: "完整 Pro，按月付费。",
         cta: "去 App Store 查看",
         features: [
-          "问 Solo AI —— 每天最多 30 次回答（60 次解释）",
+          "问 AI —— 每天最多 30 次回答（60 次解释）",
           "当前开放的路线工具",
           "部分仪式与归档仍为预览",
           "购买前查看当前开放的权益",
@@ -620,16 +622,17 @@ export const copy: Record<Locale, Copy> = {
           links: [
             {
               label: "隐私",
-              href: LEGAL_URLS.privacy,
+              href: "/zh/privacy",
             },
             {
               label: "用户协议",
-              href: LEGAL_URLS.terms,
+              href: "/terms",
             },
+            { label: "支持", href: "/support" },
           ],
         },
       ],
-      bottom: "© 2026 Solo Compass · 尊重每一位独自出发的人。",
+      bottom: "© 2026 Roamorrow · 尊重每一位独自出发的人。",
     },
     langSwitch: "English",
   },

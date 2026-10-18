@@ -84,7 +84,7 @@ function MobilePreviewInner() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const lang: Lang = params.get("lang") === "en" ? "en" : "zh";
+  const lang: Lang = params.get("lang") === "zh" ? "zh" : "en";
   const T = useMemo(() => strings(lang), [lang]);
   const fontStack = lang === "zh" ? FONT_CN : FONT_DISPLAY;
 
@@ -106,7 +106,7 @@ function MobilePreviewInner() {
 
   const setLang = (next: Lang) => {
     const sp = new URLSearchParams(params.toString());
-    if (next === "en") sp.set("lang", "en");
+    if (next === "zh") sp.set("lang", "zh");
     else sp.delete("lang");
     const qs = sp.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
@@ -140,7 +140,7 @@ function MobilePreviewInner() {
         }}
       >
         <Link
-          href={`/lisbon${lang === "en" ? "?lang=en" : ""}`}
+          href={`/lisbon${lang === "zh" ? "?lang=zh" : ""}`}
           style={{
             fontFamily: FONT_MONO,
             fontSize: 11,
@@ -343,7 +343,7 @@ function PhoneFrame(p: PhoneFrameProps) {
               textTransform: "uppercase",
             }}
           >
-            Solo Compass · preview
+            Roamorrow · preview
           </div>
           <div
             style={{
@@ -590,7 +590,7 @@ function PhoneFrame(p: PhoneFrameProps) {
                   }}
                 />
                 <Link
-                  href={`/experience/${e.id}${p.lang === "en" ? "?lang=en" : ""}`}
+                  href={`/experience/${e.id}${p.lang === "zh" ? "?lang=zh" : ""}`}
                   style={{
                     flex: 1,
                     minWidth: 0,

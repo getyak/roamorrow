@@ -13,8 +13,8 @@
 "filter.all" = "全部";
 "filter.saved" = "收藏";
 "filter.saved.a11y" = "收藏，%d 个已收藏的体验";
-"filter.solo.agent" = "问 Solo";
-"filter.solo.agent.a11y" = "让 Solo 给一个附近的建议";
+"filter.solo.agent" = "问问";
+"filter.solo.agent.a11y" = "让 Roamorrow 给一个附近的建议";
 "filter.solo.agent.seed" = "此刻附近有什么值得去的？";
 "filter.taste.rank" = "我的菜";
 "filter.taste.rank.a11y" = "按你的口味画像排序结果";
@@ -96,20 +96,20 @@
 /* Voice */
 "voice.button" = "语音输入";
 "voice.permission.title" = "需要麦克风权限";
-"voice.permission.message" = "Solo Compass 需要麦克风和语音识别权限来接受语音输入。";
+"voice.permission.message" = "Roamorrow 需要麦克风和语音识别权限来接受语音输入。";
 
 /* AI */
 "ai.explanation.loading" = "正在加载洞察…";
 "ai.explanation.title" = "AI 洞察";
 "ai.error.missingKey" = "AI 功能尚未配置。";
-"ai.error.request" = "Solo 这会儿没想明白，稍等片刻再试一次。";
+"ai.error.request" = "Roamorrow 这会儿没想明白，稍等片刻再试一次。";
 "amap.error.missingKey" = "高德 Key 未配置，已改用全球数据源。";
 "amap.error.request" = "这会儿连不上地图，稍等片刻再试。";
 "amap.error.api" = "高德 API 错误 %@：%@";
 "ai.fallback.explanation" = "推荐给独行旅人：座位安静、员工不打扰、本地信号强。";
 "ai.fallback.voice" = "正在显示附近适合独行的体验。";
-"ai.skeleton.pill" = "Solo 正在了解中…";
-"ai.skeleton.pill.a11y" = "Solo 还在为这里搜集信息。来源就位后会给你完整画面。";
+"ai.skeleton.pill" = "正在了解中…";
+"ai.skeleton.pill.a11y" = "Roamorrow 还在为这里搜集信息。来源就位后会给你完整画面。";
 "card.source.verified" = "已交叉核实";
 "card.source.multi" = "多来源";
 "card.source.single" = "单来源";
@@ -208,7 +208,7 @@
 /* 地点卡片长按上下文菜单 */
 "menu.viewDetails" = "查看详情";
 "menu.showOnMap" = "在地图上显示";
-"menu.askSolo" = "问 Solo";
+"menu.askSolo" = "问问";
 "menu.favorite" = "收藏";
 "menu.unfavorite" = "取消收藏";
 "menu.navigate" = "导航前往";
@@ -313,11 +313,11 @@
 "detail.more" = "更多选项";
 
 /* US-004: Ask Solo about this experience (Pro chat) */
-"experience.askSolo.cta" = "向 Solo 提问";
+"experience.askSolo.cta" = "问问这个体验";
 
 /* Onboarding */
-"onboarding.welcome.title" = "值得独处的地方。";
-"onboarding.welcome.subtitle" = "一张地图，记录适合一人前往的体验。";
+"onboarding.welcome.title" = "Roamorrow";
+"onboarding.welcome.subtitle" = "一个人出发，也能在远方过好日常。";
 "onboarding.welcome.cta" = "在地图上找到我";
 "onboarding.welcome.skip" = "先逛逛";
 "onboarding.style.title" = "你怎么旅行？";
@@ -370,7 +370,7 @@
 /* Notifications */
 "settings.notifications" = "靠近时提醒我";
 "settings.notifications.header" = "通知";
-"settings.notifications.footer" = "经过你保存的体验时，Solo Compass 会安静地提醒你。永不打扰式营销。";
+"settings.notifications.footer" = "经过你保存的体验时，Roamorrow 会安静地提醒你。永不打扰式营销。";
 "notification.checkin.title" = "你就在附近";
 "notification.checkin.body" = "你正站在 %@ 附近，要去看看吗？";
 
@@ -468,7 +468,7 @@
 "exploreMode.handoff.summary" = "%1$d 处 · %2$.1f km · %3$@";
 "exploreMode.handoff.summaryNoCity" = "%1$d 处 · %2$.1f km";
 "exploreMode.handoff.verifiedSuffix" = "其中 %d 处多源确认";
-"exploreMode.handoff.askSolo" = "问 Solo 这些地方";
+"exploreMode.handoff.askSolo" = "问问这些地方";
 "exploreMode.handoff.saveWalk" = "保存为路线";
 "exploreMode.handoff.expand" = "扩大范围";
 "exploreMode.handoff.clear" = "清除这批";
@@ -496,7 +496,7 @@
 "explore.toast.cachedFallback" = "正在显示缓存结果";
 
 /* Paywall */
-"paywall.hero.title" = "解锁 Solo Compass Pro";
+"paywall.hero.title" = "解锁 Roamorrow Pro";
 "paywall.hero.subtitle" = "在地球任意角落用 AI 探索，语音意图，以及随取随用的逐处 AI 洞察。";
 "paywall.feature.explore" = "在这里探索 — 任意城市的 AI 增强真实地点";
 "paywall.feature.voice" = "语音意图 — 描述你的需求，得到筛选后的地图";
@@ -528,11 +528,11 @@
 "me.entitlement.trial.lastDay" = "试用最后一天";
 "me.entitlement.trial.detail.format" = "%@ 开始扣费";
 "me.entitlement.trial.detail.fallback" = "试用结束前可随时取消";
-"me.entitlement.pro.title" = "Solo Compass 高级版";
+"me.entitlement.pro.title" = "Roamorrow 高级版";
 "me.entitlement.pro.detail.format" = "%@ 续期";
 "me.entitlement.pro.detail.fallback" = "自动续订订阅";
 "me.entitlement.upsell.title" = "查看 Pro 方案";
-"me.entitlement.upsell.detail" = "了解 Solo Compass Pro 的实际内容";
+"me.entitlement.upsell.detail" = "了解 Roamorrow Pro 的实际内容";
 
 /* Onboarding — 第 5 步 paywall */
 "onboarding.paywall.title" = "探索路上，多一点帮助";
@@ -582,12 +582,12 @@
 
 /* In-app language switcher */
 "settings.language" = "语言";
-"settings.language.footer" = "选择 Solo Compass 显示的语言。切换后需重启应用生效。";
+"settings.language.footer" = "选择 Roamorrow 显示的语言。切换后需重启应用生效。";
 "settings.language.system" = "跟随系统";
 "settings.language.english" = "English";
 "settings.language.zh-Hans" = "简体中文";
 "settings.language.restart.title" = "需要重启";
-"settings.language.restart.message" = "请退出并重新打开 Solo Compass 以完成语言切换。";
+"settings.language.restart.message" = "请退出并重新打开 Roamorrow 以完成语言切换。";
 "settings.language.restart.ok" = "好的";
 
 /* Voice agent conversation sheet (US-VA-04) */
@@ -638,19 +638,19 @@
 "chat.error.unknown" = "没发出去。再试一次。";
 
 /* Send-rejected hints + unconfigured banner shown above the chat input bar */
-"chat.send.hint.notReady" = "稍等片刻 — Solo 正在唤醒，请再次点击发送。";
+"chat.send.hint.notReady" = "旅行助手正在启动，稍等片刻再点发送。";
 "chat.send.hint.unconfigured" = "请到设置里添加 DeepSeek 密钥以开始聊天。";
 "chat.send.hint.sessionEnded" = "重连失败 — 请检查网络后重试。";
 "chat.unconfigured.title" = "聊天尚未配置";
 "chat.unconfigured.subtitle" = "前往设置添加 DeepSeek API 密钥，或登录 Pro 账户。";
 
 /* "+" quick-action button — single chat entry point */
-"plus.button.a11y" = "和 Solo 聊天";
+"plus.button.a11y" = "和 Roamorrow 聊天";
 "plus.button.hint" = "点击文字输入，长按语音说话";
 "plus.button.label" = "问问";
 
 /* Chat voice surface */
-"chat.voice.title" = "和 Solo 说话";
+"chat.voice.title" = "和 Roamorrow 说话";
 "chat.voice.tap.toType" = "点击改为文字输入";
 "chat.voice.idle" = "按住麦克风说话";
 "chat.voice.listening" = "我在听…";
@@ -659,7 +659,7 @@
 "chat.voice.responding" = "回复中…";
 
 /* Chat sheet */
-"chat.title" = "Solo Compass";
+"chat.title" = "Roamorrow";
 "chat.empty.title" = "问我你附近有什么好玩的";
 "chat.empty.subtitle" = "试试「附近有什么好的？」或按住麦克风说话。";
 
@@ -681,8 +681,8 @@
 "chat.state.thinking" = "思考中…";
 "chat.error.retry" = "重试";
 "chat.bubble.user.a11y" = "你说：%@";
-"chat.bubble.assistant.a11y" = "Solo 说：%@";
-"chat.typing.a11y" = "Solo Compass 正在思考…";
+"chat.bubble.assistant.a11y" = "Roamorrow 说：%@";
+"chat.typing.a11y" = "Roamorrow 正在思考…";
 "chat.tool.exploreNearby" = "搜索附近";
 "chat.tool.filter" = "筛选地图";
 "chat.tool.showDetails" = "打开地点";
@@ -727,7 +727,7 @@
 "share.style.minimalText" = "极简 9:16";
 /* Route share sheet (route detail → share). */
 "route.share.title" = "分享路线";
-"route.share.kicker" = "路线 · Solo Compass";
+"route.share.kicker" = "路线 · Roamorrow";
 "route.share.mode.card" = "图片卡";
 "route.share.mode.text" = "纯文本";
 "route.share.min" = "分钟";
@@ -737,8 +737,8 @@
 "route.share.mapFallback" = "地图底图不可用——改为显示简化线路。";
 /* %d = number of travelers who have walked this route. */
 "route.share.walkedBy" = "已有 %d 位旅行者走过";
-/* Share-card image brand label (US-038) — kept as "Solo Compass" in both locales, but routed through l10n. */
-"sharecard.brand" = "Solo Compass";
+/* Share-card image brand label (US-038) — kept as "Roamorrow" in both locales, but routed through l10n. */
+"sharecard.brand" = "Roamorrow";
 /* Share-card score suffix (US-039) — rendered after the numeric Solo Score on the share card. */
 "sharecard.score.suffix" = "/100 Solo 评分";
 
@@ -749,7 +749,7 @@
 "settings.appearance" = "外观";
 "settings.theme" = "主题";
 "settings.haptics" = "触感反馈";
-"settings.haptics.footer" = "开启后，Solo Compass 会在收藏、打卡、筛选和地图预览等操作时振动提示。";
+"settings.haptics.footer" = "开启后，Roamorrow 会在收藏、打卡、筛选和地图预览等操作时振动提示。";
 
 /* Map preview in exports (US-020) */
 "settings.exportMapPreview" = "导出时包含地图预览";
@@ -984,7 +984,7 @@
  * Safety consent (CompanionSafetyConsentSheet)
  * ============================================================ */
 "companion.safety.title" = "开始使用前";
-"companion.safety.heading" = "Solo Compass 是旅行同伴 app，不是相亲软件。";
+"companion.safety.heading" = "Roamorrow 是旅行同伴 app，不是相亲软件。";
 "companion.safety.subtitle" = "请阅读并接受以下条款，让大家都能安心使用。";
 "companion.safety.age.header" = "年龄";
 "companion.safety.age.body" = "你必须年满 18 岁才能使用同伴功能。";
@@ -1078,7 +1078,7 @@
 /* Web 搜索来源卡片(聊天内溯源) */
 "chat.sources.title" = "来源";
 "chat.sources.a11y" = "来源 %1$d：%2$@，来自 %3$@";
-"chat.thinking.a11y" = "Solo Compass 正在思考";
+"chat.thinking.a11y" = "Roamorrow 正在思考";
 "agent.trace.summary.steps" = "推理了 %d 步";
 "agent.trace.summary.thought" = "已想清楚";
 "chat.thinking.summary.a11y" = "推理摘要：%@。点按展开。";
@@ -1123,7 +1123,7 @@
 "ai.provider.section.baseURL" = "接口地址";
 "ai.provider.section.model" = "模型";
 "ai.provider.apiKey.placeholder" = "粘贴你的 API 密钥…";
-"ai.provider.apiKey.footer" = "存储在本设备上，不会上传至 Solo Compass 服务器。";
+"ai.provider.apiKey.footer" = "存储在本设备上，不会上传至 Roamorrow 服务器。";
 "ai.provider.baseURL.placeholder" = "https://api.example.com/v1";
 "ai.provider.baseURL.footer" = "兼容 OpenAI 格式的接口根地址（如 https://api.openai.com/v1）。";
 "ai.provider.model.placeholder.custom" = "输入模型名称";
@@ -1176,7 +1176,7 @@
 /* Half-detent empty state — a minimal "companion is waiting" entry */
 "chat.empty.half.invite" = "问我，要去哪儿";
 "chat.empty.half.micHint" = "按住说话";
-"chat.empty.half.mic.a11y" = "按住对 Solo 说话";
+"chat.empty.half.mic.a11y" = "按住对 Roamorrow 说话";
 "chat.empty.half.tag.nearby" = "附近";
 "chat.empty.half.tag.coffee" = "咖啡";
 "chat.empty.half.tag.sunset" = "落日";
@@ -1520,7 +1520,7 @@
 "voice.result.none" = "附近没有匹配的地点 — 换个词试试";
 
 /* Voice Agent orb */
-"voiceAgent.orb.a11y" = "长按与 Solo Compass 说话";
+"voiceAgent.orb.a11y" = "长按与 Roamorrow 说话";
 "voiceAgent.orb.hint" = "双击并长按以说话";
 "voiceAgent.orb.listening" = "聆听中…";
 "voiceAgent.orb.release" = "松开发送";
@@ -1643,7 +1643,7 @@
 "route.create.entry.subtitle" = "串联几个地点 · 可选择招募同伴一起走";
 
 /* Direction 3 — 当下 / Now 路线区冷启动占位卡 */
-"routes.now.empty.title" = "今天的一条路线 · 让 Solo 为你拼一条";
+"routes.now.empty.title" = "今天走哪条路线 · 问问旅行助手";
 "routes.now.empty.cta" = "我从附近挑 3 个你会喜欢的点，串成一条 · 点这里开始";
 "route.duration.hours" = "%d 小时";
 "route.duration.hoursMinutes" = "%d 小时 %d 分";
@@ -1667,7 +1667,7 @@
 "route.active.pause" = "暂停路线";
 "filter.tip.title" = "按心情筛选";
 "filter.tip.message" = "点一个分类或「Now」，找此刻最值得去的地方——而不只是附近所有地方。";
-"terms.title" = "欢迎使用 Solo Compass";
+"terms.title" = "欢迎使用 Roamorrow";
 "terms.intro" = "开始探索前，请先了解这份数据使用摘要；完整文档在下方链接中。";
 "terms.dataUse.title" = "我们会收集";
 "terms.dataUse.location" = "位置用于附近体验，并可在获得相应授权时进行后台到访检测。确认探索及 AI 请求可能将选定坐标与上下文发送至相关服务。";
@@ -1680,7 +1680,7 @@
 "terms.button.accept" = "同意并继续";
 "terms.button.decline" = "暂不";
 "terms.declined.title" = "需要同意后才能继续";
-"terms.declined.body" = "未获得你对《隐私政策》和《用户协议》的同意前，Solo Compass 无法展示地图、获取附近地点或调用 AI。我们尚未收集任何数据。点击下方按钮可重新查看。";
+"terms.declined.body" = "未获得你对《隐私政策》和《用户协议》的同意前，Roamorrow 无法展示地图、获取附近地点或调用 AI。我们尚未收集任何数据。点击下方按钮可重新查看。";
 "terms.declined.review" = "重新查看";
 "nearby.chip.closingNow" = "推荐时段即将结束";
 
@@ -2184,7 +2184,7 @@
 /* Settings — Forget me (P2.0 #204) */
 "settings.forgetMe" = "忘记我";
 "settings.forgetMe.confirm.title" = "忘记你的口味和记忆？";
-"settings.forgetMe.confirm.message" = "清空本地口味画像与 Solo Agent 关于你的所有记忆。你的收藏、路线和偏好会保留。";
+"settings.forgetMe.confirm.message" = "清空本地口味画像与 Roamorrow 关于你的所有记忆。你的收藏、路线和偏好会保留。";
 "settings.forgetMe.confirm.action" = "忘记我";
 "settings.forgetMe.toast.success" = "已清空——下次开聊时，Agent 会重新认识你。";
 "settings.forgetMe.toast.failure" = "暂时无法清空，请稍后再试。";
@@ -2194,23 +2194,23 @@
 
 /* 启动自检 (StartupDiagnosticsService + SoloAgentBubble) */
 "diagnostics.anthropic.missing.title" = "AI 大脑没接上";
-"diagnostics.anthropic.missing.detail" = "没检测到 AI API key，Solo 现在只会用离线排序推荐地点，不会跟你自然对话。";
+"diagnostics.anthropic.missing.detail" = "没检测到 AI API key，Roamorrow 现在只会用离线排序推荐地点，不会跟你自然对话。";
 "diagnostics.anthropic.missing.fix" = "去 设置 → AI Provider 填一个 Anthropic 或 DeepSeek 的 key。";
 "diagnostics.amap.missing.title" = "高德地图没接上";
-"diagnostics.amap.missing.detail" = "在中国区域，Solo 优先用高德查周边。当前没检测到高德 key，会回退到 Overpass 公共数据，结果可能不全。";
+"diagnostics.amap.missing.detail" = "在中国区域，Roamorrow 优先用高德查周边。当前没检测到高德 key，会回退到 Overpass 公共数据，结果可能不全。";
 "diagnostics.amap.missing.fix" = "在设置或环境变量里配一个 AMAP_API_KEY，再重启 App。";
 "diagnostics.location.denied.title" = "定位被拒了";
 "diagnostics.location.denied.detail" = "地图不知道你在哪，附近推荐、Now 排序、Live Activity 都会失效。";
-"diagnostics.location.denied.fix" = "去 系统设置 → Solo Compass → 位置 → 使用期间。";
+"diagnostics.location.denied.fix" = "去 系统设置 → Roamorrow → 位置 → 使用期间。";
 "diagnostics.location.pending.title" = "还没授权定位";
-"diagnostics.location.pending.detail" = "点一下右下角 Solo 或者定位按钮，我会请求一次位置授权。";
+"diagnostics.location.pending.detail" = "点一下“问问”或定位按钮，应用会请求位置授权。";
 "diagnostics.location.pending.fix" = "触发一次定位授权弹窗。";
 "diagnostics.mic.denied.title" = "语音识别被关了";
-"diagnostics.mic.denied.detail" = "长按 Solo 说话没法转成文字，只能打字聊。";
-"diagnostics.mic.denied.fix" = "去 系统设置 → Solo Compass → 语音识别 打开。";
+"diagnostics.mic.denied.detail" = "语音输入暂时无法转成文字，你仍可以打字与 Roamorrow 聊天。";
+"diagnostics.mic.denied.fix" = "去 系统设置 → Roamorrow → 语音识别 打开。";
 "diagnostics.notification.denied.title" = "通知被拒了";
 "diagnostics.notification.denied.detail" = "拿不到孤独时段提醒、灵动岛胶囊、每月洞察推送。";
-"diagnostics.notification.denied.fix" = "去 系统设置 → Solo Compass → 通知 打开。";
+"diagnostics.notification.denied.fix" = "去 系统设置 → Roamorrow → 通知 打开。";
 "diagnostics.onboarding.incomplete.title" = "onboarding 还没走完";
 "diagnostics.onboarding.incomplete.detail" = "没有 vibe / 城市 / 品味偏好，推荐会退化成通用榜。";
 "diagnostics.onboarding.incomplete.fix" = "回到 onboarding 把三步选完。";
@@ -2219,7 +2219,7 @@
 "diagnostics.seed.empty.fix" = "重装 App，或者报 bug 给我。";
 "diagnostics.seed.header" = "刚启动时你帮我做了一遍体检，发现下面这些问题。逐条解释一下影响，并告诉我怎么修：";
 "solo.agent.bubble.dismiss" = "关掉";
-"solo.agent.bubble.diagnostics.cta" = "问 Solo 怎么修 →";
+"solo.agent.bubble.diagnostics.cta" = "问问怎么修复 →";
 "solo.agent.bubble.diagnostics.subtitle.multi" = "还有 %d 个问题，点开我一起说。";
 
 /* MARK: - 开发者选项（仅测试邮箱解锁后可见） */
@@ -2376,7 +2376,7 @@
 "cityos.base.recall.empty" = "回顾这段旅程";
 "cityos.base.section.ask" = "还想知道什么";
 "cityos.base.ask.title" = "签证、天气、值不值得去";
-"cityos.base.ask.hint" = "问 Solo，即刻回答";
+"cityos.base.ask.hint" = "问问 Roamorrow";
 "cityos.base.ask.prompt" = "我计划去%@远程办公一段时间，签证有哪些选择？最近天气怎么样？适不适合远程办公？";
 "cityos.base.section.visa" = "签证";
 "cityos.base.section.weather" = "天气";
@@ -2493,11 +2493,11 @@
 "today.seal.type.text" = "一段文字，等待重现";
 
 /* 本地化门禁修复 + 仪式感页面 */
-"diagnostics.seed.ask" = "问 Solo 怎么修复";
+"diagnostics.seed.ask" = "问问 Roamorrow 怎么修复";
 "agent.step.clarify" = "正在确认你的需要";
 "agent.step.planning" = "正在规划下一步";
 "diagnostics.card.header" = "启动体检";
-"diagnostics.card.ask" = "问 Solo";
+"diagnostics.card.ask" = "问问";
 "chat.bubble.expand" = "展开完整消息";
 "chat.bubble.collapse" = "收起消息";
 "archive.rituals.title" = "旅行仪式";
@@ -2520,7 +2520,7 @@
 "ost.today.title" = "今日原声";
 "settings.notifications.proactive.header" = "主动提醒";
 "settings.notifications.proactive.footer" = "无论开启多少类型，每天最多收到 3 条提醒。";
-"liveActivity.brand" = "SOLOCOMPASS";
+"liveActivity.brand" = "Roamorrow";
 "liveActivity.preview.allKindsTitle" = "实时活动 · 3 种新状态";
 "toolRouter.preview.title" = "工具路由 · 7 个新工具";
 "toolRouter.preview.subtitle" = "运行在聊天 Agent 内部，没有独立界面；这里展示的是审计契约。";
@@ -2551,7 +2551,7 @@
 "discover.offline.title" = "当前无网络";
 "discover.offline.subtitle" = "先显示地图上已有的内容。";
 "discover.empty.title" = "这里暂时没有可发现的内容";
-"discover.empty.subtitle" = "换个区域看看，或直接问 Solo 附近有什么。";
+"discover.empty.subtitle" = "换个区域看看，或直接问 Roamorrow 附近有什么。";
 "sort.a11y" = "排序";
 
 /* Chat recommendation card — editorial evidence */
@@ -2603,7 +2603,7 @@
 "archive.codex.empty" = "城市图鉴会随到访记录逐步解锁——目前还没有记录。";
 "archive.ritual.blindbox.title" = "盲盒旅行";
 "archive.ritual.bookManifest.title" = "旅行之书";
-"archive.ritual.brag.title" = "独行战报";
+"archive.ritual.brag.title" = "分享旅行瞬间";
 "archive.ritual.capsuleOpen.title" = "时光胶囊";
 "archive.ritual.cityCodex.title" = "城市图鉴";
 "archive.ritual.insight.title" = "月度洞察";
@@ -2717,7 +2717,7 @@
 "report.delivery.title" = "发送你的报告";
 "report.delivery.email" = "发送邮件给支持邮箱";
 "report.delivery.share" = "分享副本";
-"report.delivery.share.message" = "来自 Solo Compass 的地点报告";
+"report.delivery.share.message" = "来自 Roamorrow 的地点报告";
 "report.delivery.notSentHint" = "草稿会保存在本设备，直到你发送为止。";
 "report.delivery.notSent" = "未发送——草稿仍保存在本设备。";
 "report.delivery.preview" = "报告内容";

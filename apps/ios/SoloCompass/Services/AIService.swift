@@ -146,7 +146,7 @@ public final class AIService {
     /// DeepSeek's automatic prefix caching (same prefix → cached KV state).
     /// Keep this stable: every edit invalidates the cache fleet-wide.
     static let sharedSystemPrompt =
-        "You are Solo Compass's AI engine for solo travelers. " +
+        "You are Roamorrow's AI engine for solo travelers. " +
         "Output exactly what the user prompt asks for. " +
         "When asked for JSON, return only a single valid JSON value with no markdown fences and no commentary."
 

@@ -43,13 +43,13 @@ function ScreenFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* 01 · Ask Solo — chat sheet */
+/* 01 · Ask — chat sheet */
 function AskSoloMock({ copy }: { copy: Copy }) {
   return (
     <ScreenFrame>
       <div className="px-4 pt-2 pb-3">
         <span className="font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-fg-muted">
-          Ask Solo
+          Ask
         </span>
       </div>
       <div className="mx-4 mt-1 flex justify-end">
@@ -345,7 +345,7 @@ function BragMock({ copy }: { copy: Copy }) {
         >
           <div className="flex items-center justify-between">
             <span className="font-mono text-[7px] font-semibold uppercase tracking-[0.16em] text-bg-warm">
-              Solo Compass · Passport
+              Roamorrow · Passport
             </span>
             <span className="font-serif text-[11px] text-bg-warm">✦</span>
           </div>

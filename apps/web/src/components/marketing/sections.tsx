@@ -16,6 +16,7 @@ import { MobileNav } from "./MobileNav";
 import { CapabilityMock } from "./CapabilityMocks";
 import { resolveDistribution, distributionCopy } from "@/lib/distribution";
 import type { Copy, Locale } from "./copy";
+import { RoamorrowWordmark } from "@/components/brand/RoamorrowMark";
 
 // Distribution is resolved from validated env (W01). With no validated
 // public store/TestFlight URL the real action is the web map (`/app`) and
@@ -37,7 +38,7 @@ interface Props {
 export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
   const items = [
     { href: `${homePath === "/" ? "" : homePath}/#features`, label: copy.nav.features },
-    { href: `/lisbon${locale === "en" ? "?lang=en" : ""}`, label: copy.nav.cities },
+    { href: `/lisbon${locale === "zh" ? "?lang=zh" : ""}`, label: copy.nav.cities },
     { href: locale === "zh" ? "/zh/pricing" : "/pricing", label: copy.nav.pricing },
     { href: locale === "zh" ? "/zh/manifesto" : "/manifesto", label: copy.nav.manifesto },
   ];
@@ -54,8 +55,7 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
             href={homePath}
             className="flex min-h-[44px] items-center gap-2 font-display text-[20px] font-medium tracking-tight"
           >
-            <SoloCompassMark />
-            <span>Solo Compass</span>
+            <RoamorrowWordmark />
           </Link>
           <div className="hidden items-center gap-1 md:flex">
             {items.map((it) => (
@@ -95,23 +95,6 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
         </div>
       </Container>
     </nav>
-  );
-}
-
-function SoloCompassMark() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden>
-      <circle
-        cx="12"
-        cy="12"
-        r="11"
-        fill="none"
-        stroke="var(--accent-interactive)"
-        strokeWidth="1.4"
-      />
-      <circle cx="12" cy="12" r="2.6" fill="var(--sun-gold)" />
-      <path d="M12 2 L14 12 L12 22 L10 12 Z" fill="var(--accent-interactive)" opacity="0.85" />
-    </svg>
   );
 }
 
@@ -551,8 +534,7 @@ export function Footer({ copy }: Props) {
         <div className="mt-16 grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
             <div className="flex min-h-[44px] items-center gap-2 font-display text-[18px] font-medium">
-              <SoloCompassMark />
-              Solo Compass
+              <RoamorrowWordmark />
             </div>
           </div>
           {copy.footer.columns.map((col) => (

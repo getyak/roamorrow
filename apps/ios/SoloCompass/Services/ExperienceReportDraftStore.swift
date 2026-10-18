@@ -40,7 +40,7 @@ public struct ExperienceReportDraft: Codable, Identifiable, Equatable, Sendable 
 public final class ExperienceReportDraftStore {
     /// The confirmed support inbox. The compose step is always user-driven:
     /// nothing is sent without the traveler pressing send in the composer.
-    public static let supportEmailAddress = "cubxxw@gmail.com"
+    public static let supportEmailAddress = "hello@roamorrow.com"
 
     private static let storageKey = "com.solocompass.experienceReportDrafts.v1"
 
@@ -140,7 +140,7 @@ public final class ExperienceReportDraftStore {
 public enum ExperienceReportComposer {
     /// Identifies the experience in the support email subject.
     public static func emailSubject(experienceTitle: String) -> String {
-        "[Solo Compass] \(experienceTitle)"
+        "[Roamorrow] \(experienceTitle)"
     }
 
     /// Plain-text report body. Includes the machine-readable ids so support

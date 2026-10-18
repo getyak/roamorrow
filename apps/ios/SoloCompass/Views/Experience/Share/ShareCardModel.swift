@@ -67,7 +67,7 @@ public struct ShareCardPayload: Hashable {
         highlights: [String],
         placeLabel: String?,
         coordinate: Coordinate?,
-        brandHandle: String = "solocompass.app"
+        brandHandle: String = "roamorrow.com"
     ) {
         self.title = title
         self.category = category

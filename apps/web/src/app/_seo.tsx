@@ -8,11 +8,11 @@
 
 import type { Locale } from "@/components/marketing/copy";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export function HomeJsonLd({ locale }: { locale: Locale }) {
   const url = locale === "zh" ? `${SITE_URL}/zh` : SITE_URL;
-  const name = locale === "zh" ? "Solo Compass · 独行罗盘" : "Solo Compass";
+  const name = BRAND.name;
   const description =
     locale === "zh"
       ? "为独自旅行者做的 iOS 地图应用。跨来源交叉编译，AI 展示不确定性，无广告，说明数据用途。免费版即真实产品；Pro 为月度/年度订阅，价格以 App Store 实时为准。"
@@ -38,7 +38,7 @@ export function HomeJsonLd({ locale }: { locale: Locale }) {
     ],
     creator: {
       "@type": "Organization",
-      name: "Solo Compass",
+      name: BRAND.name,
       url: SITE_URL,
     },
     inLanguage: locale === "zh" ? "zh-CN" : "en",
@@ -47,10 +47,10 @@ export function HomeJsonLd({ locale }: { locale: Locale }) {
   const organization = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Solo Compass",
+    name: BRAND.name,
     url: SITE_URL,
-    logo: `${SITE_URL}/icon-512.png`,
-    sameAs: ["https://twitter.com/solocompassapp", "https://github.com/solo-compass"],
+    logo: `${SITE_URL}/brand/roamorrow-mark.svg`,
+    sameAs: [BRAND.repositoryUrl],
   };
 
   return (

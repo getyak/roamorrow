@@ -187,7 +187,7 @@ public final class PersonalDataExporter {
             lines.append(cells.joined(separator: ","))
         }
 
-        let filename = "solo-compass-visits-\(Self.dateStamp(now)).csv"
+        let filename = "roamorrow-visits-\(Self.dateStamp(now)).csv"
         return (File(filename: filename, contents: lines.joined(separator: "\n") + "\n"), rows.count)
     }
 
@@ -206,7 +206,7 @@ public final class PersonalDataExporter {
         }
 
         let iso = ISO8601DateFormatter()
-        var body = "# Solo Compass — Time Capsules\n\n"
+        var body = "# Roamorrow — Time Capsules\n\n"
         body += "Exported \(iso.string(from: now)) · \(rows.count) capsule(s)\n\n"
 
         for row in rows {
@@ -242,7 +242,7 @@ public final class PersonalDataExporter {
             body += "\n---\n\n"
         }
 
-        let filename = "solo-compass-capsules-\(Self.dateStamp(now)).md"
+        let filename = "roamorrow-capsules-\(Self.dateStamp(now)).md"
         return (File(filename: filename, contents: body), rows.count)
     }
 
@@ -265,7 +265,7 @@ public final class PersonalDataExporter {
         }
 
         let iso = ISO8601DateFormatter()
-        var body = "# Solo Compass — My Traveler Notes\n\n"
+        var body = "# Roamorrow — My Traveler Notes\n\n"
         body += "Exported \(iso.string(from: now)) · \(rows.count) note(s)\n\n"
 
         for row in rows {
@@ -278,7 +278,7 @@ public final class PersonalDataExporter {
             body += "\n\n\(row.text)\n\n---\n\n"
         }
 
-        let filename = "solo-compass-notes-\(Self.dateStamp(now)).md"
+        let filename = "roamorrow-notes-\(Self.dateStamp(now)).md"
         return (File(filename: filename, contents: body), rows.count)
     }
 
@@ -293,7 +293,7 @@ public final class PersonalDataExporter {
         }
 
         let iso = ISO8601DateFormatter()
-        var body = "# Solo Compass — My Taste Profile\n\n"
+        var body = "# Roamorrow — My Taste Profile\n\n"
         body += "Exported \(iso.string(from: now))\n\n"
         body += "- Last updated: \(iso.string(from: row.updatedAt))\n"
         body += "- Confidence: \(String(format: "%.0f%%", row.confidence * 100))\n\n"
@@ -307,7 +307,7 @@ public final class PersonalDataExporter {
             body += "\n"
         }
 
-        let filename = "solo-compass-taste-\(Self.dateStamp(now)).md"
+        let filename = "roamorrow-taste-\(Self.dateStamp(now)).md"
         return (File(filename: filename, contents: body), true)
     }
 

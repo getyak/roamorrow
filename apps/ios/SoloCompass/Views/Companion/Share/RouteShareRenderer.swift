@@ -70,7 +70,7 @@ enum RouteShareRenderer {
         let result = await render(payload: payload, style: style)
         guard let data = result.image.pngData() else { throw RenderError.pngEncodingFailed }
         let dir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        let filename = "solocompass-route-\(UUID().uuidString.prefix(8)).png"
+        let filename = "roamorrow-route-\(UUID().uuidString.prefix(8)).png"
         let url = dir.appendingPathComponent(filename)
         do {
             try data.write(to: url, options: .atomic)

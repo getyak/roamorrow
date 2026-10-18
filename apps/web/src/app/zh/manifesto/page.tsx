@@ -4,13 +4,13 @@ import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "宣言 · Solo Compass",
+  title: "宣言",
   description:
-    "为什么会有 Solo Compass。一份关于独自旅行、诚实 AI，以及为什么我们选择那条更难的路——不接广告、说明数据用途、不融资——即使这意味着走得更慢的短宣言。",
+    "为什么会有 Roamorrow。一份关于独自旅行、诚实 AI，以及为什么我们选择那条更难的路——不接广告、说明数据用途、不融资——即使这意味着走得更慢的短宣言。",
   alternates: {
     canonical: `${SITE_URL}/zh/manifesto`,
     languages: {
@@ -22,24 +22,24 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/zh/manifesto`,
-    title: "Solo Compass · 宣言",
+    title: `${BRAND.name} · 宣言`,
     description: "关于独自旅行、诚实 AI、不接广告不追踪不融资的短宣言。",
     locale: "zh_CN",
     alternateLocale: "en_US",
-    images: [{ url: "/og/manifesto-zh.png", width: 1200, height: 630 }],
+    images: [{ url: "/zh/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass · 宣言",
+    title: `${BRAND.name} · 宣言`,
     description: "关于独自旅行、诚实 AI、不接广告不追踪不融资的短宣言。",
-    images: ["/og/manifesto-zh.png"],
+    images: ["/zh/opengraph-image"],
   },
 };
 
 const PARAGRAPHS_ZH: { heading: string; body: string }[] = [
   {
     heading: "地图应该是主角。",
-    body: "所有其他旅行 app 都在把你推向信息流、榜单和「为你推荐」。地图只是一个 tab。在 Solo Compass 里，地图就是这个 app。你打开看到的第一件事是「你在哪里」和「你周围有什么」——经过筛选、排序、诚实。不是因为我们信奉极简主义，而是因为一个独自旅行者下午四点在陌生城市里，真的就只需要这个。",
+    body: "所有其他旅行 app 都在把你推向信息流、榜单和「为你推荐」。地图只是一个 tab。在 Roamorrow 里，地图就是这个 app。你打开看到的第一件事是「你在哪里」和「你周围有什么」——经过筛选、排序、诚实。不是因为我们信奉极简主义，而是因为一个独自旅行者下午四点在陌生城市里，真的就只需要这个。",
   },
   {
     heading: "以体验为单位，而不是地点。",
@@ -51,7 +51,7 @@ const PARAGRAPHS_ZH: { heading: string; body: string }[] = [
   },
   {
     heading: "永不接广告，说明数据用途。",
-    body: "一个 app 接了广告，激励就和你分道扬镳了：它必须抢占你的注意力、必须为付费合作伙伴虚高评分、必须知道你在哪里买了什么。Solo Compass 只用一种方式赚钱：你自愿订阅。如果我们哪天违背这个承诺，请直接指出来 —— 那是我们应得的。",
+    body: "一个 app 接了广告，激励就和你分道扬镳了：它必须抢占你的注意力、必须为付费合作伙伴虚高评分、必须知道你在哪里买了什么。Roamorrow 只用一种方式赚钱：你自愿订阅。如果我们哪天违背这个承诺，请直接指出来 —— 那是我们应得的。",
   },
   {
     heading: "京都独立开发，对你负责。",

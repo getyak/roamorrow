@@ -62,17 +62,17 @@
       "id" : "21B5E4F1-A09C-4D8B-9E2F-7C3A5B6D8E1F",
       "localizations" : [
         {
-          "description" : "Solo Compass Pro — AI Explore, voice intent, AI insights",
-          "displayName" : "Solo Compass Pro",
+          "description" : "Roamorrow Pro — AI Explore, voice intent, AI insights",
+          "displayName" : "Roamorrow Pro",
           "locale" : "en_US"
         },
         {
-          "description" : "Solo Compass 高级版 — AI 探索附近、语音查询、AI 解读",
-          "displayName" : "Solo Compass 高级版",
+          "description" : "Roamorrow 高级版 — AI 探索附近、语音查询、AI 解读",
+          "displayName" : "Roamorrow 高级版",
           "locale" : "zh_CN"
         }
       ],
-      "name" : "Solo Compass Pro",
+      "name" : "Roamorrow Pro",
       "subscriptions" : [
         {
           "adHocOffers" : [],

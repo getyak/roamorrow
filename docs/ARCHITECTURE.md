@@ -63,7 +63,7 @@ When the schema changes, the PR title must mention "schema" so the iOS dev knows
 ## Data flow at runtime (Phase 2 web)
 
 ```
-User opens https://solo-compass.app
+User opens https://roamorrow.com
   ↓
 Browser geolocation: lng/lat
   ↓

@@ -116,10 +116,10 @@ export function DayPageMock() {
 
       <div className="grow" />
 
-      {/* Ask Solo bar */}
+      {/* Ask bar */}
       <div className="mx-4 mb-3 flex items-center gap-2 rounded-full border border-accent-border bg-accent-soft px-3 py-2">
         <span className="h-4 w-4 rounded-full bg-accent" aria-hidden />
-        <span className="text-[10px] text-fg-primary">Ask Solo about here…</span>
+        <span className="text-[10px] text-fg-primary">Ask about here…</span>
       </div>
     </div>
   );

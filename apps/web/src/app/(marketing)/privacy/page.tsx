@@ -5,13 +5,13 @@ import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Privacy · Solo Compass",
+  title: "Privacy",
   description:
-    "How Solo Compass handles account, location, voice, photos and diagnostics across native and web features.",
+    "How Roamorrow handles account, location, voice, photos and diagnostics across native and web features.",
   alternates: {
     canonical: `${SITE_URL}/privacy`,
     languages: {
@@ -23,15 +23,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/privacy`,
-    title: "Solo Compass · Privacy",
+    title: `${BRAND.name} · Privacy`,
     description: "Data use for location, voice, photos, sync and configured services.",
-    images: [{ url: "/og/privacy.png", width: 1200, height: 630 }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass · Privacy",
+    title: `${BRAND.name} · Privacy`,
     description: "Location, voice, sync and service data use.",
-    images: ["/og/privacy.png"],
+    images: ["/opengraph-image"],
   },
 };
 

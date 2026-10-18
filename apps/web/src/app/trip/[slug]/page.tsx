@@ -11,6 +11,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ShareButton } from "@/components/ShareButton";
 import type { Metadata } from "next";
+import { BRAND, publicUrl } from "@/lib/brand";
 import { findTripBySlug, type Trip } from "@/lib/trips-data";
 
 const FONT_DISPLAY = '-apple-system, "SF Pro Display", "Inter", system-ui, sans-serif';
@@ -28,7 +29,7 @@ interface PageProps {
 function resolveLang(searchParams: Record<string, string | string[] | undefined>): Lang {
   const v = searchParams.lang;
   const single = Array.isArray(v) ? v[0] : v;
-  return single === "en" ? "en" : "zh";
+  return single === "zh" ? "zh" : "en";
 }
 
 function sampleTripIntro(lang: "zh" | "en"): string {
@@ -42,11 +43,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const sp = await searchParams;
   const lang = resolveLang(sp);
   const trip = findTripBySlug(slug);
-  if (!trip) return { title: "Solo Compass — Not found" };
+  if (!trip) return { title: "Not found" };
 
   const title = lang === "zh" ? trip.titleZh : trip.titleEn;
   const description = sampleTripIntro(lang);
-  const fullTitle = `${title} · ${lang === "zh" ? "行程示例" : "Sample trip"} · Solo Compass`;
+  const fullTitle = `${title} · ${lang === "zh" ? "行程示例" : "Sample trip"} · Roamorrow`;
 
   return {
     title: { absolute: fullTitle },
@@ -55,7 +56,8 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       title: fullTitle,
       description,
       type: "article",
-      siteName: "Solo Compass",
+      url: publicUrl(`/trip/${slug}${lang === "zh" ? "?lang=zh" : ""}`),
+      siteName: BRAND.name,
       locale: lang === "zh" ? "zh_CN" : "en_US",
     },
     twitter: {
@@ -64,9 +66,11 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       description,
     },
     alternates: {
+      canonical: publicUrl(`/trip/${slug}${lang === "zh" ? "?lang=zh" : ""}`),
       languages: {
-        en: `/trip/${slug}?lang=en`,
-        zh: `/trip/${slug}`,
+        en: publicUrl(`/trip/${slug}`),
+        "zh-CN": publicUrl(`/trip/${slug}?lang=zh`),
+        "x-default": publicUrl(`/trip/${slug}`),
       },
     },
   };
@@ -97,8 +101,8 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
           cta2: "示例指南 · 出行前请核实",
           cta3: "地点、地图与诚实笔记",
           ctaButton: "打开城市指南",
-          topMeta: "Solo Compass · 行程示例",
-          poweredBy: "Solo Compass 行程回顾示例",
+          topMeta: "Roamorrow · 行程示例",
+          poweredBy: "Roamorrow 行程回顾示例",
           share: "分享",
           km: "公里",
         }
@@ -111,8 +115,8 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
           cta2: "Sample guide · verify before you go",
           cta3: "Places, maps and honest notes",
           ctaButton: "Open the city guide",
-          topMeta: "Solo Compass · Sample trip",
-          poweredBy: "A sample Solo Compass trip recap",
+          topMeta: "Roamorrow · Sample trip",
+          poweredBy: "A sample Roamorrow trip recap",
           share: "Share",
           km: "km",
         };
@@ -457,7 +461,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
             </div>
           </div>
           <Link
-            href={`/${trip.citySlug}${lang === "en" ? "?lang=en" : ""}`}
+            href={`/${trip.citySlug}${lang === "zh" ? "?lang=zh" : ""}`}
             className="trip-cta-button"
             style={{
               padding: "10px 18px",

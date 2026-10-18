@@ -1,6 +1,6 @@
 # Web Landing · Deep Design Doc
 
-> Solo Compass · 官网视觉与文案系统 · 满分向
+> Roamorrow · 官网视觉与文案系统 · 满分向
 >
 > Status: v1 — 2026-07-02。任何 marketing 页面 PR 前来这里对齐。
 >
@@ -14,7 +14,7 @@
 
 三条纪律：
 
-1. **不模仿别人。** 不做 Vercel 风、不做 Linear 风、不做 Framer 模板风。做 **Solo Compass 风**。
+1. **不模仿别人。** 不做 Vercel 风、不做 Linear 风、不做 Framer 模板风。做 **Roamorrow 风**。
 2. **编辑感，不 SaaS 感。** 参照 Field Mag、Craft、Are.na、Kinfolk Magazine，不参照 SaaS 官网。
 3. **每一屏都能截屏当 blog 封面。** 视觉质量 = 内容质量，不允许"占位"式的通用感 hero。
 
@@ -249,7 +249,7 @@ A map where                                ← display-2xl (96px)
 every dot is worth                            fg-primary
 a solo detour.                                line 1.02
 
-Solo Compass is a map-first companion for  ← body-xl (22px)
+Roamorrow is a map-first companion for  ← body-xl (22px)
 people traveling alone. No feed. No ads.      fg-muted
 Just experiences worth your afternoon.        max-w 640px
 
@@ -272,7 +272,7 @@ Just experiences worth your afternoon.        max-w 640px
 
 - H1 混排 `Space Grotesk 500 + PingFang SC Semibold`
 - 文案："每一个点，都值得你独自绕路一趟"
-- 副标题："Solo Compass 是为独自旅行者做的地图。没有信息流，没有广告，只有值得你度过一个下午的体验。"
+- 副标题："Roamorrow 是为独自旅行者做的地图。没有信息流，没有广告，只有值得你度过一个下午的体验。"
 - CTA："App Store 下载"
 
 **动效**：
@@ -299,7 +299,7 @@ You could open 小红书 —
 You could ask ChatGPT —
       but it will confidently invent a place that closed last year.
 
-We built Solo Compass because none of those
+We built Roamorrow because none of those
 felt like what an old friend
 who knew the city would tell you.
 ```
@@ -434,7 +434,7 @@ No free-then-paywall bait.
 极简，一行叙事：
 
 ```
-Solo Compass is made by one person, in Kyoto.
+Roamorrow is made by one person, in Kyoto.
 No VC. No ads. No tracking. Answerable to you.
 
 ──────────────────────────────────────────
@@ -447,7 +447,7 @@ Contact     Cities      DPA
 
 ──────────────────────────────────────────
 
-© 2026 Solo Compass · Made with respect for solo travelers.
+© 2026 Roamorrow · Made with respect for solo travelers.
 ```
 
 - `bg-surface-sunken`, `pt-24 pb-16`, 4 列 grid, 每列 `body-sm`, header `body-xs uppercase tracking-widest`
@@ -496,7 +496,7 @@ Section title                 ← display-lg
 Optional subheader body-xl    ← fg-muted, max-w-2xl
 ```
 
-`●` 圆点用 sun-gold，是 Solo Compass 的编辑感 accent。
+`●` 圆点用 sun-gold，是 Roamorrow 的编辑感 accent。
 
 ### 5.6 Pull Quote
 
@@ -629,6 +629,6 @@ Phase 2 再上：Features 深度页 · Cities 静态页 · Blog · 深色模式�
 
 ## 11. 一句话总结（可以贴在显示器上的）
 
-> **Solo Compass 官网是 App 内 DayPage 的杂志刊。让第一次看到的人以为这是《Kinfolk》独立开发者特刊，不是又一个 SaaS 官网。**
+> **Roamorrow 官网是 App 内 DayPage 的杂志刊。让第一次看到的人以为这是《Kinfolk》独立开发者特刊，不是又一个 SaaS 官网。**
 
 任何视觉决策与此矛盾，重新审视。

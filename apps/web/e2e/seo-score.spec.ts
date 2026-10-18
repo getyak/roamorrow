@@ -29,7 +29,7 @@ const LOCALES: { locale: "en" | "zh"; path: string; expectHtmlLang: string }[] =
   { locale: "zh", path: "/zh", expectHtmlLang: "zh-CN" },
 ];
 
-test.describe("Solo Compass — SEO 100 rubric", () => {
+test.describe("Roamorrow — SEO 100 rubric", () => {
   test("both locales", async ({ page, baseURL }) => {
     const audits: PageAudit[] = [];
 
@@ -51,7 +51,7 @@ test.describe("Solo Compass — SEO 100 rubric", () => {
       /* 1. title 30–60 chars incl. brand */
       const title = await page.title();
       const titleLen = title.length;
-      const titleHasBrand = /Solo Compass/i.test(title);
+      const titleHasBrand = /Roamorrow/i.test(title);
       const titleOk = titleLen >= 30 && titleLen <= 60 && titleHasBrand;
       const titleScore = titleOk ? 5 : titleHasBrand && titleLen > 0 ? 3 : 0;
       record(
@@ -456,7 +456,7 @@ test.describe("Solo Compass — SEO 100 rubric", () => {
     );
 
     const md = [
-      `# Solo Compass — SEO Score`,
+      `# Roamorrow — SEO Score`,
       ``,
       `**${total} / ${maxTotal}** (${pct.toFixed(1)}%)  — avg of EN + ZH`,
       ``,
@@ -483,5 +483,167 @@ test.describe("Solo Compass — SEO 100 rubric", () => {
     console.log(`SEO_SCORE=${total}/${maxTotal} (${pct.toFixed(1)}%)\n`);
 
     expect(total, `SEO score should be perfect: ${total}/${maxTotal}\n${md}`).toBe(maxTotal);
+  });
+});
+
+test.describe("Roamorrow public identity", () => {
+  test("canonical metadata and reachable brand assets", async ({ page, request }) => {
+    test.setTimeout(180_000);
+    for (const path of [
+      "/",
+      "/zh",
+      "/pricing",
+      "/zh/pricing",
+      "/privacy",
+      "/zh/privacy",
+      "/privacy/policy",
+      "/download",
+      "/support",
+      "/terms",
+    ]) {
+      const response = await page.goto(path, { waitUntil: "domcontentloaded" });
+      expect(response?.ok(), path).toBeTruthy();
+      await expect(page).toHaveTitle(/Roamorrow/);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        path === "/" ? /^https:\/\/roamorrow\.com\/?$/ : `https://roamorrow.com${path}`,
+      );
+      const hrefs = await page
+        .locator("a[href]")
+        .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href") ?? ""));
+      expect(
+        hrefs.some((href) =>
+          /id0000000000|solocompass\.app|compass\.io|gist\.github\.com\/kubbot\//.test(href),
+        ),
+      ).toBe(false);
+    }
+    for (const path of [
+      "/icon",
+      "/apple-icon",
+      "/opengraph-image",
+      "/zh/opengraph-image",
+      "/brand/roamorrow-mark.svg",
+      "/experience/miradouro-graca/opengraph-image",
+      "/trip/sofia-lisbon-may-2025/opengraph-image",
+    ]) {
+      const response = await request.get(path);
+      expect(response.ok(), path).toBeTruthy();
+      expect(response.headers()["content-type"], path).toMatch(/image\//);
+    }
+    const robots = await request.get("/robots.txt");
+    expect(await robots.text()).toContain("https://roamorrow.com/sitemap.xml");
+    const sitemap = await request.get("/sitemap.xml");
+    expect(await sitemap.text()).not.toMatch(/solocompass\.app|\/zh\/(download|terms|support)</);
+  });
+
+  test("full bilingual policies stay on Roamorrow and preserve approved disclosures", async ({
+    page,
+  }) => {
+    await page.goto("/privacy", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("link", { name: "Read the full Privacy Policy" })).toHaveAttribute(
+      "href",
+      "https://roamorrow.com/privacy/policy",
+    );
+    await page.goto("/privacy/policy", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toContainText("Effective / 生效日期: 2026-10-16");
+    await expect(page.locator("main")).toContainText("privacy@roamorrow.com");
+    await expect(page.locator("table")).toHaveCount(2);
+    await expect(page.locator('section[lang="en"]')).toContainText(
+      "We do not promise that location stays only on your device.",
+    );
+    await expect(page.locator('section[lang="zh-CN"]')).toContainText(
+      "我们不承诺位置始终只留在设备上。",
+    );
+    await expect(page.locator('section[lang="en"] code').first()).toHaveText("/reset");
+    await page.goto("/terms", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toContainText("hello@roamorrow.com");
+    await expect(page.locator("main")).not.toContainText(/Solo Compass|cubxxw@gmail\.com/);
+    await expect(page.locator('main a[href="https://roamorrow.com/privacy/policy"]')).toHaveCount(
+      2,
+    );
+  });
+
+  test("published copy retains truthful pricing and data-use disclosures", async ({ page }) => {
+    await page.goto("/pricing", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toContainText("Pro · Monthly");
+    await expect(page.locator("main")).toContainText("Pro · Yearly");
+    await expect(page.locator("main")).toContainText("App Store price");
+    await expect(page.locator("main")).not.toContainText(/\$29|\$50|Lifetime/);
+    await page.goto("/privacy", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toContainText("OpenStreetMap/Overpass");
+    await expect(page.locator("main")).not.toContainText("Your location never leaves your phone");
+  });
+
+  test("desktop and mobile calls to action open the real web experience", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.getByRole("link", { name: "Open the web map", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(
+      page.getByRole("region", { name: "Nearby experiences and footprint" }),
+    ).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Open menu", exact: true }).click();
+    const menu = page.locator("#mobile-nav-panel");
+    await expect(menu.getByRole("link", { name: "中文", exact: true })).toBeVisible();
+    await menu.getByRole("link", { name: "Open the web map", exact: true }).click();
+    await expect(page).toHaveURL(/\/app$/);
+  });
+
+  test("the map shows branded loading while its client script is delayed", async ({ page }) => {
+    const appChunk = /\/_next\/static\/chunks\/app\/app\/page-[^/]+\.js(?:\?.*)?$/;
+    let releaseChunk = () => {};
+    const heldChunk = new Promise<void>((resolve) => {
+      releaseChunk = resolve;
+    });
+    let chunkRequested = false;
+    await page.route(appChunk, async (route) => {
+      chunkRequested = true;
+      await heldChunk;
+      await route.continue();
+    });
+    try {
+      await page.goto("/app", { waitUntil: "commit" });
+      const loading = page.getByRole("status", { name: "Opening your map" });
+      await expect(loading).toBeVisible();
+      await expect(loading).toContainText("Roamorrow");
+      await expect(loading).toContainText("Opening your map…");
+      expect(chunkRequested).toBe(true);
+      releaseChunk();
+      await expect(
+        page.getByRole("region", { name: "Nearby experiences and footprint" }),
+      ).toBeVisible();
+    } finally {
+      releaseChunk();
+      await page.unrouteAll({ behavior: "wait" });
+    }
+  });
+
+  test("public share pages default to English and retain explicit Chinese", async ({ page }) => {
+    for (const [path, english, chinese] of [
+      ["/experience/miradouro-graca", "Quick facts", "速览"],
+      ["/trip/sofia-lisbon-may-2025", "A trip by", "作者"],
+    ]) {
+      await page.goto(path!, { waitUntil: "domcontentloaded" });
+      await expect(page.locator("main")).toContainText(english!);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        `https://roamorrow.com${path}`,
+      );
+      await page.goto(`${path}?lang=zh`, { waitUntil: "domcontentloaded" });
+      await expect(page.locator("main")).toContainText(chinese!);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        `https://roamorrow.com${path}?lang=zh`,
+      );
+    }
+  });
+
+  test("Chinese city navigation keeps the selected language", async ({ page }) => {
+    await page.goto("/lisbon?lang=zh", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('a[href^="/experience/"]').first()).toHaveAttribute(
+      "href",
+      /\?lang=zh$/,
+    );
   });
 });

@@ -5,10 +5,10 @@ import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 import { HomeJsonLd } from "../../_seo";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "价格 · Solo Compass",
+  title: "价格",
   description:
     "先探索免费地图。Pro 按月或按年订阅，部分仪式与归档仍为预览；购买前请查看当前权益与 App Store 价格。",
   alternates: {
@@ -21,9 +21,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: `${SITE_URL}/zh/pricing`,
-    title: "Solo Compass · 价格",
+    title: `${BRAND.name} · 价格`,
     description: "免费版即真实产品，Pro 按月/按年订阅。价格以 App Store 实时为准，无广告。",
-    images: [{ url: "/og/pricing-zh.png", width: 1200, height: 630 }],
+    images: [{ url: "/zh/opengraph-image", width: 1200, height: 630 }],
   },
 };
 

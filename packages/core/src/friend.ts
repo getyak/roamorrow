@@ -1,7 +1,7 @@
 /**
  * Friend — the persistent relationship layer.
  *
- * Solo Compass's companion features (CompanionPost / CompanionRequest / Route)
+ * Roamorrow's companion features (CompanionPost / CompanionRequest / Route)
  * produce *ephemeral* ties: a relationship exists only around a single meetup,
  * and the conversation freezes when the route completes. A `Friendship` is the
  * missing *persistent* layer — it promotes a one-off companion into a long-term

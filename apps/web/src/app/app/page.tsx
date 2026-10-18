@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSearchParams } from "next/navigation";
 import type { Experience } from "@solo-compass/core";
 import { MapView } from "@/components/MapView";
+import { MapLoading } from "@/components/MapLoading";
 import { ExperienceSheet } from "@/components/ExperienceSheet";
 import { NearbySheet } from "@/components/NearbySheet";
 import { VoiceIntent } from "@/components/VoiceIntent";
@@ -217,7 +218,7 @@ function HomeInner() {
 
 export default function Home() {
   return (
-    <Suspense fallback={<div className="h-screen w-screen bg-paper-cream" />}>
+    <Suspense fallback={<MapLoading />}>
       <HomeInner />
     </Suspense>
   );

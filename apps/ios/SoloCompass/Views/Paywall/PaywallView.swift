@@ -167,7 +167,7 @@ public struct PaywallView: View {
             Image(systemName: "sparkles")
                 .font(.system(size: 36))
                 .foregroundStyle(CT.sunGold)
-            Text(NSLocalizedString("paywall.hero.title", comment: "Unlock Solo Compass Pro"))
+            Text(NSLocalizedString("paywall.hero.title", comment: "Unlock Roamorrow Pro"))
                 .font(.title.bold())
             Text(NSLocalizedString("paywall.hero.subtitle", comment: "Subtitle"))
                 .font(.body)

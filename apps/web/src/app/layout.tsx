@@ -3,16 +3,16 @@ import "./globals.css";
 import { QueryProvider } from "@/lib/query-client";
 import { AnalyticsBoot } from "@/lib/analytics";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Solo Compass · A map for people who travel alone",
-    template: "%s · Solo Compass",
+    default: `${BRAND.name} · ${BRAND.tagline}`,
+    template: `%s · ${BRAND.name}`,
   },
-  description: "A map-first, experience-as-unit, AI-curated companion for solo travelers on iOS.",
-  applicationName: "Solo Compass",
+  description: BRAND.description,
+  applicationName: BRAND.name,
   referrer: "origin-when-cross-origin",
   formatDetection: { telephone: false, email: false, address: false },
   // Icons come from src/app/icon.tsx + src/app/apple-icon.tsx (file-based).

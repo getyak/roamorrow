@@ -6,12 +6,14 @@
  */
 
 import { ImageResponse } from "next/og";
+import { BRAND } from "@/lib/brand";
+import { RoamorrowMark } from "@/components/brand/RoamorrowMark";
 import { findTripBySlug } from "@/lib/trips-data";
 
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Solo Compass — trip recap";
+export const alt = `${BRAND.name} — trip recap`;
 
 interface Props {
   readonly params: Promise<{ slug: string }>;
@@ -35,7 +37,7 @@ export default async function TripOgImage({ params }: Props) {
           fontSize: 48,
         }}
       >
-        Solo Compass
+        {BRAND.name}
       </div>,
       size,
     );
@@ -80,7 +82,7 @@ export default async function TripOgImage({ params }: Props) {
             color: "#A66A00",
           }}
         >
-          {trip.author} · {trip.monthLabel}
+          {`${trip.author} · ${trip.monthLabel}`}
         </div>
       </div>
 
@@ -95,7 +97,7 @@ export default async function TripOgImage({ params }: Props) {
           display: "flex",
         }}
       >
-        {trip.titleZh}
+        {trip.titleEn}
       </div>
 
       <div
@@ -108,7 +110,7 @@ export default async function TripOgImage({ params }: Props) {
           display: "flex",
         }}
       >
-        {trip.titleEn}
+        An illustrative trip recap.
       </div>
 
       <div style={{ flex: 1 }} />
@@ -176,20 +178,25 @@ export default async function TripOgImage({ params }: Props) {
             fontSize: 18,
           }}
         >
-          ✦
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9Z" fill="#FFF" />
+          </svg>
         </div>
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
             fontSize: 18,
             color: "#A39F99",
             letterSpacing: 2,
             textTransform: "uppercase",
           }}
         >
-          Solo Compass · trip recap
+          <RoamorrowMark size={28} /> {BRAND.name} · trip recap
         </div>
         <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 16, color: "#A39F99" }}>compass.io / {trip.slug}</div>
+        <div style={{ fontSize: 16, color: "#A39F99" }}>{`${BRAND.host} / ${trip.slug}`}</div>
       </div>
     </div>,
     size,

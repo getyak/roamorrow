@@ -1,19 +1,33 @@
 {
-  "owner": "kubbot",
-  "visibility": "public",
+  "origin": "https://roamorrow.com",
+  "hosting": "Vercel",
   "privacy": {
-    "id": "e177b6ab042c8d5bd79417300031a5c9",
-    "url": "https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9",
-    "filename": "privacy-policy.md",
-    "sha256": "fdaa47227d222a0f01694158b663cc813dcadf4cace8796ed7c2a40437729e47",
-    "updatedAt": "2026-10-16T01:55:46Z"
+    "url": "https://roamorrow.com/privacy/policy",
+    "source": "docs/legal/privacy-policy.md",
+    "sha256": "4425ff6aebadc45e9eb6f7ae6f489d1f02993e6f7370ff4bfd1b12673d9eefa8"
   },
   "terms": {
-    "id": "08f720b1191b6f9c913699c16227581a",
-    "url": "https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a",
-    "filename": "terms-of-service.md",
-    "sha256": "d192072979b29409a0e30d4abf3e7afe7bdaacc7ab655ab68f7ce0e470389e88",
-    "updatedAt": "2026-10-16T01:54:03Z"
+    "url": "https://roamorrow.com/terms",
+    "source": "docs/legal/terms-of-service.md",
+    "sha256": "f155384f594175ad0709550cbbb91aeccf81b6bb4f26d8cbcfaaf95617bf192a"
   },
-  "authenticatedReadbackVerified": true
+  "legacyGists": {
+    "owner": "kubbot",
+    "visibility": "public",
+    "privacy": {
+      "id": "e177b6ab042c8d5bd79417300031a5c9",
+      "url": "https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9",
+      "filename": "privacy-policy.md",
+      "sha256": "fdaa47227d222a0f01694158b663cc813dcadf4cace8796ed7c2a40437729e47",
+      "updatedAt": "2026-10-16T01:55:46Z"
+    },
+    "terms": {
+      "id": "08f720b1191b6f9c913699c16227581a",
+      "url": "https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a",
+      "filename": "terms-of-service.md",
+      "sha256": "d192072979b29409a0e30d4abf3e7afe7bdaacc7ab655ab68f7ce0e470389e88",
+      "updatedAt": "2026-10-16T01:54:03Z"
+    },
+    "authenticatedReadbackVerified": true
+  }
 }

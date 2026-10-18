@@ -38,14 +38,19 @@ struct RouteShareCardView: View {
 
 // MARK: - Shared sub-components
 
-/// Top brand strip: compass mark + product name on the left, place on the right.
+/// Top brand strip: Roamorrow mark + product name on the left, place on the right.
 private struct ShareBrandStrip: View {
     let placeLabel: String
 
     var body: some View {
         HStack {
             HStack(spacing: 8) {
-                Text("🧭").font(.system(size: 26))
+                Image("RoamorrowMark")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
+                    .accessibilityHidden(true)
                 Text(NSLocalizedString("route.share.kicker", comment: "Route share card kicker"))
                     .font(.system(size: 16, weight: .bold))
                     .tracking(2)

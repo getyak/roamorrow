@@ -111,7 +111,7 @@ private struct ExpandedCenter: View {
         case .compile:
             ExpandedTitle(title: state.compileTitle, sub: state.compileSubtitle)
         case .soloAgentHint:
-            ExpandedTitle(title: state.hintText.isEmpty ? "Solo 有个建议" : state.hintText,
+            ExpandedTitle(title: state.hintText.isEmpty ? "Roamorrow 有个建议" : state.hintText,
                           sub: state.hintAnchorName,
                           subIcon: "sparkle")
         case .timeCapsule:
@@ -260,7 +260,7 @@ private struct CompactTrailing: View {
         case .compile:
             IslandCompileDots()
         case .soloAgentHint:
-            Text("Solo").font(.islandMono(11, .medium)).foregroundStyle(IP.sunGoldSoft)
+            Text("Roamorrow").font(.islandMono(11, .medium)).foregroundStyle(IP.sunGoldSoft)
         case .timeCapsule:
             Text("拆开").font(.islandMono(11, .medium)).foregroundStyle(IP.sunGoldSoft)
         case .dailyOmen:

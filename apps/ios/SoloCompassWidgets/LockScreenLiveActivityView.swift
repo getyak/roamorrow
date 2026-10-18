@@ -47,7 +47,7 @@ struct LockScreenLiveActivityView: View {
 
     @ViewBuilder private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("SOLOCOMPASS")
+            Text("Roamorrow")
                 .font(.islandMono(10, .medium))
                 .tracking(1.4)
                 .foregroundStyle(IP.cream(0.5))
@@ -64,7 +64,7 @@ struct LockScreenLiveActivityView: View {
         case .countdown:      return state.groupTitle
         case .recording:      return "正在录制语音 signal"
         case .compile:        return state.compileTitle
-        case .soloAgentHint:  return state.hintText.isEmpty ? "Solo 有个建议" : state.hintText
+        case .soloAgentHint:  return state.hintText.isEmpty ? "Roamorrow 有个建议" : state.hintText
         case .timeCapsule:    return state.capsulePreview.isEmpty ? "有一个胶囊在等你" : state.capsulePreview
         case .dailyOmen:      return state.omenLine.isEmpty ? "今日的城市签" : state.omenLine
         }

@@ -4,13 +4,13 @@ import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Manifesto · Solo Compass",
+  title: "Manifesto",
   description:
-    "Why Solo Compass exists. A short manifesto on solo travel, honest AI, and why we chose the hard path — no ads, data use explained, no VC — even when it costs us reach.",
+    "Why Roamorrow exists. A short manifesto on solo travel, honest AI, and why we chose the hard path — no ads, data use explained, no VC — even when it costs us reach.",
   alternates: {
     canonical: `${SITE_URL}/manifesto`,
     languages: {
@@ -22,23 +22,23 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/manifesto`,
-    title: "Solo Compass · Manifesto",
+    title: `${BRAND.name} · Manifesto`,
     description:
       "A short manifesto on solo travel, honest AI, and why we chose no ads, data use explained, no VC.",
-    images: [{ url: "/og/manifesto.png", width: 1200, height: 630 }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass · Manifesto",
+    title: `${BRAND.name} · Manifesto`,
     description: "Why we chose no ads, data use explained, no VC.",
-    images: ["/og/manifesto.png"],
+    images: ["/opengraph-image"],
   },
 };
 
 const PARAGRAPHS_EN: { heading: string; body: string }[] = [
   {
     heading: "The map should be the point.",
-    body: "Every other travel app pushes you into feeds, lists, and \"recommended for you\" pages. The map is a tab. In Solo Compass, the map is the app. The first thing you see is where you are and what's around you — filtered, ranked, honest. Not because we're minimalist; because that's what a solo traveler actually needs at 4 PM in a strange city.",
+    body: "Every other travel app pushes you into feeds, lists, and \"recommended for you\" pages. The map is a tab. In Roamorrow, the map is the app. The first thing you see is where you are and what's around you — filtered, ranked, honest. Not because we're minimalist; because that's what a solo traveler actually needs at 4 PM in a strange city.",
   },
   {
     heading: "Experience, not place.",
@@ -50,7 +50,7 @@ const PARAGRAPHS_EN: { heading: string; body: string }[] = [
   },
   {
     heading: "No ads. Understand what is shared.",
-    body: "The moment an app has ads, its incentives split from yours. It has to hold attention. It has to inflate ratings for paying partners. It has to know where you are and what you buy. Solo Compass makes money one way: a subscription you choose. If we ever break that promise, call it out — we would deserve it.",
+    body: "The moment an app has ads, its incentives split from yours. It has to hold attention. It has to inflate ratings for paying partners. It has to know where you are and what you buy. Roamorrow makes money one way: a subscription you choose. If we ever break that promise, call it out — we would deserve it.",
   },
   {
     heading: "Built in Kyoto. Answerable to you.",

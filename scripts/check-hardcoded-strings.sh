@@ -10,7 +10,7 @@
 #   1. Lines inside a `#Preview { … }` block. Preview-only copy is developer
 #      scaffolding, never shipped, and need not be localized.
 #   2. Acceptable proper nouns / fixed glyph prefixes (see ALLOWLIST below),
-#      e.g. the brand name "Solo Compass" or the "L\(level)" confidence badge.
+#      e.g. the brand name "Roamorrow" or the "L\(level)" confidence badge.
 #
 # Every other match is printed as `path:line: <code>` and the script exits 1,
 # so it can gate CI and back a LocalizationCoverageTest assertion.
@@ -33,7 +33,7 @@ fi
 # Substrings that, when present on a matched line, make it acceptable.
 # Keep this list tight and documented — every entry is a deliberate exception.
 ALLOWLIST=(
-  'Text("Solo Compass")'   # app brand name (proper noun) in ShareCard footer
+  'Text("Roamorrow")'   # app brand name (proper noun) in ShareCard footer
   'Text("L\('               # confidence-level badge prefix, e.g. "L1" / "L2 · 3 signals"
 )
 

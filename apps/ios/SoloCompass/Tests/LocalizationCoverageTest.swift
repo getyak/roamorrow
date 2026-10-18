@@ -14,7 +14,7 @@ final class LocalizationCoverageTest: XCTestCase {
     /// Substrings that, when present on a matched line, are acceptable.
     /// MUST mirror the ALLOWLIST in scripts/check-hardcoded-strings.sh.
     private static let allowlist = [
-        #"Text("Solo Compass")"#,   // app brand name (proper noun)
+        #"Text("Roamorrow")"#,   // app brand name (proper noun)
         #"Text("L\("#              // confidence-level badge prefix, e.g. "L1"
     ]
 

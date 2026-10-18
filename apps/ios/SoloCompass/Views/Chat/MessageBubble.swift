@@ -446,7 +446,7 @@ public struct TypingIndicatorBubble: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(NSLocalizedString(
             "chat.typing.a11y",
-            comment: "VoiceOver label for the typing indicator — Solo Compass is thinking…"
+            comment: "VoiceOver label for the typing indicator — Roamorrow is thinking…"
         )))
     }
 

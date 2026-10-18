@@ -1,8 +1,8 @@
-# Solo Compass — Claude Code Project Guidelines
+# Roamorrow — Claude Code Project Guidelines
 
 ## Overview
 
-Solo Compass: a map-first companion app for solo travelers. The core unit is `Experience` (not `Place`); the map is the home screen.
+Roamorrow: a map-first companion app for solo travelers. The core unit is `Experience` (not `Place`); the map is the home screen.
 
 ## Tech Stack
 

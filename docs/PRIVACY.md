@@ -1,4 +1,4 @@
-# Solo Compass privacy documents
+# Roamorrow privacy documents
 
 The current public bilingual Privacy Policy is [https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9](https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9).
 

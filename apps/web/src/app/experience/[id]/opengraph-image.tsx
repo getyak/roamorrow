@@ -8,13 +8,15 @@
  */
 
 import { ImageResponse } from "next/og";
+import { BRAND } from "@/lib/brand";
+import { RoamorrowMark } from "@/components/brand/RoamorrowMark";
 import { WEB_CATS } from "@/lib/lisbon-data";
 import { findExperienceAcrossCities } from "@/lib/cities-data";
 
 export const runtime = "nodejs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Solo Compass — Lisbon experience";
+export const alt = `${BRAND.name} — local experience`;
 
 interface Props {
   readonly params: Promise<{ id: string }>;
@@ -38,7 +40,7 @@ export default async function ExperienceOgImage({ params }: Props) {
           fontSize: 48,
         }}
       >
-        Solo Compass
+        {BRAND.name}
       </div>,
       size,
     );
@@ -100,7 +102,7 @@ export default async function ExperienceOgImage({ params }: Props) {
             color: cat.color,
           }}
         >
-          {cat.en} · {city.en}
+          {`${cat.en} · ${city.en}`}
         </div>
       </div>
 
@@ -117,10 +119,10 @@ export default async function ExperienceOgImage({ params }: Props) {
           display: "flex",
         }}
       >
-        {exp.titleZh}
+        {exp.title}
       </div>
 
-      {/* English subtitle */}
+      {/* Publication disclosure */}
       <div
         style={{
           fontSize: 36,
@@ -132,7 +134,7 @@ export default async function ExperienceOgImage({ params }: Props) {
           display: "flex",
         }}
       >
-        {exp.title}
+        An illustrative experience.
       </div>
 
       <div style={{ flex: 1 }} />
@@ -161,7 +163,9 @@ export default async function ExperienceOgImage({ params }: Props) {
             color: "#FFF",
           }}
         >
-          ✦
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9Z" fill="#FFF" />
+          </svg>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div
@@ -171,7 +175,7 @@ export default async function ExperienceOgImage({ params }: Props) {
               color: "#1A1612",
             }}
           >
-            {exp.place} · {exp.neighborhood}
+            {`${exp.place} · ${exp.neighborhood}`}
           </div>
           <div
             style={{
@@ -180,7 +184,7 @@ export default async function ExperienceOgImage({ params }: Props) {
               marginTop: 4,
             }}
           >
-            compass.io / {city.slug} / {exp.id}
+            {`${BRAND.host} / ${city.slug} / ${exp.id}`}
           </div>
         </div>
         <div style={{ flex: 1 }} />
@@ -193,13 +197,16 @@ export default async function ExperienceOgImage({ params }: Props) {
         >
           <div
             style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
               fontSize: 18,
               color: "#A39F99",
               letterSpacing: 2,
               textTransform: "uppercase",
             }}
           >
-            Solo Compass
+            <RoamorrowMark size={28} /> {BRAND.name}
           </div>
           <div
             style={{
@@ -208,7 +215,7 @@ export default async function ExperienceOgImage({ params }: Props) {
               marginTop: 4,
             }}
           >
-            {exp.walkMin} min walk · {exp.pricePill}
+            {`${exp.walkMin} min walk · ${exp.pricePill}`}
           </div>
         </div>
       </div>

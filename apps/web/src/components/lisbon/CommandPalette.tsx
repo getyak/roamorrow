@@ -32,7 +32,7 @@ interface PaletteItem {
 }
 
 function buildItems(lang: Lang): readonly PaletteItem[] {
-  const langSuffix = lang === "en" ? "?lang=en" : "";
+  const langSuffix = lang === "zh" ? "?lang=zh" : "";
 
   const scenarios: PaletteItem[] = [
     {

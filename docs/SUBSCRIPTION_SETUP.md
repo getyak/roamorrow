@@ -1,6 +1,6 @@
-# Solo Compass — Subscription Setup
+# Roamorrow — Subscription Setup
 
-Solo Compass Pro is delivered via **StoreKit Introductory Offer**: a 1-month
+Roamorrow Pro is delivered via **StoreKit Introductory Offer**: a 1-month
 free trial attached to the monthly auto-renewing subscription. New users are
 guided into the trial during onboarding (step 5 of `OnboardingView`); they can
 also start it from any AI-gated entry point that triggers `PaywallView`.
@@ -18,7 +18,7 @@ state machine it produces.
 | `com.solocompass.pro.monthly` | P1M    | 1 month free |
 | `com.solocompass.pro.yearly`  | P1Y    | 1 month free |
 
-Both products belong to the **Solo Compass Pro** subscription group so a user
+Both products belong to the **Roamorrow Pro** subscription group so a user
 can upgrade from monthly to yearly without losing access.
 
 The introductory offer is configured at the product level (not as a code
@@ -60,8 +60,8 @@ This restores Introductory Offer eligibility so you can test the
 Each product in App Store Connect needs the introductory offer attached to
 the subscription itself (not as a promotional offer):
 
-1. App Store Connect → My Apps → Solo Compass → Monetization → **Subscriptions**
-2. Open the Solo Compass Pro group → tap the monthly subscription
+1. App Store Connect → My Apps → Roamorrow → Monetization → **Subscriptions**
+2. Open the Roamorrow Pro group → tap the monthly subscription
 3. Under **Introductory Offers**, click **Set Up Introductory Offer**
 4. Configure:
    - **Type**: Free

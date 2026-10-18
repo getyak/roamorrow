@@ -5,12 +5,12 @@ import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "隐私 · Solo Compass",
-  description: "Solo Compass 的账号、位置、语音、照片、同步与诊断数据如何用于原生和网页功能。",
+  title: "隐私",
+  description: "Roamorrow 的账号、位置、语音、照片、同步与诊断数据如何用于原生和网页功能。",
   alternates: {
     canonical: `${SITE_URL}/zh/privacy`,
     languages: {
@@ -22,17 +22,17 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/zh/privacy`,
-    title: "Solo Compass · 隐私",
+    title: `${BRAND.name} · 隐私`,
     description: "位置、语音、照片、同步与配置服务的数据使用说明。",
     locale: "zh_CN",
     alternateLocale: "en_US",
-    images: [{ url: "/og/privacy-zh.png", width: 1200, height: 630 }],
+    images: [{ url: "/zh/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Solo Compass · 隐私",
+    title: `${BRAND.name} · 隐私`,
     description: "位置、语音、照片、同步与配置服务的数据使用说明。",
-    images: ["/og/privacy-zh.png"],
+    images: ["/zh/opengraph-image"],
   },
 };
 

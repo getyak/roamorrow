@@ -149,10 +149,11 @@ final class ExperienceReportDraftStoreTests: XCTestCase {
 
         let subject = ExperienceReportComposer.emailSubject(experienceTitle: "Mekong sunset walk")
         XCTAssertTrue(subject.contains("Mekong sunset walk"))
+        XCTAssertTrue(subject.hasPrefix("[Roamorrow] "))
 
         let url = ExperienceReportComposer.mailtoURL(subject: subject, body: body)
         XCTAssertNotNil(url)
-        XCTAssertTrue(url!.absoluteString.contains("cubxxw@gmail.com"), "mailto must target the confirmed support inbox")
+        XCTAssertTrue(url!.absoluteString.contains("hello@roamorrow.com"), "mailto must target the configured support inbox")
     }
 
     func testEmailCompositionHandlesEmptyDetailHonestly() {

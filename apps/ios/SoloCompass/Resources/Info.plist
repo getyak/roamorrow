@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Roamorrow</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconName</key>
@@ -57,17 +59,17 @@
 		</dict>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Solo Compass uses the camera so you can photograph a place when you add it to the map.</string>
+	<string>Roamorrow uses the camera so you can photograph a place when you add it to the map.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Solo Compass uses background location to alert you when you're near a place worth visiting — even when the app is closed.</string>
+	<string>Roamorrow uses background location to alert you when you're near a place worth visiting — even when the app is closed.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Solo Compass uses your location to show experiences near you on the map.</string>
+	<string>Roamorrow uses your location to show experiences near you on the map.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Solo Compass uses the microphone for voice search.</string>
+	<string>Roamorrow uses the microphone for voice search.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Solo Compass needs access to your photos so you can attach an image to a place you add.</string>
+	<string>Roamorrow needs access to your photos so you can attach an image to a place you add.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Solo Compass uses speech recognition so you can describe what you're looking for by voice.</string>
+	<string>Roamorrow uses speech recognition so you can describe what you're looking for by voice.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>

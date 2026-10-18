@@ -5,10 +5,10 @@ import { Container } from "@/components/marketing/Container";
 import { Eyebrow, Section } from "@/components/marketing/primitives";
 import { HomeJsonLd } from "../../_seo";
 
-const SITE_URL = "https://solocompass.app";
+import { BRAND, SITE_URL } from "@/lib/brand";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Pricing · Solo Compass",
+  title: "Pricing",
   description:
     "Explore the free map first. Pro is monthly or yearly; some ritual and archive views remain previews. Review current entitlements and App Store pricing before purchase.",
   alternates: {
@@ -21,9 +21,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: `${SITE_URL}/pricing`,
-    title: "Solo Compass · Pricing",
+    title: `${BRAND.name} · Pricing`,
     description: "Monthly or yearly Pro on top of a real free tier. No ads.",
-    images: [{ url: "/og/pricing.png", width: 1200, height: 630 }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
 };
 

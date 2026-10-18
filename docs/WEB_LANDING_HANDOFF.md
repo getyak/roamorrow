@@ -1,6 +1,6 @@
 # Web Landing · Handoff
 
-> Solo Compass · 首版官网交付清单
+> Roamorrow · 首版官网交付清单
 >
 > 2026-07-02 · v1
 
@@ -106,7 +106,7 @@ pnpm dev
 
 按 `docs/SEO_STRATEGY.md` §6 逐项：
 
-- [ ] Vercel 部署 `solocompass.app`（购域名 + Vercel DNS）
+- [ ] Vercel 部署 `roamorrow.com`（购域名 + Vercel DNS）
 - [ ] Google Search Console 验证并提交 `/sitemap.xml`
 - [ ] Bing Webmaster Tools 提交
 - [ ] 百度站长平台提交（中国区 SEO 生死线）

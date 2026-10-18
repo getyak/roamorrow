@@ -1,8 +1,8 @@
-# Solo Compass Agent Loop — 下一代设计
+# Roamorrow Agent Loop — 下一代设计
 
 > 配套阅读：`AGENT_SYSTEM_ANALYSIS.md`（现状）、`docs/architecture/agent-pipeline.md`（删旧三段式决策）、`docs/architecture/agent-memory-context.md`（记忆地基）、`docs/PRD/voice-agent.md`（PRD 上限值）。
 > 范围：iOS 单端先落地，packages/ai 共享 prompt / schema，Web/Bot 后跟。
-> 目标版本：Solo Compass v1.0（GA），从当前 Beta v0.9 演进。
+> 目标版本：Roamorrow v1.0（GA），从当前 Beta v0.9 演进。
 
 ---
 
@@ -405,6 +405,6 @@ struct ToolError: Codable, Sendable, Error {
 
 ## 13. 一句话愿景
 
-> Solo Compass v1.0 的 agent 不只是回答 "去哪喝咖啡"，
+> Roamorrow v1.0 的 agent 不只是回答 "去哪喝咖啡"，
 > 而是一个**会规划、会自检、会承认不知道、会记住你昨天说不喜欢吵闹**的旅人副驾。
 > 这套 loop 的价值不在多聪明的单 LLM，而在 **planner / executor / verifier 三层 + 强 schema + 可回放 trace + 分层记忆** 这套工业骨架——它把 demo 变成 product。

@@ -21,7 +21,7 @@ final class RecallMemoryLiveIntegrationTests: XCTestCase {
         try skipIfNoKey()
 
         let system = """
-        You are Solo Compass, a warm travel companion. TOOL OUTCOMES:
+        You are Roamorrow, a warm travel companion. TOOL OUTCOMES:
         - `ok` → use payload; if a `hint` is present, follow it.
         - `retryable` → adjust and retry once.
         - `fatal` → do not retry.
