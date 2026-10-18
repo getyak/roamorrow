@@ -82,7 +82,7 @@ export default async function TripOgImage({ params }: Props) {
             color: "#A66A00",
           }}
         >
-          {trip.author} · {trip.monthLabel}
+          {`${trip.author} · ${trip.monthLabel}`}
         </div>
       </div>
 
@@ -178,10 +178,15 @@ export default async function TripOgImage({ params }: Props) {
             fontSize: 18,
           }}
         >
-          ✦
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9Z" fill="#FFF" />
+          </svg>
         </div>
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
             fontSize: 18,
             color: "#A39F99",
             letterSpacing: 2,
@@ -191,7 +196,7 @@ export default async function TripOgImage({ params }: Props) {
           <RoamorrowMark size={28} /> {BRAND.name} · trip recap
         </div>
         <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 16, color: "#A39F99" }}>roamorrow.com / {trip.slug}</div>
+        <div style={{ fontSize: 16, color: "#A39F99" }}>{`${BRAND.host} / ${trip.slug}`}</div>
       </div>
     </div>,
     size,

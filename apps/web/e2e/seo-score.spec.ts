@@ -517,7 +517,15 @@ test.describe("Roamorrow public identity", () => {
         ),
       ).toBe(false);
     }
-    for (const path of ["/icon", "/apple-icon", "/opengraph-image", "/brand/roamorrow-mark.svg"]) {
+    for (const path of [
+      "/icon",
+      "/apple-icon",
+      "/opengraph-image",
+      "/zh/opengraph-image",
+      "/brand/roamorrow-mark.svg",
+      "/experience/miradouro-graca/opengraph-image",
+      "/trip/sofia-lisbon-may-2025/opengraph-image",
+    ]) {
       const response = await request.get(path);
       expect(response.ok(), path).toBeTruthy();
       expect(response.headers()["content-type"], path).toMatch(/image\//);
@@ -580,6 +588,35 @@ test.describe("Roamorrow public identity", () => {
     await expect(menu.getByRole("link", { name: "中文", exact: true })).toBeVisible();
     await menu.getByRole("link", { name: "Open the web map", exact: true }).click();
     await expect(page).toHaveURL(/\/app$/);
+  });
+
+  test("the map shows branded loading while its client script is delayed", async ({ page }) => {
+    const appChunk = /\/_next\/static\/chunks\/app\/app\/page-[^/]+\.js(?:\?.*)?$/;
+    let releaseChunk = () => {};
+    const heldChunk = new Promise<void>((resolve) => {
+      releaseChunk = resolve;
+    });
+    let chunkRequested = false;
+    await page.route(appChunk, async (route) => {
+      chunkRequested = true;
+      await heldChunk;
+      await route.continue();
+    });
+    try {
+      await page.goto("/app", { waitUntil: "commit" });
+      const loading = page.getByRole("status", { name: "Opening your map" });
+      await expect(loading).toBeVisible();
+      await expect(loading).toContainText("Roamorrow");
+      await expect(loading).toContainText("Opening your map…");
+      expect(chunkRequested).toBe(true);
+      releaseChunk();
+      await expect(
+        page.getByRole("region", { name: "Nearby experiences and footprint" }),
+      ).toBeVisible();
+    } finally {
+      releaseChunk();
+      await page.unrouteAll({ behavior: "wait" });
+    }
   });
 
   test("public share pages default to English and retain explicit Chinese", async ({ page }) => {

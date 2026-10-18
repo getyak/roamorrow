@@ -102,7 +102,7 @@ export default async function ExperienceOgImage({ params }: Props) {
             color: cat.color,
           }}
         >
-          {cat.en} · {city.en}
+          {`${cat.en} · ${city.en}`}
         </div>
       </div>
 
@@ -163,7 +163,9 @@ export default async function ExperienceOgImage({ params }: Props) {
             color: "#FFF",
           }}
         >
-          ✦
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 15 9 22 12 15 15 12 22 9 15 2 12 9 9Z" fill="#FFF" />
+          </svg>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div
@@ -173,7 +175,7 @@ export default async function ExperienceOgImage({ params }: Props) {
               color: "#1A1612",
             }}
           >
-            {exp.place} · {exp.neighborhood}
+            {`${exp.place} · ${exp.neighborhood}`}
           </div>
           <div
             style={{
@@ -182,7 +184,7 @@ export default async function ExperienceOgImage({ params }: Props) {
               marginTop: 4,
             }}
           >
-            roamorrow.com / {city.slug} / {exp.id}
+            {`${BRAND.host} / ${city.slug} / ${exp.id}`}
           </div>
         </div>
         <div style={{ flex: 1 }} />
@@ -195,6 +197,9 @@ export default async function ExperienceOgImage({ params }: Props) {
         >
           <div
             style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
               fontSize: 18,
               color: "#A39F99",
               letterSpacing: 2,
@@ -210,7 +215,7 @@ export default async function ExperienceOgImage({ params }: Props) {
               marginTop: 4,
             }}
           >
-            {exp.walkMin} min walk · {exp.pricePill}
+            {`${exp.walkMin} min walk · ${exp.pricePill}`}
           </div>
         </div>
       </div>

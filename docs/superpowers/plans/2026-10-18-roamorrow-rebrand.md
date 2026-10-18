@@ -32,7 +32,8 @@ Ownership: `apps/web/**`, excluding `apps/web/vercel.json` provider binding.
 - [x] Inventory public naming, canonicals, structured data, share cards, and CTAs.
 - [x] Add a central brand module and Roamorrow wordmark/mark/favicon assets.
 - [x] Update English/Chinese pages, metadata, copy, and existing SEO assertions.
-- [ ] Verify type checking, web tests, build, and desktop/mobile browser paths.
+- [x] Verify type checking, web tests, build, and desktop/mobile browser paths.
+      Final loading/share corrections pass all seven focused production-browser checks.
 
 ## Task 2: Native public identity
 
@@ -41,7 +42,9 @@ Ownership: `apps/ios/**` and `docs/APP_STORE_METADATA.md` in this worktree only.
 - [x] Update display name, bilingual strings, permission copy, share branding,
       public links, and native brand artwork consistent with `BRAND.md`.
 - [x] Preserve app identity, storage keys, receipt/product IDs, and legacy auth.
-- [ ] Regenerate Xcode project and run localization/build/relevant tests.
+- [x] Regenerate Xcode project and run localization/build/relevant tests.
+      Hosted iOS CI at `8e22122f` built successfully: 1,913 tests, 14 explicitly
+      skipped, zero failures. Native sources have not changed after that run.
 - [ ] Verify the name in Simulator and record any store-provider publication gate.
 
 ## Task 3: Repository and operational identity
@@ -75,3 +78,21 @@ Roamorrow name, subtitle and canonical marketing/support/privacy URLs on version
 
 The full approved legal text is now served by the website. Legacy Gist sources
 are retained as historical records; access restrictions prevented edits to them.
+
+## Final acceptance record
+
+[PR #669](https://github.com/getyak/roamorrow/pull/669) carries the current CI,
+review and production readback evidence. The original implementation passed
+workspace type checking, 315 unit tests, production build, format/security/schema
+checks and hosted native CI. The final browser corrections also pass the complete
+seven-case focused browser suite, including delayed-script loading and four share
+image routes. Subsequent commit/merge/deployment verification is recorded on the PR.
+
+Launch verification found placeholder web credentials and a missing web schema
+in the existing native backend. Actual provider credentials are now configured
+securely. Reviewed additive migrations initialize 14 web/evidence tables with
+RLS, preserve the 19 native tables and load no experience seed data. The guarded
+PostGIS correction moves only two new empty columns into `extensions`; the
+transactional role/spatial test passes and rolls its probe back. Mapbox's existing
+public token passed an official style request; no payment method or upgrade was
+added. Vercel's existing GitHub connection now points to `getyak/roamorrow`/`main`.

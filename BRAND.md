@@ -47,3 +47,42 @@ where the application already accepts them.
 A source edit is not a deployment. Record the deployed commit, verify the
 Cloudflare DNS and hosting-domain state, and open representative pages over
 HTTPS. Provider branding is complete only after provider readback confirms it.
+
+## Public deployment
+
+The GitHub repository is `getyak/roamorrow`. Its `main` branch is connected to
+the Vercel project `roamorrow`, with `apps/web` as the root directory and workspace
+sources included. Use Node 22 and the exact pnpm version pinned in `package.json`.
+Cloudflare retains registration and nameservers; apex and `www` use DNS-only
+CNAME records to the Vercel-recommended target. Vercel redirects `www` to the
+HTTPS apex with status 308.
+
+Use actual provider credentials for `SUPABASE_URL`, `SUPABASE_KEY` (the existing
+anonymous key), `SUPABASE_SERVICE_ROLE_KEY`, and optional `DEEPSEEK_API_KEY`.
+Values in example files are not deployment configuration. Transfer credentials
+through secure provider settings or CLI stdin; do not put them in source, shell
+arguments or release evidence. The web basemap additionally requires a real
+`NEXT_PUBLIC_MAPBOX_TOKEN`; a placeholder must keep the explicit imagery-unavailable
+state. Analytics remains optional.
+
+Native sync and the web use distinct tables in the same existing Supabase
+project. `0018_web_bootstrap.sql` initializes the web's missing tables without
+replacing native tables or inserting seed data. The existing evidence, work and
+route schemas are in migrations `0014`–`0016`. Check the live schema and migration
+ledger before applying any script; retain row-level security and service-only
+access for internal traffic/evidence records.
+
+Apply `0019_private_postgis_schema.sql` before loading web data. It moves only
+the two newly created, empty geography columns to PostGIS in `extensions`,
+preserving their types and constraints. It locks and checks both tables, fails
+if either contains a row, and drops the extension without `CASCADE` so unexpected
+dependencies abort the transaction. The live migration ledger records this
+bootstrap separately from pre-existing native tables. Follow
+[Supabase's PostGIS guidance](https://supabase.com/docs/guides/database/extensions/postgis)
+for any later extension migration involving data; never run an empty-table
+bootstrap as a reset of an existing database.
+
+Cloudflare Email Routing provides the `hello`, `privacy` and `support` aliases
+at `roamorrow.com`. App Store Connect keeps app ID `6766460734`; saved store
+branding becomes public with the next submitted and approved version. Updating
+the website does not publish a native release.
