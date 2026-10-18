@@ -110,7 +110,7 @@ export default async function TripOgImage({ params }: Props) {
           display: "flex",
         }}
       >
-        {trip.titleEn}
+        An illustrative trip recap.
       </div>
 
       <div style={{ flex: 1 }} />

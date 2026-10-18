@@ -122,7 +122,7 @@ export default async function ExperienceOgImage({ params }: Props) {
         {exp.title}
       </div>
 
-      {/* English subtitle */}
+      {/* Publication disclosure */}
       <div
         style={{
           fontSize: 36,
@@ -134,7 +134,7 @@ export default async function ExperienceOgImage({ params }: Props) {
           display: "flex",
         }}
       >
-        {exp.title}
+        An illustrative experience.
       </div>
 
       <div style={{ flex: 1 }} />
