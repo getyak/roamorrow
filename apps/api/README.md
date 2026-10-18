@@ -1,6 +1,6 @@
-# Solo Compass API
+# Roamorrow API
 
-Go service that provides the RAG (retrieval-augmented generation) pipeline for Solo Compass. It aggregates real user reviews into Solo Score calculations and exposes them to the mobile app.
+Go service that provides the RAG (retrieval-augmented generation) pipeline for Roamorrow. It aggregates real user reviews into Solo Score calculations and exposes them to the mobile app.
 
 ## Purpose
 
