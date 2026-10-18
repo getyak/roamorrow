@@ -1,28 +1,22 @@
 # Public legal documents
 
-These repository files are the sources for two public, bilingual GitHub Gists:
+These repository files are the sources for Roamorrow's public, bilingual legal pages:
 
-| Document         | Public reading page                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------- |
-| Privacy Policy   | [Privacy Policy / 隐私政策](https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9)   |
-| Terms of Service | [Terms of Service / 用户协议](https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a) |
+| Document         | Public reading page                                               |
+| ---------------- | ----------------------------------------------------------------- |
+| Privacy Policy   | [Privacy Policy / 隐私政策](https://roamorrow.com/privacy/policy) |
+| Terms of Service | [Terms of Service / 用户协议](https://roamorrow.com/terms)        |
 
-The user specified `cubxxw@gmail.com` for private support, privacy and deletion requests. The documents identify the publicly documented maintainer; they do not invent a registered corporate entity or a governing jurisdiction.
+Privacy and deletion requests use `privacy@roamorrow.com`; support uses `hello@roamorrow.com`. These addresses forward to the maintainer's verified mailbox through Cloudflare Email Routing. The documents identify the publicly documented maintainer; they do not invent a registered corporate entity or a governing jurisdiction.
 
-`publication.json` records the two Gist IDs, owner, file names and content hashes. Keep the existing Gist IDs and normal reading URLs when updating; do not create new Gists on each release or link to a revision-pinned raw file.
+`publication.json` records canonical URLs, repository sources and source hashes. Its `legacyGists` section retains the prior public Gist identifiers and publication evidence for historical compatibility. Those Gists are no longer the current publication destination. Their content was not changed during the Roamorrow migration because the authenticated account did not have edit access.
 
 ## Updating
 
 1. Recheck the actual data flows, enabled providers, permissions, storage, deletion and purchase configuration. Edit the Markdown source and date material changes.
 2. Independently review factual accuracy and Chinese/English consistency. Do not copy old claims that all data stays local, all reports are anonymous, a local reset deletes a cloud account or a local StoreKit file proves an active offer.
-3. Update each existing Gist with the reviewed local file under the current task's publication authorization:
+3. Copy the reviewed Markdown into the web's static content modules (`privacy-content.ts` and `terms-content.ts`) without omitting either language, table, section or commitment. Update source hashes in `publication.json` and verify that joining the exported sections reconstructs each source exactly. The shared `PolicyText` renderer displays this trusted content.
+4. Build and deploy the website. Read both unauthenticated canonical pages back; verify title, complete English/Chinese text, tables, contacts and mutual links. Record live verification separately from this declarative publication configuration before claiming publication complete.
+5. Keep native `LegalDocuments`, Web `LEGAL_URLS`, the bot privacy summary and release metadata aligned. Native releases, website/bot deployments and App Store Connect updates are separate operations.
 
-```bash
-gh gist edit e177b6ab042c8d5bd79417300031a5c9 --filename privacy-policy.md docs/legal/privacy-policy.md
-gh gist edit 08f720b1191b6f9c913699c16227581a --filename terms-of-service.md docs/legal/terms-of-service.md
-```
-
-4. Read back both public API files and unauthenticated reading pages; compare the actual file hashes, title, English/Chinese text, contact and mutual links. Record the result before claiming publication complete.
-5. Keep native `LegalDocuments`, Web `LEGAL_URLS`, the bot privacy summary and release metadata aligned. App/website/bot deployments and App Store Connect updates are separate operations; publishing Gists does not perform them.
-
-Evidence for this publication is in [checkpoint 05](../design/interaction-quality/evidence/checkpoint-05-legal.md), [data-flow audit](../design/interaction-quality/evidence/legal-data-audit.md) and [independent review](../design/interaction-quality/evidence/legal-document-review.md). The service Terms reference Apple's Standard EULA conditionally; no custom EULA has been installed by this work.
+Evidence for the earlier Gist publication is in [checkpoint 05](../design/interaction-quality/evidence/checkpoint-05-legal.md), [data-flow audit](../design/interaction-quality/evidence/legal-data-audit.md) and [independent review](../design/interaction-quality/evidence/legal-document-review.md). The service Terms reference Apple's Standard EULA conditionally; no custom EULA has been installed by this work.

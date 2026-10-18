@@ -43,7 +43,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const sp = await searchParams;
   const lang = resolveLang(sp);
   const found = findExperienceAcrossCities(id);
-  if (!found) return { title: "Roamorrow — Not found" };
+  if (!found) return { title: "Not found" };
   const { exp, city } = found;
 
   const title = lang === "zh" ? exp.titleZh : exp.title;

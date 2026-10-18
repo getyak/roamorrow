@@ -98,7 +98,6 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
   );
 }
 
-
 /* ============================================================
    Hero — cascading reveal
    ============================================================ */

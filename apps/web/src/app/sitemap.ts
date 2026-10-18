@@ -24,6 +24,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/zh/manifesto", priority: 0.7, freq: "monthly" },
     { path: "/privacy", priority: 0.6, freq: "monthly" },
     { path: "/zh/privacy", priority: 0.6, freq: "monthly" },
+    { path: "/privacy/policy", priority: 0.6, freq: "monthly" },
     { path: "/download", priority: 0.8, freq: "monthly" },
     { path: "/terms", priority: 0.5, freq: "monthly" },
     { path: "/support", priority: 0.6, freq: "monthly" },
@@ -34,7 +35,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: NOW,
     changeFrequency: s.freq,
     priority: s.priority,
-    alternates: ["/download", "/terms", "/support"].includes(s.path)
+    alternates: ["/download", "/terms", "/support", "/privacy/policy"].includes(s.path)
       ? undefined
       : s.path.startsWith("/zh")
         ? {

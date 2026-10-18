@@ -1,18 +1,18 @@
-# Solo Compass Terms of Service / 用户协议
+# Roamorrow Terms of Service / 用户协议
 
 Effective / 生效日期: 2026-10-16
 
-Service operator / 服务运营者: Xinwei Xiong (cubxxw), maintainer of Solo Compass / Getyak · Solo Compass / Getyak 项目维护者
+Service operator / 服务运营者: Xinwei Xiong (cubxxw), maintainer of Roamorrow / Getyak · Roamorrow / Getyak 项目维护者
 
-Private contact / 私密联系邮箱: cubxxw@gmail.com
+Private contact / 私密联系邮箱: hello@roamorrow.com
 
-These terms govern the Solo Compass services provided by the operator above: the iOS app, website and optional Telegram bot. The Chinese version follows the English version. Mandatory rights under applicable law are preserved.
+These terms govern the Roamorrow services provided by the operator above: the iOS app, website and optional Telegram bot. The Chinese version follows the English version. Mandatory rights under applicable law are preserved.
 
 ## English
 
 ### 1. Using the service
 
-Solo Compass helps you discover and record travel experiences and, where available, plan or share them and communicate with others. Available features depend on the version, configuration, location and account/entitlement. A guide, illustration, preview or read-only screen is not a promise that an unfinished feature is available. You must have the legal capacity or any required guardian authorization to use the service and make purchases. Companion features are for people aged 18 or older and require your confirmation; the app does not verify everyone's identity or age.
+Roamorrow helps you discover and record travel experiences and, where available, plan or share them and communicate with others. Available features depend on the version, configuration, location and account/entitlement. A guide, illustration, preview or read-only screen is not a promise that an unfinished feature is available. You must have the legal capacity or any required guardian authorization to use the service and make purchases. Companion features are for people aged 18 or older and require your confirmation; the app does not verify everyone's identity or age.
 
 Keep your sign-in methods and API credentials secure. Do not impersonate another person or access accounts, records or services without authorization. You are responsible for the content and choices you submit through your own use of the service.
 
@@ -30,7 +30,7 @@ Do not harass, threaten, defraud, exploit or unlawfully discriminate against oth
 
 ### 4. Privacy and permissions
 
-The separate [Solo Compass Privacy Policy](https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9) explains data processing and your controls. Location, voice, camera and photo functionality uses applicable permissions or explicit selection. Refusing an optional permission can limit that feature. Accepting these terms is not consent to every optional permission or to new, unrelated data collection.
+The separate [Roamorrow Privacy Policy](https://roamorrow.com/privacy/policy) explains data processing and your controls. Location, voice, camera and photo functionality uses applicable permissions or explicit selection. Refusing an optional permission can limit that feature. Accepting these terms is not consent to every optional permission or to new, unrelated data collection.
 
 Selected third-party services, including custom AI providers, also have their own terms. Review those services before sending them data or credentials. The service operator does not grant you a license to third-party content beyond the rights actually available for that content.
 
@@ -62,7 +62,7 @@ We will date updates and provide appropriate notice of material changes where re
 
 ### 1. 使用服务
 
-Solo Compass 帮助你发现和记录旅行体验，并在功能可用时规划、分享或与他人交流。可用能力取决于版本、配置、地区和账号/权益。指南、示意图、预览或只读界面不代表尚未完成的功能已经开放。你需要具备使用服务和购买所需的法律行为能力，或取得适用的监护授权。同行功能仅供已满 18 周岁的人使用并要求本人确认，但应用不会核验每个人的身份或年龄。
+Roamorrow 帮助你发现和记录旅行体验，并在功能可用时规划、分享或与他人交流。可用能力取决于版本、配置、地区和账号/权益。指南、示意图、预览或只读界面不代表尚未完成的功能已经开放。你需要具备使用服务和购买所需的法律行为能力，或取得适用的监护授权。同行功能仅供已满 18 周岁的人使用并要求本人确认，但应用不会核验每个人的身份或年龄。
 
 请妥善保护登录方式和 API 凭据，不要冒充他人，也不要未经授权访问账号、记录或服务。你应对自己使用服务时提交的内容与所作选择负责。
 
@@ -80,7 +80,7 @@ Solo Compass 帮助你发现和记录旅行体验，并在功能可用时规划�
 
 ### 4. 隐私与权限
 
-独立的 [Solo Compass 隐私政策](https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9)说明数据处理与可管理选项。定位、语音、相机和照片功能使用相应权限或明确选择；拒绝可选权限可能限制该功能。接受本协议不等于同意全部可选权限，也不授权无关的新数据采集。
+独立的 [Roamorrow 隐私政策](https://roamorrow.com/privacy/policy)说明数据处理与可管理选项。定位、语音、相机和照片功能使用相应权限或明确选择；拒绝可选权限可能限制该功能。接受本协议不等于同意全部可选权限，也不授权无关的新数据采集。
 
 选用的第三方服务（包括自定义 AI 服务商）有各自条款，发送数据或凭据前请先核对。服务运营者不会授予超出第三方内容实际可用权利的许可。
 

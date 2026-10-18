@@ -489,7 +489,18 @@ test.describe("Roamorrow — SEO 100 rubric", () => {
 test.describe("Roamorrow public identity", () => {
   test("canonical metadata and reachable brand assets", async ({ page, request }) => {
     test.setTimeout(180_000);
-    for (const path of ["/", "/zh", "/pricing", "/zh/pricing", "/privacy", "/zh/privacy", "/download", "/support", "/terms"]) {
+    for (const path of [
+      "/",
+      "/zh",
+      "/pricing",
+      "/zh/pricing",
+      "/privacy",
+      "/zh/privacy",
+      "/privacy/policy",
+      "/download",
+      "/support",
+      "/terms",
+    ]) {
       const response = await page.goto(path, { waitUntil: "domcontentloaded" });
       expect(response?.ok(), path).toBeTruthy();
       await expect(page).toHaveTitle(/Roamorrow/);
@@ -500,9 +511,11 @@ test.describe("Roamorrow public identity", () => {
       const hrefs = await page
         .locator("a[href]")
         .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href") ?? ""));
-      expect(hrefs.some((href) => /id0000000000|solocompass\.app|compass\.io/.test(href))).toBe(
-        false,
-      );
+      expect(
+        hrefs.some((href) =>
+          /id0000000000|solocompass\.app|compass\.io|gist\.github\.com\/kubbot\//.test(href),
+        ),
+      ).toBe(false);
     }
     for (const path of ["/icon", "/apple-icon", "/opengraph-image", "/brand/roamorrow-mark.svg"]) {
       const response = await request.get(path);
@@ -513,6 +526,33 @@ test.describe("Roamorrow public identity", () => {
     expect(await robots.text()).toContain("https://roamorrow.com/sitemap.xml");
     const sitemap = await request.get("/sitemap.xml");
     expect(await sitemap.text()).not.toMatch(/solocompass\.app|\/zh\/(download|terms|support)</);
+  });
+
+  test("full bilingual policies stay on Roamorrow and preserve approved disclosures", async ({
+    page,
+  }) => {
+    await page.goto("/privacy", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("link", { name: "Read the full Privacy Policy" })).toHaveAttribute(
+      "href",
+      "https://roamorrow.com/privacy/policy",
+    );
+    await page.goto("/privacy/policy", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toContainText("Effective / 生效日期: 2026-10-16");
+    await expect(page.locator("main")).toContainText("privacy@roamorrow.com");
+    await expect(page.locator("table")).toHaveCount(2);
+    await expect(page.locator('section[lang="en"]')).toContainText(
+      "We do not promise that location stays only on your device.",
+    );
+    await expect(page.locator('section[lang="zh-CN"]')).toContainText(
+      "我们不承诺位置始终只留在设备上。",
+    );
+    await expect(page.locator('section[lang="en"] code').first()).toHaveText("/reset");
+    await page.goto("/terms", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toContainText("hello@roamorrow.com");
+    await expect(page.locator("main")).not.toContainText(/Solo Compass|cubxxw@gmail\.com/);
+    await expect(page.locator('main a[href="https://roamorrow.com/privacy/policy"]')).toHaveCount(
+      2,
+    );
   });
 
   test("published copy retains truthful pricing and data-use disclosures", async ({ page }) => {
@@ -530,7 +570,9 @@ test.describe("Roamorrow public identity", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await page.getByRole("link", { name: "Open the web map", exact: true }).first().click();
     await expect(page).toHaveURL(/\/app$/);
-    await expect(page.getByRole("region", { name: "Nearby experiences and footprint" })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Nearby experiences and footprint" }),
+    ).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Open menu", exact: true }).click();

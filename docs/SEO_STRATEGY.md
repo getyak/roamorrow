@@ -82,9 +82,9 @@ Roamorrow 的 SEO 不追求"抢流量"，追求"抢定位"。
 
 ### Tier 1 · 品牌
 
-| 关键词       | Vol | Target |
-| ------------ | --- | ------ |
-| solo compass | -   | `/zh`  |
+| 关键词        | Vol | Target |
+| ------------- | --- | ------ |
+| solo compass  | -   | `/zh`  |
 | Roamorrow app | -   | `/zh`  |
 
 ### Tier 2 · 品类

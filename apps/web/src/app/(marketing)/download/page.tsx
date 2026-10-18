@@ -12,7 +12,7 @@ const availability = distributionCopy(dist.primaryKind, "en");
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Download · Roamorrow for iOS",
+  title: { absolute: `${BRAND.name} for iOS · Availability` },
   // W01: no placeholder store id, no invented price or availability. The
   // page states where things actually stand and offers the real web entry.
   description: availability.status,

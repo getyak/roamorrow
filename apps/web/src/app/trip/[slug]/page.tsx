@@ -43,7 +43,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const sp = await searchParams;
   const lang = resolveLang(sp);
   const trip = findTripBySlug(slug);
-  if (!trip) return { title: "Roamorrow — Not found" };
+  if (!trip) return { title: "Not found" };
 
   const title = lang === "zh" ? trip.titleZh : trip.titleEn;
   const description = sampleTripIntro(lang);

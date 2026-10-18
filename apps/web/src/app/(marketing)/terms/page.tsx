@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { copy } from "@/components/marketing/copy";
 import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { Section } from "@/components/marketing/primitives";
 import { BRAND, publicUrl } from "@/lib/brand";
 import { TERMS_CONTENT } from "@/lib/terms-content";
+import { PolicyText } from "@/components/legal/PolicyText";
 
 export const metadata: Metadata = {
   title: "Terms of service",
@@ -19,35 +19,6 @@ export const metadata: Metadata = {
     images: ["/opengraph-image"],
   },
 };
-
-function inlineLinks(text: string): ReactNode[] {
-  return text.split(/(\[[^\]]+\]\(https:\/\/[^)]+\))/g).map((part, i) => {
-    const link = /^\[([^\]]+)\]\((https:\/\/[^)]+)\)$/.exec(part);
-    return link ? (
-      <a key={i} href={link[2]} className="underline underline-offset-4">
-        {link[1]}
-      </a>
-    ) : (
-      part
-    );
-  });
-}
-
-function PolicyText({ text }: { text: string }) {
-  return text.split(/\n\s*\n/).map((block, i) => {
-    if (block.startsWith("### "))
-      return (
-        <h3 key={i} className="mt-12 font-display text-[24px] font-medium">
-          {block.slice(4)}
-        </h3>
-      );
-    return (
-      <p key={i} className="ds-body-lg mt-6 whitespace-pre-line text-fg-muted">
-        {inlineLinks(block)}
-      </p>
-    );
-  });
-}
 
 export default function TermsPage() {
   const props = { copy: copy.en, locale: "en" as const, homePath: "/", altPath: "/zh" };

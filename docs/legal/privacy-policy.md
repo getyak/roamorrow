@@ -1,14 +1,14 @@
-# Solo Compass Privacy Policy / 隐私政策
+# Roamorrow Privacy Policy / 隐私政策
 
 Effective / 生效日期: 2026-10-16
 
-Operator / 运营者: Xinwei Xiong (cubxxw), maintainer of Solo Compass / Getyak · Solo Compass / Getyak 项目维护者
+Operator / 运营者: Xinwei Xiong (cubxxw), maintainer of Roamorrow / Getyak · Roamorrow / Getyak 项目维护者
 
-Private privacy and deletion requests / 隐私及删除请求邮箱: cubxxw@gmail.com
+Private privacy and deletion requests / 隐私及删除请求邮箱: privacy@roamorrow.com
 
-This policy covers the Solo Compass iOS app, website and optional Telegram bot operated by the project. Availability and processing depend on the feature, build and services you choose. The Chinese version follows the English version below; neither version limits rights provided by applicable law.
+This policy covers the Roamorrow iOS app, website and optional Telegram bot operated by the project. Availability and processing depend on the feature, build and services you choose. The Chinese version follows the English version below; neither version limits rights provided by applicable law.
 
-Related / 相关文档: [Terms of Service / 用户协议](https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a)
+Related / 相关文档: [Terms of Service / 用户协议](https://roamorrow.com/terms)
 
 ## English
 
@@ -36,7 +36,7 @@ Depending on your selected feature and configuration, recipients include Apple (
 
 These services process the data sent to them under their applicable terms and privacy policies, and may process data outside your country. The recipient and configuration matter: this policy does not promise that every provider has the same storage location, retention or model-training settings. Review a provider before selecting a custom endpoint. API credentials you supply are used to authenticate requests to that provider; do not share them in messages or screenshots.
 
-The Gist hosting this policy is operated by GitHub. Viewing it also involves GitHub's website and privacy practices. We may disclose information when legally required or to protect users and the service, subject to applicable law. We do not sell personal information or use it for advertising targeting.
+This policy is published on Roamorrow's website, hosted by Vercel. Viewing it also involves Vercel's website hosting and privacy practices. We may disclose information when legally required or to protect users and the service, subject to applicable law. We do not sell personal information or use it for advertising targeting.
 
 ### 3. Retention and deletion
 
@@ -58,7 +58,7 @@ Depending on the law applicable to you, you may have rights to access, correct, 
 
 We use safeguards appropriate to the service, such as platform permission controls, authenticated connections and access restrictions. No system is completely secure. Do not include unnecessary sensitive information in public content, AI prompts or conversations.
 
-Solo Compass is not designed as a children's service. A minor should use it only where legally permitted and with any required parent/guardian authorization. Companion features require a self-declaration that you are at least 18; this is not an identity or age verification service. Contact us if a child's information requires investigation or deletion; we do not claim that the app verifies the age of every user or companion.
+Roamorrow is not designed as a children's service. A minor should use it only where legally permitted and with any required parent/guardian authorization. Companion features require a self-declaration that you are at least 18; this is not an identity or age verification service. Contact us if a child's information requires investigation or deletion; we do not claim that the app verifies the age of every user or companion.
 
 We will date policy revisions and make material changes available with an appropriate notice or renewed consent where required. A change to this document alone is not permission to collect unrelated information.
 
@@ -90,7 +90,7 @@ We will date policy revisions and make material changes available with an approp
 
 这些服务按各自适用的条款与隐私政策处理收到的数据，处理地点可能位于你所在国家之外。具体服务商及配置会影响存储位置、保留期限与模型训练设置，我们不承诺各服务完全相同。使用自定义端点前应核对其服务规则。你提供的 API 凭据用于向相应服务认证请求，请勿通过消息或截图分享凭据。
 
-托管本政策的 Gist 由 GitHub 运营，访问此页也涉及 GitHub 网站及其隐私规则。在法律要求或保护用户及服务所需时，我们可能依法披露信息。我们不出售个人信息，也不将其用于广告定向。
+本政策发布于 Roamorrow 官网，由 Vercel 提供网站托管；访问此页也涉及 Vercel 的托管服务及其隐私规则。在法律要求或保护用户及服务所需时，我们可能依法披露信息。我们不出售个人信息，也不将其用于广告定向。
 
 ### 3. 保存与删除
 
@@ -112,6 +112,6 @@ iOS 的**忘记我**操作会重置本地 AI 记忆快照与口味档案，不�
 
 我们使用与服务相适应的保护措施，包括平台权限、经认证的连接和访问限制；任何系统都无法保证绝对安全。请勿在公开内容、AI 问题或对话中提交不必要的敏感信息。
 
-Solo Compass 并非面向儿童设计的服务。未成年人仅应在法律允许并取得必要监护授权时使用。同行功能要求自行声明已满 18 周岁，这不等于身份或年龄核验。如需调查或删除儿童信息，请联系我们；我们不声称应用会核验每位用户或同行者的年龄。
+Roamorrow 并非面向儿童设计的服务。未成年人仅应在法律允许并取得必要监护授权时使用。同行功能要求自行声明已满 18 周岁，这不等于身份或年龄核验。如需调查或删除儿童信息，请联系我们；我们不声称应用会核验每位用户或同行者的年龄。
 
 我们会标注政策修订日期，并在有要求时以适当方式提示重大变更或重新征求同意。仅修改本文并不构成采集无关信息的授权。
