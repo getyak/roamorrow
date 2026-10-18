@@ -751,6 +751,7 @@ public final class MapViewModel {
     public var selectedCity: String? {
         didSet {
             guard selectedCity != oldValue else { return }
+            lastVisibleMapCenter = nil
             lastWebSearchResult = nil
             invalidateCityCache()
             // #86: candidateExperiences live under the previous city's
@@ -798,6 +799,7 @@ public final class MapViewModel {
         customCoordinates = coordinate
         customLocationLabel = label
         selectedCity = cityCode
+        lastVisibleMapCenter = coordinate
         preferences.lastSelectedCity = nil  // don't persist custom pins across restarts
         // A custom pin is a deliberate concrete point the user dropped, so
         // zoom straight to street-level regardless of GPS.
@@ -1143,7 +1145,10 @@ public final class MapViewModel {
     // into a synthetic file that lacks `import MapKit`, causing build errors.
     @ObservationIgnored private var _cameraPosition: MapCameraPosition
     public var cameraPosition: MapCameraPosition {
-        get { _cameraPosition }
+        get {
+            _ = cameraPositionVersion
+            return _cameraPosition
+        }
         set {
             withMutation(keyPath: \.cameraPositionVersion) {
                 _cameraPosition = newValue
@@ -1175,6 +1180,7 @@ public final class MapViewModel {
     /// because it distorts with latitude, while latitude degrees are uniform.
     /// Default seeds a city-level span so the first render isn't over-dense.
     public var currentSpanLatitudeDelta: Double = MapViewModel.defaultSpanLatitudeDelta
+    @ObservationIgnored private var lastVisibleMapCenter: CLLocationCoordinate2D?
 
     /// Default span used before the first camera change — roughly city-district
     /// scale, so the cold-start map already shows a curated (not flooded) set.
@@ -1717,6 +1723,7 @@ public final class MapViewModel {
     /// their explicit coordinate; with no city selected we follow live GPS (or
     /// the default center) as before.
     private var nearbyQueryOrigin: CLLocationCoordinate2D {
+        if let center = lastVisibleMapCenter { return center }
         if let custom = customCoordinates { return custom }
         if let city = selectedCity, !city.hasPrefix("custom_") {
             return defaultCenterForSelectedCity
@@ -2012,7 +2019,7 @@ public final class MapViewModel {
     public func emptyStateActionTryExpand() {
         emptyStateExpandTried = true
         preferences.maxDistanceKm = 25
-        let anchor = locationService.currentLocation?.coordinate ?? defaultCenterForSelectedCity
+        let anchor = nearbyQueryOrigin
         loadNearbyExperiences()
         recordEmptyStateRender()
         Task { await self.exploreNearby(at: anchor) }
@@ -2022,7 +2029,7 @@ public final class MapViewModel {
     /// in `.tryExplore` until either the explore returns results (reset)
     /// or three consecutive empty renders flip it to `.browseCity`.
     public func emptyStateActionTryExplore() {
-        let anchor = locationService.currentLocation?.coordinate ?? defaultCenterForSelectedCity
+        let anchor = nearbyQueryOrigin
         recordEmptyStateRender()
         Task { await self.exploreNearby(at: anchor, radiusMeters: 12000) }
     }
@@ -2030,7 +2037,7 @@ public final class MapViewModel {
     /// US-012 stage 3: reuse the existing "Browse nearest city" jump
     /// that the legacy overlay shipped with.
     public func emptyStateActionBrowseCity() {
-        let anchor = locationService.currentLocation?.coordinate ?? defaultCenterForSelectedCity
+        let anchor = nearbyQueryOrigin
         if let code = nearestSeededCity(to: anchor) {
             selectCity(code)
         }
@@ -2170,6 +2177,7 @@ public final class MapViewModel {
     /// reacting to user pan/zoom — that would create a feedback loop where
     /// every gesture resets the zoom level.
     public func recenter(on coordinate: CLLocationCoordinate2D) {
+        lastVisibleMapCenter = coordinate
         // Wrap in withAnimation so the camera glides in, matching
         // focusOnExperience — a bare assignment snaps instantly and reads
         // as janky (#132).
@@ -2242,6 +2250,7 @@ public final class MapViewModel {
     /// Refresh visible experiences when the user pans/zooms the map. Does NOT
     /// touch `cameraPosition`, to avoid fighting the user's gesture.
     public func refreshForLocation(_ coordinate: CLLocationCoordinate2D) {
+        lastVisibleMapCenter = coordinate
         let radiusKm = max(1.0, preferences.maxDistanceKm)
         let nearby = applyFilters(near: coordinate, radiusKm: radiusKm)
         // A meaningful viewport move can still resolve to the exact same
@@ -2432,7 +2441,7 @@ public final class MapViewModel {
         let candidates = visibleExperiences
         guard !candidates.isEmpty else { return }
         let context = AIService.UserContext(
-            location: locationService.currentLocation?.coordinate,
+            location: nearbyQueryOrigin,
             date: Date(),
             style: preferences.soloTravelStyle,
             preferredCategories: preferences.preferredCategories,
@@ -2622,7 +2631,7 @@ public final class MapViewModel {
             isShowingExploreConsent = true
             return
         }
-        let coordinate = locationService.currentLocation?.coordinate ?? Self.defaultCenter
+        let coordinate = nearbyQueryOrigin
         let nearby = experienceService.allExperiences.filter { exp in
             guard let expCoord = exp.coordinate else { return false }
             let loc = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
@@ -2867,7 +2876,7 @@ public final class MapViewModel {
             let generated: [Experience]
             let effectiveRadius: Int
             // Track the final radius reached during progressive explore (US-006).
-            var progressiveFinalRadiusKm: Int?
+            var progressiveFinalRadiusKm: Double?
 
             if FeatureFlags.deepDiveEnrichment {
                 // Progressive explore: small radius (5km) first, expand outward
@@ -2883,17 +2892,18 @@ public final class MapViewModel {
                     categories: filteredCategories,
                     cityCode: cityCode,
                     locale: LanguageService.shared.effectiveLocale,
+                    countryCode: resolved?.countryCode,
                     onProgress: { [weak self] progress in
                         guard let self else { return }
                         // Track which radius we've scanned for US-006 toast.
                         if case .scanning(let km) = progress {
-                            self.progressiveScratchRadiusMeters = km * 1_000
+                            self.progressiveScratchRadiusMeters = Int((km * 1_000).rounded())
                             // US-011: update the radius ring overlay to current stage.
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 self.exploreRadiusOverlay = (center: coordinate, radiusMeters: Double(km * 1_000))
                             }
                         } else if case .expanding(let km) = progress {
-                            self.progressiveScratchRadiusMeters = km * 1_000
+                            self.progressiveScratchRadiusMeters = Int((km * 1_000).rounded())
                             // US-011: update overlay to the new (larger) radius.
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 self.exploreRadiusOverlay = (center: coordinate, radiusMeters: Double(km * 1_000))
@@ -2903,28 +2913,14 @@ public final class MapViewModel {
                     },
                     onBatch: { [weak self] batch in
                         guard let self else { return }
-                        // US-009: dedupe by id and append to visibleExperiences.
-                        let existingIds = Set(self.visibleExperiences.map(\.id))
-                        let novel = batch.filter { !existingIds.contains($0.id) }
-                        if !novel.isEmpty {
-                            let batchAdded = self.experienceService.appendGenerated(novel)
-                            self.progressiveScratchAddedCount += batchAdded
-                            // Slice C: track this Explore's own new ids so
-                            // the map dim & the live-feed list can pick
-                            // them out from the pre-existing set.
-                            for exp in novel {
-                                self.exploreSessionAddedIds.insert(exp.id)
-                            }
-                            withAnimation(Self.markerSetAnimation) {
-                                self.visibleExperiences.append(contentsOf: novel)
-                                self.nearbySoloCount = self.computeNearbySoloCount(in: self.visibleExperiences)
-                            }
-                        }
+                        let result = self.mergeDiscoveryBatch(batch)
+                        self.progressiveScratchAddedCount += result.insertedCount
+                        self.exploreSessionAddedIds.formUnion(result.insertedIDs)
                     }
                 )
 
                 // Set the final radius so US-006 toast can reference it.
-                progressiveFinalRadiusKm = progressiveScratchRadiusMeters / 1_000
+                progressiveFinalRadiusKm = Double(progressiveScratchRadiusMeters) / 1_000
                 lastExploreAddedCount = progressiveScratchAddedCount
 
                 guard !allResults.isEmpty else {
@@ -2939,11 +2935,12 @@ public final class MapViewModel {
                         lastExploreToast = NSLocalizedString("explore.toast.cachedFallback", comment: "Showing cached results")
                         return
                     }
-                    lastExploreError = NSLocalizedString("explore.error.nothingFound", comment: "No POIs found nearby")
-                    lastFailureKind = .noResults
+                    lastExploreError = NSLocalizedString(enrichmentAgent.lastRunWasPartial
+                        ? "explore.toast.partial" : "explore.error.nothingFound", comment: "Nearby data unavailable or no results")
+                    lastFailureKind = enrichmentAgent.lastRunWasPartial ? .apiServerError : .noResults
                     return
                 }
-                // Use the full accumulated set for appendGenerated count tracking.
+                // Use the full accumulated set for discovery count tracking.
                 generated = allResults
                 effectiveRadius = progressiveScratchRadiusMeters
             } else {
@@ -3002,20 +2999,19 @@ public final class MapViewModel {
                 effectiveRadius = ringRadius
             }
 
-            // For the progressive path, appendGenerated + lastExploreAddedCount were
+            // For the progressive path, mergeDiscovered + lastExploreAddedCount were
             // already handled incrementally in onBatch. For the legacy path, do it now.
             let added: Int
             if FeatureFlags.deepDiveEnrichment {
                 // Already persisted and counted in onBatch; use the cumulative count.
                 added = lastExploreAddedCount
             } else {
-                added = experienceService.appendGenerated(generated)
+                let result = mergeDiscoveryBatch(generated)
+                added = result.insertedCount
                 lastExploreAddedCount = added
                 // Slice C: legacy path — record every new id in the session
                 // tracker so the overlay + live-feed pick them up too.
-                for exp in generated {
-                    exploreSessionAddedIds.insert(exp.id)
-                }
+                exploreSessionAddedIds.formUnion(result.insertedIDs)
             }
 
             // US-022: record a successful region so offline fallback can reuse it.
@@ -3041,7 +3037,7 @@ public final class MapViewModel {
             // so users understand why distant places appeared.
             let wasMultiRing = effectiveRadius != radiusMeters
             // US-006: progressive runs that expanded past 5 km surface the final radius.
-            let initialProgressiveKm = EnrichmentAgent.progressiveRadii[0] / 1_000
+            let initialProgressiveKm = Double(EnrichmentAgent.progressiveRadii[0]) / 1_000
             let progressiveExpanded = progressiveFinalRadiusKm.map { $0 > initialProgressiveKm } ?? false
 
             // US-MR-05: emit analytics for multi-ring runs even when
@@ -3085,7 +3081,7 @@ public final class MapViewModel {
                         recenter(on: coordinate)
                     }
                 }
-                let outerKm = effectiveRadius / 1000
+                let outerKm = Double(effectiveRadius) / 1000
                 if progressiveExpanded, let finalKm = progressiveFinalRadiusKm {
                     // US-006: progressive run that widened past 5 km — show final radius.
                     if let resolved {
@@ -3126,18 +3122,20 @@ public final class MapViewModel {
                 // AFTER the toast + camera work so the card sees a stable
                 // scene. `finalKm` mirrors the toast source of truth so
                 // there's a single "we scanned this far" number.
-                let finalKm = progressiveFinalRadiusKm ?? (effectiveRadius / 1000)
                 let radii = EnrichmentAgent.progressiveRadii
                 let canExpand = progressiveScratchRadiusMeters < (radii.last ?? Int.max)
                 let verifiedInSession = countVerifiedInSession()
                 pendingHandoff = ExploreSession.HandoffResult(
                     addedCount: added,
                     verifiedCount: verifiedInSession,
-                    finalRadiusKm: max(finalKm, 1),
+                    finalRadiusKm: max(Double(effectiveRadius) / 1_000, 1),
                     cityName: resolved?.name,
                     addedIds: Array(exploreSessionAddedIds),
                     canExpand: canExpand
                 )
+            }
+            if enrichmentAgent.lastRunWasPartial {
+                lastExploreToast = NSLocalizedString("explore.toast.partial", comment: "Partial nearby results")
             }
         } catch {
             // US-022: on network failure, look for a recent nearby region and
@@ -3214,9 +3212,9 @@ public final class MapViewModel {
         /// Single AI synthesis kicked off with `poiCount` deduped POIs.
         case synthesizing(poiCount: Int)
         /// Progressive ladder is scanning the ring at `radiusKm` km.
-        case scanning(radiusKm: Int)
+        case scanning(radiusKm: Double)
         /// Progressive ladder is expanding to a larger ring at `toRadiusKm` km.
-        case expanding(toRadiusKm: Int)
+        case expanding(toRadiusKm: Double)
     }
 
     public var exploreProgress: ExploreProgress = .idle
@@ -3382,7 +3380,7 @@ public final class MapViewModel {
                 cityCode: cityCode,
                 locale: LanguageService.shared.effectiveLocale
             )
-            let added = experienceService.appendGenerated(generated)
+            let added = mergeDiscoveryBatch(generated).insertedCount
             lastExploreAddedCount = added
             if added > 0 {
                 selectCity(cityCode, explicit: false)
@@ -3404,6 +3402,29 @@ public final class MapViewModel {
         }
     }
 
+    /// All discovery paths update the visible value from the policy-merged
+    /// store, including refresh-only runs (zero new discoveries).
+    @discardableResult
+    func mergeDiscoveryBatch(_ batch: [Experience]) -> DiscoveryMergeResult {
+        let result = experienceService.mergeDiscovered(batch)
+        guard result.didChangeStore else { return result }
+        let changedIds = result.insertedIDs.union(result.refreshedIDs)
+        let byId = Dictionary(uniqueKeysWithValues: experienceService.allExperiences
+            .filter { changedIds.contains($0.id) }.map { ($0.id, $0) })
+        withAnimation(Self.markerSetAnimation) {
+            visibleExperiences = visibleExperiences.map { byId[$0.id] ?? $0 }
+            var visibleIds = Set(visibleExperiences.map(\.id))
+            for item in batch {
+                if let value = byId[item.id], visibleIds.insert(item.id).inserted {
+                    visibleExperiences.append(value)
+                }
+            }
+            if let selected = selectedExperience, let refreshed = byId[selected.id] { selectedExperience = refreshed }
+            nearbySoloCount = computeNearbySoloCount(in: visibleExperiences)
+        }
+        return result
+    }
+
     /// Stable, lat/lon-derived city code used for OSM-generated entries so
     /// the existing city pill / filter logic still works. Format:
     /// `osm_<latRounded>_<lonRounded>`. Rounded to 1 decimal degree (~11 km).
@@ -3417,7 +3438,7 @@ public final class MapViewModel {
     /// otherwise the currently-selected city center. Used by the map view's
     /// Explore button.
     public var exploreAnchorCoordinate: CLLocationCoordinate2D {
-        locationService.currentLocation?.coordinate ?? defaultCenterForSelectedCity
+        nearbyQueryOrigin
     }
 
     // MARK: - US-011 auto-explore on empty category

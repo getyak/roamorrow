@@ -66,7 +66,6 @@ public enum NavigationLauncher {
         coordinate: CLLocationCoordinate2D,
         name: String?
     ) -> URL? {
-        let encodedName = (name ?? "").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         let lat = coordinate.latitude
         let lon = coordinate.longitude
 
@@ -74,11 +73,23 @@ public enum NavigationLauncher {
         case .appleMaps:
             return nil
         case .googleMaps:
-            return URL(string: "comgooglemaps://?daddr=\(lat),\(lon)&q=\(encodedName)&directionsmode=walking")
+            var components = URLComponents()
+            components.scheme = "comgooglemaps"
+            components.host = ""
+            components.queryItems = [.init(name: "daddr", value: "\(lat),\(lon)"), .init(name: "q", value: name ?? ""),
+                                     .init(name: "directionsmode", value: "walking")]
+            return components.url
         case .amap:
-            // dev=0 declares the coordinate is GPS (WGS-84); Amap converts to GCJ-02 internally.
+            // Amap: dev=1 requests conversion of GPS/WGS84 input. dev=0
+            // declares already-encrypted GCJ-02 input and would shift the goal.
             // t=2 selects walking mode.
-            return URL(string: "iosamap://path?sourceApplication=SoloCompass&dlat=\(lat)&dlon=\(lon)&dname=\(encodedName)&dev=0&t=2")
+            var components = URLComponents()
+            components.scheme = "iosamap"
+            components.host = "path"
+            components.queryItems = [.init(name: "sourceApplication", value: "SoloCompass"),
+                                     .init(name: "dlat", value: String(lat)), .init(name: "dlon", value: String(lon)),
+                                     .init(name: "dname", value: name ?? ""), .init(name: "dev", value: "1"), .init(name: "t", value: "2")]
+            return components.url
         }
     }
 

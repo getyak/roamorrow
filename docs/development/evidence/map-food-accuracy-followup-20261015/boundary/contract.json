@@ -1,0 +1,21 @@
+{
+  "question": "On iOS MapKit mainland base maps, should canonical WGS84 be rendered directly or transformed at the renderer boundary?",
+  "mode": "boundary",
+  "choices": ["Direct canonical WGS84", "Explicit render-boundary datum adapter"],
+  "evidence": "Read-only MKLocalSearch result country + raw coordinates, actual CoordinateConverter output, distance, screenshot of both markers relative to native POI labels. Hong Kong is a no-conversion control. Empty query is a deterministic failure case without a network request.",
+  "network_scope": "One public Haodian-government search and one Hong Kong City Hall search, no login, credentials, GPS collection or paid model calls. Explicit --live-poi launch flag is required.",
+  "timebox_seconds": 300,
+  "stop_rule": "One request per case. Capture success or failure; stop after 45 seconds per query; no retries without new evidence.",
+  "out_of_scope": [
+    "Production changes",
+    "User data or saved places",
+    "Physical GPS calibration",
+    "Deployment"
+  ],
+  "evidence_classes": [
+    "observed",
+    "automated numeric comparison",
+    "AI visual interpretation",
+    "user choice remains unconfirmed"
+  ]
+}

@@ -285,44 +285,60 @@ public struct ChatInputBar: View {
     /// `.ai-recording`: blinking dot · animated bars · mono timer · "Release to
     /// send". Releasing the mic (handled by the parent's gesture on the same
     /// surface) stops listening; tapping anywhere on the strip also ends it.
+    ///
+    /// The strip is a real `Button` (not a tap gesture over an ignored AX
+    /// container) so VoiceOver / Switch Control get one element with an actual
+    /// "activate" action that stops the recording — the previous
+    /// `.onTapGesture` + `.accessibilityElement(children: .ignore)` pairing left
+    /// a labelled element with no way to trigger the stop.
     private var recordingBar: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(.white)
-                .frame(width: 10, height: 10)
-                .opacity(listeningPulse ? 0.25 : 1.0)
-                .animation(
-                    reduceMotion ? nil : .easeInOut(duration: 0.55).repeatForever(autoreverses: true),
-                    value: listeningPulse
-                )
+        Button {
+            onMicToggle(false)
+        } label: {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(.white)
+                    .frame(width: 10, height: 10)
+                    .opacity(listeningPulse ? 0.25 : 1.0)
+                    .animation(
+                        reduceMotion ? nil : .easeInOut(duration: 0.55).repeatForever(autoreverses: true),
+                        value: listeningPulse
+                    )
 
-            RecordingWaveform(active: !reduceMotion)
-                .frame(height: 26)
-                .frame(maxWidth: .infinity)
+                RecordingWaveform(active: !reduceMotion)
+                    .frame(height: 26)
+                    .frame(maxWidth: .infinity)
 
-            Text(recordTimerLabel)
-                .font(.system(size: 12, design: .monospaced))
-                .tracking(0.6)
-                .frame(minWidth: 34, alignment: .trailing)
+                Text(recordTimerLabel)
+                    .font(.system(size: 12, design: .monospaced))
+                    .tracking(0.6)
+                    .frame(minWidth: 34, alignment: .trailing)
 
-            Text(NSLocalizedString("chat.record.releaseToSend", comment: "Release to send"))
-                .font(.system(size: 11.5))
-                .opacity(0.85)
-                .lineLimit(1)
+                Text(NSLocalizedString("chat.record.releaseToSend", comment: "Release to send"))
+                    .font(.system(size: 11.5))
+                    .opacity(0.85)
+                    .lineLimit(1)
+                    .layoutPriority(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, minHeight: HitTargetMetrics.minimum)
+            .background(CT.accent)
+            // Hit area is the whole strip, not just the glyphs.
+            .contentShape(Rectangle())
         }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity)
-        .background(CT.accent)
-        .contentShape(Rectangle())
-        .onTapGesture { onMicToggle(false) }
+        .buttonStyle(.plain)
         .onAppear { if !reduceMotion { listeningPulse = true } }
+        .onDisappear { listeningPulse = false }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(String(
             format: NSLocalizedString("chat.record.timer.a11y", comment: "Recording — %@ elapsed"),
             recordTimerLabel
         )))
+        .accessibilityValue(Text(NSLocalizedString("chat.record.releaseToSend", comment: "Release to send")))
+        .accessibilityHint(Text(NSLocalizedString("chat.record.stop.hint", comment: "Stops recording and sends your voice message.")))
     }
 
     private var recordTimerLabel: String {
@@ -397,7 +413,7 @@ public struct ChatInputBar: View {
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(CT.accent)
+                .foregroundStyle(CT.actionTintAdaptive)
                 .frame(width: 44, height: 44)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -408,7 +424,7 @@ public struct ChatInputBar: View {
                         .strokeBorder(CT.borderSubtle, lineWidth: 0.5)
                 )
         }
-        .buttonStyle(PressableButtonStyle(pressedScale: 0.88))
+        .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(Text(NSLocalizedString("chat.attachment.add.a11y", comment: "Add attachment")))
     }
 
@@ -436,8 +452,10 @@ public struct ChatInputBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 11)
         .background(
+            // The focused fill must stay adaptive: a fixed white surface made
+            // the dark-mode composer a glowing panel behind light text.
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(fieldFocused ? CT.surfaceWhite : inputFieldFill)
+                .fill(fieldFocused ? CT.cardAdaptive : inputFieldFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -497,7 +515,7 @@ public struct ChatInputBar: View {
                     .foregroundStyle(.white)
             }
         }
-        .buttonStyle(PressableButtonStyle(pressedScale: 0.88))
+        .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(Text(NSLocalizedString("chat.input.send.a11y", comment: "Send")))
     }
 
@@ -517,7 +535,7 @@ public struct ChatInputBar: View {
         let micColor: Color = {
             switch micState {
             case .listening: return CT.sunGoldDeep
-            case .thinking:  return CT.accent
+            case .thinking:  return CT.actionTintAdaptive
             case .error:     return CT.bannerError
             case .idle:      return .primary
             }
@@ -543,7 +561,7 @@ public struct ChatInputBar: View {
                     isActive: !reduceMotion && (micState == .listening || micState == .thinking)
                 )
         }
-        .scaleEffect(isListening ? 1.08 : (micPressed ? 0.94 : 1.0))
+        .scaleEffect(isListening ? 1.02 : (micPressed ? 0.98 : 1.0))
         .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.7), value: micState)
         .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.7), value: micPressed)
         .contentShape(shape)

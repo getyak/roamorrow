@@ -1,0 +1,47 @@
+[
+  {
+    "anchor": "Q223207",
+    "api": "MKMapItemAnnotation\/custom-MKAnnotation-flat-v1",
+    "fullyRenderedPasses": 1,
+    "nativeCustomPhysicalPixels": 0,
+    "reference": "https:\/\/www.wikidata.org\/wiki\/Q223207",
+    "referenceResidualMeters": 52.717354023140636,
+    "region": "mainland",
+    "renderInput": "gcj02",
+    "renderPasses": 1,
+    "runtime": "Version 26.5 (Build 23F77)",
+    "screenScale": 3,
+    "searchOutput": "gcj02",
+    "style": "standard"
+  },
+  {
+    "anchor": "hko-trig-zero",
+    "api": "MKMapItemAnnotation\/custom-MKAnnotation-flat-v1",
+    "fullyRenderedPasses": 2,
+    "nativeCustomPhysicalPixels": 0,
+    "reference": "https:\/\/www.hko.gov.hk\/en\/gts\/astron2024\/files\/HKO_almanac_2024.pdf",
+    "referenceResidualMeters": 27.05062357662031,
+    "region": "hongKong",
+    "renderInput": "gcj02",
+    "renderPasses": 2,
+    "runtime": "Version 26.5 (Build 23F77)",
+    "screenScale": 3,
+    "searchOutput": "gcj02",
+    "style": "standard"
+  },
+  {
+    "anchor": "Q4310094",
+    "api": "MKMapItemAnnotation\/custom-MKAnnotation-flat-v1",
+    "fullyRenderedPasses": 3,
+    "nativeCustomPhysicalPixels": 0,
+    "reference": "https:\/\/www.wikidata.org\/wiki\/Q4310094",
+    "referenceResidualMeters": 15.608712166034598,
+    "region": "macau",
+    "renderInput": "gcj02",
+    "renderPasses": 3,
+    "runtime": "Version 26.5 (Build 23F77)",
+    "screenScale": 3,
+    "searchOutput": "gcj02",
+    "style": "standard"
+  }
+]

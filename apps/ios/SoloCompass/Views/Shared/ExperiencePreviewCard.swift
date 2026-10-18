@@ -150,14 +150,16 @@ struct ExperiencePreviewCard: View {
             HStack(spacing: 4) {
                 Image(systemName: "figure.stand")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(CT.verifiedGreen)
-                Text(String(format: "Solo %.1f", experience.soloScore.overall))
+                    .foregroundStyle((experience.soloScore.overall > 0 ? CT.verifiedGreen : CT.fgMuted))
+                Text(experience.soloScore.overall > 0
+                    ? String(format: NSLocalizedString("solo.a11y", comment: "Solo Score %@ of 10"), experience.soloScoreDisplay)
+                    : experience.soloScoreDisplay)
                     .ctMono(12, .medium)
-                    .foregroundStyle(CT.verifiedGreen)
+                    .foregroundStyle((experience.soloScore.overall > 0 ? CT.verifiedGreen : CT.fgMuted))
                     .lineLimit(1)
             }
             .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(Capsule().fill(CT.verifiedGreen.opacity(0.1)))
+            .background(Capsule().fill((experience.soloScore.overall > 0 ? CT.verifiedGreen : CT.fgMuted).opacity(0.1)))
             .fixedSize(horizontal: true, vertical: false)
 
             if let mins = walkMinutes {

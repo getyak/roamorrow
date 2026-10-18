@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-16T05:56:28.627256+00:00",
+  "removedArtifacts": [
+    "/private/tmp/ai-test-interaction-quality-round02-web.VVTLSb",
+    "/private/tmp/ai-test-interaction-quality-round02-integrated-native.BDWWDS",
+    "/private/tmp/ai-test-interaction-quality-unused-sdk-cache.EkJos1"
+  ],
+  "method": "dev-storage-guard remove-artifact exact registered paths, after formal source hashes/results/logs/screenshots saved",
+  "nativeSession": "released; session-started Primary iPhone shut down by helper; no new/erased devices; compact/iPad not used",
+  "ownWebServers": "stopped, temporary IAB tab closed, viewport reset",
+  "docker": "own disposable Postgres RLS test stack down with volumes; allowed projects belonging to other tasks preserved",
+  "pruneSimulators": {
+    "deleted": 0,
+    "allAllowedDevices": "Shutdown"
+  },
+  "resourceSnapshot": {
+    "nodeProcesses": 120,
+    "swapGiB": 13.66,
+    "diskFreeGiB": 29.59,
+    "warnings": [
+      "Node above100",
+      "swap above8GiB",
+      "free below30GiB"
+    ],
+    "handling": "No further heavy work; no unrelated process/service killed or OS swap removed. Own rebuildable task artifacts reclaimed."
+  },
+  "preserved": [
+    "source/integration worktree and dirty original workspace",
+    "Pi worker worktrees and task receipts",
+    "formal project evidence",
+    "other tasks services/volumes/devices"
+  ]
+}

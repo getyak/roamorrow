@@ -39,43 +39,59 @@ public struct BlindboxLaunchView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 28) {
-                Spacer()
-                Text(NSLocalizedString("blindbox.launch.title", comment: "Blindbox launch title"))
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundColor(.white)
-                Text(NSLocalizedString("blindbox.launch.subtitle", comment: "Blindbox launch explanation"))
-                    .font(.callout)
-                    .foregroundColor(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 28)
+            VStack(spacing: 0) {
+                // Scrollable content + pinned actions (I13): large Dynamic
+                // Type must never push the buttons off screen.
+                ScrollView {
+                    VStack(spacing: 28) {
+                        Spacer(minLength: 8)
+                        Text(NSLocalizedString("blindbox.launch.title", comment: "Blindbox launch title"))
+                            .font(.largeTitle.weight(.bold))
+                            .foregroundColor(.white)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(NSLocalizedString("blindbox.launch.subtitle", comment: "Blindbox launch explanation"))
+                            .font(.callout)
+                            .foregroundColor(.white.opacity(0.85))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 28)
 
-                Picker("Duration", selection: $selected) {
-                    ForEach(Duration.allCases) { d in
-                        Text(d.rawValue).tag(d)
+                        Picker(
+                            NSLocalizedString("blindbox.launch.duration", comment: "Duration"),
+                            selection: $selected
+                        ) {
+                            ForEach(Duration.allCases) { d in
+                                Text(d.rawValue).tag(d)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .tint(.white)
+                        .padding(.horizontal, 40)
+                        Spacer(minLength: 8)
                     }
-                }
-                .pickerStyle(.segmented)
-                .tint(.white)
-                .padding(.horizontal, 40)
-
-                Spacer()
-
-                Button(action: { onLaunch(selected) }) {
-                    Text(NSLocalizedString("blindbox.launch.open", comment: "Open blindbox button"))
-                        .font(.title3.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.white)
-                        .foregroundColor(CT.blindboxAmber)
-                        .cornerRadius(24)
-                        .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity)
                 }
 
-                Button("Not now", action: onDismiss)
-                    .font(.footnote)
-                    .foregroundColor(.white.opacity(0.7))
-                    .padding(.bottom, 20)
+                VStack(spacing: 8) {
+                    Button(action: { onLaunch(selected) }) {
+                        Text(NSLocalizedString("blindbox.launch.open", comment: "Open blindbox button"))
+                            .font(.title3.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: HitTargetMetrics.minimum)
+                            .padding(.vertical, 14)
+                            .background(Color.white)
+                            .foregroundColor(CT.blindboxAmber)
+                            .cornerRadius(24)
+                            .padding(.horizontal, 24)
+                    }
+
+                    Button(NSLocalizedString("blindbox.launch.notNow", comment: "Not now"), action: onDismiss)
+                        .font(.footnote)
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                        .contentShape(Rectangle())
+                        .padding(.bottom, 20)
+                }
             }
         }
     }

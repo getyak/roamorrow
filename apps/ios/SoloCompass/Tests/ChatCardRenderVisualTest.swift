@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import SwiftData
 @testable import SoloCompass
 
 /// Visual render check for the new in-chat cards + reasoning panel. No snapshot
@@ -14,8 +15,11 @@ final class ChatCardRenderVisualTest: XCTestCase {
         XCTAssertGreaterThan(img.size.width, 0)
         XCTAssertGreaterThan(img.size.height, 0)
         if let data = img.pngData() {
-            let url = URL(fileURLWithPath: "/tmp/\(name).png")
-            try? data.write(to: url)
+            let directory = ProcessInfo.processInfo.environment["UI_AUDIT_OUTPUT_DIR"]
+                .map { URL(fileURLWithPath: $0, isDirectory: true) }
+                ?? FileManager.default.temporaryDirectory.appendingPathComponent("chat-card-audit", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try data.write(to: directory.appendingPathComponent("\(name).png"))
         }
     }
 
@@ -25,9 +29,28 @@ final class ChatCardRenderVisualTest: XCTestCase {
             .fixedSize(horizontal: false, vertical: true)
             .background(CT.bgWarm)
             .environment(\.colorScheme, .light)
+            .environment(UserPreferences())
+            .modelContainer(SoloCompassModelContainer.makeInMemory())
         let renderer = ImageRenderer(content: wrapped)
         renderer.scale = 2
         return renderer.uiImage
+    }
+
+
+    private func renderHosted(_ view: some View) -> UIImage {
+        let host = UIHostingController(rootView: view
+            .environment(UserPreferences())
+            .modelContainer(SoloCompassModelContainer.makeInMemory()))
+        host.overrideUserInterfaceStyle = .light
+        host.view.frame = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let window = UIWindow(frame: host.view.frame)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        return UIGraphicsImageRenderer(bounds: host.view.bounds).image { _ in
+            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+        }
     }
 
     private var seed: [Experience] { Array(ExperienceService.hardcodedSeed.prefix(3)) }
@@ -60,7 +83,7 @@ final class ChatCardRenderVisualTest: XCTestCase {
             stopReasons: stops.enumerated().map { i, _ in "第 \(i + 1) 站 · 适合此刻停留" }
         )
         try write(
-            render(ChatRouteProposalCard(proposal: proposal, onAdopt: {}, onTapStop: { _ in })),
+            renderHosted(ChatRouteProposalCard(proposal: proposal, onAdopt: {}, onTapStop: { _ in })),
             "chatcard_route_proposal"
         )
     }
@@ -115,7 +138,7 @@ final class ChatCardRenderVisualTest: XCTestCase {
         )
         let proposal = RouteProposal(route: route, stops: stops)
         try write(
-            render(ChatRouteProposalCard(proposal: proposal, onAdopt: {}, onTapStop: { _ in })),
+            renderHosted(ChatRouteProposalCard(proposal: proposal, onAdopt: {}, onTapStop: { _ in })),
             "chatcard_compiled_workday"
         )
     }

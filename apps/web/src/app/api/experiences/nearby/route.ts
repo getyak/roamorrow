@@ -29,6 +29,7 @@ import { getEvidenceRepo, getExperiencesRepo } from "@/lib/repos";
 import { DEV_FALLBACK_EXPERIENCES } from "@/lib/dev-fallback";
 import { coverageRefreshJob, planEvidenceRefresh } from "@/lib/evidence-refresh";
 import { scheduleRefreshJobs } from "@/lib/refresh-scheduler";
+import { localHourAt } from "@/lib/local-hour";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ const QuerySchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
   intent: z.string().trim().min(1).max(280).optional(),
   radius: z.coerce.number().int().min(100).max(10_000).default(1500),
+  timeZone: z.string().max(100).optional(),
 });
 
 export interface NearbyResult {
@@ -51,6 +53,8 @@ export interface NearbyResult {
 export interface NearbyResponse {
   readonly results: readonly NearbyResult[];
   readonly degraded?: true;
+  /** Sample fixtures are distinct from a real-data AI ranking fallback. */
+  readonly source?: "sample" | "database";
   readonly evidence?: {
     readonly coverage: "fresh" | "partial" | "legacy";
     readonly refreshScheduled: boolean;
@@ -87,10 +91,11 @@ export async function GET(
 ): Promise<NextResponse<NearbyResponse | { error: string }>> {
   const url = new URL(request.url);
   const parsed = QuerySchema.safeParse({
-    lng: url.searchParams.get("lng"),
-    lat: url.searchParams.get("lat"),
+    lng: url.searchParams.get("lng")?.trim() || undefined,
+    lat: url.searchParams.get("lat")?.trim() || undefined,
     intent: url.searchParams.get("intent") ?? undefined,
     radius: url.searchParams.get("radius") ?? undefined,
+    timeZone: url.searchParams.get("timeZone") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -100,7 +105,7 @@ export async function GET(
     );
   }
 
-  const { lng, lat, intent, radius } = parsed.data;
+  const { lng, lat, intent, radius, timeZone } = parsed.data;
   const center = [lng, lat] as const;
 
   let candidates: Experience[];
@@ -112,13 +117,19 @@ export async function GET(
     // backend). UI keeps working with an empty result set + `degraded` flag.
     const missingEnv =
       err instanceof Error && err.message.includes("Invalid server environment configuration");
-    if (missingEnv) {
+    if (missingEnv && process.env.NODE_ENV === "development") {
       // Local dev without Supabase: serve a small fixture so the UI is testable.
       // `degraded: true` keeps the "AI paused" label visible so it's obvious this
       // is fake data.
       return NextResponse.json({
-        results: fallbackRank(DEV_FALLBACK_EXPERIENCES, center),
+        results: fallbackRank(
+          DEV_FALLBACK_EXPERIENCES.filter(
+            (experience) => distanceMeters(center, experience.location.coordinates) <= radius,
+          ),
+          center,
+        ),
         degraded: true,
+        source: "sample",
       });
     }
     // eslint-disable-next-line no-console
@@ -153,7 +164,7 @@ export async function GET(
 
   // Intent provided → ask the ranker to pick the top 3.
   try {
-    const currentHour = new Date().getUTCHours(); // approximate; per-city local time deferred
+    const currentHour = localHourAt(new Date(), timeZone);
     const ranked = await rankExperiences({
       userLocation: center,
       userIntent: intent,

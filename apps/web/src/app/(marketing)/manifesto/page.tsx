@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Manifesto",
   description:
-    "Why Roamorrow exists. A short manifesto on solo travel, honest AI, and why we chose the hard path — no ads, no tracking, no VC — even when it costs us reach.",
+    "Why Roamorrow exists. A short manifesto on solo travel, honest AI, and why we chose the hard path — no ads, data use explained, no VC — even when it costs us reach.",
   alternates: {
     canonical: `${SITE_URL}/manifesto`,
     languages: {
@@ -22,15 +22,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/manifesto`,
-    title: "Roamorrow · Manifesto",
+    title: `${BRAND.name} · Manifesto`,
     description:
-      "A short manifesto on solo travel, honest AI, and why we chose no ads, no tracking, no VC.",
+      "A short manifesto on solo travel, honest AI, and why we chose no ads, data use explained, no VC.",
     images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Roamorrow · Manifesto",
-    description: "Why we chose no ads, no tracking, no VC.",
+    title: `${BRAND.name} · Manifesto`,
+    description: "Why we chose no ads, data use explained, no VC.",
     images: ["/opengraph-image"],
   },
 };
@@ -49,8 +49,8 @@ const PARAGRAPHS_EN: { heading: string; body: string }[] = [
     body: "We use AI to filter and explain, never to replace your judgment. Every ranking shows the sources it drew from — Wikimedia, OSM, official pages, verified reviews. Every recommendation shows its confidence. When the model is uncertain, it says so. When two sources disagree, both are shown. Solo travel is high-stakes; opaque AI is not acceptable.",
   },
   {
-    heading: "No ads. No tracking. Ever.",
-    body: "The moment an app has ads, its incentives split from yours. It has to hold attention. It has to inflate ratings for paying partners. It has to know where you are and what you buy. Roamorrow makes money one way: you paid for it. If we ever break that promise, we owe every Lifetime buyer a full refund. This is written into our terms.",
+    heading: "No ads. Understand what is shared.",
+    body: "The moment an app has ads, its incentives split from yours. It has to hold attention. It has to inflate ratings for paying partners. It has to know where you are and what you buy. Roamorrow makes money one way: a subscription you choose. If we ever break that promise, call it out — we would deserve it.",
   },
   {
     heading: "Built in Kyoto. Answerable to you.",

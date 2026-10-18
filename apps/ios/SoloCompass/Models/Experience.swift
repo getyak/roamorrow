@@ -564,6 +564,15 @@ public struct Experience: Codable, Hashable, Identifiable {
 
     public var coordinate: CLLocationCoordinate2D? { location.clCoordinate }
 
+    /// Numeric zero is retained for schema compatibility only; it is not an
+    /// assessment of an unexplored place's quality or safety.
+    public var soloScoreDisplay: String {
+        guard soloScore.overall > 0 else {
+            return NSLocalizedString("soloScore.unassessed", comment: "No solo assessment available")
+        }
+        return String(format: "%.1f", soloScore.overall)
+    }
+
     /// Non-nil category highlights, never nil — UI iterates this directly.
     public var highlights: [CategoryHighlight] { categoryHighlights ?? [] }
 

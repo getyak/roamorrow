@@ -1,0 +1,18 @@
+[
+  {
+    "document": "privacy",
+    "public": true,
+    "owner": "kubbot",
+    "contentMatchesLocal": true,
+    "sha256": "fdaa47227d222a0f01694158b663cc813dcadf4cace8796ed7c2a40437729e47",
+    "url": "https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9"
+  },
+  {
+    "document": "terms",
+    "public": true,
+    "owner": "kubbot",
+    "contentMatchesLocal": true,
+    "sha256": "d192072979b29409a0e30d4abf3e7afe7bdaacc7ab655ab68f7ce0e470389e88",
+    "url": "https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a"
+  }
+]

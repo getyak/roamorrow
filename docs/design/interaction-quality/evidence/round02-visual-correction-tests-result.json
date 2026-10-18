@@ -1,0 +1,34 @@
+{
+  "exitCode": 0,
+  "seconds": 153.33,
+  "classes": [
+    "UIAuditSnapshotTests/testRouteDetailDock",
+    "UIAuditSnapshotTests/testPersonalCountdownForm",
+    "UIAuditSnapshotTests/testChatRouteProposalCard",
+    "UIAuditSnapshotTests/testPaywallPage",
+    "ChatCardRenderVisualTest/testRouteProposalCardRenders",
+    "ChatCardRenderVisualTest/testCompiledWorkdayRouteCardRendersScheduleAndFallback"
+  ],
+  "command": [
+    "xcodebuild",
+    "test-without-building",
+    "-xctestrun",
+    "/private/tmp/ai-test-interaction-quality-round02-integrated-native.BDWWDS/DerivedData/Build/Products/SoloCompass_iphonesimulator26.5-arm64.xctestrun",
+    "-destination",
+    "platform=iOS Simulator,id=02B4F0C1-A92F-469D-9DCC-5ED13F119507",
+    "-resultBundlePath",
+    "/private/tmp/ai-test-interaction-quality-round02-integrated-native.BDWWDS/visual-correction.xcresult",
+    "-parallel-testing-enabled",
+    "NO",
+    "-only-testing:SoloCompassTests/UIAuditSnapshotTests/testRouteDetailDock",
+    "-only-testing:SoloCompassTests/UIAuditSnapshotTests/testPersonalCountdownForm",
+    "-only-testing:SoloCompassTests/UIAuditSnapshotTests/testChatRouteProposalCard",
+    "-only-testing:SoloCompassTests/UIAuditSnapshotTests/testPaywallPage",
+    "-only-testing:SoloCompassTests/ChatCardRenderVisualTest/testRouteProposalCardRenders",
+    "-only-testing:SoloCompassTests/ChatCardRenderVisualTest/testCompiledWorkdayRouteCardRendersScheduleAndFallback"
+  ],
+  "executedTests": 6,
+  "failures": 0,
+  "testExecutionSeconds": 16.151,
+  "evidenceNote": "Parsed final Selected tests summary; not a count of distinct tests across reruns."
+}

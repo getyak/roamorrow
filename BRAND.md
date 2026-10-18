@@ -2,9 +2,9 @@
 
 Roamorrow is a personal companion for solo travel and life on the move.
 
-**Public name:** Roamorrow  
-**Canonical origin:** https://roamorrow.com  
-**Tagline:** Find your way. Feel at home.  
+**Public name:** Roamorrow
+**Canonical origin:** https://roamorrow.com
+**Tagline:** Find your way. Feel at home.
 **Chinese supporting line:** 一个人出发，也能在远方过好日常。
 
 ## Identity

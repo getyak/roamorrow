@@ -90,10 +90,12 @@ public final class ComplianceService {
     /// user's toggle. Uses a fixed identifier so repeated calls replace the
     /// pending notification instead of stacking.
     public func syncVisaReminder(now: Date = Date()) async {
+        // Clear the old date even if authorization was revoked or the new
+        // countdown has elapsed. Scheduling below never prompts for permission.
+        await NotificationService.shared.cancelVisaExpiryReminder()
         guard preferences.visaReminderEnabled,
               let state = state(now: now),
               state.visaDaysRemaining > 0 else {
-            await NotificationService.shared.cancelVisaExpiryReminder()
             return
         }
         await NotificationService.shared.scheduleVisaExpiryReminder(daysRemaining: state.visaDaysRemaining)

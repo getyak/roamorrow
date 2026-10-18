@@ -1,155 +1,145 @@
-# App Store Metadata — Roamorrow
+# App Store metadata — Roamorrow
 
-Draft listing copy for the Roamorrow rebrand. These are intended submission
-fields, not confirmation that App Store Connect or TestFlight has been updated.
-Read provider settings back before marking publication complete.
+Repository preparation only. These fields and notes must be checked against the submitted build and live App Store Connect configuration before submission. Editing this file does not change App Store Connect, publish an app, set an age rating or install a custom EULA.
+
+The public name is Roamorrow in both languages. Signing and bundle IDs, StoreKit product IDs, persistence keys, Keychain namespaces and existing `solocompass://` links retain their technical identities. App Store Connect and TestFlight branding require separate provider updates and readback.
 
 ## Build identity
 
-| Field | Value |
-| --- | --- |
-| Public app name | `Roamorrow` |
-| Bundle ID | `com.solocompass.app` — retained for existing installs |
-| Marketing version | `1.1.0` in `apps/ios/project.yml`; release workflow may override |
-| Build number | `2` in `apps/ios/project.yml`; release workflow may override |
-| Minimum iOS | `17.0` |
-| Primary language | English (U.S.) |
-| Localizations | English, Simplified Chinese (`zh-Hans`) |
-| Primary / secondary category | Travel / Lifestyle — confirm in App Store Connect |
-| Encryption | `ITSAppUsesNonExemptEncryption = false` |
-| Content rights / age rating | Reconfirm the current questionnaire and source licenses before submission |
+| Field                   | Repository value / submission action                                                                                                                                                                |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bundle ID               | `com.solocompass.app`                                                                                                                                                                               |
+| MARKETING_VERSION       | `1.1.0` in `apps/ios/project.yml`; release automation may override it                                                                                                                               |
+| CURRENT_PROJECT_VERSION | `2` in `apps/ios/project.yml`; verify the uploaded build number                                                                                                                                     |
+| Minimum iOS             | `17.0`                                                                                                                                                                                              |
+| Localizations           | English (primary) and Simplified Chinese (`zh-Hans`)                                                                                                                                                |
+| Category suggestions    | Travel / Lifestyle; confirm in App Store Connect                                                                                                                                                    |
+| Encryption              | `ITSAppUsesNonExemptEncryption = false`; verify actual export-compliance answers for the submitted build                                                                                            |
+| Content rights          | Uses third-party map/place/image data. Check attribution and applicable licenses; do not answer that it uses no third-party content.                                                                |
+| Age rating              | Complete the current App Store Connect questionnaire for the submitted features. Companion access requires an 18+ self-declaration; this is not verified age or a preselected App Store age rating. |
 
-Signing, bundle IDs, StoreKit product IDs, persistence, Keychain namespaces,
-and the existing `solocompass://` links retain their technical identities.
-The public name is Roamorrow in both languages.
+## Name and subtitle
 
-## App name and subtitle
+- English name: `Roamorrow`
+- English subtitle: `Find your way. Feel at home.`
+- 中文名称：`Roamorrow`
+- 中文副标题：`一个人出发，也能在远方过好日常`
 
-| Field | English | Simplified Chinese |
-| --- | --- | --- |
-| App name (30 characters) | `Roamorrow` | `Roamorrow` |
-| Subtitle (30 characters) | `Find your way. Feel at home.` | `一个人出发，也能在远方过好日常` |
+## Promotional text
 
-## Promotional text (170 characters)
+English (within 170 characters):
 
-> Find your way. Feel at home. Explore local experiences, save places you want to return to, and make a new city feel more familiar.
+> Find your way. Feel at home. Discover nearby experiences, review their sources, and save what matters. AI options depend on your settings and access.
 
-zh-Hans:
+中文：
 
-> 一个人出发，也能在远方过好日常。发现当地体验，收藏想再去的地方，慢慢熟悉一座新的城市。
+> 一个人出发，也能在远方过好日常。发现附近体验，查看来源，收藏值得前往的地方。AI 功能取决于当前设置与访问权益。
 
-## Description (4000 characters)
+## Description
 
-> Roamorrow is a personal companion for solo travel and life on the move.
->
-> Start with a map of experiences: a quiet café, a walk by the water, a market worth taking your time in. Save what interests you and return to it when the moment feels right.
->
-> Explore nearby
->
-> Discover public places from OpenStreetMap and browse curated experiences. AI can help describe an experience from a solo traveler's perspective. Sources and confidence help you judge the information; opening hours, conditions, and suitability can change.
->
-> Find your own pace
->
-> Browse Solo Score dimensions, save favorites, record visits, and share an experience or a route. Use voice input when you would rather speak than type.
->
-> Optional AI assistance
->
-> Ask for suggestions in your own words. Available AI features depend on your subscription, configured services, and network access. Review the in-app disclosure before sending information to external services.
->
-> Your travel, your choices
->
-> Location, microphone, camera, and photo access are requested for the features that use them. Review the Privacy Policy for information about AI processing, optional sync, diagnostics, and data controls.
+### English
 
-zh-Hans:
+Roamorrow is a map-first personal companion for solo travel and life on the move. Explore nearby experiences, inspect their sources and confidence, and save or record the ones you choose.
 
-> Roamorrow 陪你一个人旅行，也陪你在流动中生活。
->
-> 从地图上的体验开始：一家安静的咖啡馆，一段沿水边的散步，一个值得慢慢逛的市集。收藏感兴趣的地方，等合适的时候再去。
->
-> 探索附近
->
-> 浏览精选体验，发现来自 OpenStreetMap 的公开地点。AI 可以从独自旅行的角度补充体验描述。查看来源和置信度，再判断信息是否适合你；营业时间、现场条件和体验感受都可能变化。
->
-> 找到自己的节奏
->
-> 查看独行评分的各个维度，收藏地点、记录到访，分享体验或路线。不想打字时，也可以用语音表达。
->
-> 按需使用 AI
->
-> 用自己的话说出想法，获取建议。AI 功能的可用性取决于订阅、服务配置和网络连接。向外部服务发送信息前，请先阅读应用内的数据说明。
->
-> 自己决定如何旅行
->
-> 位置、麦克风、相机和照片权限会在相应功能需要时请求。有关 AI 处理、可选同步、诊断和数据管理的说明，请阅读《隐私政策》。
+Explore Here can use public place data to suggest experiences around a selected location. When enabled, AI adds draft descriptions and explanations. Sources, hours, estimated walking times and AI output can be incomplete or outdated; check current conditions before you go. Scores and confidence indicators are informational, not a safety or freshness guarantee.
 
-## Keywords (100 characters, comma-separated)
+Use supported text or voice input to describe what you want. Availability depends on the device, permissions, provider configuration and account/entitlement. Features explicitly labeled as previews or read-only are not complete paid capabilities.
+
+Free and Pro access are those currently offered in the app. Monthly/yearly products, prices, billing periods and any introductory-offer eligibility are shown by Apple before purchase. No fixed free-trial duration, unlimited AI or lifetime entitlement is promised here. Manage or cancel subscriptions in Apple settings; deleting the app or local data does not cancel a subscription.
+
+Location and selected context can be sent to exploration and AI services. Accounts, sync, companion messages, attachments and configured diagnostics involve the relevant backend or third-party service. The native default AI provider is DeepSeek; settings and the Pro proxy determine the actual request destination. Read the public Privacy Policy for recipients, retention limits and available controls.
+
+Privacy Policy: https://roamorrow.com/privacy
+Terms of Service: https://roamorrow.com/terms
+Support and privacy requests: hello@roamorrow.com / privacy@roamorrow.com
+
+### 中文
+
+Roamorrow 是为独行者准备的地图伙伴。探索附近体验，查看来源与可信度，收藏或记录你自己选择的去处。
+
+“在这里探索”可根据选定位置使用公开地点数据提供体验建议。启用 AI 时，它会补充描述草稿与解释。来源、营业信息、估算步行时间和 AI 输出可能不完整或过时，出发前请确认当前情况；评分与可信度提示不保证安全或实时准确。
+
+你可通过支持的文字或语音输入表达需求；具体能力取决于设备、权限、服务商配置与账号/权益。标为预览或只读的界面，不代表相关付费能力已完整开放。
+
+免费与 Pro 以应用当前实际提供的内容为准。Apple 会在购买前显示月度/年度商品、价格、计费周期和优惠资格。本文不承诺固定试用天数、无限 AI 或终身权益。订阅可在 Apple 设置管理或取消；删除应用或本地数据不会取消订阅。
+
+位置和选定上下文可能发送至探索或 AI 服务。账号、同步、同行消息、附件和配置的诊断涉及相应后端或第三方服务。原生默认 AI 服务商为 DeepSeek，设置及 Pro 代理决定实际请求去向。数据接收方、保存限制与可管理选项请见完整隐私政策。
+
+隐私政策：https://roamorrow.com/privacy
+用户协议：https://roamorrow.com/terms
+支持与隐私请求：hello@roamorrow.com / privacy@roamorrow.com
+
+## Keywords
 
 `solo,travel,map,nomad,cafe,quiet,explore,coworking,wellness,nearby`
 
 ## Public destinations
 
-| Field | Intended value |
-| --- | --- |
-| Support URL | `https://roamorrow.com/support` |
-| Marketing URL | `https://roamorrow.com` |
-| Privacy URL | `https://roamorrow.com/privacy` |
-| Terms URL | `https://roamorrow.com/terms` |
-| Support email | `hello@roamorrow.com` |
-| Privacy email | `privacy@roamorrow.com` |
+| App Store field    | Intended canonical destination  |
+| ------------------ | ------------------------------- |
+| Privacy Policy URL | `https://roamorrow.com/privacy` |
+| Terms of Service   | `https://roamorrow.com/terms`   |
+| Support URL        | `https://roamorrow.com/support` |
+| Marketing URL      | `https://roamorrow.com`         |
+| Support email      | `hello@roamorrow.com`           |
+| Privacy email      | `privacy@roamorrow.com`         |
 
-Verify HTTPS pages and email forwarding before submission. No App Store or
-TestFlight download URL is recorded until the destination is verified.
+Verify all canonical pages over HTTPS and email forwarding before submission.
+No App Store or TestFlight download URL is recorded until its destination is
+verified. A source change does not establish a published listing.
+
+The previously published bilingual documents remain provenance/fallback references:
+[Privacy Policy](https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9)
+and [Terms of Service](https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a).
+Keep public reading URLs instead of revision-pinned raw files. The old
+`solo-compass.vercel.app` deployment and `solocompass.app` legal paths are not
+valid substitutes for the canonical pages.
 
 ## In-app purchases
 
-| Product ID — unchanged | Intended display name | Local StoreKit introductory offer |
-| --- | --- | --- |
-| `com.solocompass.pro.monthly` | Roamorrow Pro Monthly | 7 days |
-| `com.solocompass.pro.yearly` | Roamorrow Pro Yearly | 7 days |
+| Runtime product ID            | Meaning     | Live storefront verification                                                                                             |
+| ----------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `com.solocompass.pro.monthly` | Pro monthly | Price, region, period, trial eligibility and family sharing must be read from the actual App Store configuration/product |
+| `com.solocompass.pro.yearly`  | Pro yearly  | Same verification required; do not infer a trial or price tier from a local StoreKit test file                           |
 
-Intended subscription group display name: `Roamorrow Pro`. The group ID,
-product IDs, and receipt compatibility are unchanged. The checked-in StoreKit
-configuration supports local testing; confirm current prices, trial eligibility,
-family sharing, and localized display names in App Store Connect before publishing.
+The local `Configuration.storekit` file supports development testing; it is not evidence that the same offer is active in App Store Connect. Standard Apple EULA applies where no different applicable app license has been provided. Publishing the service Terms Gist does not configure a custom EULA.
 
-## Screenshots
+## TestFlight beta notes
 
-Capture the actual release build in English first, then Simplified Chinese.
-Use the device sizes required by the current App Store Connect submission.
+Test the build's map, retained conversation, settings, localization and configured sync/Pro paths. Use supplied test access for protected features; do not treat an arbitrary client-side debug unlock as an App Review account or live purchase.
 
-1. Welcome screen with the route and rising sun mark, Roamorrow name, and tagline.
-2. Map with representative experiences and visible source information.
-3. Experience detail with Solo Score and confidence.
-4. An experience or route share card with `roamorrow.com`.
-5. Voice input and its permission explanation.
-6. Subscription screen with prices and offers from the current store environment.
+1. Explore the bundled experiences and inspect sources/confidence.
+2. Read both documents from first use, Settings and the paywall; verify the canonical public destinations.
+3. Exercise permitted/declined location and speech paths, keeping drafts on failure.
+4. Check current StoreKit products and any offer actually returned; exercise restore, empty restore and failure.
+5. Repeat affected flows in English and Simplified Chinese, including large text and dark appearance.
 
-## TestFlight beta description (draft)
+Feedback: `hello@roamorrow.com` (privacy requests: `privacy@roamorrow.com`), or an available in-app report action. Some rituals/archive/export screens remain preview or read-only; assess the functionality actually displayed by the submitted build. Availability of backend, AI, push and sync depends on that build's configuration.
 
-> This build introduces the Roamorrow name and route-and-rising-sun identity. Existing app data, purchases, and legacy app links keep their technical identities.
->
-> Please check the welcome screen, system permission prompts, English and Simplified Chinese text, shared cards, exported files, and the Privacy Policy and Terms links.
->
-> Also check that saved experiences and settings survive an upgrade, previously purchased entitlements restore, and existing app links still open the correct experience or route.
->
-> Send feedback through the in-app reporting flow or hello@roamorrow.com once support forwarding has been verified.
+## Reviewer notes for submission
 
-## Reviewer notes (draft)
+Roamorrow was previously named Solo Compass; the app retains the existing bundle and purchase identities. Roamorrow provides a free map experience and, where configured, Pro subscription features. A reviewer must be given working backend/test access for any protected features included in the submission; none is supplied by this document alone.
 
-> Roamorrow was previously named Roamorrow. This is a public rebrand of the existing app; the bundle ID and in-app purchase product IDs are unchanged.
->
-> The app offers a free experience map and optional Pro features. AI and sync availability depend on the submitted build's service configuration. Please review the in-app data disclosure and the Privacy Policy for the processing used by this build.
->
-> Provide any required review credentials and sandbox purchase instructions with the actual submission. The local Configuration.storekit file is a development fixture and does not establish App Store availability or an introductory offer for a reviewer account.
+Native AI defaults to DeepSeek and can use the selected OpenAI/custom endpoint or the configured Pro proxy. Requests can include submitted text, relevant conversation/history, preferences, coordinates and context. Exploration can send coordinates/radius to OpenStreetMap/Overpass; Apple MapKit and other configured map/place/weather services also participate. Do not describe requests as containing only OSM tags and a city slug or as containing no personal data.
 
-## Submission gates
+The app includes Supabase account/sync/conversation integration and configured Sentry diagnostics. Optional companion messages/attachments and push notifications have the data uses explained in the published Privacy Policy. Do not submit claims of no accounts, no third-party SDKs, all data on-device or universally anonymous diagnostics.
 
-- [ ] Native build and relevant tests pass on the release candidate.
-- [ ] Real Simulator or device captures verify both languages and the home-screen display name.
-- [ ] Upgrade preserves saved data, preferences, purchases, and legacy app links.
-- [ ] Localized `InfoPlist.strings`, privacy manifest, and app-icon sizes are bundled.
-- [ ] Public support, privacy, and terms pages are reachable over HTTPS.
-- [ ] Support and privacy email forwarding are verified.
-- [ ] StoreKit names, offers, prices, privacy labels, content rights, and age rating are reviewed in App Store Connect.
-- [ ] App Store Connect and TestFlight branding are read back after provider changes.
-- [ ] Submitted build, review status, and verified download URL are recorded separately from source changes.
+The first-use summary links to the public documents; Settings and the paywall retain access. Device permission prompts and feature-specific confirmations remain separate. Local Forget me/Clear data actions do not delete a backend account, cancel a subscription or erase every recipient's copy. Verify account-deletion requirements and the actual operational process before App Review; a contact email by itself is not proof of full in-app account deletion.
+
+Privacy Policy: https://roamorrow.com/privacy
+Terms of Service: https://roamorrow.com/terms
+Support/privacy contact: hello@roamorrow.com / privacy@roamorrow.com
+
+## Before submission
+
+- [ ] Verify the Roamorrow name, route-and-sun mark, permissions, shared cards and exports in both languages.
+- [ ] Confirm an upgrade preserves data/preferences, purchases restore and legacy app links still route.
+- [ ] Read back App Store Connect and TestFlight name, icon and localized metadata after provider updates.
+
+- [ ] Verify the actual uploaded build/version and required device screenshot classes.
+- [ ] Run release-required build/tests and affected permission, failure and recovery paths; do not treat the narrow legal-link build as full release acceptance.
+- [ ] Check privacy manifests, App Store privacy answers, third-party SDK configuration, content rights and age questionnaire against actual behavior.
+- [ ] Read back the current App Store products, prices, intro offers and entitlements.
+- [ ] Verify all public legal/support links without a logged-in session.
+- [ ] Update and read back the remote App Store Connect privacy URL, description/Terms link and support/contact fields. This step has not been performed by editing this document.
+- [ ] Confirm reviewer access, account/data deletion and applicable user-rights handling for the submitted service.

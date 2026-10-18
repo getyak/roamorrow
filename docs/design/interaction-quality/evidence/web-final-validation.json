@@ -1,0 +1,44 @@
+{
+  "sourceManifest": "snapshot-web-final-files.json",
+  "checks": [
+    {
+      "check": "build",
+      "command": "pnpm --filter @solo-compass/web build",
+      "exitCode": 0,
+      "log": "web-final-build.log.gz",
+      "uncompressedSha256": "1d05c3bb3a6b70c757560385d6053cc73fa9f10b586380b92235b37c9f6752f7",
+      "afterFinalSourceChange": true
+    },
+    {
+      "check": "typecheck",
+      "command": "pnpm --filter @solo-compass/web typecheck",
+      "exitCode": 0,
+      "log": "web-final-typecheck.log.gz",
+      "uncompressedSha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "check": "tests",
+      "command": "pnpm --filter @solo-compass/web test",
+      "exitCode": 0,
+      "log": "web-final-tests.log.gz",
+      "uncompressedSha256": "6386fb4ea73d243530127eec86dde975e260789a860a074977bb8ffd8aba7f8e"
+    },
+    {
+      "check": "format",
+      "command": "pnpm exec prettier --write <changed Web TS/TSX/CSS>",
+      "exitCode": 0,
+      "log": "web-final-format.log.gz",
+      "uncompressedSha256": "db0665451cbc146e810b21591f8ff085e57daafaa337cea86208f6a1448c41a8"
+    }
+  ],
+  "unitFilesPassed": 9,
+  "unitTestsPassed": 58,
+  "unitTestsFailed": 0,
+  "playwrightCliSuiteRun": false,
+  "productionBuild": "passed",
+  "productionDeployed": false,
+  "patchSha256": "dc3b4406e11b135bf0d2ffa0f3d96549083cc640adc82aaae103d893f7324d21",
+  "lastSourceChange": "VoiceIntent clear-intent chip min-height44px only; no logic change",
+  "unitTestSourceBoundary": "58 tests passed before final CSS-only min-height addition; tested logic unchanged",
+  "finalProductionBuildAfterLastSourceChange": true
+}

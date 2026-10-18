@@ -29,9 +29,11 @@ import {
 
 const DAILY_QUOTA_PRO = 30;
 const MAX_POIS_PER_CALL = 60; // US-MR-03: raised from 15 to accommodate the full 4-ring merge
+const SYNTHESIS_VERSION = "facts-v2";
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface POI {
-  osmId: number;
+  osmId: number | string;
   name: string;
   nameEn?: string | null;
   lat: number;
@@ -97,30 +99,48 @@ Deno.serve(async (req: Request) => {
   // 4. Parse + cache check.
   let body: RequestBody;
   try {
-    body = await req.json();
+    const parsed = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return json({ error: "request body must be an object" }, 400);
+    }
+    body = parsed;
   } catch {
     return json({ error: "invalid json" }, 400);
   }
-  if (!body.cacheKey || !Array.isArray(body.pois) || body.pois.length === 0) {
+  if (
+    typeof body.cacheKey !== "string" ||
+    !body.cacheKey.trim() ||
+    !Array.isArray(body.pois) ||
+    body.pois.length === 0
+  ) {
     return json({ error: "cacheKey + non-empty pois required" }, 400);
   }
   if (body.pois.length > MAX_POIS_PER_CALL) {
     return json({ error: `max ${MAX_POIS_PER_CALL} POIs per call` }, 400);
+  }
+  if (
+    body.pois.some((poi) => !validPOI(poi)) ||
+    typeof body.cityCode !== "string" ||
+    typeof body.locale !== "string"
+  ) {
+    return json({ error: "invalid POI facts" }, 400);
   }
 
   // Resolve the target model BEFORE the cache lookup: a cached payload is
   // only reusable for the same model, so a legacy Claude/deepseek-chat entry
   // can never be served for a deepseek-flash request.
   const model = normalizeDeepSeekModel(Deno.env.get("DEEPSEEK_MODEL"));
+  const cacheKey = await factsCacheKey(body, model);
 
   const { data: cached } = await admin
     .from("synthesized_experiences")
-    .select("payload")
-    .eq("source_cache_key", body.cacheKey)
+    .select("payload,synthesized_at")
+    .eq("source_cache_key", cacheKey)
     .eq("model_name", model)
     .limit(1)
     .maybeSingle();
-  if (cached?.payload) {
+  const cacheAge = Date.now() - Date.parse(cached?.synthesized_at ?? "");
+  if (cacheAge >= 0 && cacheAge < CACHE_TTL_MS && validItems(cached?.payload, body.pois)) {
     return json({ experiences: cached.payload, cached: true });
   }
 
@@ -166,7 +186,7 @@ Deno.serve(async (req: Request) => {
     }
     const fields = item as Record<string, unknown>;
     if (
-      typeof fields.osmId !== "number" ||
+      !Number.isSafeInteger(fields.osmId) ||
       typeof fields.title !== "string" ||
       typeof fields.oneLiner !== "string" ||
       typeof fields.whyItMatters !== "string" ||
@@ -175,37 +195,48 @@ Deno.serve(async (req: Request) => {
       return json({ error: "deepseek item missing required fields" }, 502);
     }
   }
+  // The model only sees small batch aliases. Restore the exact provider IDs
+  // before caching or returning, including IDs above JavaScript's 2^53 limit.
+  const restored = items.map((item) => {
+    const fields = item as Record<string, unknown>;
+    const alias = fields.osmId as number;
+    return { ...fields, osmId: body.pois[alias - 1]?.osmId };
+  });
+  if (!validItems(restored, body.pois)) {
+    return json({ error: "deepseek returned invalid place identity or category" }, 502);
+  }
 
   // Write to cache and accounting tables.
   await admin.from("synthesized_experiences").upsert({
-    id: `exp_osm_${(items[0] as Record<string, unknown>).osmId}`,
+    id: `exp_osm_${restored[0]?.osmId}`,
     city_code: body.cityCode,
-    payload: items,
+    payload: restored,
     model_name: model,
-    source_cache_key: body.cacheKey,
+    source_cache_key: cacheKey,
+    synthesized_at: new Date().toISOString(),
   });
   await admin.from("sc_function_calls").insert({
     user_id: userId,
     function_name: "synthesize-experiences",
   });
 
-  return json({ experiences: items, cached: false });
+  return json({ experiences: restored, cached: false });
 });
 
 function buildPrompt(body: RequestBody): string {
   const lines = body.pois
     .map(
-      (p) =>
-        `- osmId=${p.osmId} name="${p.name}" nameEn="${p.nameEn ?? p.name}" lat=${p.lat} lon=${p.lon} tags=${JSON.stringify(p.tags)}`,
+      (p, index) =>
+        `- osmId=${index + 1} name="${p.name}" nameEn="${p.nameEn ?? p.name}" lat=${p.lat} lon=${p.lon} tags=${JSON.stringify(p.tags)}`,
     )
     .join("\n");
   return `You are writing solo-traveler-focused entries for real OpenStreetMap places.
 
-CRITICAL: Use ONLY the provided OSM tags. Do NOT invent menu items, hours, prices, owner backstories, or seating positions.
+CRITICAL: Use ONLY the provided place facts. Do NOT invent menu items, hours, prices, owner backstories, seating positions, or business status. A suggested visit window is not opening hours. When timing is unsupported omit bestStartHour/bestEndHour. Missing facts stay unknown. Provider ratings are not solo-traveler observations.
 
-DISTANCE AWARENESS: POIs span 0–12 km from the query center (a Pro radial Explore covers 4 rings: 1.5/3/6/12 km). Infer approximate distance from each POI's lat/lon relative to the others; group your output by approximate distance band — near (<2 km), mid (2–6 km), far (6–12 km). Within each band, preserve input order. Do NOT mention distances, rings, or band names explicitly in the output — just let the framing reflect the proximity (walk-up vs half-day-out).
+DISTANCE AWARENESS: POIs span 0–12 km from the query center (a Pro radial Explore covers 4 rings: 1.5/3/6/12 km). The query center is not provided, so do not infer distance bands or walk times from the POIs relative to each other. Preserve input order.
 
-For each POI, return a JSON object with: osmId(int), title, oneLiner, whyItMatters, category(food|coffee|culture|nature|work|wellness|nightlife|hidden), bestStartHour(0-23), bestEndHour(0-23), durationMinMinutes(int), durationMaxMinutes(int), howTo(string[] navigation only), soloHint, soloOverall(6.0-9.5).
+For each POI, return a JSON object with: osmId(int), title, oneLiner, whyItMatters, category(food|coffee|culture|nature|work|wellness|nightlife|hidden), bestStartHour(0-23), bestEndHour(0-23), durationMinMinutes(int), durationMaxMinutes(int), howTo(string[] navigation only), soloHint, soloOverall(number 0–10 or null when unsupported; never derive it from a provider rating alone).
 
 Output a JSON array, one object per POI. No prose, no markdown fences.
 
@@ -214,6 +245,113 @@ City code: ${body.cityCode}.
 
 POIs:
 ${lines}`;
+}
+
+function validSourceId(value: unknown): boolean {
+  if (typeof value === "number") return Number.isSafeInteger(value);
+  if (typeof value !== "string" || !/^-?\d{1,19}$/.test(value)) return false;
+  const id = BigInt(value);
+  return id >= -9223372036854775808n && id <= 9223372036854775807n;
+}
+
+function validPOI(value: unknown): value is POI {
+  if (!value || typeof value !== "object") return false;
+  const poi = value as POI;
+  return (
+    validSourceId(poi.osmId) &&
+    typeof poi.name === "string" &&
+    Number.isFinite(poi.lat) &&
+    Math.abs(poi.lat) <= 90 &&
+    Number.isFinite(poi.lon) &&
+    Math.abs(poi.lon) <= 180 &&
+    !!poi.tags &&
+    typeof poi.tags === "object" &&
+    !Array.isArray(poi.tags) &&
+    Object.values(poi.tags).every((value) => typeof value === "string")
+  );
+}
+
+function nonEmptyText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function optionalInteger(value: unknown, min: number, max = Number.MAX_SAFE_INTEGER): boolean {
+  return (
+    value == null ||
+    (typeof value === "number" && Number.isSafeInteger(value) && value >= min && value <= max)
+  );
+}
+
+function validItems(value: unknown, pois: POI[]): value is Record<string, unknown>[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length !== pois.length) return false;
+  const ids = new Set(pois.map((poi) => poi.osmId));
+  const seen = new Set<number | string>();
+  const categories = new Set([
+    "food",
+    "coffee",
+    "culture",
+    "nature",
+    "work",
+    "wellness",
+    "nightlife",
+    "hidden",
+  ]);
+  return value.every((item) => {
+    if (
+      !item ||
+      typeof item !== "object" ||
+      Array.isArray(item) ||
+      !ids.has(item.osmId) ||
+      seen.has(item.osmId) ||
+      !categories.has(item.category) ||
+      !nonEmptyText(item.title) ||
+      !nonEmptyText(item.oneLiner) ||
+      !nonEmptyText(item.whyItMatters) ||
+      !optionalInteger(item.bestStartHour, 0, 23) ||
+      !optionalInteger(item.bestEndHour, 0, 23) ||
+      !optionalInteger(item.durationMinMinutes, 1) ||
+      !optionalInteger(item.durationMaxMinutes, 1) ||
+      (item.durationMinMinutes != null &&
+        item.durationMaxMinutes != null &&
+        item.durationMaxMinutes < item.durationMinMinutes) ||
+      (item.soloOverall != null &&
+        (typeof item.soloOverall !== "number" ||
+          !Number.isFinite(item.soloOverall) ||
+          item.soloOverall < 0 ||
+          item.soloOverall > 10)) ||
+      (item.howTo != null && (!Array.isArray(item.howTo) || !item.howTo.every(nonEmptyText))) ||
+      (item.soloHint != null && typeof item.soloHint !== "string")
+    )
+      return false;
+    seen.add(item.osmId);
+    return true;
+  });
+}
+
+/** Bind server cache reuse to the actual facts, not a caller-controlled opaque key. */
+async function factsCacheKey(body: RequestBody, model: string): Promise<string> {
+  const pois = body.pois
+    .map((poi) => ({
+      osmId: poi.osmId,
+      name: poi.name,
+      nameEn: poi.nameEn ?? null,
+      lat: poi.lat,
+      lon: poi.lon,
+      tags: Object.fromEntries(Object.entries(poi.tags).sort(([a], [b]) => a.localeCompare(b))),
+    }))
+    .sort((a, b) => String(a.osmId).localeCompare(String(b.osmId)));
+  const canonical = JSON.stringify({
+    version: SYNTHESIS_VERSION,
+    model,
+    city: body.cityCode,
+    locale: body.locale,
+    pois,
+  });
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  const hash = Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
+  return `${SYNTHESIS_VERSION}:${hash}`;
 }
 
 function json(payload: unknown, status = 200): Response {

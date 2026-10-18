@@ -35,6 +35,17 @@
   --accent-soft: #fbf1e4;
   --accent-border: #e8dcca;
 
+  /* ---------- Interaction tokens (W08) ----------
+     Accent fill, its on-accent text and the focus ring are separate roles.
+     `--on-accent` and `--focus-ring` are contrast-paired per scheme so a
+     primary button can never render dark-on-dark (the old `text-bg-warm`
+     flipped to near-black in dark mode) and focus stays visible on every
+     surface. */
+  --accent-interactive: #5d3000;
+  --accent-interactive-hover: #4a2600;
+  --on-accent: #fbf7f2;
+  --focus-ring: #5d3000;
+
   /* ---------- Sun-gold (CT.sunGold*) — "此刻" / eyebrow accent ---------- */
   --sun-gold: #c9a677;
   --sun-gold-deep: #a07f4b;
@@ -131,6 +142,12 @@
     --border-default: #4a4237;
     --accent-soft: rgba(251, 241, 228, 0.08);
     --accent-border: #4a4237;
+    /* Dark-adaptive interaction accent: a warm amber that stays legible on
+       the dark sheet. On-accent text flips dark to keep ≥4.5:1 contrast. */
+    --accent-interactive: #e0b172;
+    --accent-interactive-hover: #d2a05e;
+    --on-accent: #1f1a14;
+    --focus-ring: #e0b172;
   }
 }
 
@@ -153,6 +170,9 @@ body {
   overscroll-behavior: none;
   text-rendering: optimizeLegibility;
   font-feature-settings: "ss01", "cv11";
+  /* Narrow-viewport containment (320–390px): long words and URLs must wrap
+     instead of forcing horizontal scroll. */
+  overflow-wrap: break-word;
 }
 
 body:lang(zh-CN),
@@ -177,8 +197,11 @@ body:lang(zh) {
 .ds-display-2xl {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: clamp(56px, 8vw, 96px);
-  line-height: 1.02;
+  /* Tightened from clamp(56px, 8vw, 96px): the hero headline must leave room
+     for the primary action in the first viewport at 1280 and read calmly at
+     320/390. */
+  font-size: clamp(38px, 5vw, 62px);
+  line-height: 1.05;
   letter-spacing: -0.02em;
   color: var(--fg-primary);
 }
@@ -362,12 +385,24 @@ body:lang(zh) {
 }
 
 /* ============================================================
-   Focus ring — accessible + on brand
+   Focus ring — accessible + on brand, dark-adaptive (W08)
    ============================================================ */
 *:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+/* Windows High Contrast / forced-colors: defer to system colors so focus
+   and controls stay visible on any forced palette. */
+@media (forced-colors: active) {
+  *:focus-visible {
+    outline: 2px solid Highlight;
+  }
+  button,
+  a {
+    forced-color-adjust: auto;
+  }
 }
 
 /* ============================================================
@@ -407,6 +442,14 @@ body:lang(zh) {
   animation: sc-halo-pulse 2.4s ease-in-out infinite;
   transform-origin: center;
 }
+/* The selection halo is feedback, not decoration: it must settle to a static
+   highlight when the user asks for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .sc-halo {
+    animation: none;
+    opacity: 0.18;
+  }
+}
 
 /* ============================================================
    DayPageMock heatmap breathing — subtle, editorial
@@ -431,3 +474,244 @@ body:lang(zh) {
     animation: none;
   }
 }
+
+/* City guides keep list/map controls reachable on compact screens. */
+.city-guide button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.city-guide-topbar {
+  overflow-x: auto;
+  min-width: 0;
+}
+.city-guide-topbar > * {
+  flex-shrink: 0;
+}
+.city-guide-topbar a {
+  white-space: nowrap;
+  min-height: 44px;
+}
+.city-guide-mobile-switch {
+  display: none;
+}
+.city-guide-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--dark-surface);
+  border-top: 1px solid var(--dark-border);
+  color: var(--dark-fg-secondary);
+  font-size: 12px;
+}
+.city-guide-status strong {
+  color: var(--accent-amber);
+  font-weight: 600;
+}
+.city-guide-detail > div:last-child {
+  min-width: 0;
+  padding-right: 24px;
+}
+@media (max-width: 1023px) {
+  .city-guide-mobile-switch {
+    display: flex;
+    padding: 6px 12px;
+    gap: 8px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--dark-border);
+    background: var(--dark-surface);
+  }
+  .city-guide-mobile-switch button {
+    flex: 1;
+    border-radius: 8px;
+    color: var(--dark-fg-secondary);
+  }
+  .city-guide-mobile-switch button[aria-pressed="true"] {
+    background: var(--dark-border);
+    color: var(--dark-fg);
+  }
+  .city-guide-list {
+    width: 100% !important;
+    min-width: 0;
+    border-right: 0 !important;
+  }
+  .city-guide-panels[data-mobile-surface="list"] > .city-guide-map {
+    display: none !important;
+  }
+  .city-guide-panels[data-mobile-surface="map"] > .city-guide-list {
+    display: none !important;
+  }
+  .city-guide-map {
+    min-width: 0;
+  }
+  .city-guide-detail {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    max-height: 70%;
+    overflow-y: auto;
+    flex-direction: column;
+    gap: 12px !important;
+    padding: 12px 16px !important;
+  }
+  .city-guide-detail > div {
+    width: auto !important;
+    flex-shrink: 0;
+  }
+  .city-guide-detail > button[aria-label="Close"] {
+    position: sticky !important;
+    top: 0 !important;
+    align-self: flex-end;
+    flex-shrink: 0;
+    background: var(--dark-surface) !important;
+  }
+  .city-guide-detail > div:last-child {
+    padding-right: 0;
+  }
+}
+
+/* Readable secondary text on the guide’s fixed dark surfaces. */
+.city-guide {
+  --dark-fg-subtle: #b0a697;
+  --dark-fg-faint: #a69783;
+}
+
+/* The phone preview keeps its controls usable without implying saved data. */
+.mobile-preview button,
+.mobile-preview a {
+  min-height: 44px;
+  min-width: 44px;
+}
+.mobile-preview header {
+  flex-wrap: wrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-preview * {
+    transition: none !important;
+  }
+}
+
+/* ============================================================
+   Trip recap (/trip/[slug]) + experience detail (/experience/[id])
+   Phone-safe responsive layout (interaction round 2). The fixed 56px
+   gutters and wide grids broke 320–390px; these scoped rules keep the
+   editorial layout on desktop and single-column, 16–20px-gutter reading
+   on phones. Clickable labels keep real 44px targets; focus rings stay
+   on the global :focus-visible treatment.
+   ============================================================ */
+.trip-recap,
+.experience-detail {
+  padding: 48px 24px 80px;
+}
+.trip-recap .trip-section {
+  padding-left: 56px;
+  padding-right: 56px;
+}
+.trip-recap .trip-topbar,
+.experience-detail .exp-topbar {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.trip-recap .trip-crumb,
+.experience-detail .exp-crumb {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.trip-recap .trip-stat {
+  flex: 1;
+  padding: 0 16px;
+}
+.trip-recap .trip-stat:first-child {
+  padding-left: 0;
+}
+.experience-detail .exp-body-grid {
+  gap: 36px;
+}
+.trip-recap .trip-day-grid {
+  display: grid;
+  grid-template-columns: 60px 1fr 80px;
+}
+.trip-recap .trip-day-km {
+  text-align: right;
+}
+.trip-recap .trip-cta {
+  margin: 0 56px 40px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.trip-recap .trip-topbar button,
+.trip-recap .trip-cta-button,
+.experience-detail .exp-cta,
+.experience-detail .exp-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+}
+.experience-detail .exp-pad {
+  padding-left: 56px;
+  padding-right: 56px;
+}
+.experience-detail .exp-body-grid {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+}
+.experience-detail .exp-nearby-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.experience-detail .exp-footer {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .trip-recap,
+  .experience-detail {
+    padding: 20px 0 48px;
+  }
+  .trip-recap .trip-section,
+  .experience-detail .exp-pad {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .trip-recap .trip-stats {
+    flex-wrap: wrap;
+  }
+  .trip-recap .trip-stat {
+    flex: 1 1 45%;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .trip-recap .trip-day-grid {
+    grid-template-columns: 1fr;
+  }
+  .trip-recap .trip-day-km {
+    text-align: left;
+  }
+  .trip-recap .trip-cta {
+    margin: 0 18px 24px;
+    padding: 20px 18px !important;
+    gap: 14px;
+  }
+  .experience-detail .exp-body-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .experience-detail .exp-nearby-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .experience-detail .exp-topbar {
+    padding: 8px 18px !important;
+  }
+}
+
+.illustrated-map-pin:focus-visible { outline: 3px solid var(--accent-amber, #a46a20); outline-offset: -3px; }

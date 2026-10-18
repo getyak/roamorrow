@@ -1,0 +1,46 @@
+{
+  "sourceCommit": "4be1a909ef15f300d49ea6b37cf9a9f9fa07767b",
+  "purpose": "Focused security evidence for changed enrichment and synthesis boundaries; supplements required latest-head CodeQL and secret-scanning CI.",
+  "checks": [
+    {
+      "command": "pnpm security:patch-check",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "output": "security-patch-validation.txt",
+      "scope": "Existing deterministic dependency-patch regressions; not a claim that no dependency advisory exists."
+    },
+    {
+      "command": "pnpm --filter @solo-compass/ai exec vitest run src/__tests__/deepseek-edge-functions.test.ts",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "output": "security-edge-validation.txt",
+      "scope": "Executes production Edge handlers in a mocked Deno/Supabase/fetch harness: 401 auth, 402 entitlement, 429 quota, request validation, invalid model/cache payload rejection and no malformed-cache write; exact provider IDs and server fact-cache fingerprints."
+    }
+  ],
+  "nativeReview": "Independent review examined coordinate provenance and visible-feature lifecycle. Calibration queries public anchors without GPS/account access; canonical location values are not inferred from model text. Reviewer did not claim a Swift static scanner run.",
+  "remoteScanners": {
+    "required": "Latest final PR head CodeQL and Scan for secrets results",
+    "url": "https://github.com/getyak/solo-compass/pull/667/checks"
+  },
+  "notClaimed": [
+    "penetration test",
+    "production Edge deployment",
+    "zero security advisories",
+    "live account authorization acceptance"
+  ],
+  "gitleaks": {
+    "version": "8.30.1",
+    "darwinArm64ArchiveSha256": "b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5",
+    "scannedHead": "c6c17d16a831b21c5164bb12b5be132b30d2bde8",
+    "workingConfigurationDelta": ".gitleaksignore with exactly 9 independently verified SHA-256 false-positive fingerprints",
+    "commitsScanned": 1425,
+    "result": "no leaks found",
+    "output": "security-gitleaks-validation.txt",
+    "positiveControl": "security-gitleaks-positive-control.txt",
+    "positiveControlExit": 1,
+    "rulesRemainActive": true,
+    "officialFingerprintDocumentation": "https://github.com/gitleaks/gitleaks#gitleaksignore"
+  }
+}

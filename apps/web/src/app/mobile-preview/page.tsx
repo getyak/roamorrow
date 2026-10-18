@@ -9,12 +9,13 @@
  * - Blue user pin in the center with double halo.
  * - Tappable bottom sheet (collapsed 360px / expanded 540px) with nearby
  *   experiences sorted by walk time + manual check-in toggles.
- * - After 2 check-ins, soft "iOS app does this automatically" hint.
+ * - After 2 check-ins, a link to the currently available product.
  *
- * NOT the production mobile route — that's `/`, which uses Mapbox.
+ * NOT the production mobile route — that's `/app`, which uses Mapbox.
  */
 
 import Link from "next/link";
+import { resolveDistribution, distributionCopy } from "@/lib/distribution";
 import { useMemo, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { WEB_CATS, WEB_EXPS, type WebExperience } from "@/lib/lisbon-data";
@@ -46,34 +47,34 @@ interface Strings {
 function strings(lang: Lang): Strings {
   return lang === "zh"
     ? {
-        youAreIn: "你在 BAIRRO ALTO 附近",
+        youAreIn: "位置示意 · BAIRRO ALTO",
         nearby: "走得到的体验",
-        sheetSub: "5 个 · 距离排序",
+        sheetSub: "7 个 · 步行时间排序",
         checkIn: "我到了",
         checkedIn: "到过了",
-        hint1: "已经打了 2 个卡。",
-        hint2: "iOS 应用会自动记，免费。",
+        hint1: "演示打卡已记录。",
+        hint2: "这里只演示交互，打开地图开始探索。",
         getApp: "获取应用",
         maybeLater: "以后再说",
         walkMin: "分钟",
-        noAccount: "无需账号 · 数据存在浏览器",
-        pageTitle: "手机预览",
-        back: "← 回到桌面端",
+        noAccount: "交互预览 · 演示打卡刷新后清空",
+        pageTitle: "手机交互预览",
+        back: "← 城市指南",
       }
     : {
-        youAreIn: "You're near BAIRRO ALTO",
+        youAreIn: "Example location · BAIRRO ALTO",
         nearby: "Within walking distance",
-        sheetSub: "5 places · sorted by distance",
+        sheetSub: "7 experiences · walk time",
         checkIn: "I'm here",
         checkedIn: "Checked in",
-        hint1: "You've checked in twice.",
-        hint2: "The iOS app does this automatically. Free.",
+        hint1: "Demo check-ins recorded.",
+        hint2: "This is an interaction preview. Open the map to explore.",
         getApp: "Get the app",
         maybeLater: "Maybe later",
         walkMin: "min",
-        noAccount: "No account · data stays in your browser",
+        noAccount: "Interaction preview · demo check-ins reset on refresh",
         pageTitle: "Mobile preview",
-        back: "← Back to desktop",
+        back: "← City guide",
       };
 }
 
@@ -87,9 +88,7 @@ function MobilePreviewInner() {
   const T = useMemo(() => strings(lang), [lang]);
   const fontStack = lang === "zh" ? FONT_CN : FONT_DISPLAY;
 
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(
-    () => new Set(["tasca-do-chico", "a-vida-portuguesa"]),
-  );
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [showHint, setShowHint] = useState(true);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -115,6 +114,9 @@ function MobilePreviewInner() {
 
   return (
     <div
+      id="main"
+      role="main"
+      className="mobile-preview"
       style={{
         minHeight: "100vh",
         background: "radial-gradient(ellipse at top, #2C241B 0%, #15110D 60%, #0F0D0B 100%)",
@@ -162,7 +164,7 @@ function MobilePreviewInner() {
             color: "var(--dark-fg-faint)",
           }}
         >
-          {T.pageTitle} · 390 × 844
+          {T.pageTitle} · max 390 px
         </span>
       </header>
 
@@ -214,7 +216,7 @@ function PhoneFrame(p: PhoneFrameProps) {
   return (
     <div
       style={{
-        width: 390,
+        width: "min(390px, 100%)",
         height: 844,
         borderRadius: 38,
         overflow: "hidden",
@@ -341,7 +343,7 @@ function PhoneFrame(p: PhoneFrameProps) {
               textTransform: "uppercase",
             }}
           >
-            roamorrow.com/lisbon
+            Roamorrow · preview
           </div>
           <div
             style={{
@@ -414,7 +416,16 @@ function PhoneFrame(p: PhoneFrameProps) {
         <button
           type="button"
           onClick={p.toggleSheet}
-          aria-label="Toggle sheet"
+          aria-label={
+            p.lang === "zh"
+              ? p.sheetExpanded
+                ? "收起体验列表"
+                : "展开体验列表"
+              : p.sheetExpanded
+                ? "Collapse experiences"
+                : "Expand experiences"
+          }
+          aria-expanded={p.sheetExpanded}
           style={{
             padding: "10px 0 6px",
             display: "flex",
@@ -507,8 +518,11 @@ function PhoneFrame(p: PhoneFrameProps) {
                 <b style={{ color: "#FFD89E" }}>{p.T.hint1}</b> {p.T.hint2}
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
+                {/* Real destination (W01): the validated store link when one
+                    exists, the honest download page otherwise — never an
+                    inert mock button. */}
+                <a
+                  href={resolveDistribution().primaryHref}
                   style={{
                     padding: "5px 11px",
                     borderRadius: 5,
@@ -519,10 +533,14 @@ function PhoneFrame(p: PhoneFrameProps) {
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: "pointer",
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    minHeight: 44,
                   }}
                 >
-                  {p.T.getApp}
-                </button>
+                  {distributionCopy(resolveDistribution().primaryKind, p.lang).action}
+                </a>
                 <button
                   type="button"
                   onClick={p.dismissHint}
@@ -618,6 +636,7 @@ function PhoneFrame(p: PhoneFrameProps) {
                 <button
                   type="button"
                   onClick={() => p.toggleCheckin(e.id)}
+                  aria-pressed={checked}
                   style={{
                     padding: "5px 10px",
                     borderRadius: 5,

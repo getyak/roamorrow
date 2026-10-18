@@ -3,22 +3,48 @@ import { copy } from "@/components/marketing/copy";
 import { Footer, MarketingNav } from "@/components/marketing/sections";
 import { Container } from "@/components/marketing/Container";
 import { ButtonLink, Eyebrow, Section } from "@/components/marketing/primitives";
+import { resolveDistribution, distributionCopy } from "@/lib/distribution";
+
 import { BRAND, SITE_URL } from "@/lib/brand";
 
+const dist = resolveDistribution();
+const availability = distributionCopy(dist.primaryKind, "en");
+
 export const metadata: Metadata = {
-  title: "Get Roamorrow",
-  description:
-    "Explore Roamorrow in your browser. A public iPhone download link is not available here yet; check this page for the current release status.",
-  alternates: { canonical: `${SITE_URL}/download` },
+  metadataBase: new URL(SITE_URL),
+  title: "Download · Roamorrow for iOS",
+  // W01: no placeholder store id, no invented price or availability. The
+  // page states where things actually stand and offers the real web entry.
+  description: availability.status,
+  alternates: {
+    canonical: `${SITE_URL}/download`,
+    languages: {
+      en: `${SITE_URL}/download`,
+      "zh-CN": `${SITE_URL}/download`,
+      "x-default": `${SITE_URL}/download`,
+    },
+  },
   openGraph: {
     type: "website",
     url: `${SITE_URL}/download`,
-    siteName: BRAND.name,
-    title: "Get Roamorrow",
-    description: "The web map is open. A public iPhone download link is not available here yet.",
+    title: "Roamorrow for iOS — availability",
+    description: availability.status,
     images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Roamorrow for iOS — availability",
+    description: availability.status,
+    images: ["/opengraph-image"],
+  },
 };
+
+const REQUIREMENTS: [string, string][] = [
+  ["Device", "iPhone (iOS 17.0 or later)"],
+  ["Languages", "English, 简体中文"],
+  ["Price", "Free tier · Pro is monthly or yearly, priced live in the App Store"],
+  ["Status", availability.status],
+];
 
 export default function DownloadPage() {
   const props = {
@@ -31,30 +57,53 @@ export default function DownloadPage() {
     <>
       <MarketingNav {...props} />
       <main id="main">
-        <Section className="pt-24 pb-24 md:pt-32">
-          <Container width="narrow">
-            <Eyebrow dot="accent">Get Roamorrow</Eyebrow>
-            <h1 className="ds-display-xl mt-6 font-display">Your next detour starts here.</h1>
-            <p className="ds-body-xl mt-6 max-w-xl text-fg-muted">
-              Explore the web map in your browser. No installation needed.
-            </p>
-            <div className="mt-10">
-              <ButtonLink href={BRAND.webAppPath} variant="primary">
-                Open web map
-              </ButtonLink>
+        <Section className="pt-24 pb-12 md:pt-32">
+          <Container width="narrow" className="text-center">
+            <Eyebrow dot="accent" className="justify-center">
+              Download
+            </Eyebrow>
+            <h1 className="ds-display-xl mt-6 font-display">Roamorrow on iPhone.</h1>
+            <p className="ds-body-xl mt-6 text-fg-muted">{availability.status}</p>
+            <div className="mt-10 flex flex-wrap justify-center gap-4">
+              {dist.iosAvailable ? (
+                <ButtonLink href={dist.primaryHref} variant="primary">
+                  {availability.action}
+                </ButtonLink>
+              ) : (
+                <ButtonLink href="/app" variant="primary">
+                  Open the web map
+                </ButtonLink>
+              )}
             </div>
-            <article className="mt-20 border-t border-border-subtle pt-10">
-              <h2 className="font-display text-[28px] font-medium">Roamorrow for iPhone</h2>
-              <p className="ds-body-lg mt-4 text-fg-muted">
-                A public App Store or TestFlight download link is not available here yet. We will
-                add the release link when it is ready. The native app requires iOS 17 or later.
+          </Container>
+        </Section>
+
+        <Section className="pb-24">
+          <Container width="narrow">
+            <article>
+              <h2 className="font-display text-[28px] font-medium text-fg-primary md:text-[32px]">
+                Requirements
+              </h2>
+              <dl className="mt-8 divide-y divide-border-subtle">
+                {REQUIREMENTS.map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-6 py-4">
+                    <dt className="font-body text-[15px] font-medium text-fg-primary">{k}</dt>
+                    <dd className="text-right font-body text-[15px] text-fg-muted">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-6 font-body text-[13px] text-fg-subtle">
+                Prices and any free-trial eligibility are shown live in the App Store before you pay
+                — nothing on this page invents a price or an availability date.
               </p>
-              <p className="ds-body-lg mt-6 text-fg-muted">
-                For release or device questions, contact{" "}
-                <a className="underline" href={`mailto:${BRAND.supportEmail}`}>
-                  {BRAND.supportEmail}
-                </a>
-                .
+            </article>
+
+            <article className="mt-16">
+              <h2 className="font-display text-[28px] font-medium text-fg-primary md:text-[32px]">
+                Not on Android yet.
+              </h2>
+              <p className="ds-body-lg mt-4 text-fg-muted">
+                You can explore the web map on Android. An Android app is not publicly available.
               </p>
             </article>
           </Container>

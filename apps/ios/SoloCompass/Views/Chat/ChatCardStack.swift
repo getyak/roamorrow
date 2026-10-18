@@ -202,11 +202,12 @@ private extension Array {
     }
 }
 
-/// Elegant, ordered "thinking" trace shown while the agent works. Each step is a
-/// pill with a kind-specific icon (deliberate / tool running / derived insight)
-/// so the user can watch the agent reason about weather, location, and what
-/// they've visited — instead of staring at an opaque spinner. Collapses to the
-/// most recent few steps so it never dominates the thread.
+/// Ordered "thinking" trace shown while the agent works. Every row leads with
+/// one consistent status column — completed check / active spinner / waiting
+/// dot — so state reads at a glance instead of a per-row icon/emoji pileup.
+/// Only the active step carries the primary accent; completed steps recede to
+/// secondary. Collapses to the most recent few steps so it never dominates the
+/// thread.
 @MainActor
 struct ReasoningTracePanel: View {
     let steps: [ReasoningStep]
@@ -216,13 +217,38 @@ struct ReasoningTracePanel: View {
     private static let maxVisible = 4
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The trace's status vocabulary — derived from the reasoning model AS-IS.
+    /// `ReasoningStep` carries no completion flag, so nothing the trace can't
+    /// actually vouch for is ever rendered as completed:
+    ///  • `.insight` is a recorded conclusion → completed.
+    ///  • A `.tool` step is appended as its run STARTS and the next step can
+    ///    only land after that run returns — a superseded tool step is
+    ///    known-finished → completed; the trailing one is still running.
+    ///  • `.thinking` records deliberation or a queued plan goal; whether it
+    ///    finished is unknown → waiting, never completed.
+    /// The last recorded step is the one in flight → active (unless it is an
+    /// insight, which is already a conclusion).
+    private enum StepStatus { case completed, active, waiting }
+
+    private func status(for step: ReasoningStep, isLast: Bool) -> StepStatus {
+        switch step.kind {
+        case .insight:
+            return .completed
+        case .tool:
+            return isLast ? .active : .completed
+        case .thinking:
+            return isLast ? .active : .waiting
+        }
+    }
 
     private var visibleSteps: [ReasoningStep] {
         Array(steps.suffix(Self.maxVisible))
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 6) {
                 Image(systemName: "brain")
                     .font(.system(size: 11, weight: .semibold))
@@ -234,16 +260,19 @@ struct ReasoningTracePanel: View {
                     .foregroundStyle(CT.sunGoldDeep)
             }
             ForEach(visibleSteps) { step in
-                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Image(systemName: icon(for: step.kind))
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(tint(for: step.kind))
-                        .frame(width: 14)
+                let isLast = step.id == visibleSteps.last?.id
+                let state = status(for: step, isLast: isLast)
+                HStack(spacing: 8) {
+                    statusGlyph(state)
+                        .frame(width: 16)
+                        .accessibilityHidden(true)
                     Text(step.label)
-                        .font(.caption2)
-                        // Semantic color: CT.fgMuted is a fixed dark brown and
-                        // dropped below ~2.5:1 contrast on the dark-mode panel fill.
-                        .foregroundStyle(.secondary)
+                        .font(.caption2.weight(state == .active ? .medium : .regular))
+                        // Only the active step wears the primary accent;
+                        // completed rows recede to secondary (semantic color —
+                        // CT.fgMuted is a fixed dark brown and dropped below
+                        // ~2.5:1 contrast on the dark-mode panel fill).
+                        .foregroundStyle(state == .active ? CT.actionTintAdaptive : Color.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
@@ -253,42 +282,77 @@ struct ReasoningTracePanel: View {
         .padding(.horizontal, 11)
         .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // One quiet native surface — no gold wash, no extra border layer.
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(panelFill)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(CT.borderSubtle, lineWidth: 0.5)
-        )
         .padding(.leading, 40)
         .padding(.trailing, 8)
-        .animation(.easeInOut(duration: 0.2), value: steps.count)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: steps.count)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(
             NSLocalizedString("chat.thinking.a11y", comment: "Reasoning trace accessibility prefix")
-                + ": " + visibleSteps.map(\.label).joined(separator: ", ")
+                + ": " + visibleSteps.map { step in
+                    let isLast = step.id == visibleSteps.last?.id
+                    return statusWord(status(for: step, isLast: isLast)) + " " + step.label
+                }.joined(separator: ", ")
         ))
     }
 
-    private func icon(for kind: ReasoningStep.Kind) -> String {
-        switch kind {
-        case .thinking: return "ellipsis"
-        case .tool:     return "gearshape.fill"
-        case .insight:  return "lightbulb.fill"
+    /// The status column: completed check / active spinner / waiting dot. The
+    /// spinner is the only moving element and stops under Reduce Motion.
+    @ViewBuilder
+    private func statusGlyph(_ status: StepStatus) -> some View {
+        switch status {
+        case .completed:
+            Image(systemName: "checkmark")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Color.secondary)
+        case .active:
+            TraceSpinnerRing(reduceMotion: reduceMotion)
+        case .waiting:
+            Circle()
+                .fill(Color.secondary.opacity(0.55))
+                .frame(width: 5, height: 5)
         }
     }
 
-    private func tint(for kind: ReasoningStep.Kind) -> Color {
-        switch kind {
-        case .thinking: return CT.fgSubtle
-        case .tool:     return CT.accent
-        case .insight:  return CT.sunGoldDeep
+    /// Spoken status word for VoiceOver — the visual column must not be the
+    /// only place state lives.
+    private func statusWord(_ status: StepStatus) -> String {
+        switch status {
+        case .completed:
+            return NSLocalizedString("chat.thinking.status.completed", comment: "Reasoning step already finished")
+        case .active:
+            return NSLocalizedString("chat.thinking.status.active", comment: "Reasoning step running now")
+        case .waiting:
+            return NSLocalizedString("chat.thinking.status.waiting", comment: "Reasoning step not started yet")
         }
     }
 
     private var panelFill: Color {
-        colorScheme == .dark ? Color(.secondarySystemBackground) : CT.sunGoldSoft.opacity(0.35)
+        colorScheme == .dark ? Color(.secondarySystemBackground) : CT.surfaceSunken
+    }
+}
+
+/// One small spinner ring for the active reasoning step. Static (a plain ring)
+/// under Reduce Motion — the animation is decoration, never information.
+private struct TraceSpinnerRing: View {
+    let reduceMotion: Bool
+    @State private var spinning = false
+
+    var body: some View {
+        Circle()
+            .trim(from: 0.12, to: 0.92)
+            .stroke(CT.actionTintAdaptive, style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+            .frame(width: 11, height: 11)
+            .rotationEffect(.degrees(spinning ? 360 : 0))
+            .animation(
+                reduceMotion ? nil : .linear(duration: 0.9).repeatForever(autoreverses: false),
+                value: spinning
+            )
+            .onAppear { spinning = true }
     }
 }
 
@@ -335,7 +399,7 @@ struct AgentStatusLine: View {
                 .foregroundStyle(.secondary)
                 .id(phrase)
                 .transition(.opacity)
-                .animation(.easeOut(duration: 0.25), value: phrase)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: phrase)
         }
         .padding(.vertical, 6)
         .padding(.leading, 40)
@@ -369,7 +433,7 @@ struct ReasoningSummaryChip: View {
             Button {
                 guard summary.hasDetail else { return }
                 Haptics.impact(.light)
-                withAnimation(.easeInOut(duration: 0.22)) { expanded.toggle() }
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.22)) { expanded.toggle() }
             } label: {
                 HStack(spacing: 7) {
                     ZStack {
@@ -392,7 +456,7 @@ struct ReasoningSummaryChip: View {
                     Text(summary.summary)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                     if summary.hasDetail {
                         Image(systemName: expanded ? "chevron.up" : "chevron.down")
                             .font(.system(size: 9, weight: .semibold))
@@ -403,6 +467,8 @@ struct ReasoningSummaryChip: View {
                 .padding(.leading, 7)
                 .padding(.trailing, summary.hasDetail ? 10 : 12)
                 .background(chipFill, in: Capsule())
+                .frame(minHeight: HitTargetMetrics.minimum)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(!summary.hasDetail)
@@ -444,7 +510,7 @@ struct ReasoningSummaryChip: View {
             // delay so a tool chain that unwinds several summaries in the same
             // frame doesn't fire N concurrent springs (read as visual noise).
             // Capped at ~240ms.
-            let staggerDelay = Double(abs(summary.summary.hashValue) % 4) * 0.08
+            let staggerDelay = Double(summary.summary.hashValue.magnitude % 4) * 0.08
             DispatchQueue.main.asyncAfter(deadline: .now() + staggerDelay) {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
                     settled = true

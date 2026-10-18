@@ -1,0 +1,40 @@
+{
+  "exitCode": 0,
+  "seconds": 210.64,
+  "classes": [
+    "ChatHistoryDeletionTests",
+    "ItineraryPersistenceFailureTests",
+    "CivilDayTests",
+    "InviteFriendsPersistTests",
+    "PlacePhotoDraftBatchTests",
+    "ExperienceReportDraftStoreTests",
+    "RouteGenerationGuardTests",
+    "InviteFriendsSheetTest",
+    "ItineraryStoreTests",
+    "ItineraryCreationTests",
+    "UIAuditSnapshotTests"
+  ],
+  "command": [
+    "xcodebuild",
+    "test-without-building",
+    "-xctestrun",
+    "/private/tmp/ai-test-interaction-quality-round02-integrated-native.BDWWDS/DerivedData/Build/Products/SoloCompass_iphonesimulator26.5-arm64.xctestrun",
+    "-destination",
+    "platform=iOS Simulator,id=02B4F0C1-A92F-469D-9DCC-5ED13F119507",
+    "-resultBundlePath",
+    "/private/tmp/ai-test-interaction-quality-round02-integrated-native.BDWWDS/final-targeted.xcresult",
+    "-parallel-testing-enabled",
+    "NO",
+    "-only-testing:SoloCompassTests/ChatHistoryDeletionTests",
+    "-only-testing:SoloCompassTests/ItineraryPersistenceFailureTests",
+    "-only-testing:SoloCompassTests/CivilDayTests",
+    "-only-testing:SoloCompassTests/InviteFriendsPersistTests",
+    "-only-testing:SoloCompassTests/PlacePhotoDraftBatchTests",
+    "-only-testing:SoloCompassTests/ExperienceReportDraftStoreTests",
+    "-only-testing:SoloCompassTests/RouteGenerationGuardTests",
+    "-only-testing:SoloCompassTests/InviteFriendsSheetTest",
+    "-only-testing:SoloCompassTests/ItineraryStoreTests",
+    "-only-testing:SoloCompassTests/ItineraryCreationTests",
+    "-only-testing:SoloCompassTests/UIAuditSnapshotTests"
+  ]
+}

@@ -1,0 +1,4 @@
+
+
+# Vector artwork is a binary document, including ASCII-encoded PDFs.
+*.pdf binary

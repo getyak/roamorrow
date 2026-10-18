@@ -9,6 +9,14 @@ enum MapStyleChoice: String, CaseIterable {
     case imagery
     case hybrid
 
+    var coordinateStyle: MapKitCoordinateSpace.Style {
+        switch self {
+        case .standard: return .standard
+        case .imagery: return .imagery
+        case .hybrid: return .hybrid
+        }
+    }
+
     var label: String {
         switch self {
         case .standard: return NSLocalizedString("map.style.standard", comment: "Standard map")
@@ -362,17 +370,19 @@ struct CompassMapContentView: View {
     /// draft, scroll intent and the explicit-ask channel. One instance for the
     /// root's lifetime so surface switches never drop work.
     @State private var workspace = ConversationWorkspaceState()
-    @State private var mapLibraryRowHeight: CGFloat = 44
+    @State private var mapChromeBottom: CGFloat = 0
 
     private var mapTransientTopInset: CGFloat {
-        MapOverlayMetrics.filterBarTopOffset + MapOverlayMetrics.filterBarHeight
-            + (workspace.surface == .map ? 8 + mapLibraryRowHeight : 0) + 8
+        (mapChromeBottom > 0 ? mapChromeBottom
+            : MapOverlayMetrics.filterBarTopOffset + MapOverlayMetrics.filterBarHeight) + 8
     }
     /// Height of the map's safe-area container, measured once per layout via a
     /// background GeometryReader (never per drag frame) so the panel detents
     /// are honest fractions of the real screen.
     @State private var workspaceContainerHeight: CGFloat = 0
     @State private var mapStyleChoice: MapStyleChoice = .standard
+    @State private var coordinateSpace = MapKitCoordinateSpace.shared
+    @State private var mapPresentation = MapCoordinatePresentation()
 
     // US-017: Companion map layer (default off)
     @State private var isCompanionLayerOn: Bool = false
@@ -410,6 +420,7 @@ struct CompassMapContentView: View {
     // avatar bubble in the map overlay. Friend state is read live so the
     // bubble can show a pending-request dot.
     @State private var isShowingMe: Bool = false
+    @State private var pendingCitySelection = false
     // US-024: when a `message` push is tapped, the personal hub opens with this
     // conversation id so its Messages list auto-pushes the matching ChatView.
     // `nil` when the hub was opened any other way (avatar bubble, inbox).
@@ -670,8 +681,7 @@ struct CompassMapContentView: View {
     /// VerifySheet submit: record the verification (idempotent), feed the
     /// answers into the co-build layer as a note authored by "你", and confirm
     /// with a toast — the 消费者→贡献者 loop closing in one tap.
-    private func submitVerification(_ answers: VerifySheet.Answers, for experience: Experience) {
-        cityOSStore.markVerified(experience.id)
+    private func submitVerification(_ answers: VerifySheet.Answers, for experience: Experience) throws {
         let parts = [
             answers.stillThere == 0
                 ? NSLocalizedString("cityos.verify.note.exists", comment: "还在营业")
@@ -684,10 +694,11 @@ struct CompassMapContentView: View {
                 : NSLocalizedString("cityos.verify.note.crowded", comment: "挺挤"),
         ]
         let prefix = NSLocalizedString("cityos.verify.note.prefix", comment: "印证：")
-        TravelerNoteStore().addNote(
+        try TravelerNoteStore().addNotePersisted(
             experienceId: experience.id,
             text: prefix + parts.joined(separator: " · ")
         )
+        cityOSStore.markVerified(experience.id)
         showCityOSToast(NSLocalizedString(
             "cityos.verify.toast",
             comment: "已印证 · 这个点的信心 +1，谢谢你"
@@ -1270,6 +1281,9 @@ struct CompassMapContentView: View {
                     Haptics.notify(.success)
                 }
             }
+            .onChange(of: networkMonitor.pathGeneration) { _, _ in
+                coordinateSpace.invalidate()
+            }
             .onChange(of: viewModel.isShowingDetail) { _, showing in
                 if showing {
                     HapticService.shared.impact(style: .medium)
@@ -1277,6 +1291,13 @@ struct CompassMapContentView: View {
             }
             // Any modal covering the workspace asks the chat to hibernate (mic +
             // speech) without ending the conversation.
+            .onChange(of: viewModel.isShowingSettings) { _, shown in
+                // Re-check newly saved credentials without dropping this chat
+                // or its draft. start() does not request microphone access.
+                if !shown, let orchestrator = voiceOrchestrator, orchestrator.uiState == .unconfigured {
+                    orchestrator.start()
+                }
+            }
             .onChange(of: anyWorkspaceModalPresented) { _, presented in
                 if presented {
                     workspace.requestHibernation()
@@ -1372,7 +1393,7 @@ struct CompassMapContentView: View {
             .sheet(item: $verifyTarget) { experience in
                 VerifySheet(
                     placeName: experience.shortName,
-                    onSubmit: { answers in submitVerification(answers, for: experience) },
+                    onSubmit: { answers in try submitVerification(answers, for: experience) },
                     onDismiss: { verifyTarget = nil }
                 )
             }
@@ -1408,7 +1429,7 @@ struct CompassMapContentView: View {
             // US-025 regression: the Routes-section commit (6655422) accidentally
             // dropped this line, leaving the bottom-left settings FAB inert — its
             // `isShowingSettings = true` had no presenter to observe it.
-            .sheet(isPresented: settingsSheetBinding) { settingsSheetContent }
+            .sheet(isPresented: settingsSheetBinding, onDismiss: consumePendingCitySelection) { settingsSheetContent }
             // Deep cross-compile live feed: presented the instant the user taps
             // "deep cross-compile" (before any network call), streaming each
             // stage of the enrichment agent loop instead of a silent spinner.
@@ -1423,15 +1444,52 @@ struct CompassMapContentView: View {
             // on the inner BottomInfoSheet ZStack — so SwiftUI arbitrates it
             // alongside the other top-level sheets instead of silently dropping a
             // deeply-nested presenter (which left RouteCards un-openable).
-            .sheet(item: $routeSheet) { sheet in routeSheetContent(sheet) }
+            .sheet(item: $routeSheet, onDismiss: consumePendingCitySelection) { sheet in routeSheetContent(sheet) }
             // US-007: personal hub presented from the top-right map avatar bubble.
-            .sheet(isPresented: $isShowingMe) {
+            .sheet(isPresented: $isShowingMe, onDismiss: consumePendingCitySelection) {
                 MeSheet(
                     pendingRequestCount: friendService.incomingRequests.count,
                     deepLinkConversationId: deepLinkConversationId
                 )
             }
             .modifier(ExploreConsentSheetModifier(viewModel: viewModel, preferences: preferences))
+            // Unified route-start request (R2-03): presentation sites that
+            // can't draw the route themselves (chat's pinned route, Me/Settings
+            // route lists, discover) post this instead of inheriting a dead
+            // no-op callback. Dismiss the presenting Me/chat/route surfaces
+            // FIRST, then draw — the camera must never fight a live sheet.
+            .onReceive(NotificationCenter.default.publisher(for: RouteNavigationRequest.didRequestStart)) { note in
+                guard let route = RouteNavigationRequest.route(from: note) else { return }
+                routeSheet = nil
+                isShowingMe = false
+                if viewModel.isShowingSettings {
+                    viewModel.isShowingSettings = false
+                }
+                if workspace.surface != .map {
+                    _ = workspace.selectSurface(.map)
+                }
+                // Commit the dismissals to the view state before drawing.
+                DispatchQueue.main.async {
+                    startRouteOnMap(route)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: RouteNavigationRequest.didRequestCitySelection)) { _ in
+                let waitsForDismissal = isShowingMe || viewModel.isShowingSettings || routeSheet != nil
+                pendingCitySelection = true
+                routeSheet = nil
+                isShowingMe = false
+                viewModel.isShowingSettings = false
+                if workspace.surface != .map { _ = workspace.selectSurface(.map) }
+                if !waitsForDismissal { consumePendingCitySelection() }
+            }
+    }
+
+    /// Presentation completion owns the handoff; no timer races an outgoing
+    /// Me, settings or route sheet against the city picker.
+    private func consumePendingCitySelection() {
+        guard pendingCitySelection, !isShowingMe, !viewModel.isShowingSettings, routeSheet == nil else { return }
+        pendingCitySelection = false
+        isShowingCityPicker = true
     }
 
     /// Content for the route detail / create sheet, driven by `routeSheet`.
@@ -1472,7 +1530,10 @@ struct CompassMapContentView: View {
                 // Persist + open the new route's detail; RouteStore.didChange
                 // refreshes the sheet's routes section automatically. Swapping
                 // `routeSheet` from .create → .detail replaces content in place.
-                routeStore.save(route)
+                // Throwing save (R2-07): on failure CreateRouteView keeps the
+                // draft on screen with a retry instead of opening a detail for
+                // a route that never hit disk.
+                try routeStore.savePersisted(route)
                 routeSheet = .detail(route)
             }
             .environment(aiService)
@@ -1559,7 +1620,9 @@ struct CompassMapContentView: View {
                     onOpenFavorites: { isShowingFavorites = true },
                     onOpenItineraries: { isShowingItineraries = true }
                 )
-                .onPreferenceChange(MapLibraryRowHeightKey.self) { mapLibraryRowHeight = $0 }
+                .onPreferenceChange(MapChromeBottomKey.self) { bottom in
+                    if bottom > 0 { mapChromeBottom = bottom }
+                }
                 .accessibilityHidden(workspace.detent == .expanded)
                 .allowsHitTesting(workspace.detent != .expanded)
 
@@ -2497,11 +2560,13 @@ struct CompassMapContentView: View {
 
     @ViewBuilder
     private var paywallSheetContent: some View {
-        PaywallView(onUnlocked: {
-            let resume = viewModel.onPaywallUnlocked
-            viewModel.onPaywallUnlocked = nil
-            resume?()
-        })
+        NavigationStack {
+            PaywallView(onUnlocked: {
+                let resume = viewModel.onPaywallUnlocked
+                viewModel.onPaywallUnlocked = nil
+                resume?()
+            })
+        }
         .environment(subscriptionService)
     }
 
@@ -2763,7 +2828,7 @@ struct CompassMapContentView: View {
     /// routes come from `RouteStore`, places from `MapViewModel.visibleExperiences`.
     private var discoveryReferenceCoordinate: CLLocationCoordinate2D {
         if viewModel.selectedCity != nil { return viewModel.defaultCenterForSelectedCity }
-        return locationService.currentLocation?.coordinate ?? viewModel.defaultCenterForSelectedCity
+        return viewModel.exploreAnchorCoordinate
     }
 
     @State private var isShowingItineraries = false
@@ -2926,7 +2991,7 @@ struct CompassMapContentView: View {
             },
             // Adopting a proposed route saves it and opens its detail sheet.
             onAdoptRoute: { proposal in
-                routeStore.save(proposal.route)
+                // ChatRouteProposalCard has already acknowledged durable save.
                 refreshNearbyRoutes(cityCode: viewModel.selectedCity)
                 routeSheet = .detail(proposal.route)
             },
@@ -2948,15 +3013,30 @@ struct CompassMapContentView: View {
             // modest choose-city chip instead of auto-opening a picker modal.
             needsCitySelection: viewModel.selectedCity == nil
                 && locationService.currentLocation == nil,
-            onChooseCity: { isShowingCityPicker = true }
+            onChooseCity: { isShowingCityPicker = true },
+            onOpenSettings: { viewModel.isShowingSettings = true }
         )
+    }
+
+    private func registerProviderCoordinateRoutes(_ experiences: [Experience]) {
+        for experience in experiences where experience.sources.contains(where: { $0.type == .amap }) {
+            if let coordinate = experience.coordinate { coordinateSpace.registerMainlandProviderCoordinate(coordinate) }
+        }
+    }
+
+    private func renderedCoordinate(_ coordinate: CLLocationCoordinate2D) -> CLLocationCoordinate2D? {
+        coordinateSpace.mapCoordinate(coordinate, style: mapStyleChoice.coordinateStyle)
     }
 
     @ViewBuilder
     private func mapLayer(viewModel: MapViewModel) -> some View {
         let bindingCamera = Binding<MapCameraPosition>(
-            get: { viewModel.cameraPosition },
-            set: { viewModel.cameraPosition = $0 }
+            get: { mapPresentation.position },
+            set: { position in
+                if let canonical = mapPresentation.receive(position, space: coordinateSpace, style: mapStyleChoice.coordinateStyle) {
+                    viewModel.cameraPosition = canonical
+                }
+            }
         )
 
         MapReader { proxy in
@@ -2984,8 +3064,9 @@ struct CompassMapContentView: View {
                 //      exact coordinate so the center is always easy to spot.
                 // Only drawn once GPS has a fix; otherwise nothing renders
                 // (no marker stranded at 0,0).
-                if let here = locationService.currentLocation {
-                    MapCircle(center: here.coordinate, radius: Self.userRadiusMeters)
+                if let here = locationService.currentLocation,
+                   let mapCoordinate = renderedCoordinate(here.coordinate) {
+                    MapCircle(center: mapCoordinate, radius: Self.userRadiusMeters)
                         .foregroundStyle(Color.accentColor.opacity(0.12))
                         .stroke(Color.accentColor.opacity(0.4), lineWidth: 1.5)
                     // `anchor: .center` is stated explicitly (not left to the
@@ -2993,7 +3074,7 @@ struct CompassMapContentView: View {
                     // to the GPS coordinate. Combined with UserLocationMarker's
                     // fixed layout bounds, this keeps the dot planted instead of
                     // drifting as its breathing halo pulses.
-                    Annotation("", coordinate: here.coordinate, anchor: .center) {
+                    Annotation("", coordinate: mapCoordinate, anchor: .center) {
                         UserLocationMarker()
                     }
                 }
@@ -3003,7 +3084,7 @@ struct CompassMapContentView: View {
                 ForEach(mapItems) { item in
                     switch item {
                     case .single(let exp):
-                        if let coord = exp.coordinate {
+                        if let canonical = exp.coordinate, let coord = renderedCoordinate(canonical) {
                             let state = viewModel.markerState(for: exp)
                             let isClosingSoon = BestNowChipState
                                 .resolve(for: exp, at: renderNow)
@@ -3081,7 +3162,8 @@ struct CompassMapContentView: View {
                         let clusterHighlightActive = smartPickHighlightActive
                             && !smartPickIds.isEmpty
                             && viewModel.exploreRadiusOverlay == nil
-                        Annotation("", coordinate: cluster.coordinate) {
+                        if let mapCoordinate = renderedCoordinate(cluster.coordinate) {
+                        Annotation("", coordinate: mapCoordinate) {
                             ClusterAnnotationView(cluster: cluster) {
                                 HapticService.shared.impact(style: .medium)
                                 if let first = cluster.experiences.first {
@@ -3097,9 +3179,10 @@ struct CompassMapContentView: View {
                             .transition(.scale.combined(with: .opacity))
                         }
                     }
+                    }
                 }
                 ForEach(viewModel.candidateExperiences) { cand in
-                    if let coord = cand.coordinate {
+                    if let canonical = cand.coordinate, let coord = renderedCoordinate(canonical) {
                         let candHighlightActive = smartPickHighlightActive
                             && !smartPickIds.isEmpty
                             && viewModel.exploreRadiusOverlay == nil
@@ -3128,8 +3211,9 @@ struct CompassMapContentView: View {
                 // with a coordinate gets a breathing (reduce-motion static) ring.
                 if FeatureFlags.cityOS && currentCityMode == .live {
                     ForEach(cityBriefService.activeEvents()) { event in
-                        if let lat = event.lat, let lng = event.lng {
-                            Annotation("", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)) {
+                        if let lat = event.lat, let lng = event.lng,
+                           let mapCoordinate = renderedCoordinate(.init(latitude: lat, longitude: lng)) {
+                            Annotation("", coordinate: mapCoordinate) {
                                 EventMarkerView(
                                     event: event,
                                     isHighlighted: viewModel.highlightedEventId == event.id,
@@ -3146,15 +3230,18 @@ struct CompassMapContentView: View {
                 // No exact pins; no user identifiers. Layer must be explicitly on.
                 if isCompanionLayerOn {
                     ForEach(nearbyCells) { cell in
-                        Annotation("", coordinate: cell.coordinate) {
-                            NearbyBlurAnnotation()
+                        if let mapCoordinate = renderedCoordinate(cell.coordinate) {
+                            Annotation("", coordinate: mapCoordinate) {
+                                NearbyBlurAnnotation()
+                            }
                         }
                     }
                 }
                 // US-011: fading radius ring during progressive explore.
                 // Drawn below annotations so it never occludes marker tap targets.
-                if let ring = viewModel.exploreRadiusOverlay {
-                    MapCircle(center: ring.center, radius: ring.radiusMeters)
+                if let ring = viewModel.exploreRadiusOverlay,
+                   let center = renderedCoordinate(ring.center) {
+                    MapCircle(center: center, radius: ring.radiusMeters)
                         .foregroundStyle(Color.accentColor.opacity(0.08))
                         .stroke(Color.accentColor.opacity(0.35), lineWidth: 1.5)
                 }
@@ -3163,19 +3250,63 @@ struct CompassMapContentView: View {
                 // the walk reads as an ordered sequence on the map. Drawn last so
                 // the line and numbers sit above the radius ring.
                 if let active = activeRoute, active.coordinates.count >= 2 {
-                    MapPolyline(coordinates: active.coordinates, contourStyle: .straight)
+                    let renderedCoordinates = active.coordinates.compactMap { renderedCoordinate($0) }
+                    if renderedCoordinates.count == active.coordinates.count {
+                    MapPolyline(coordinates: renderedCoordinates, contourStyle: .straight)
                         .stroke(
                             Color.accentColor,
                             style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
                         )
-                    ForEach(Array(active.coordinates.enumerated()), id: \.offset) { index, coord in
+                    ForEach(Array(renderedCoordinates.enumerated()), id: \.offset) { index, coord in
                         Annotation("", coordinate: coord) {
                             RouteStopBadge(number: index + 1)
                         }
                     }
+                    }
                 }
             }
             .mapStyle(mapStyleChoice.mapStyle)
+            .overlay(alignment: .top) {
+                if !coordinateSpace.supportsRenderStyle(mapStyleChoice.coordinateStyle, at: mapPresentation.target ?? viewModel.exploreAnchorCoordinate),
+                   mapStyleChoice != .standard {
+                    MapCoordinateStatus(messageKey: "map.coordinates.styleUnverified", actionKey: "map.coordinates.useStandard") {
+                        mapStyleChoice = .standard
+                    }.padding(.top, 100)
+                } else if renderedCoordinate(mapPresentation.target ?? viewModel.exploreAnchorCoordinate) == nil {
+                    MapCoordinateStatus { coordinateSpace.invalidate() }.padding(.top, 100)
+                }
+            }
+            .onChange(of: viewModel.visibleExperiences, initial: true) { _, experiences in
+                registerProviderCoordinateRoutes(experiences)
+            }
+            .onChange(of: viewModel.cameraPosition, initial: true) { _, position in
+                mapPresentation.request(position, fallback: viewModel.exploreAnchorCoordinate,
+                                        space: coordinateSpace, style: mapStyleChoice.coordinateStyle)
+            }
+            .onChange(of: mapStyleChoice) { _, _ in
+                mapPresentation.request(viewModel.cameraPosition, fallback: viewModel.exploreAnchorCoordinate,
+                                        space: coordinateSpace, style: mapStyleChoice.coordinateStyle)
+            }
+            .onChange(of: coordinateSpace.revision) { _, _ in
+                if let recovered = mapPresentation.recover(viewModel.cameraPosition, fallback: viewModel.exploreAnchorCoordinate,
+                                                           space: coordinateSpace, style: mapStyleChoice.coordinateStyle) {
+                    viewModel.cameraPosition = .region(recovered)
+                    viewModel.refreshForLocation(recovered.center)
+                }
+            }
+            .task(id: "\(mapPresentation.target?.latitude ?? viewModel.exploreAnchorCoordinate.latitude),\(mapPresentation.target?.longitude ?? viewModel.exploreAnchorCoordinate.longitude)-\(coordinateSpace.generation)") {
+                do {
+                    repeat {
+                        registerProviderCoordinateRoutes(viewModel.visibleExperiences)
+                        try await coordinateSpace.prepare(near: mapPresentation.target ?? viewModel.exploreAnchorCoordinate)
+                        try await Task.sleep(for: .seconds(MapKitCoordinateSpace.lifetime))
+                        coordinateSpace.invalidate()
+                    } while !Task.isCancelled
+                } catch { /* Keep the raw camera and usable list; retry is explicit. */ }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { coordinateSpace.invalidate() }
+            }
             // Only keep the compass (which auto-hides unless the map is
             // rotated). The built-in MapUserLocationButton is intentionally
             // dropped: because the map sets `.ignoresSafeArea()` to bleed tiles
@@ -3214,8 +3345,9 @@ struct CompassMapContentView: View {
                 // Re-filter only after a meaningful viewport move. MapKit's
                 // tiny settle corrections retain stable pins instead of
                 // invalidating the full Map + bottom sheet hierarchy.
-                if mapInteractionCoordinator.consumeRefresh(for: context.region) {
-                    viewModel.refreshForLocation(context.region.center)
+                if let canonical = mapPresentation.finish(context.region, space: coordinateSpace, style: mapStyleChoice.coordinateStyle),
+                   mapInteractionCoordinator.consumeRefresh(for: canonical) {
+                    viewModel.refreshForLocation(canonical.center)
                 }
                 // Direction 2: the curation dim-out is a cold-start cue. Once
                 // the camera settles for the first time after the user has
@@ -3233,7 +3365,8 @@ struct CompassMapContentView: View {
                     .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
                     .onEnded { value in
                         if case .second(true, let drag?) = value,
-                           let coord = proxy.convert(drag.location, from: .local) {
+                           let raw = proxy.convert(drag.location, from: .local),
+                           let coord = coordinateSpace.canonicalMapCoordinate(raw, style: mapStyleChoice.coordinateStyle) {
                             viewModel.handleMapLongPress(at: coord)
                             Haptics.impact(.medium)
                         }
@@ -3316,8 +3449,8 @@ extension String {
     }
 }
 
-private struct MapLibraryRowHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 44
+private struct MapChromeBottomKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())
     }
@@ -3416,6 +3549,7 @@ private struct MapOverlayView: View {
     /// P2.5 #252: "我的菜" toggle on the filter bar. Local UI state.
     @State private var isTasteRankOn: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .subheadline) private var cityRowHeight: CGFloat = 44
 
     private var isFilterActive: Bool {
         viewModel.selectedCategory != nil || viewModel.selectedCustomTag != nil || viewModel.isNowFilter
@@ -3430,19 +3564,6 @@ private struct MapOverlayView: View {
             return NSLocalizedString("filter.now", comment: "Now filter label")
         }
         return ""
-    }
-
-    private func libraryShortcut(_ key: String, icon: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(NSLocalizedString(key, comment: "Map library shortcut"), systemImage: icon)
-                .font(.subheadline.weight(.medium))
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(CT.accent)
-        .background(CT.cardAdaptive, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityIdentifier(id)
     }
 
     var body: some View {
@@ -3477,7 +3598,7 @@ private struct MapOverlayView: View {
                     recenterButton.padding(.trailing, 12)
                 }
             }
-            .frame(height: MapOverlayMetrics.cityPillRowHeight)
+            .frame(minHeight: cityRowHeight)
             .padding(.top, MapOverlayMetrics.cityPillTopPadding)
 
             if showsMapChrome {
@@ -3508,6 +3629,12 @@ private struct MapOverlayView: View {
                 isTasteRankOn: isTasteRankOn,
                 onTasteRankToggle: { isTasteRankOn = $0 }
             )
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(key: MapChromeBottomKey.self,
+                        value: proxy.frame(in: .named("mapChrome")).maxY)
+                }
+            }
             // US-026: reset the GPS-error dismissal once the error clears so a
             // later failure re-surfaces the banner. Anchored on the always-present
             // filter bar (the banner itself is conditional, so its own onChange
@@ -3515,20 +3642,6 @@ private struct MapOverlayView: View {
             .onChange(of: viewModel.locationErrorBannerText) { _, newValue in
                 if newValue == nil { dismissedLocationError = false }
             }
-
-            // Fixed library entry points live in the map's top chrome, outside
-            // the horizontally scrolling filters and clear of bottom previews.
-            HStack(spacing: 10) {
-                libraryShortcut("ux.favorites", icon: "heart", id: "map.favorites", action: onOpenFavorites)
-                libraryShortcut("ux.itineraries", icon: "calendar", id: "map.itineraries", action: onOpenItineraries)
-            }
-            .background {
-                GeometryReader { proxy in
-                    Color.clear.preference(key: MapLibraryRowHeightKey.self, value: proxy.size.height)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
 
             let showEmptyFilterBanner = isFilterActive && viewModel.visibleExperiences.isEmpty
                 && !viewModel.isNowFilter
@@ -3707,6 +3820,7 @@ private struct MapOverlayView: View {
             }
             } // showsMapChrome
         }
+        .coordinateSpace(name: "mapChrome")
         .frame(maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isFilterActive)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.visibleExperiences.count)
@@ -3923,17 +4037,18 @@ private struct MapOverlayView: View {
                 HStack(spacing: 4) {
                     Text(cityName)
                         .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.caption.weight(.semibold))
                 }
-                .foregroundStyle(CT.accent)
+                .foregroundStyle(CT.actionTintAdaptive)
                 // City OS v3 · lifecycle line: mode + day + stage dots. The
                 // pill stays one-line whenever there is nothing honest to add.
                 if let cityModeLine {
                     HStack(spacing: 4) {
                         Text(cityModeLine)
                             .ctMono(9, .medium)
-                            .foregroundStyle(CT.sunGoldDeep)
+                            .foregroundStyle(CT.actionTintAdaptive)
                         if let cityStageIndex {
                             HStack(spacing: 2.5) {
                                 ForEach(0..<4, id: \.self) { dot in
@@ -3949,7 +4064,7 @@ private struct MapOverlayView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, cityModeLine == nil ? 6 : 4)
-            .background(CT.surfaceWhite.opacity(0.78), in: Capsule())
+            .background(CT.cardAdaptive.opacity(0.94), in: Capsule())
             .frame(
                 minWidth: MapOverlayMetrics.cityPillHitTarget,
                 minHeight: MapOverlayMetrics.cityPillHitTarget
@@ -3961,28 +4076,31 @@ private struct MapOverlayView: View {
     }
 
     private var mapStyleButton: some View {
-        // Demoted to secondary affordance (32pt + reduced opacity) so the
-        // top-right cluster reads as a hierarchy — Recenter (44pt primary) >
-        // Avatar (40pt identity) > MapStyle (32pt secondary). The previous
-        // three-equal-circles layout pushed the city pill off-center and made
-        // the column feel cluttered on cold-start screenshots.
-        Button {
-            Haptics.impact(.light)
-            withAnimation(.easeInOut(duration: 0.2)) {
-                mapStyleChoice.cycle()
+        Menu {
+            Button(action: onOpenFavorites) {
+                Label(NSLocalizedString("ux.favorites", comment: "Saved places"), systemImage: "heart")
+            }
+            .accessibilityIdentifier("map.favorites")
+            Button(action: onOpenItineraries) {
+                Label(NSLocalizedString("ux.itineraries", comment: "My trips"), systemImage: "calendar")
+            }
+            .accessibilityIdentifier("map.itineraries")
+            Picker(NSLocalizedString("map.style.title", comment: "Map style"), selection: $mapStyleChoice) {
+                ForEach(MapStyleChoice.allCases, id: \.self) { style in
+                    Text(style.label).tag(style)
+                }
             }
         } label: {
-            Image(systemName: mapStyleChoice.icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(CT.accent.opacity(0.75))
+            Image(systemName: "ellipsis")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(CT.textPrimaryAdaptive)
                 .frame(width: 32, height: 32)
-                .background(
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
-                )
+                .background(.thinMaterial, in: Circle())
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
-        .accessibilityLabel(Text(mapStyleChoice.label))
+        .accessibilityLabel(Text(NSLocalizedString("map.options", comment: "Map options and saved trips")))
+        .accessibilityIdentifier("map.options")
     }
 
     private var recenterButton: some View {
@@ -4389,7 +4507,7 @@ private struct EmptyStateOverlay: View {
     @State private var isVisible = false
 
     private var nearestCityName: String? {
-        let anchor = locationService.currentLocation?.coordinate ?? viewModel.defaultCenterForSelectedCity
+        let anchor = viewModel.exploreAnchorCoordinate
         guard let code = viewModel.nearestSeededCity(to: anchor),
               let city = viewModel.availableCities.first(where: { $0.code == code }) else {
             return nil

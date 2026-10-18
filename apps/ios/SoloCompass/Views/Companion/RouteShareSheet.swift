@@ -22,6 +22,9 @@ struct RouteShareSheet: View {
     @State private var statusIsError = false
     /// Cache rendered cards per style so flipping back and forth is instant.
     @State private var renderedCache: [RouteShareStyle: UIImage] = [:]
+    /// Monotonic render token (I21): only the latest in-flight preview render
+    /// may commit its image / cache entry / busy flag.
+    @State private var renderToken = 0
 
     var body: some View {
         NavigationStack {
@@ -52,6 +55,7 @@ struct RouteShareSheet: View {
         )) { payload in
             RouteActivityViewControllerWrapper(items: payload.items)
         }
+        .task(id: selectedStyle) { await renderPreview() }
         .presentationDetents([.large])
     }
 
@@ -60,6 +64,7 @@ struct RouteShareSheet: View {
     private var stylePicker: some View {
         HStack(spacing: 10) {
             ForEach(RouteShareStyle.allCases) { style in
+                let isSelected = selectedStyle == style
                 Button {
                     selectedStyle = style
                     statusMessage = nil
@@ -68,12 +73,20 @@ struct RouteShareSheet: View {
                         .font(.system(size: 13, weight: .semibold))
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
+                        // Compact visuals, 44pt tap target (I21).
+                        .frame(minHeight: HitTargetMetrics.minimum)
                         .background(
-                            Capsule().fill(selectedStyle == style ? CT.accent : Color(.secondarySystemBackground))
+                            Capsule().fill(isSelected ? CT.accent : Color(.secondarySystemBackground))
                         )
-                        .foregroundStyle(selectedStyle == style ? .white : .primary)
+                        .foregroundStyle(isSelected ? .white : .primary)
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text(style.label))
+                .accessibilityValue(Text(isSelected
+                    ? NSLocalizedString("common.selected", comment: "Selected")
+                    : ""))
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
             }
         }
     }
@@ -106,22 +119,32 @@ struct RouteShareSheet: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: selectedStyle) { await renderPreview() }
     }
 
     @MainActor
     private func renderPreview() async {
-        guard selectedStyle.isVisualCard else { return }
-        if let cached = renderedCache[selectedStyle] {
+        // Freeze the requested style as this render's key (I21): the result is
+        // only committed while that style is still the selected one.
+        let requestedStyle = selectedStyle
+        renderToken += 1
+        let token = renderToken
+        isRendering = false
+        guard requestedStyle.isVisualCard else { return }
+        if let cached = renderedCache[requestedStyle] {
             previewImage = cached
             return
         }
         previewImage = nil
         isRendering = true
-        let result = await RouteShareRenderer.render(payload: payload, style: selectedStyle)
+        let result = await RouteShareRenderer.render(payload: payload, style: requestedStyle)
+        // A fast map→trace switch must never let the old render overwrite the
+        // new style's preview or write into its cache entry.
+        guard token == renderToken, selectedStyle == requestedStyle, !Task.isCancelled else {
+            return
+        }
         isRendering = false
         // Cache under both requested and effective style so a fallback isn't re-fetched.
-        renderedCache[selectedStyle] = result.image
+        renderedCache[requestedStyle] = result.image
         renderedCache[result.effectiveStyle] = result.image
         previewImage = result.image
         if result.didFallback {
@@ -216,9 +239,15 @@ struct RouteShareSheet: View {
 
     @MainActor
     private func shareCard() async {
+        // Freeze the style the user tapped share for (I21): the exported file
+        // and any cache write must match that request, not whatever is picked
+        // by the time the render returns.
+        let exportStyle = selectedStyle
         do {
-            let (url, result) = try await RouteShareRenderer.renderTempPNG(payload: payload, style: selectedStyle)
-            renderedCache[result.effectiveStyle] = result.image
+            let (url, result) = try await RouteShareRenderer.renderTempPNG(payload: payload, style: exportStyle)
+            if selectedStyle == exportStyle {
+                renderedCache[result.effectiveStyle] = result.image
+            }
             activityItems = [url]
         } catch {
             flashStatus(NSLocalizedString("share.renderFailed", comment: "Render failed"), error: true)

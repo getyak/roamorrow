@@ -376,18 +376,15 @@ struct NearbyExperienceRow: View {
 
     /// Green chip: Solo score (e.g. "Solo 7.5").
     private var soloScoreChip: some View {
-        Text(
-            String(
-                format: NSLocalizedString("nearby.chip.solo", comment: "Solo score chip, e.g. 'Solo 7.5'"),
-                experience.soloScore.overall
-            )
-        )
+        Text(experience.soloScore.overall > 0
+            ? String(format: NSLocalizedString("nearby.chip.solo", comment: "Solo score chip"), experience.soloScore.overall)
+            : experience.soloScoreDisplay)
         .font(.caption2.weight(.bold))
-        .foregroundStyle(CT.verifiedGreen)
+        .foregroundStyle(experience.soloScore.overall > 0 ? CT.verifiedGreen : CT.fgMuted)
         .lineLimit(1)
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
-        .background(Capsule().fill(CT.verifiedGreen.opacity(0.12)))
+        .background(Capsule().fill((experience.soloScore.overall > 0 ? CT.verifiedGreen : CT.fgMuted).opacity(0.12)))
         .fixedSize(horizontal: true, vertical: false)
     }
 
@@ -515,7 +512,7 @@ struct NearbyExperienceRow: View {
 
     private var accessibilityLabel: Text {
         var label = experience.title
-        label += ", Solo \(String(format: "%.1f", experience.soloScore.overall))"
+        label += ", Solo \(experience.soloScoreDisplay)"
         if let meters = distanceMeters {
             if isFarAway, let cityDisplayName {
                 label += ", " + String(

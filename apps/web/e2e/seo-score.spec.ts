@@ -489,7 +489,7 @@ test.describe("Roamorrow — SEO 100 rubric", () => {
 test.describe("Roamorrow public identity", () => {
   test("canonical metadata and reachable brand assets", async ({ page, request }) => {
     test.setTimeout(180_000);
-    for (const path of ["/", "/zh", "/download", "/support", "/terms"]) {
+    for (const path of ["/", "/zh", "/pricing", "/zh/pricing", "/privacy", "/zh/privacy", "/download", "/support", "/terms"]) {
       const response = await page.goto(path, { waitUntil: "domcontentloaded" });
       expect(response?.ok(), path).toBeTruthy();
       await expect(page).toHaveTitle(/Roamorrow/);
@@ -513,6 +513,31 @@ test.describe("Roamorrow public identity", () => {
     expect(await robots.text()).toContain("https://roamorrow.com/sitemap.xml");
     const sitemap = await request.get("/sitemap.xml");
     expect(await sitemap.text()).not.toMatch(/solocompass\.app|\/zh\/(download|terms|support)</);
+  });
+
+  test("published copy retains truthful pricing and data-use disclosures", async ({ page }) => {
+    await page.goto("/pricing", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toContainText("Pro · Monthly");
+    await expect(page.locator("main")).toContainText("Pro · Yearly");
+    await expect(page.locator("main")).toContainText("App Store price");
+    await expect(page.locator("main")).not.toContainText(/\$29|\$50|Lifetime/);
+    await page.goto("/privacy", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("main")).toContainText("OpenStreetMap/Overpass");
+    await expect(page.locator("main")).not.toContainText("Your location never leaves your phone");
+  });
+
+  test("desktop and mobile calls to action open the real web experience", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.getByRole("link", { name: "Open the web map", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.getByRole("region", { name: "Nearby experiences and footprint" })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "Open menu", exact: true }).click();
+    const menu = page.locator("#mobile-nav-panel");
+    await expect(menu.getByRole("link", { name: "中文", exact: true })).toBeVisible();
+    await menu.getByRole("link", { name: "Open the web map", exact: true }).click();
+    await expect(page).toHaveURL(/\/app$/);
   });
 
   test("public share pages default to English and retain explicit Chinese", async ({ page }) => {

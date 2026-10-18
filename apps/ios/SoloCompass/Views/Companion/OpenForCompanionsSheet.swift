@@ -21,7 +21,12 @@ public struct OpenForCompanionsSheet: View {
     @State private var visibility: RouteCompanionVisibility = .public
     @State private var hostMessage: String = ""
 
-    @State private var submitted = false
+    /// True only while the creation write is in flight — blocks duplicate
+    /// submits without permanently disabling a failed form (contract 3).
+    @State private var isSubmitting = false
+    /// Non-nil after a failed persist. The form keeps every value so the
+    /// traveler can retry; nothing is claimed created.
+    @State private var submitErrorText: String?
 
     private let storeProvider: () -> RouteStore
 
@@ -32,7 +37,10 @@ public struct OpenForCompanionsSheet: View {
         self.itinerary = itinerary
         self.storeProvider = storeProvider
 
-        // Default departure window to the itinerary's own dates.
+        // Default departure window to the itinerary's own dates. Civil-day
+        // semantics (contract 6): "2026-04-01" must READ as April 1st on any
+        // device timezone — the old UTC parse showed it as March 31st in
+        // America/Los_Angeles.
         let from = Self.parseDate(itinerary.startDate) ?? Date()
         let to = Self.parseDate(itinerary.endDate) ?? from.addingTimeInterval(86400 * 3)
         _departureFrom = State(initialValue: from)
@@ -48,6 +56,7 @@ public struct OpenForCompanionsSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
+                submitErrorSection
                 departureDateSection
                 paceSection
                 membersSection
@@ -73,7 +82,7 @@ public struct OpenForCompanionsSheet: View {
                         submit()
                     }
                     .fontWeight(.semibold)
-                    .disabled(submitted)
+                    .disabled(isSubmitting)
                 }
             }
         }
@@ -90,6 +99,30 @@ public struct OpenForCompanionsSheet: View {
     }
 
     // MARK: - Sections
+
+    /// Honest failure surface (contract 3): the recruiting route was NOT
+    /// created; every form value is retained and Retry re-runs the same submit.
+    @ViewBuilder
+    private var submitErrorSection: some View {
+        if let submitErrorText {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(submitErrorText, systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(CT.sunGoldDeep)
+                    Button(NSLocalizedString(
+                        "openForCompanions.retry",
+                        comment: "Retry creating the recruiting route"
+                    )) {
+                        self.submitErrorText = nil
+                        submit()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(CT.accent)
+                }
+            }
+        }
+    }
 
     private var departureDateSection: some View {
         Section {
@@ -184,27 +217,26 @@ public struct OpenForCompanionsSheet: View {
     // MARK: - Submit
 
     private func submit() {
-        submitted = true
+        guard !isSubmitting else { return }
+        isSubmitting = true
+        submitErrorText = nil
+        defer { isSubmitting = false }
         let deviceId = DeviceIdentityService.shared.deviceID
 
-        let timeFmt = DateFormatter()
-        timeFmt.dateFormat = "HH:mm"
-        let timeString = timeFmt.string(from: departureTime)
-
-        let dateFmt = DateFormatter()
-        dateFmt.dateFormat = "yyyy-MM-dd"
-
-        let window = DepartureWindow(
-            startDate: dateFmt.string(from: departureFrom),
-            to: dateFmt.string(from: departureTo),
-            time: timeString
+        // Consistent civil-day semantics (contract 6): parse, display and
+        // submit share ONE calendar, so the day the picker shows is the day
+        // written to the departure window on every device timezone.
+        let window = DepartureWindow.civilWindow(
+            from: departureFrom,
+            to: departureTo,
+            time: departureTime
         )
 
         let companion = RouteCompanion(
             status: .open,
             hostId: deviceId,
             departureWindow: window,
-            departureLabel: "\(dateFmt.string(from: departureFrom)) \(timeString)",
+            departureLabel: "\(window.from) \(window.time)",
             pacePreference: pace.asPacePreference,
             maxMembers: maxMembers,
             confirmedMembers: [deviceId],
@@ -236,18 +268,28 @@ public struct OpenForCompanionsSheet: View {
             companion: companion
         )
 
-        storeProvider().save(route)
+        // Durable ack first (contract 3): success haptic + dismissal happen
+        // only after the route actually persisted. On failure the form keeps
+        // every value and offers a retry.
+        do {
+            try storeProvider().savePersisted(route)
+        } catch {
+            submitErrorText = NSLocalizedString(
+                "openForCompanions.save.error",
+                comment: "Shown when creating the recruiting route fails"
+            )
+            return
+        }
         Haptics.notify(.success)
         dismiss()
     }
 
     // MARK: - Helpers
 
+    /// Civil-day parse for the itinerary's stored "yyyy-MM-dd" dates
+    /// (contract 6) — device calendar, no UTC shift.
     private static func parseDate(_ iso: String) -> Date? {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.timeZone = TimeZone(identifier: "UTC")
-        return f.date(from: iso)
+        CivilDay.parse(iso)
     }
 }
 

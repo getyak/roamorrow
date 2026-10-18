@@ -1,0 +1,39 @@
+{
+  "repo": "/Users/cubxxw/.codex/worktrees/interaction-quality/solo-compass",
+  "base": "924f09a4ea7e3ed9b016ed9a956705a7e576cd5e",
+  "goal": "Implement a thorough Web + native iOS interaction/design quality refinement for Solo Compass, prioritizing iOS. You are the single implementation agent in a three-role team (other agents inventory and independently review). Read the authoritative design brief at /Users/cubxxw/.codex/worktrees/interaction-quality/solo-compass/docs/design/interaction-quality/brief.md and the evolving inventory.md/review.md in that directory for read-only context; they are outside your output scope and will be populated during the task. You are not alone: do not revert others' changes. Preserve product map-first Experience identity, existing workspace architecture and warm amber brand. No new tabs/drawers, no backend/schema changes, no external writes/commits/PR, no recursive delegation. Do not read credentials.\n\nSystematically inspect EVERY Web route and iOS Views subtree; identify repeated control families and apply coherent shared semantics instead of blind global replacements. Own all production view refinements plus focused tests. Ensure 44pt iOS targets with contentShape inside actual Button labels; readable selected/disabled/busy/error states, accessible icon actions, semantic state announcements, meaningful press feedback (not noisy haptics), reduced-motion behavior, adaptive contrast, Dynamic Type wrapping. Borders distinguish meaningful containers and selected states; remove decorative outline competition and oversized press scales. Keep main action clear and avoid adding decoration everywhere. Preserve working navigation/state retention. Use plain localized EN+ZH user text.\n\nConfirmed fixes REQUIRED: iOS ItineraryDetailView visibility-off alert 'Open profile settings' is no-op: wire real CompanionProfileView navigation/sheet with required dependencies and correct modal lifecycle. ChatInputBar recording bar onTapGesture + accessibility children ignore lacks stop accessibilityAction: use a semantic Button or equivalent correct AX action/trait, minimum touch target, adaptive dark focused text input; photo-delete controls in CreateExperienceSheet need 44pt and localized contextual label; DiscoverWorkspaceView sorting Menu needs 44pt; shared PressableButtonStyle default .92 is exaggerated and fires haptic on release even canceled presses: preserve API, fix thoughtfully or remove misleading style-level haptic (call-site commitment haptics exist). Review all key map, filter, conversation, experience, create, onboarding, routes, companions, friends, settings, favorites and paywall surfaces for coherent high-quality controls.\n\nWeb: mobile MarketingNav hides all links/language/CTA without replacement: build a keyboard/touch accessible, localized responsive menu that closes on navigation/Escape and has focus return. Placeholder App Store id0000000000 appears sections and /download: NEVER invent a real ID or imply existing Store availability. Centralize distribution configuration; when valid env App Store/TestFlight URL absent, provide genuine /app web exploration entry and honest download availability; update matching EN/ZH labels and download page metadata. Do not invent sales/availability. Decorative phone mock buttons without action must be noninteractive. Shared buttons need disabled/busy states, focus, touch and text wrapping; dark foreground-on-accent must remain readable and focus/accent need dark adaptive tokens. VoiceIntent pointer-only is inaccessible: make text input always available, keyboard/tap recording, cancel/unmount stop; preserve genuine permission handling. ExperienceSheet check-in failure must show helpful retry status and no false success. TodayBanner currently claims live opening/safety/uncrowded based on score/time: replace unsupported claims with bounded experience evidence, keep product trust. Review city/trip/experience pages, drawers, command palette, filters and nav. CSS focus/motion/forced-color/mobile containment; avoid broad specificity collisions. Website detail motifs should be compass/route-derived and quiet. Do not choose a wholesale high-level homepage redesign before root rendered A/B decision, but fix navigation, hero action usability, ornamental button semantics and states immediately.\n\nAcceptance: run git diff --check, focused Swift syntax parsing, and add/adjust meaningful XCTest and Web unit tests for changed behavior (not source-string mirror tests). Do not boot simulators or run xcodebuild or launch browsers/servers; root serializes native and browser verification. Do not run heavy builds while root tests. Dependencies are currently being installed in root worktree; if needed install pnpm in your worktree only after checking root cache availability, and run targeted TS typecheck/tests without modifying lockfile. Output summary with changed surfaces, exact checks/results, remaining gaps and no inflated 96 claim. Work comprehensively through real fixes and polish, not just a proposal. Root will independently test/review and send feedback.",
+  "scope": [
+    "apps/ios/SoloCompass/Views/*",
+    "apps/ios/SoloCompass/Tests/*",
+    "apps/ios/SoloCompass/Resources/en.lproj/Localizable.strings",
+    "apps/ios/SoloCompass/Resources/zh-Hans.lproj/Localizable.strings",
+    "apps/web/src/*",
+    "apps/web/e2e/*",
+    "apps/ios/SoloCompass/Services/ChatService.swift"
+  ],
+  "verify": [
+    [
+      "git",
+      "diff",
+      "--check"
+    ],
+    [
+      "/bin/sh",
+      "-c",
+      "git diff --name-only -- '*.swift' | while IFS= read -r f; do swiftc -frontend -parse \"$f\" || exit 1; done"
+    ]
+  ],
+  "provider": "xiaomi-token-plan-cn",
+  "model": "mimo-v2.6-pro",
+  "thinking": "high",
+  "timeout_seconds": 7200,
+  "budget_usd": null,
+  "max_turns": 300,
+  "max_repairs": 5,
+  "linear_mcp": false,
+  "skill_paths": [
+    "/Users/cubxxw/.codex/skills/frontend-design/SKILL.md",
+    "/Users/cubxxw/data/solo-compass/.agents/skills/solo-compass/SKILL.md",
+    "/Users/cubxxw/.codex/plugins/cache/openai-curated-remote/build-ios-apps/0.1.2/skills/swiftui-ui-patterns/SKILL.md"
+  ]
+}

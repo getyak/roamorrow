@@ -30,12 +30,25 @@ set -o pipefail
 # ---------- locate repo ----------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
 IOS_DIR="$REPO_ROOT/apps/ios"
 FINDINGS_DIR="$REPO_ROOT/scripts/sc-evaluator/findings"
 PLANS_DIR="$SCRIPT_DIR/plans"
 STALENESS_SECONDS=3600  # 1 hour
 
 mkdir -p "$PLANS_DIR"
+
+# ---------- shared local simulator session policy ----------
+# The executor only touches the simulator (xcodebuild) in --apply mode, so the
+# helper reexec happens for that mode only and always before any git mutation
+# or costly build. `is-owner` validates nesting; CI/non-macOS fall back.
+# shellcheck source=../ios/session.sh
+if [[ ! -f "$REPO_ROOT/scripts/ios/session.sh" ]]; then
+  echo "error: shared session library missing at $REPO_ROOT/scripts/ios/session.sh" >&2
+  exit 1
+fi
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/ios/session.sh"
 
 # ---------- args ----------
 MODE="dry-run"
@@ -54,6 +67,11 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# Acquire the shared iOS session before any simulator work (apply mode only).
+if [[ "$MODE" == "apply" ]]; then
+  ios_session_reexec_if_needed "$SCRIPT_PATH" "$@"
+fi
 
 # ---------- find latest findings file ----------
 if [[ ! -d "$FINDINGS_DIR" ]]; then
@@ -162,6 +180,12 @@ fi
 # ---------- --apply path ----------
 rm -f "$TMP_PLAN"
 
+# Resolve a single simulator destination up front, honoring an explicit
+# IOS_SIMULATOR_ID (validated by the shared selector) before we mutate git
+# state. There is no hard-coded device name.
+DESTINATION="$(ios_xcodebuild_destination "iPhone 17 Pro")" \
+  || { echo "error: could not resolve a simulator destination (set IOS_SIMULATOR_ID)" >&2; exit 1; }
+
 # Refuse to operate on a dirty tree to keep the post-build reset safe.
 if ! git -C "$REPO_ROOT" diff --quiet || ! git -C "$REPO_ROOT" diff --cached --quiet; then
   echo "error: working tree is dirty — commit or stash before --apply" >&2
@@ -198,12 +222,18 @@ echo "→ committed ${COMMIT_SHA} on ${TARGET_BRANCH} (un-pushed)"
 # ---------- post-apply build ----------
 echo "→ verifying with xcodebuild build…"
 BUILD_LOG="$PLANS_DIR/${RUN_ID}.build.log"
-if ( cd "$IOS_DIR" && xcodebuild \
-      -project SoloCompass.xcodeproj \
-      -scheme SoloCompass \
-      -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
-      -configuration Debug \
-      build ) >"$BUILD_LOG" 2>&1; then
+BUILD_ARGS=(
+  -project SoloCompass.xcodeproj
+  -scheme SoloCompass
+  -destination "$DESTINATION"
+  -configuration Debug
+  -parallel-testing-enabled NO
+  -maximum-concurrent-test-simulator-destinations 1
+)
+if [[ -n "${IOS_DERIVED_DATA_PATH:-}" ]]; then
+  BUILD_ARGS+=(-derivedDataPath "$IOS_DERIVED_DATA_PATH")
+fi
+if ( cd "$IOS_DIR" && xcodebuild "${BUILD_ARGS[@]}" build ) >"$BUILD_LOG" 2>&1; then
   echo "→ build OK — branch ${TARGET_BRANCH} ready (un-pushed)"
   echo "→ build log: $BUILD_LOG"
   exit 0

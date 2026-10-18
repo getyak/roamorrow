@@ -18,6 +18,7 @@ struct DiscoverPostDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var note: String = ""
+    @State private var actionId = UUID().uuidString
     @State private var isSending = false
     @State private var errorMessage: String?
     @State private var didSend = false
@@ -26,7 +27,7 @@ struct DiscoverPostDetailView: View {
     private static let noteLimit = 120
 
     private var relation: FriendRelationState {
-        service.relationState(with: post.id)
+        didSend ? .pending : .none
     }
 
     private var canAdd: Bool {
@@ -54,10 +55,11 @@ struct DiscoverPostDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(NSLocalizedString("common.done", comment: "Done")) { dismiss() }
+                    Button(NSLocalizedString("common.done", comment: "Done")) { dismiss() }.disabled(isSending)
                 }
             }
         }
+        .interactiveDismissDisabled(isSending || !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
 
     // MARK: - Subviews
@@ -135,7 +137,8 @@ struct DiscoverPostDetailView: View {
             )
             .font(.headline)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.borderedProminent)
         .disabled(!canAdd)
@@ -161,9 +164,8 @@ struct DiscoverPostDetailView: View {
         Haptics.selection()
         let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         Task {
-            let result = await service.sendDiscoverRequest(
-                to: post.id,
-                reporterWeight: post.reporterWeight,
+            let result = await CompanionPostActionService.shared.perform(
+                .friend, postId: post.id, actionId: actionId,
                 note: trimmed.isEmpty ? nil : trimmed
             )
             isSending = false

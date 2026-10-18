@@ -14,6 +14,24 @@ import Supabase
 @Observable
 @MainActor
 public final class ChatService {
+
+    /// Structured result of one send attempt (I24). The composer keeps its draft
+    /// snapshot until this outcome is known, and only clears exactly what was
+    /// written — a failed send must never lose the user's words or attachments.
+    public enum SendOutcome: Equatable, Sendable {
+        /// The message row was written exactly as requested (text and/or every
+        /// attachment).
+        case sent
+        /// Documented degrade path: the TEXT row was written but the attachment
+        /// set was dropped after an upload failure. The caller must NOT resend the
+        /// text (it is already delivered) — only the failed attachments may retry.
+        case textSentAttachmentsFailed(String)
+        /// Nothing was written: gated, auth missing, empty, encode failure, row
+        /// insert failure, or an attachment-only send whose uploads all failed.
+        /// The payload is a user-presentable reason when one exists.
+        case notSent(String?)
+    }
+
     public var messages: [ChatMessage] = []
     public var isSending = false
     public var lastError: String?
@@ -58,7 +76,8 @@ public final class ChatService {
 
     /// Send a plain-text message (≤1000 chars). Enforced client-side; RLS
     /// ensures only conversation participants can insert.
-    public func send(_ text: String) async {
+    @discardableResult
+    public func send(_ text: String) async -> SendOutcome {
         await send(text, attachments: [])
     }
 
@@ -68,16 +87,23 @@ public final class ChatService {
     ///
     /// Degrade path: if the storage backend isn't deployed yet (any upload
     /// throws `.backendNotReady`), we surface a clear error and STILL send the
-    /// text-only message so the user never loses their words.
-    public func send(_ text: String, attachments: [LocalAttachment]) async {
-        guard FeatureFlags.companion else { return }
+    /// text-only message so the user never loses their words — reported as
+    /// `.textSentAttachmentsFailed` so the composer keeps the attachments and
+    /// never resends the already-delivered text.
+    @discardableResult
+    public func send(_ text: String, attachments: [LocalAttachment]) async -> SendOutcome {
+        guard FeatureFlags.companion else { return .notSent(nil) }
         guard let userId = restClient.currentSession?.userId else {
             lastError = NSLocalizedString("companion.chat.error.auth", comment: "Not signed in")
-            return
+            return .notSent(lastError)
         }
-        let trimmed = String(text.prefix(1000))
+        guard text.count <= 1000 else {
+            lastError = NSLocalizedString("chat.send.tooLong", comment: "Message is too long; draft is kept")
+            return .notSent(lastError)
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // Allow attachment-only messages, but a fully empty send is a no-op.
-        guard !trimmed.isEmpty || !attachments.isEmpty else { return }
+        guard !trimmed.isEmpty || !attachments.isEmpty else { return .notSent(nil) }
 
         isSending = true
         lastError = nil
@@ -116,7 +142,7 @@ public final class ChatService {
         if attachmentsDropped {
             // If there's no text to fall back on, there's nothing to send — the
             // user must retry the attachments rather than receive an empty row.
-            guard !trimmed.isEmpty else { return }
+            guard !trimmed.isEmpty else { return .notSent(lastError) }
         }
 
         let msg = ChatMessage(
@@ -130,7 +156,7 @@ public final class ChatService {
 
         guard let data = try? JSONEncoder.iso8601Encoder.encode(msg) else {
             lastError = NSLocalizedString("companion.chat.error.encode", comment: "Encode failed")
-            return
+            return .notSent(lastError)
         }
 
         let result = await restClient.post(table: "chat_messages", body: data)
@@ -142,8 +168,19 @@ public final class ChatService {
             // banner. Fire-and-forget — the row is already written and Realtime
             // is the source of truth, so any push failure must never fail send.
             notifyRecipientOfMessage(messageId: messageId)
+            if attachmentsDropped {
+                return .textSentAttachmentsFailed(
+                    lastError
+                        ?? NSLocalizedString(
+                            "companion.chat.attachment.uploadFailed.generic",
+                            comment: "Attachments could not be uploaded"
+                        )
+                )
+            }
+            return .sent
         case .failure(let err):
             lastError = err.localizedDescription
+            return .notSent(lastError)
         }
     }
 

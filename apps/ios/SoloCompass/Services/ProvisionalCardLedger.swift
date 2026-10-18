@@ -74,6 +74,7 @@ public final class ProvisionalCardLedger {
     /// read the top line, short enough that the thread doesn't feel
     /// tentative.
     public let undoWindow: TimeInterval
+    private let undoWindowProvider: (() -> TimeInterval)?
 
     // MARK: - Storage
 
@@ -81,8 +82,9 @@ public final class ProvisionalCardLedger {
 
     // MARK: - Init
 
-    public init(undoWindow: TimeInterval = 3.0) {
+    public init(undoWindow: TimeInterval = 3.0, undoWindowProvider: (() -> TimeInterval)? = nil) {
         self.undoWindow = undoWindow
+        self.undoWindowProvider = undoWindowProvider
     }
 
     // MARK: - Mutation
@@ -100,7 +102,7 @@ public final class ProvisionalCardLedger {
             messageId: messageId,
             card: card,
             appearedAt: now,
-            state: .provisional(deadline: now.addingTimeInterval(undoWindow))
+            state: .provisional(deadline: now.addingTimeInterval(max(undoWindow, undoWindowProvider?() ?? undoWindow)))
         )
         entries.append(entry)
         return entry.id

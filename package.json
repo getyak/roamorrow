@@ -29,15 +29,16 @@
     "seed:city-brief": "tsx scripts/seed-city-brief.ts",
     "data:worker": "pnpm --filter @solo-compass/worker start -- --once",
     "parity:check": "tsx scripts/check-swift-parity.ts",
-    "localization:check": "tsx scripts/check-localization.ts"
+    "localization:check": "tsx scripts/check-localization.ts",
+    "security:patch-check": "node --test scripts/security/braces.test.cjs"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",
     "glob": "^11.0.0",
-    "prettier": "3.9.8",
+    "prettier": "3.9.9",
     "ts-morph": "^24.0.0",
-    "tsx": "^4.23.13",
-    "turbo": "^2.10.13",
+    "tsx": "^4.23.15",
+    "turbo": "^2.11.4",
     "typescript": "^5.6.2"
   }
 }

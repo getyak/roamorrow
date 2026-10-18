@@ -19,6 +19,14 @@ public struct ApprovalQueueView: View {
     /// US-020: presents the friend picker that pulls friends straight into
     /// confirmedMembers (no approval).
     @State private var showInviteFriends = false
+    /// In-flight accept/decline guard — one request at a time, no double
+    /// accept, no racing writes (contract 3).
+    @State private var processingRequestId: JoinRequestId?
+    /// Honest failure surface: the request is still pending, nothing changed.
+    @State private var actionErrorText: String?
+    /// The request + action that failed, so Retry re-runs exactly that.
+    @State private var failedRequest: JoinRequest?
+    @State private var failedActionIsAccept = false
 
     public init(
         route: Route,
@@ -79,6 +87,32 @@ public struct ApprovalQueueView: View {
             guard let routeId = note.userInfo?["routeId"] as? String,
                   routeId == route.id.rawValue else { return }
             reloadRoute()
+        }
+        .alert(
+            NSLocalizedString("approval.queue.error.title", comment: "Accept/decline failure alert title"),
+            isPresented: Binding(
+                get: { actionErrorText != nil },
+                set: { if !$0 { actionErrorText = nil; failedRequest = nil } }
+            )
+        ) {
+            Button(NSLocalizedString("approval.queue.error.retry", comment: "Retry the failed accept/decline")) {
+                let request = failedRequest
+                let isAccept = failedActionIsAccept
+                actionErrorText = nil
+                failedRequest = nil
+                guard let request else { return }
+                if isAccept {
+                    accept(request)
+                } else {
+                    decline(request)
+                }
+            }
+            Button(NSLocalizedString("common.ok", comment: "OK"), role: .cancel) {
+                actionErrorText = nil
+                failedRequest = nil
+            }
+        } message: {
+            Text(actionErrorText ?? "")
         }
     }
 
@@ -159,14 +193,21 @@ public struct ApprovalQueueView: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(.secondary)
+                .disabled(processingRequestId != nil)
 
                 Button {
                     accept(request)
                 } label: {
-                    Text(NSLocalizedString("approval.queue.accept", comment: "Accept button"))
-                        .frame(maxWidth: .infinity)
+                    if processingRequestId == request.id {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text(NSLocalizedString("approval.queue.accept", comment: "Accept button"))
+                            .frame(maxWidth: .infinity)
+                    }
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(processingRequestId != nil)
             }
             .padding(.top, 4)
         }
@@ -298,7 +339,10 @@ public struct ApprovalQueueView: View {
     // MARK: - Actions
 
     private func accept(_ request: JoinRequest) {
+        guard processingRequestId == nil else { return }
+        processingRequestId = request.id
         Task { @MainActor in
+            defer { processingRequestId = nil }
             let remote = remoteProvider()
             do {
                 try await remote.accept(request, route: routeState)
@@ -306,6 +350,9 @@ public struct ApprovalQueueView: View {
                 localAccept(request)
                 return
             } catch {
+                // The request stays pending and unchanged; explain + retry
+                // (contract 3) — never a silent return.
+                self.fail(request: request, isAccept: true)
                 return
             }
             let ctx = contextProvider()
@@ -320,18 +367,25 @@ public struct ApprovalQueueView: View {
     private func localAccept(_ request: JoinRequest) {
         let ctx = contextProvider()
         let routeStore = RouteStore(context: ctx)
-        let convStore = ConversationStore(context: ctx)
         var updated = routeState
         guard var companion = updated.companion,
               let idx = companion.joinRequests.firstIndex(where: { $0.id == request.id }) else { return }
 
         let wasOpen = companion.status == .open
         let event: CompanionEvent = wasOpen ? .acceptFirst : .acceptAdditional
-        let newStatus = (try? RouteCompanionStateMachine.transition(state: companion.status, event: event))
-            ?? companion.status
+        guard companion.joinRequests[idx].status == .pending,
+              companion.confirmedMembers.count < companion.maxMembers,
+              let newStatus = try? RouteCompanionStateMachine.transition(state: companion.status, event: event)
+        else {
+            self.fail(request: request, isAccept: true)
+            return
+        }
 
         companion.joinRequests[idx].status = .accepted
-        companion.confirmedMembers.append(request.requesterId)
+        // Idempotent append — a retried accept must not duplicate the member.
+        if !companion.confirmedMembers.contains(request.requesterId) {
+            companion.confirmedMembers.append(request.requesterId)
+        }
         companion.status = newStatus
 
         if companion.confirmedMembers.count >= companion.maxMembers,
@@ -355,11 +409,11 @@ public struct ApprovalQueueView: View {
             )
             companion.groupConversationId = convId.rawValue
             updated.companion = companion
-            routeStore.saveWithContext(updated)
-            convStore.saveWithContext(conversation)
-            try? routeStore.commitContext()
+            guard commit(route: updated, conversation: conversation, request: request, isAccept: true) else {
+                return
+            }
         } else if let existingConvIdStr = companion.groupConversationId,
-                  let existingConv = convStore.get(ConversationId(rawValue: existingConvIdStr)) {
+                  let existingConv = ConversationStore(context: ctx).get(ConversationId(rawValue: existingConvIdStr)) {
             // Subsequent accept: append to existing group conversation.
             var participants = existingConv.participantIds
             if !participants.contains(request.requesterId) {
@@ -376,15 +430,21 @@ public struct ApprovalQueueView: View {
                 updatedAt: now
             )
             updated.companion = companion
-            routeStore.saveWithContext(updated)
-            convStore.saveWithContext(updatedConv)
-            try? routeStore.commitContext()
+            guard commit(route: updated, conversation: updatedConv, request: request, isAccept: true) else {
+                return
+            }
         } else {
             updated.companion = companion
-            routeStore.save(updated)
+            do {
+                try routeStore.savePersisted(updated)
+            } catch {
+                self.fail(request: request, isAccept: true)
+                return
+            }
         }
 
         routeState = updated
+        refreshToken = UUID()
 
         // US-026: when this accept closes the group (成团), start a departure
         // countdown Live Activity if the departure time parses to a real clock
@@ -392,6 +452,37 @@ public struct ApprovalQueueView: View {
         // it rather than invent a fake countdown.
         if companion.status == .closed {
             startCountdownActivity(for: companion, routeTitle: updated.title)
+        }
+    }
+
+    /// Atomic route + conversation commit with honest failure (contract 3).
+    /// Returns false (and records the retryable failure) when the durable
+    /// write failed — the caller keeps the previous state.
+    private func commit(
+        route: Route,
+        conversation: Conversation,
+        request: JoinRequest,
+        isAccept: Bool
+    ) -> Bool {
+        do {
+            try RouteStore(context: contextProvider())
+                .saveRouteAndConversation(route, conversation: conversation)
+            return true
+        } catch {
+            self.fail(request: request, isAccept: isAccept)
+            return false
+        }
+    }
+
+    /// Record an actionable failure: the request is untouched and retryable.
+    private func fail(request: JoinRequest, isAccept: Bool) {
+        withAnimation {
+            actionErrorText = NSLocalizedString(
+                "approval.queue.error.message",
+                comment: "Shown when accept/decline fails; the request stays pending"
+            )
+            failedRequest = request
+            failedActionIsAccept = isAccept
         }
     }
 
@@ -449,7 +540,10 @@ public struct ApprovalQueueView: View {
     }
 
     private func decline(_ request: JoinRequest) {
+        guard processingRequestId == nil else { return }
+        processingRequestId = request.id
         Task { @MainActor in
+            defer { processingRequestId = nil }
             let remote = remoteProvider()
             do {
                 try await remote.decline(request, route: routeState)
@@ -457,6 +551,7 @@ public struct ApprovalQueueView: View {
                 localDecline(request)
                 return
             } catch {
+                self.fail(request: request, isAccept: false)
                 return
             }
             let ctx = contextProvider()
@@ -482,8 +577,14 @@ public struct ApprovalQueueView: View {
         guard let idx = companion.joinRequests.firstIndex(where: { $0.id == request.id }) else { return }
         companion.joinRequests[idx].status = .declined
         updated.companion = companion
+        do {
+            try store.savePersisted(updated)
+        } catch {
+            self.fail(request: request, isAccept: false)
+            return
+        }
         routeState = updated
-        store.save(updated)
+        refreshToken = UUID()
     }
 
     // MARK: - Message parsing

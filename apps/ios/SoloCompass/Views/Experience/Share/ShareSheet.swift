@@ -23,6 +23,9 @@ struct ShareSheet: View {
     /// static image avoids per-frame re-compositing of `.ultraThinMaterial`, shadows and
     /// gradients under `scaleEffect`/sheet animation — the source of the preview flicker.
     @State private var previewImage: UIImage? = nil
+    /// True when the card render failed: the preview shows an explanation and a
+    /// retry instead of an endless spinner (I11).
+    @State private var previewFailed = false
 
     enum ShareMode: Hashable, Identifiable, CaseIterable {
         case xiaohongshuPortrait
@@ -95,6 +98,7 @@ struct ShareSheet: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
                 ForEach(ShareMode.allCases) { mode in
+                    let isSelected = selectedMode == mode
                     Button {
                         if mode != selectedMode { previewImage = nil }
                         selectedMode = mode
@@ -104,12 +108,20 @@ struct ShareSheet: View {
                             .font(.system(size: 13, weight: .semibold))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
+                            // Compact chip visuals, 44pt tap target.
+                            .frame(minHeight: HitTargetMetrics.minimum)
                             .background(
-                                Capsule().fill(selectedMode == mode ? CT.accent : Color(.secondarySystemBackground))
+                                Capsule().fill(isSelected ? CT.accent : Color(.secondarySystemBackground))
                             )
-                            .foregroundStyle(selectedMode == mode ? .white : .primary)
+                            .foregroundStyle(isSelected ? .white : .primary)
+                            .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(Text(mode.label))
+                    .accessibilityValue(Text(isSelected
+                        ? NSLocalizedString("common.selected", comment: "Selected")
+                        : ""))
+                    .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
                 }
             }
             .padding(.horizontal, 2)
@@ -136,6 +148,29 @@ struct ShareSheet: View {
                     .aspectRatio(aspect, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .shadow(color: .black.opacity(0.12), radius: 12, x: 0, y: 6)
+            } else if previewFailed {
+                // Honest failure surface with a real retry path (I11).
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(.secondarySystemBackground))
+                    .aspectRatio(aspect, contentMode: .fit)
+                    .overlay {
+                        VStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.title3)
+                                .foregroundStyle(CT.bannerError)
+                            Text(NSLocalizedString("share.preview.failed", comment: "Preview could not be rendered"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                            Button(NSLocalizedString("share.preview.retry", comment: "Retry preview")) {
+                                previewFailed = false
+                                previewImage = nil
+                                Task { await renderPreview(for: style) }
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding(12)
+                    }
             } else {
                 RoundedRectangle(cornerRadius: 14)
                     .fill(Color(.secondarySystemBackground))
@@ -149,10 +184,21 @@ struct ShareSheet: View {
 
     /// Render the current card to a static bitmap off the animation path, then publish it
     /// for display. Re-runs whenever the selected style changes (via `.task(id:)`).
+    /// The requested style is frozen as the render/cache key and a result is only
+    /// committed while that style is still the selected one — a stale render from
+    /// a fast mode switch can never overwrite the new style's preview (I11/I21).
     @MainActor
     private func renderPreview(for style: ShareCardStyle) async {
-        let rendered = try? ShareCardRenderer.renderImage(payload: payload, style: style)
-        previewImage = rendered
+        do {
+            let rendered = try ShareCardRenderer.renderImage(payload: payload, style: style)
+            guard selectedMode.cardStyle == style, !Task.isCancelled else { return }
+            previewImage = rendered
+            previewFailed = false
+        } catch {
+            guard selectedMode.cardStyle == style, !Task.isCancelled else { return }
+            previewImage = nil
+            previewFailed = true
+        }
     }
 
     private var markdownPreview: some View {

@@ -1,3 +1,4 @@
+import { LEGAL_URLS } from "@/lib/legal";
 import type { Metadata } from "next";
 import { copy } from "@/components/marketing/copy";
 import { Footer, MarketingNav } from "@/components/marketing/sections";
@@ -9,8 +10,7 @@ import { BRAND, SITE_URL } from "@/lib/brand";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "隐私",
-  description:
-    "Roamorrow 会收集什么、不会收集什么、你的数据存在哪里。位置留在设备上，不接广告 SDK，不做第三方追踪。用大白话写给普通人看，不是律师版本。",
+  description: "Roamorrow 的账号、位置、语音、照片、同步与诊断数据如何用于原生和网页功能。",
   alternates: {
     canonical: `${SITE_URL}/zh/privacy`,
     languages: {
@@ -22,69 +22,63 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/zh/privacy`,
-    title: "Roamorrow · 隐私",
-    description: "位置留在设备上，不接广告 SDK，不做第三方追踪。",
+    title: `${BRAND.name} · 隐私`,
+    description: "位置、语音、照片、同步与配置服务的数据使用说明。",
     locale: "zh_CN",
     alternateLocale: "en_US",
     images: [{ url: "/zh/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Roamorrow · 隐私",
-    description: "位置留在设备上，不接广告 SDK，不做第三方追踪。",
+    title: `${BRAND.name} · 隐私`,
+    description: "位置、语音、照片、同步与配置服务的数据使用说明。",
     images: ["/zh/opengraph-image"],
   },
 };
 
 const COLLECT: [string, string][] = [
   [
-    "邮箱地址",
-    "只在你付费或订阅邮件通讯时收集。存储在支付服务商（Paddle）和邮件服务商（Buttondown）那里。我们能看到，他们能看到，别人看不到。",
+    "账号与同步",
+    "登录和使用同步时，账号信息与同步记录会发送到配置的 Supabase 后端。本地示例探索无需账号。",
   ],
   [
-    "匿名崩溃报告",
-    "如果 app 崩溃且你开启了崩溃上报（默认开启，可在设置里关），Sentry 会收到调用栈、设备型号和 iOS 版本。没有邮箱，没有用户 ID，没有位置。",
+    "故障诊断",
+    "配置了 Sentry DSN 的应用版本会向 Sentry 发送崩溃和错误诊断。本页不承诺所有报告都匿名，也不表示每个版本都已启用上报。",
   ],
   [
-    "匿名使用计数",
-    "你点了哪些功能、多频繁，聚合数据。没有 IP，没有设备指纹。可在 设置 > 隐私 里关掉。",
+    "网页使用事件",
+    "网站可使用配置的 PostHog 记录产品事件。当前客户端尊重 Do Not Track；未配置项目密钥时跳过分析。",
   ],
 ];
 
 const NEVER_COLLECT: [string, string][] = [
   [
-    "你的位置",
-    "永远留在设备上。地图跑在 Apple MapKit 上，我们看不到。关于你在哪里、去过哪里，什么都不会离开你的手机。",
+    "位置与探索",
+    "位置功能会请求定位权限。确认探索后，选定坐标与半径会发送至 OpenStreetMap/Overpass。AI 请求可能包含城市和体验上下文，位置并非保证只留在设备上。",
   ],
   [
-    "你保存的体验",
-    "你保存、计划、完成过的地点列表，存在你的 iCloud（如果开了 Pro 同步）或者只存在你的设备上。我们没有备份。",
+    "收藏、记录与消息",
+    "收藏和完成记录可保存在本地，或通过应用后端同步。发送消息或附件时，相应内容会分享至选定对话。",
   ],
   [
-    "你的语音录音",
-    "「问」的语音输入通过 Apple 的 SFSpeechRecognizer 在设备上转文字。音频永远不会离开你的手机。只有转好的文字才会发给 AI，而且只用于那一次查询。",
+    "语音输入",
+    "原生语音使用 Apple 语音识别，网页语音使用浏览器语音服务。处理方式取决于系统与服务能力，本页不承诺所有音频都只在本地处理；提交给 AI 的转录文字会发送至配置的服务商。",
   ],
   [
-    "通讯录、日历、照片",
-    "我们从来不要这些权限。你可以自己查 app 的 Info.plist——权限清单是最小集。",
-  ],
-  [
-    "广告标识符",
-    "不用 AdSupport，不用 SKAdNetwork，不接广告网络 SDK。我们没有你的 IDFA，也不想要。",
+    "照片与相机",
+    "创建体验或添加照片附件时，可能请求照片库或相机权限。请选择准备在该功能使用的内容；可在系统设置管理权限。",
   ],
 ];
 
 const THIRD_PARTY: [string, string][] = [
   [
-    "Apple",
-    "MapKit（地图瓦片）、SFSpeechRecognizer（语音）、StoreKit（支付）。适用 Apple 的隐私政策。",
+    "Apple 与浏览器平台",
+    "原生地图、语音识别和购买使用 Apple 服务。网页地图配置后使用 Mapbox，网页语音使用浏览器服务。",
   ],
-  ["Sentry", "只收匿名崩溃报告。服务器在欧盟（法兰克福）。可在设置里关闭。"],
-  [
-    "Anthropic",
-    "AI 推荐用的是 Claude。发送的是你的问题文本——没有位置，没有邮箱，没有设备 ID。Anthropic 不用 API 数据训练模型。",
-  ],
-  ["Paddle", "支付服务商。处理卡号、税、退款。我们永远看不到你的卡号。"],
+  ["AI 服务商", "原生默认使用 DeepSeek。服务商设置或 Pro 代理决定提交的问题与上下文发往哪里。"],
+  ["OpenStreetMap / Overpass", "确认探索后接收坐标和半径。"],
+  ["Supabase", "提供配置后的账号、同步、对话和 Pro 代理服务。"],
+  ["Sentry / PostHog", "配置启用时接收诊断或网页产品事件，适用各服务的政策。"],
 ];
 
 export default function PrivacyZh() {
@@ -105,13 +99,19 @@ export default function PrivacyZh() {
             </Eyebrow>
             <h1 className="ds-display-xl mt-6 font-display">我们收集什么，不收集什么。</h1>
             <p className="ds-body-xl mt-6 text-fg-muted">
-              最近更新：2026 年 7 月。写给人看，不是律师版本。
+              更新于 2026 年 10 月，按功能说明数据用途。
             </p>
           </Container>
         </Section>
 
         <Section className="pt-4 pb-16">
           <Container width="narrow">
+            <a
+              href={LEGAL_URLS.privacy}
+              className="mb-8 inline-flex min-h-[44px] items-center text-accent-interactive underline underline-offset-4"
+            >
+              阅读完整隐私政策
+            </a>
             <article>
               <h2 className="font-display text-[28px] font-medium text-fg-primary md:text-[32px]">
                 我们收集什么
@@ -128,7 +128,7 @@ export default function PrivacyZh() {
 
             <article className="mt-16">
               <h2 className="font-display text-[28px] font-medium text-fg-primary md:text-[32px]">
-                我们永远不收集
+                按功能处理的数据
               </h2>
               <dl className="mt-8 divide-y divide-border-subtle">
                 {NEVER_COLLECT.map(([k, v]) => (
@@ -156,16 +156,11 @@ export default function PrivacyZh() {
 
             <article className="mt-16">
               <h2 className="font-display text-[28px] font-medium text-fg-primary md:text-[32px]">
-                你的权利
+                你可以管理的选项
               </h2>
               <p className="ds-body-lg mt-4 text-fg-muted">
-                你可以在 app 内 设置 里删除账号——这会在 30 天内清除你的邮箱和所有服务端同步数据。
-                也可以邮件{" "}
-                <a className="underline" href={`mailto:${BRAND.privacyEmail}`}>
-                  {BRAND.privacyEmail}
-                </a>{" "}
-                要一份我们持有的全部数据副本，或者立刻删除。 GDPR 和 CCPA
-                适用，我们对所有人一视同仁，不只是欧盟和加州居民。
+                可在系统设置管理定位、麦克风、相机与照片权限，账号和同步选项可在应用内管理。
+                此处说明当前功能的数据用途，不设定数据保留期限，也不替代正式发布的法律政策。
               </p>
             </article>
           </Container>

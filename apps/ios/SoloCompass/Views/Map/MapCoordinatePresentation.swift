@@ -1,0 +1,114 @@
+import SwiftUI
+import MapKit
+import Observation
+
+extension MapKitCoordinateSpace {
+    func mapRegion(_ canonical: MKCoordinateRegion, style: Style = .standard) -> MKCoordinateRegion? {
+        guard let center = mapCoordinate(canonical.center, style: style) else { return nil }
+        return .init(center: center, span: canonical.span)
+    }
+
+    func canonicalRegion(_ raw: MKCoordinateRegion, style: Style = .standard) -> MKCoordinateRegion? {
+        guard let center = canonicalMapCoordinate(raw.center, style: style) else { return nil }
+        return .init(center: center, span: raw.span)
+    }
+
+    /// The ViewModel keeps a WGS84 camera; MapKit owns its presentation space.
+    func mapPosition(_ canonical: MapCameraPosition, style: Style = .standard) -> MapCameraPosition? {
+        if let region = canonical.region { return mapRegion(region, style: style).map(MapCameraPosition.region) }
+        if let camera = canonical.camera {
+            guard let center = mapCoordinate(camera.centerCoordinate, style: style) else { return nil }
+            return .camera(.init(centerCoordinate: center, distance: camera.distance, heading: camera.heading, pitch: camera.pitch))
+        }
+        return canonical
+    }
+
+    func canonicalPosition(_ raw: MapCameraPosition, style: Style = .standard) -> MapCameraPosition? {
+        if let region = raw.region { return canonicalRegion(region, style: style).map(MapCameraPosition.region) }
+        if let camera = raw.camera {
+            guard let center = canonicalMapCoordinate(camera.centerCoordinate, style: style) else { return nil }
+            return .camera(.init(centerCoordinate: center, distance: camera.distance, heading: camera.heading, pitch: camera.pitch))
+        }
+        return raw
+    }
+}
+
+/// Owns the camera actually handed to MapKit. Unknown calibration retains that
+/// camera instead of accidentally sending a canonical WGS84 camera as raw input.
+@MainActor @Observable
+final class MapCoordinatePresentation {
+    var position: MapCameraPosition = .automatic
+    private(set) var target: CLLocationCoordinate2D?
+    private(set) var pendingUserRegion: MKCoordinateRegion?
+    private var userMoved = false
+    private var echoedCanonical: MapCameraPosition?
+
+    func request(_ canonical: MapCameraPosition, fallback: CLLocationCoordinate2D,
+                 space: MapKitCoordinateSpace, style: MapKitCoordinateSpace.Style = .standard) {
+        // A MapKit binding update is echoed through the canonical ViewModel.
+        // Keep the actual gesture camera instead of turning that echo into a
+        // new programmatic move that fights the ongoing pan.
+        if echoedCanonical == canonical { echoedCanonical = nil; return }
+        echoedCanonical = nil
+        pendingUserRegion = nil
+        userMoved = false
+        target = canonical.region?.center ?? canonical.camera?.centerCoordinate ?? fallback
+        if let rendered = space.mapPosition(canonical, style: style) { position = rendered }
+    }
+    func receive(_ raw: MapCameraPosition, space: MapKitCoordinateSpace,
+                 style: MapKitCoordinateSpace.Style = .standard) -> MapCameraPosition? {
+        position = raw
+        if raw.positionedByUser { userMoved = true }
+        let canonical = space.canonicalPosition(raw, style: style)
+        echoedCanonical = canonical
+        return canonical
+    }
+    func finish(_ raw: MKCoordinateRegion, space: MapKitCoordinateSpace,
+                style: MapKitCoordinateSpace.Style = .standard) -> MKCoordinateRegion? {
+        let moved = userMoved
+        userMoved = false
+        // A programmatic/automatic camera settling must not replace a pending
+        // city selection with an unverified viewport from the previous city.
+        if moved { target = raw.center }
+        if let canonical = space.canonicalRegion(raw, style: style) {
+            pendingUserRegion = nil
+            return canonical
+        }
+        if moved { pendingUserRegion = raw }
+        return nil
+    }
+    func recover(_ canonical: MapCameraPosition, fallback: CLLocationCoordinate2D,
+                 space: MapKitCoordinateSpace, style: MapKitCoordinateSpace.Style = .standard) -> MKCoordinateRegion? {
+        if userMoved { return nil }
+        if let pending = pendingUserRegion {
+            guard let result = space.canonicalRegion(pending, style: style) else { return nil }
+            pendingUserRegion = nil
+            return result
+        }
+        if let rendered = space.mapPosition(canonical, style: style) { position = rendered }
+        return nil
+    }
+}
+
+/// Unknown positions remain a usable list; retry is explicit and bounded.
+struct MapCoordinateStatus: View {
+    let messageKey: String
+    let actionKey: String
+    let retry: () -> Void
+    init(messageKey: String = "map.coordinates.unavailable", actionKey: String = "common.retry", retry: @escaping () -> Void) {
+        self.messageKey = messageKey
+        self.actionKey = actionKey
+        self.retry = retry
+    }
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(NSLocalizedString(messageKey, comment: "Unverified map coordinates"))
+                .font(.caption)
+            Button(NSLocalizedString(actionKey, comment: "Coordinate action"), action: retry)
+                .font(.caption.weight(.semibold))
+        }
+        .padding(10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+    }
+}

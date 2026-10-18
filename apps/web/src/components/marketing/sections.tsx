@@ -11,11 +11,18 @@ import Link from "next/link";
 import { Container } from "./Container";
 import { ButtonLink, Chip, Eyebrow, IPhoneFrame, Section } from "./primitives";
 import { DayPageMock } from "./DayPageMock";
-import { HeroCanvas } from "./HeroCanvas";
+import { HeroMotif } from "./HeroMotif";
+import { MobileNav } from "./MobileNav";
 import { CapabilityMock } from "./CapabilityMocks";
+import { resolveDistribution, distributionCopy } from "@/lib/distribution";
 import type { Copy, Locale } from "./copy";
 import { RoamorrowWordmark } from "@/components/brand/RoamorrowMark";
-import { BRAND } from "@/lib/brand";
+
+// Distribution is resolved from validated env (W01). With no validated
+// public store/TestFlight URL the real action is the web map (`/app`) and
+// iOS availability is stated honestly — the placeholder id0000000000 link
+// is gone for good.
+const dist = resolveDistribution();
 
 interface Props {
   copy: Copy;
@@ -31,19 +38,22 @@ interface Props {
 export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
   const items = [
     { href: `${homePath === "/" ? "" : homePath}/#features`, label: copy.nav.features },
+    { href: `/lisbon${locale === "zh" ? "?lang=zh" : ""}`, label: copy.nav.cities },
     { href: locale === "zh" ? "/zh/pricing" : "/pricing", label: copy.nav.pricing },
     { href: locale === "zh" ? "/zh/manifesto" : "/manifesto", label: copy.nav.manifesto },
   ];
+  const ctaLabel = distributionCopy(dist.primaryKind, locale).action;
+  const ctaHref = dist.primaryHref;
   return (
     <nav
-      className="sticky top-0 z-40 border-b border-border-subtle/50 backdrop-blur-xl"
+      className="sticky top-0 z-40 border-b border-border-subtle backdrop-blur-xl"
       style={{ background: "color-mix(in oklab, var(--bg-warm) 82%, transparent)" }}
     >
       <Container width="wide">
         <div className="flex h-[72px] items-center justify-between gap-6">
           <Link
             href={homePath}
-            className="flex items-center gap-2 font-display text-[20px] font-medium tracking-tight"
+            className="flex min-h-[44px] items-center gap-2 font-display text-[20px] font-medium tracking-tight"
           >
             <RoamorrowWordmark />
           </Link>
@@ -52,7 +62,7 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
               <Link
                 key={it.href}
                 href={it.href}
-                className="group relative rounded-md px-3 py-2 font-body text-[14px] font-normal text-fg-muted transition-colors duration-fast hover:text-fg-primary"
+                className="group relative inline-flex min-h-[44px] items-center rounded-md px-3 py-2 font-body text-[14px] font-normal text-fg-muted transition-colors duration-fast hover:text-fg-primary"
               >
                 {it.label}
                 <span
@@ -65,13 +75,22 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
           <div className="flex items-center gap-3">
             <Link
               href={altPath}
-              className="hidden font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-fg-muted hover:text-fg-primary md:inline"
+              className="hidden min-h-[44px] min-w-[44px] items-center justify-center font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-fg-muted hover:text-fg-primary md:inline-flex"
             >
               {copy.langSwitch}
             </Link>
-            <ButtonLink href={BRAND.webAppPath} variant="primary" className="hidden md:inline-flex">
-              {copy.nav.getApp}
+            <ButtonLink href={ctaHref} variant="primary" className="hidden md:inline-flex">
+              {ctaLabel}
             </ButtonLink>
+            <MobileNav
+              items={items}
+              langLabel={copy.langSwitch}
+              langHref={altPath}
+              ctaLabel={ctaLabel}
+              ctaHref={ctaHref}
+              menuLabel={locale === "zh" ? "打开菜单" : "Open menu"}
+              closeLabel={locale === "zh" ? "关闭菜单" : "Close menu"}
+            />
           </div>
         </div>
       </Container>
@@ -79,48 +98,59 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
   );
 }
 
+
 /* ============================================================
    Hero — cascading reveal
    ============================================================ */
 
-export function Hero({ copy }: Props) {
+export function Hero({ copy, locale }: Props) {
+  const ctaLabel = distributionCopy(dist.primaryKind, locale).action;
   return (
-    <Section className="relative overflow-hidden pt-16 md:pt-24">
-      <HeroCanvas />
+    <Section className="relative overflow-hidden pt-10 md:pt-14">
+      <HeroMotif />
       <Container width="wide" className="relative">
-        <div className="grid grid-cols-1 items-center gap-16 md:grid-cols-12 md:gap-8">
+        <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-12 md:gap-8">
           <div className="md:col-span-7">
             <div className="ds-reveal" style={{ animationDelay: "0ms" }}>
               <Eyebrow dot="sun">{copy.hero.eyebrow}</Eyebrow>
             </div>
-            <h1 className="ds-display-2xl mt-10 font-display">
+            <h1 className="ds-display-2xl mt-6 font-display">
               {copy.hero.h1Lines.map((line, i) => (
                 <span
                   key={i}
                   className="ds-reveal block"
-                  style={{ animationDelay: `${200 + i * 180}ms` }}
+                  style={{ animationDelay: `${200 + i * 120}ms` }}
                 >
                   {line}
                 </span>
               ))}
             </h1>
-            <p className="ds-body-xl ds-reveal mt-10 max-w-xl" style={{ animationDelay: "800ms" }}>
+            <p className="ds-body-xl ds-reveal mt-6 max-w-xl" style={{ animationDelay: "620ms" }}>
               {copy.hero.sub}
             </p>
             <div
-              className="ds-reveal mt-12 flex flex-wrap items-center gap-6"
-              style={{ animationDelay: "1040ms" }}
+              className="ds-reveal mt-8 flex flex-wrap items-center gap-5"
+              style={{ animationDelay: "760ms" }}
             >
-              <ButtonLink href={BRAND.webAppPath} variant="primary">
-                {copy.hero.ctaPrimary}
+              <ButtonLink href={dist.primaryHref} variant="primary">
+                {ctaLabel}
               </ButtonLink>
               <a
                 href="#features"
-                className="font-body text-[16px] font-medium text-fg-primary underline-offset-4 hover:underline"
+                className="inline-flex min-h-[44px] items-center font-body text-[16px] font-medium text-fg-primary underline-offset-4 hover:underline"
               >
                 {copy.hero.ctaSecondary} →
               </a>
             </div>
+            {/* Honest iOS availability — no placeholder store link, no
+                invented release date. */}
+            <p
+              className="ds-reveal ds-body-sm mt-4 max-w-md"
+              style={{ animationDelay: "820ms" }}
+              data-testid="hero-ios-status"
+            >
+              {distributionCopy(dist.primaryKind, locale).status}
+            </p>
           </div>
           <div className="md:col-span-5">
             <div
@@ -131,6 +161,9 @@ export function Hero({ copy }: Props) {
                 <DayPageMock />
               </IPhoneFrame>
             </div>
+            <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-fg-subtle md:text-right">
+              {locale === "zh" ? "预览示意" : "Preview illustration"}
+            </p>
           </div>
         </div>
       </Container>
@@ -144,7 +177,7 @@ export function Hero({ copy }: Props) {
 
 export function Problem({ copy }: Props) {
   return (
-    <Section className="border-t border-border-subtle/50">
+    <Section className="border-t border-border-subtle">
       <Container width="narrow">
         <Eyebrow dot="omen">{copy.problem.eyebrow}</Eyebrow>
         <div className="mt-12 space-y-8">
@@ -199,7 +232,7 @@ function renderMuted(text: string, muted?: string[]): React.ReactNode {
 
 export function Pillars({ copy }: Props) {
   return (
-    <Section id="features" className="border-t border-border-subtle/50">
+    <Section id="features" className="border-t border-border-subtle">
       <Container>
         <div className="max-w-2xl">
           <Eyebrow dot="sun">{copy.pillars.eyebrow}</Eyebrow>
@@ -210,7 +243,9 @@ export function Pillars({ copy }: Props) {
           {copy.pillars.items.map((item, i) => (
             <article
               key={i}
-              className="group flex flex-col rounded-lg border border-border-subtle bg-surface-white p-8 pt-10 transition-all duration-editorial ease-decel hover:-translate-y-1 hover:border-border-default hover:shadow-lg"
+              // Static container: light border encodes grouping only — no
+              // hover-lift, no fake affordance.
+              className="flex flex-col rounded-lg border border-border-subtle bg-surface-white p-8 pt-10"
             >
               <span
                 className={`h-3 w-3 rounded-full ${
@@ -250,14 +285,19 @@ const CAPABILITY_ORDER: {
   { kind: "brag", bulletsKey: "brag" },
 ];
 
-export function Capabilities({ copy }: Props) {
+export function Capabilities({ copy, locale }: Props) {
   return (
-    <Section id="features" className="relative bg-bg-warm">
+    <Section id="capabilities" className="relative bg-bg-warm">
       <Container width="wide">
         <div className="max-w-[720px]">
           <Eyebrow dot="sun">{copy.capabilities.eyebrow}</Eyebrow>
           <h2 className="ds-display-xl mt-6 font-display">{copy.capabilities.title}</h2>
           <p className="ds-body-lg mt-6 text-fg-muted">{copy.capabilities.sub}</p>
+          <p className="ds-body-md mt-3 text-fg-muted">
+            {locale === "zh"
+              ? "以下包含功能预览；部分仪式与归档页面当前仅供预览或只读，不承诺为已开放的订阅权益。"
+              : "These examples include previews. Some ritual and archive views are currently preview-only or read-only and are not promised as available subscription benefits."}
+          </p>
           <p className="ds-body-md mt-3 font-mono uppercase tracking-[0.14em] text-fg-subtle">
             {copy.capabilities.intro}
           </p>
@@ -359,9 +399,21 @@ export function Trust({ copy }: Props) {
    ============================================================ */
 
 export function Pricing({ copy, locale }: Props) {
-  const pricingPath = locale === "zh" ? "/zh/pricing" : "/pricing";
+  // With no validated store link the plan CTAs honestly route to the
+  // availability page, and Free routes to the real web map — never back to
+  // the pricing page itself (W01).
+  const planHref = dist.iosAvailable
+    ? dist.primaryHref
+    : locale === "zh"
+      ? "/download"
+      : "/download";
+  const planCta = dist.iosAvailable
+    ? distributionCopy(dist.primaryKind, locale).action
+    : locale === "zh"
+      ? "查看 iOS 可用性"
+      : "Check iOS availability";
   return (
-    <Section id="pricing" className="border-t border-border-subtle/50">
+    <Section id="pricing" className="border-t border-border-subtle">
       <Container>
         <div className="mx-auto max-w-2xl text-center">
           <Eyebrow dot="accent" className="justify-center">
@@ -372,18 +424,20 @@ export function Pricing({ copy, locale }: Props) {
         </div>
 
         <div className="mx-auto mt-16 grid max-w-4xl grid-cols-1 gap-6 md:grid-cols-2">
-          {/* Lifetime */}
+          {/* Monthly */}
           <article className="flex flex-col rounded-xl border border-border-default bg-surface-white p-10">
             <div className="flex items-baseline justify-between">
-              <h3 className="font-display text-[22px] font-medium">{copy.pricing.lifetime.name}</h3>
+              <h3 className="font-display text-[22px] font-medium">{copy.pricing.monthly.name}</h3>
             </div>
             <div className="mt-6 flex items-baseline gap-2">
-              <span className="ds-display-lg font-display">{copy.pricing.lifetime.price}</span>
-              <span className="ds-body-sm">{copy.pricing.lifetime.pricePer}</span>
+              <span className="font-display text-[26px] font-medium">
+                {copy.pricing.monthly.price}
+              </span>
+              <span className="ds-body-sm">{copy.pricing.monthly.pricePer}</span>
             </div>
-            <p className="ds-body-md mt-4 text-fg-muted">{copy.pricing.lifetime.tagline}</p>
+            <p className="ds-body-md mt-4 text-fg-muted">{copy.pricing.monthly.tagline}</p>
             <ul className="mt-8 space-y-3">
-              {copy.pricing.lifetime.features.map((f, i) => (
+              {copy.pricing.monthly.features.map((f, i) => (
                 <li
                   key={i}
                   className="flex items-start gap-3 font-body text-[15px] text-fg-primary"
@@ -394,14 +448,14 @@ export function Pricing({ copy, locale }: Props) {
               ))}
             </ul>
             <div className="mt-10">
-              <ButtonLink href="/download" variant="secondary" className="w-full">
-                {copy.pricing.lifetime.cta}
+              <ButtonLink href={planHref} variant="secondary" className="w-full">
+                {planCta}
               </ButtonLink>
             </div>
           </article>
 
           {/* Yearly */}
-          <article className="relative flex flex-col rounded-xl border border-accent-border bg-accent-soft p-10 shadow-sm">
+          <article className="relative flex flex-col rounded-xl border border-accent-border bg-accent-soft p-10">
             <Chip tone="accent" className="absolute -top-3 left-8">
               {copy.pricing.yearly.badge}
             </Chip>
@@ -409,7 +463,9 @@ export function Pricing({ copy, locale }: Props) {
               <h3 className="font-display text-[22px] font-medium">{copy.pricing.yearly.name}</h3>
             </div>
             <div className="mt-6 flex items-baseline gap-2">
-              <span className="ds-display-lg font-display">{copy.pricing.yearly.price}</span>
+              <span className="font-display text-[26px] font-medium">
+                {copy.pricing.yearly.price}
+              </span>
               <span className="ds-body-sm">{copy.pricing.yearly.pricePer}</span>
             </div>
             <p className="ds-body-md mt-4 text-fg-muted">{copy.pricing.yearly.tagline}</p>
@@ -425,20 +481,21 @@ export function Pricing({ copy, locale }: Props) {
               ))}
             </ul>
             <div className="mt-10">
-              <ButtonLink href="/download" variant="primary" className="w-full">
-                {copy.pricing.yearly.cta}
+              <ButtonLink href={planHref} variant="primary" className="w-full">
+                {planCta}
               </ButtonLink>
             </div>
           </article>
         </div>
 
-        <div className="mt-10 text-center">
-          <Link
-            href={pricingPath}
-            className="font-body text-[15px] text-fg-muted underline-offset-4 hover:text-fg-primary hover:underline"
-          >
-            {copy.pricing.free} →
-          </Link>
+        <p className="mx-auto mt-8 max-w-2xl text-center font-body text-[13px] text-fg-subtle">
+          {copy.pricing.priceNote}
+        </p>
+
+        <div className="mt-6 text-center">
+          <ButtonLink href="/app" variant="ghost">
+            {copy.pricing.free}
+          </ButtonLink>
         </div>
       </Container>
     </Section>
@@ -477,7 +534,7 @@ export function Footer({ copy }: Props) {
         <p className="ds-body-lg max-w-2xl text-fg-primary">{copy.footer.tagline}</p>
         <div className="mt-16 grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 font-display text-[18px] font-medium">
+            <div className="flex min-h-[44px] items-center gap-2 font-display text-[18px] font-medium">
               <RoamorrowWordmark />
             </div>
           </div>
@@ -491,7 +548,7 @@ export function Footer({ copy }: Props) {
                   <li key={l.href}>
                     <Link
                       href={l.href}
-                      className="font-body text-[15px] text-fg-muted hover:text-fg-primary"
+                      className="inline-flex min-h-[44px] items-center font-body text-[15px] text-fg-muted hover:text-fg-primary"
                     >
                       {l.label}
                     </Link>

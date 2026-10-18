@@ -10,8 +10,6 @@ public struct SoloScoreBadge: View {
     @State private var animatedScore: Double = 0
     @State private var appeared = false
     @State private var showBreakdown = false
-    @State private var twinkle = false
-    @State private var cautionPulse = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(score: SoloScore, style: Style = .compact) {
@@ -20,14 +18,20 @@ public struct SoloScoreBadge: View {
     }
 
     public var body: some View {
-        switch style {
-        case .compact: compactView
-        case .full: fullView
+        if score.overall <= 0 {
+            Text(NSLocalizedString("soloScore.unassessed", comment: "No solo assessment available"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            switch style {
+            case .compact: compactView
+            case .full: fullView
+            }
         }
     }
 
     private var isExcellent: Bool { score.overall >= 8.5 }
-    private var isCaution: Bool { score.overall < 4.0 }
+    private var isCaution: Bool { score.overall > 0 && score.overall < 4.0 }
 
     private var compactView: some View {
         Button {
@@ -38,34 +42,28 @@ public struct SoloScoreBadge: View {
                 if isExcellent {
                     Image(systemName: "star.fill")
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.95))
-                        .symbolEffect(.variableColor.iterative, isActive: twinkle && !reduceMotion)
-                        .scaleEffect(twinkle && !reduceMotion ? 1.12 : 1.0)
-                        .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: twinkle)
+                        .foregroundStyle(Color.black)
                         .accessibilityHidden(true)
                 } else if isCaution {
                     Image(systemName: "person.fill.questionmark")
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.95))
-                        .scaleEffect(cautionPulse && !reduceMotion ? 1.12 : 1.0)
-                        .opacity(cautionPulse && !reduceMotion ? 1.0 : 0.78)
-                        .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: cautionPulse)
+                        .foregroundStyle(Color.black)
                         .accessibilityHidden(true)
                 }
                 Text(NSLocalizedString("solo.label", comment: "Solo"))
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(Color.black)
                     .lineLimit(1)
                 HStack(alignment: .firstTextBaseline, spacing: 1) {
                     Text(formatted(animatedScore))
                         .font(.caption.bold())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.black)
                         .monospacedDigit()
                         .lineLimit(1)
                         .contentTransition(.numericText(value: animatedScore))
                     Text("/10")
                         .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(Color.black)
                         .lineLimit(1)
                 }
             }
@@ -75,22 +73,17 @@ public struct SoloScoreBadge: View {
                 Capsule().fill(score.scoreColor.opacity(0.95))
             )
             .fixedSize(horizontal: true, vertical: false)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .popover(isPresented: $showBreakdown) {
             SoloScorePopoverContent(score: score)
         }
-        .scaleEffect(appeared ? 1 : 0.7)
-        .opacity(appeared ? 1 : 0)
         .onAppear {
             appeared = true
             updateAnimatedScore()
-            if isExcellent && !reduceMotion {
-                twinkle = true
-            }
-            if isCaution && !reduceMotion {
-                cautionPulse = true
-            }
+
         }
         .accessibilityLabel(Text(
             isExcellent
@@ -103,24 +96,7 @@ public struct SoloScoreBadge: View {
         ))
         .accessibilityHint(Text(NSLocalizedString("solo.compact.a11y.hint", comment: "Double tap to see score breakdown")))
         .accessibilityAddTraits(.isButton)
-        .onChange(of: score.overall) { _, newValue in
-            appeared = true
-            updateAnimatedScore()
-            let nowExcellent = newValue >= 8.5
-            if nowExcellent && !reduceMotion {
-                twinkle = false
-                twinkle = true
-            } else if !nowExcellent {
-                twinkle = false
-            }
-            let nowCaution = newValue < 4.0
-            if nowCaution && !reduceMotion {
-                cautionPulse = false
-                cautionPulse = true
-            } else if !nowCaution {
-                cautionPulse = false
-            }
-        }
+        .onChange(of: score.overall) { _, _ in updateAnimatedScore() }
     }
 
     private var fullView: some View {
@@ -132,7 +108,7 @@ public struct SoloScoreBadge: View {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(formatted(animatedScore))
                         .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                        .foregroundStyle(score.scoreColor)
+                        .foregroundStyle(CT.actionTintAdaptive)
                         .monospacedDigit()
                         .contentTransition(.numericText(value: animatedScore))
                     Text("/10")
@@ -265,7 +241,7 @@ private struct SoloScorePopoverContent: View {
                 HStack(alignment: .firstTextBaseline, spacing: 1) {
                     Text(String(format: "%.1f", animatedOverall))
                         .font(.title3.bold())
-                        .foregroundStyle(score.scoreColor)
+                        .foregroundStyle(CT.actionTintAdaptive)
                         .monospacedDigit()
                         .contentTransition(.numericText(value: animatedOverall))
                     Text("/10")
@@ -465,6 +441,8 @@ private struct SoloScorePopoverContent: View {
                         .transition(reduceMotion ? .opacity : .scale(scale: 0.95).combined(with: .opacity))
                 }
             }
+            .frame(minHeight: 44, alignment: .center)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)

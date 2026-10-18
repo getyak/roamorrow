@@ -594,6 +594,8 @@ public struct SettingsView: View {
                 Text(NSLocalizedString("settings.forgetMe.confirm.message", comment: "Forget me message"))
             }
 
+            LegalDocumentLinks()
+
             // #130: 7 taps here reveal the Advanced section (AI provider,
             // tester unlock, developer options). Persisted via @AppStorage.
             HStack {
@@ -927,22 +929,31 @@ struct CategoryPreferencesView: View {
                 ForEach(ExperienceCategory.allCases) { category in
                     let isPreferred = preferences.preferredCategories.contains(category)
                     let isDisliked = preferences.dislikedCategories.contains(category)
-                    HStack(spacing: 12) {
-                        Image(systemName: category.symbol)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
-                            .background(category.color, in: RoundedRectangle(cornerRadius: 7))
-                        Text(category.localizedTitle)
-                        Spacer()
-                        if isPreferred {
-                            Image(systemName: "heart.fill").foregroundStyle(.pink)
-                        } else if isDisliked {
-                            Image(systemName: "hand.thumbsdown.fill").foregroundStyle(.secondary)
+                    // Real Button (not a tap gesture) so VoiceOver / Switch
+                    // Control get an activatable control with a selected state.
+                    Button {
+                        togglePreferred(category)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: category.symbol)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 30, height: 30)
+                                .background(category.color, in: Radius.shape(7))
+                            Text(category.localizedTitle)
+                            Spacer()
+                            if isPreferred {
+                                Image(systemName: "heart.fill").foregroundStyle(.pink)
+                            } else if isDisliked {
+                                Image(systemName: "hand.thumbsdown.fill").foregroundStyle(.secondary)
+                            }
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture { togglePreferred(category) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(category.localizedTitle))
+                    .accessibilityValue(Text(categoryPreferenceStateLabel(isPreferred: isPreferred, isDisliked: isDisliked)))
+                    .accessibilityAddTraits(isPreferred ? [.isSelected] : [])
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) { toggleDisliked(category) } label: {
                             Label(NSLocalizedString("settings.hide", comment: "Hide"), systemImage: "eye.slash")
@@ -961,16 +972,28 @@ struct CategoryPreferencesView: View {
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundStyle(.white)
                                 .frame(width: 30, height: 30)
-                                .background(Color.secondary, in: RoundedRectangle(cornerRadius: 7))
+                                .background(Color.secondary, in: Radius.shape(7))
                             Text(category.localizedTitle).foregroundStyle(.secondary)
                             Spacer()
                             Button {
                                 Haptics.selection()
                                 preferences.dislikedCategories.removeAll { $0 == category }
                             } label: {
-                                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                                // 44pt target for a small glyph + a contextual
+                                // label naming which category comes back.
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(Text(String(
+                                format: NSLocalizedString(
+                                    "settings.hidden.remove.a11y",
+                                    comment: "Show %@ again"
+                                ),
+                                category.localizedTitle
+                            )))
                         }
                     }
                 } header: {
@@ -991,6 +1014,22 @@ struct CategoryPreferencesView: View {
         } else {
             preferences.preferredCategories.append(category)
         }
+    }
+
+    /// Spoken state for the row so VoiceOver reads back preferred/hidden, not
+    /// just the category name. Pure so tests can pin the three states.
+    static func categoryPreferenceState(isPreferred: Bool, isDisliked: Bool) -> String {
+        if isPreferred {
+            return NSLocalizedString("settings.category.state.preferred", comment: "Preferred")
+        }
+        if isDisliked {
+            return NSLocalizedString("settings.category.state.hidden", comment: "Hidden")
+        }
+        return NSLocalizedString("settings.category.state.neutral", comment: "Not set")
+    }
+
+    private func categoryPreferenceStateLabel(isPreferred: Bool, isDisliked: Bool) -> String {
+        Self.categoryPreferenceState(isPreferred: isPreferred, isDisliked: isDisliked)
     }
 
     private func toggleDisliked(_ category: ExperienceCategory) {

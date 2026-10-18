@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "宣言",
   description:
-    "为什么会有 Roamorrow。一份关于独自旅行、诚实 AI，以及为什么我们选择那条更难的路——不接广告、不做追踪、不融资——即使这意味着走得更慢的短宣言。",
+    "为什么会有 Roamorrow。一份关于独自旅行、诚实 AI，以及为什么我们选择那条更难的路——不接广告、说明数据用途、不融资——即使这意味着走得更慢的短宣言。",
   alternates: {
     canonical: `${SITE_URL}/zh/manifesto`,
     languages: {
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/zh/manifesto`,
-    title: "Roamorrow · 宣言",
+    title: `${BRAND.name} · 宣言`,
     description: "关于独自旅行、诚实 AI、不接广告不追踪不融资的短宣言。",
     locale: "zh_CN",
     alternateLocale: "en_US",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Roamorrow · 宣言",
+    title: `${BRAND.name} · 宣言`,
     description: "关于独自旅行、诚实 AI、不接广告不追踪不融资的短宣言。",
     images: ["/zh/opengraph-image"],
   },
@@ -50,8 +50,8 @@ const PARAGRAPHS_ZH: { heading: string; body: string }[] = [
     body: "我们用 AI 来筛选和解释，而不是替代你的判断。每一次排序都展示引用来源——Wikimedia、OSM、官方页面、可验证的评价。每一次推荐都标注置信度。模型不确定时会明说，两个来源冲突时都会展示。独自旅行是高风险场景，不透明的 AI 不能接受。",
   },
   {
-    heading: "永不接广告，永不追踪。",
-    body: "一个 app 接了广告，激励就和你分道扬镳了：它必须抢占你的注意力、必须为付费合作伙伴虚高评分、必须知道你在哪里买了什么。Roamorrow 只用一种方式赚钱：你付了钱。如果我们哪天违背这个承诺，欠每一位一次买断用户全额退款。这一条写进了我们的条款里。",
+    heading: "永不接广告，说明数据用途。",
+    body: "一个 app 接了广告，激励就和你分道扬镳了：它必须抢占你的注意力、必须为付费合作伙伴虚高评分、必须知道你在哪里买了什么。Roamorrow 只用一种方式赚钱：你自愿订阅。如果我们哪天违背这个承诺，请直接指出来 —— 那是我们应得的。",
   },
   {
     heading: "京都独立开发，对你负责。",

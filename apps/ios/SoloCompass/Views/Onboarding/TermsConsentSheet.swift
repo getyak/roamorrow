@@ -1,5 +1,36 @@
 import SwiftUI
 
+/// Canonical public documents. Their bilingual content retains the published
+/// legal documents; verify the deployed destinations before release.
+enum LegalDocuments {
+    static let privacyPolicy = URL(string: "https://roamorrow.com/privacy")
+    static let termsOfService = URL(string: "https://roamorrow.com/terms")
+}
+
+/// Keep the same semantic links reachable before consent, in Settings and before purchase.
+struct LegalDocumentLinks: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let url = LegalDocuments.privacyPolicy {
+                Link(destination: url) {
+                    Text(NSLocalizedString("terms.links.privacy", comment: "Privacy policy"))
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+            }
+            if let url = LegalDocuments.termsOfService {
+                Link(destination: url) {
+                    Text(NSLocalizedString("terms.links.tos", comment: "Terms of service"))
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+            }
+        }
+        .font(.footnote)
+        .tint(CT.actionTintAdaptive)
+    }
+}
+
 /// First-launch Terms of Service + Privacy Policy + data-use disclosure.
 /// App Store 审核 (Guideline 5.1.1) and PIPL/GDPR require a clear,
 /// accept-or-quit gate before the app processes any personal data. We
@@ -77,10 +108,7 @@ public struct TermsConsentSheet: View {
                     Text(NSLocalizedString("terms.links.title", comment: "Documents header"))
                         .font(.headline)
 
-                    Link(NSLocalizedString("terms.links.privacy", comment: "Privacy policy link"),
-                         destination: URL(string: "https://roamorrow.com/privacy")!)
-                    Link(NSLocalizedString("terms.links.tos", comment: "Terms of service link"),
-                         destination: URL(string: "https://roamorrow.com/terms")!)
+                    LegalDocumentLinks()
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)

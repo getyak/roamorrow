@@ -1,0 +1,8 @@
+{
+  "method": "WCAG linear sRGB luminance; black text; scoreColor 0..10 in 0.001 steps, 95% alpha composited over black (darkest possible neutral underlay)",
+  "minimumContrast": 4.8277299969241625,
+  "scoreAtMinimum": 0.0,
+  "required": 4.5,
+  "pass": true,
+  "scope": "compact badge text/icons only; full/popover uses existing adaptive action foreground; does not certify all UI contrast"
+}

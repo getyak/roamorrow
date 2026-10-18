@@ -184,14 +184,13 @@ bot.command("privacy", async (ctx) => {
     [
       "Privacy",
       "",
-      "• I never store your Telegram username or display name.",
-      "• Your user_id is hashed with a server-side salt before any analytics.",
-      "• Voice notes are transcribed by Whisper and the audio is dropped — never written to disk, never sent to Sentry.",
-      "• Transcripts are not retained after ranking.",
-      "• Errors reported to Sentry have transcripts and message bodies stripped.",
+      "• Your Telegram ID keys an in-memory session containing your shared location and recent request. /reset clears this session.",
+      "• Voice is sent to OpenAI transcription; recommendation requests send intent and location context to the configured AI provider.",
+      "• Configured analytics uses a salted hash of your ID. /optout stops product analytics in the running bot process; a restart resets that in-memory preference.",
+      "• Server records, Telegram copies and service-provider records are separate from a local session reset.",
       "",
-      "Type /optout to stop all analytics from this device. /start to resume.",
-      "Full doc: https://github.com/getyak/roamorrow/blob/main/docs/PRIVACY.md",
+      "Private privacy/deletion requests: cubxxw@gmail.com",
+      "Full bilingual policy: https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9",
     ].join("\n"),
   );
 });

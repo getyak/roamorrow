@@ -231,6 +231,7 @@ private struct RingAvatar: View {
     let exploredCount: Int
     /// Diameter of the inner emoji bubble; the progress ring sits 8pt outside it.
     var size: CGFloat = 64
+    @Environment(UserPreferences.self) private var preferences
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animatedFraction: CGFloat = 0
@@ -246,7 +247,7 @@ private struct RingAvatar: View {
 
     var body: some View {
         ZStack {
-            Text(CompanionProfile.sample.avatarEmoji)
+            Text(preferences.companionAvatarEmoji)
                 .font(.system(size: size * 0.55))
                 .frame(width: size, height: size)
                 .background(
@@ -267,7 +268,7 @@ private struct RingAvatar: View {
                     .frame(width: ringSize, height: ringSize)
             }
         }
-        .accessibilityLabel(Text(CompanionProfile.sample.avatarEmoji))
+        .accessibilityLabel(Text(preferences.companionAvatarEmoji))
         .accessibilityValue(showRing ? Text(
             String(format: NSLocalizedString("me.profile.progress.a11y", comment: "Profile progress ring accessibility value"),
                    min(exploredCount, favoritedCount), favoritedCount)
@@ -307,6 +308,7 @@ private struct RingAvatar: View {
 private struct ProfileHeader: View {
     let favoritedCount: Int
     let exploredCount: Int
+    @Environment(UserPreferences.self) private var preferences
 
     var body: some View {
         VStack(spacing: 16) {
@@ -318,7 +320,9 @@ private struct ProfileHeader: View {
             .padding(.top, 4)
 
             VStack(spacing: 4) {
-                Text(NSLocalizedString("me.profile.name", comment: "Default profile display name"))
+                Text(preferences.displayHandle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                     ? NSLocalizedString("me.profile.name", comment: "Default profile display name")
+                     : preferences.displayHandle)
                     .font(.title2.weight(.bold))
                     .foregroundStyle(CT.fgPrimary)
                 Text(NSLocalizedString("me.profile.subtitle", comment: "Profile subtitle"))
@@ -599,6 +603,7 @@ struct MapAvatarBubble: View {
         RingAvatar(favoritedCount: 5, exploredCount: 5, size: 88)   // 100%
     }
     .padding()
+    .environment(UserPreferences())
 }
 
 #Preview("Avatar bubble") {

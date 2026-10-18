@@ -17,11 +17,22 @@ update:
   githubActions: true
 
 overrides:
-  "brace-expansion@2": "2.1.4"
-  "brace-expansion@>=3 <6": "5.0.9"
+  "brace-expansion@2": "2.1.7"
+  "brace-expansion@>=3 <6": "5.0.12"
   "@esbuild-kit/core-utils@3>esbuild": "0.25.12"
   "form-data@": "4.0.6"
   postcss: "8.5.26"
-  sharp: "0.35.4"
-  "undici@": "7.29.0"
+  "fast-uri@3": "3.1.8"
+  postcss-selector-parser: "7.1.6"
+  sharp: "0.35.5"
+  "undici@": "7.29.1"
   "ws@": "8.21.0"
+
+patchedDependencies:
+  braces@3.0.3: patches/braces@3.0.3.patch
+
+audit:
+  # Local mitigation; CI verifies the patch and every lockfile occurrence.
+  # See docs/development/dependency-security.md before changing this exception.
+  ignore:
+    - GHSA-vfj7-8cjw-p6xm

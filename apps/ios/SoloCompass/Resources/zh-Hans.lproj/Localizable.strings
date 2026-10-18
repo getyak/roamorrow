@@ -129,9 +129,9 @@
 "userLocation.create.title" = "添加地点";
 "userLocation.form.save" = "保存";
 "userLocation.form.name.label" = "名称";
-"userLocation.form.name.placeholder" = "地点名称，例如 Wat Suan Dok";
-"userLocation.form.nameLocal.placeholder" = "当地语言名称（可选）";
-"userLocation.form.oneLiner.placeholder" = "一句话：它为何值得（可选）";
+"userLocation.form.name.placeholder" = "例如 Wat Suan Dok";
+"userLocation.form.nameLocal.placeholder" = "当地文字，例如 วัดสวนดอก";
+"userLocation.form.oneLiner.placeholder" = "例如 寺庙后院的安静花园咖啡馆";
 "userLocation.form.category.label" = "类别";
 "userLocation.form.notes.label" = "描述";
 "userLocation.form.notes.placeholder" = "一个人在这里是什么感受？";
@@ -143,7 +143,7 @@
 
 /* Marker accessibility */
 "marker.a11y.bestNow" = "此刻最佳";
-"marker.a11y.closingSoon" = "此刻最佳，即将关闭";
+"marker.a11y.closingSoon" = "此刻最佳，推荐时段即将结束";
 "marker.a11y.completed" = "已完成";
 "marker.a11y.favorited" = "已收藏";
 "marker.a11y.upcoming" = "%d 分钟后开始";
@@ -291,7 +291,7 @@
 /* ReportIssue */
 "report.title" = "反馈问题";
 "report.cancel" = "取消";
-"report.submit" = "提交";
+"report.submit" = "保存报告";
 "report.reason.header" = "哪里不对？";
 "report.detail.header" = "补充说明（可选）";
 "report.detail.placeholder" = "再给点上下文…（最多 200 字）";
@@ -393,13 +393,13 @@
 "notification.departure.body" = "即将出发 · 在 %@ 集合。";
 
 /* US-020 — 邀请好友直接加入招募中的路线（无需审批） */
-"invite.friends.button" = "邀请好友";
-"invite.friends.button.a11y" = "邀请好友加入此路线";
-"invite.friends.title" = "邀请好友";
-"invite.friends.send" = "邀请";
+"invite.friends.button" = "本机添加好友";
+"invite.friends.button.a11y" = "在本机将好友添加到此路线";
+"invite.friends.title" = "本机添加好友";
+"invite.friends.send" = "添加";
 "invite.friends.seats" = "剩余 %d 个名额";
-"invite.friends.footer" = "你邀请的好友会直接加入路线——无需审批。";
-"invite.friends.empty.title" = "没有可邀请的好友";
+"invite.friends.footer" = "仅将成员添加到本机的路线中，不会向好友发送邀请或消息。";
+"invite.friends.empty.title" = "暂无可添加的好友";
 "invite.friends.empty.description" = "你的好友都已在此路线中，或者你还没有添加好友。";
 
 /* Settings data */
@@ -465,8 +465,8 @@
 "exploreMode.pill.searchingFragment" = "搜寻中…";
 "exploreMode.pill.verifiedFragment" = "%d 处多源确认";
 "exploreMode.cancel" = "取消";
-"exploreMode.handoff.summary" = "%1$d 处 · %2$d km · %3$@";
-"exploreMode.handoff.summaryNoCity" = "%1$d 处 · %2$d km";
+"exploreMode.handoff.summary" = "%1$d 处 · %2$.1f km · %3$@";
+"exploreMode.handoff.summaryNoCity" = "%1$d 处 · %2$.1f km";
 "exploreMode.handoff.verifiedSuffix" = "其中 %d 处多源确认";
 "exploreMode.handoff.askSolo" = "问问这些地方";
 "exploreMode.handoff.saveWalk" = "保存为路线";
@@ -484,14 +484,14 @@
 "explore.quota.dailyLimit" = "今日 AI 调用次数已达上限。明天恢复前会展示真实地点但不再增强。";
 "explore.toast.addedNamed" = "正在探索 %1$@ · 新增 %2$d 处地点";
 "explore.toast.added" = "附近新增 %d 处地点";
-"explore.toast.multiRing.addedNamed" = "正在探索 %1$@ · %3$d km 范围内新增 %2$d 处地点";
-"explore.toast.multiRing.added" = "%2$d km 范围内新增 %1$d 处地点";
+"explore.toast.multiRing.addedNamed" = "正在探索 %1$@ · %3$.1f km 范围内新增 %2$d 处地点";
+"explore.toast.multiRing.added" = "%2$.1f km 范围内新增 %1$d 处地点";
 "explore.toast.progressive.expandedNamed" = "已扩展至 %1$@ km · 在 %3$@ 发现 %2$lld 处";
 "explore.toast.progressive.expanded" = "已扩展至 %1$@ km · 发现 %2$lld 处";
 "explore.progress.scanning" = "正在扫描 · 第 %1$d/%2$d 环";
 "explore.progress.synthesizing" = "AI 正在整理 %d 处地点…";
-"explore.progress.progressiveScanning" = "正在扫描 %d km…";
-"explore.progress.expanding" = "附近较少 · 正在扩大到 %d km";
+"explore.progress.progressiveScanning" = "正在扫描 %.1f km…";
+"explore.progress.expanding" = "附近较少 · 正在扩大到 %.1f km";
 "explore.offline.staleToast" = "正在显示 %@ 的离线缓存数据";
 "explore.toast.cachedFallback" = "正在显示缓存结果";
 
@@ -503,21 +503,21 @@
 "paywall.feature.insight" = "对每处体验提供 AI 洞察（按需）";
 "paywall.feature.quota" = "每天 30 次新探索 + 60 次 AI 洞察";
 "paywall.bestValue" = "最划算";
-"paywall.cta.startTrial" = "开始 7 天免费试用";
-"paywall.fineprint" = "免费 7 天，之后自动扣费。可在「设置 → Apple ID → 订阅」中随时取消。订阅即表示同意 App Store EULA 与我们的条款。";
+"paywall.cta.startTrial" = "查看 Pro 方案";
+"paywall.fineprint" = "按所选方案显示的价格与周期收费，订阅会自动续订。你可在「设置 → Apple 账户 → 订阅」中取消。订阅前，请在 Apple 确认页核对优惠及收费详情。订阅适用 App Store EULA 和我们的条款。";
 "paywall.restore" = "恢复购买";
 "paywall.manage" = "管理订阅";
 "paywall.error.title" = "购买未完成";
 "paywall.error.unavailable" = "订阅暂时不可用。请检查网络后稍候重试。";
 "paywall.close" = "关闭";
-"paywall.continueFree" = "免费继续使用";
-"paywall.cta.startMonthFree" = "开始 1 个月免费试用";
+"paywall.continueFree" = "继续免费使用";
+"paywall.cta.startMonthFree" = "使用优惠订阅";
 "paywall.cta.subscribe" = "立即订阅";
-"paywall.fineprint.month" = "前 1 个月免费，之后每月自动扣费。可在「设置 → Apple ID → 订阅」中随时取消。订阅即表示同意 App Store EULA 与我们的条款。";
-"paywall.trialBadge" = "含 1 个月免费";
-"paywall.trialBanner.headline" = "免费试用 1 个月";
-"paywall.trialBanner.format" = "之后每月 %@ · 可随时取消";
-"paywall.trialBanner.fallback" = "试用结束前可随时取消";
+"paywall.fineprint.month" = "订阅前，请在 Apple 确认页核对所选方案与实际优惠。你可在「设置 → Apple 账户 → 订阅」中取消。";
+"paywall.trialBadge" = "优惠可用";
+"paywall.trialBanner.headline" = "此方案有订阅优惠";
+"paywall.trialBanner.format" = "方案价格：%@；订阅前请核对计费周期与优惠详情。";
+"paywall.trialBanner.fallback" = "请在 Apple 订阅确认页核对优惠详情。";
 "paywall.midTrial.headline.format" = "试用中 · 剩 %d 天";
 "paywall.midTrial.detail.format" = "%@ 开始扣费。点此管理订阅即可调整。";
 "paywall.midTrial.detail.fallback" = "可在「设置」中随时管理你的订阅。";
@@ -531,19 +531,19 @@
 "me.entitlement.pro.title" = "Roamorrow 高级版";
 "me.entitlement.pro.detail.format" = "%@ 续期";
 "me.entitlement.pro.detail.fallback" = "自动续订订阅";
-"me.entitlement.upsell.title" = "免费试用 1 个月 Pro";
-"me.entitlement.upsell.detail" = "AI 探索、语音意图、逐地点 AI 洞察";
+"me.entitlement.upsell.title" = "查看 Pro 方案";
+"me.entitlement.upsell.detail" = "了解 Roamorrow Pro 的实际内容";
 
 /* Onboarding — 第 5 步 paywall */
-"onboarding.paywall.title" = "送你的免费一个月";
-"onboarding.paywall.subtitle" = "Roamorrow Pro 前 30 天免费。试用结束前取消，不会被扣费。";
+"onboarding.paywall.title" = "探索路上，多一点帮助";
+"onboarding.paywall.subtitle" = "需要更多 AI 帮助时，可以查看 Pro 方案；也可以继续免费使用。";
 "onboarding.paywall.bullet.explore" = "在这里探索 — 任意城市的 AI 真实地点";
 "onboarding.paywall.bullet.voice" = "语音描述需求，地图自动筛选";
 "onboarding.paywall.bullet.insight" = "对任一体验提供按需 AI 洞察";
-"onboarding.paywall.cta" = "开始 1 个月免费试用";
-"onboarding.paywall.later" = "稍后再说";
-"onboarding.paywall.fineprint.format" = "前 30 天免费，之后每月 %@。可随时取消。";
-"onboarding.paywall.fineprint.fallback" = "前 30 天免费。结束前可随时取消。";
+"onboarding.paywall.cta" = "查看 Pro 方案";
+"onboarding.paywall.later" = "继续免费使用";
+"onboarding.paywall.fineprint.format" = "方案价格：%@。订阅前，请在下一页核对计费周期与优惠详情。";
+"onboarding.paywall.fineprint.fallback" = "订阅前可查看方案价格、计费周期与实际优惠。";
 
 /* Settings — Subscription */
 "settings.subscription" = "订阅";
@@ -573,10 +573,10 @@
 
 /* Explore consent (US-034) */
 "explore.consent.title" = "开始探索之前";
-"explore.consent.subtitle" = "Roamorrow 会代你与两个服务通讯。下面是会离开你手机的全部数据。";
-"explore.consent.bullet.location" = "粗略位置 → OpenStreetMap。完全公开，无账号，不追踪。";
-"explore.consent.bullet.ai" = "OSM 标签 + 城市标识 → Anthropic，用于生成独行旅人风格的描述。无任何个人资料。";
-"explore.consent.bullet.no_pii" = "我们不收集通讯录、相册、浏览记录。绝不与广告商共享。";
+"explore.consent.subtitle" = "本次探索会这样使用你选定的地图位置和公开地点信息。";
+"explore.consent.bullet.location" = "你选定的位置坐标和搜索半径会发送给 OpenStreetMap/Overpass，用于查找附近地点。";
+"explore.consent.bullet.ai" = "公开地点资料和城市信息会发送给当前配置的 AI 服务（默认 DeepSeek），用于撰写体验描述。";
+"explore.consent.bullet.no_pii" = "这次地点查询不会附带你的照片或通讯录。开始前，你可以取消。";
 "explore.consent.accept" = "了解了 — 开始探索";
 "explore.consent.cancel" = "暂不";
 
@@ -1061,14 +1061,14 @@
 "action.ok" = "好的";
 
 /* Agent steps */
-"agent.step.dismiss" = "✕ 关闭中…";
-"agent.step.executing" = "⚙️ 执行中…";
-"agent.step.exploreNearby" = "🔍 搜索附近…";
-"agent.step.filter" = "🗂 筛选地图…";
+"agent.step.dismiss" = "关闭中…";
+"agent.step.executing" = "执行中…";
+"agent.step.exploreNearby" = "搜索附近…";
+"agent.step.filter" = "筛选地图…";
 "agent.step.listening" = "聆听中…";
-"agent.step.navigate" = "🗺 打开导航…";
-"agent.step.buildRoute" = "🧭 正在为你串联路线…";
-"agent.step.compileWorkdayRoute" = "🗓 正在编译工作日路线…";
+"agent.step.navigate" = "打开导航…";
+"agent.step.buildRoute" = "正在为你串联路线…";
+"agent.step.compileWorkdayRoute" = "正在编译工作日路线…";
 "agent.trace.foundPlaces" = "找到 %d 个合适的地方";
 "agent.trace.builtRoute" = "把 %d 个站点串成了一条路线";
 "agent.trace.foundEvents" = "找到 %d 场在地活动";
@@ -1104,10 +1104,10 @@
 "chat.route.evidence.fresh" = "证据新鲜";
 "chat.route.evidence.partial" = "事实刷新中";
 "chat.route.fallbacks" = "已备好 %d 个备选";
-"agent.step.save" = "❤️ 收藏中…";
-"agent.step.search" = "🔍 搜索地点…";
-"agent.step.webSearch" = "🌐 联网搜索中…";
-"agent.step.showDetails" = "📍 查看详情…";
+"agent.step.save" = "收藏中…";
+"agent.step.search" = "搜索地点…";
+"agent.step.webSearch" = "联网搜索中…";
+"agent.step.showDetails" = "查看详情…";
 "agent.step.thinking" = "思考中…";
 
 /* AI hints */
@@ -1407,8 +1407,7 @@
 "route.detail.bestNow.yes" = "此刻最佳";
 "route.detail.bestNow.no" = "非此刻";
 "route.detail.aiInsight.title" = "AI 洞察";
-"route.detail.aiInsight.locked" = "订阅 Pro 解锁路线分析 · 结合当前天气、人流、季节";
-"route.detail.aiInsight.unlock" = "解锁 →";
+"route.detail.aiInsight.unavailable" = "天气、人流与季节分析目前对本路线不可用。";
 "route.detail.tags.title" = "路线标签";
 "route.detail.start" = "开始路线";
 "route.detail.cta.requestJoin" = "申请加入";
@@ -1467,8 +1466,8 @@
 "nearby.chip.solo" = "Solo %.1f";
 "nearby.chip.bestNow" = "此刻最佳";
 /* 此刻最值得去卡片 + 附近列表上的紧凑「即将关闭」倒计时（剩余 ≤45 分钟）。%d = 分钟。 */
-"nearby.chip.closingSoon" = "即将关闭 · %d分";
-"nearby.chip.closingSoon.a11y" = "此刻最佳，即将关闭，还剩 %d 分钟";
+"nearby.chip.closingSoon" = "推荐时段 · 剩余 %d 分钟";
+"nearby.chip.closingSoon.a11y" = "推荐时段将在 %d 分钟后结束";
 "nearby.proximity.sparse" = "稀疏";
 "nearby.proximity.moderate" = "中等";
 "nearby.proximity.far" = "较远";
@@ -1669,12 +1668,12 @@
 "filter.tip.title" = "按心情筛选";
 "filter.tip.message" = "点一个分类或「Now」，找此刻最值得去的地方——而不只是附近所有地方。";
 "terms.title" = "欢迎使用 Roamorrow";
-"terms.intro" = "在开始探索之前，先用一屏告诉你我们收集什么数据、怎么用。完整文档在下方链接里。";
+"terms.intro" = "开始探索前，请先了解这份数据使用摘要；完整文档在下方链接中。";
 "terms.dataUse.title" = "我们会收集";
-"terms.dataUse.location" = "你的位置：实时用于展示附近地点。坐标只留在本设备，除非你主动分享某个地方给朋友。";
-"terms.dataUse.chat" = "你和 AI 的对话内容：用于生成推荐。对话本地存储；仅你发送的消息会传给 AI 提供商。";
-"terms.dataUse.noContacts" = "我们不读取你的通讯录、相册、日历或浏览记录。";
-"terms.dataUse.noTrackers" = "无第三方分析或广告追踪。";
+"terms.dataUse.location" = "位置用于附近体验，并可在获得相应授权时进行后台到访检测。确认探索及 AI 请求可能将选定坐标与上下文发送至相关服务。";
+"terms.dataUse.chat" = "AI 请求可能包含你的消息、相关对话历史、偏好与旅行上下文；由所选服务商或 Pro 代理处理。";
+"terms.dataUse.noContacts" = "照片、相机、麦克风与语音用于你选择的功能，并通过相应系统权限或内容选择使用。";
+"terms.dataUse.noTrackers" = "配置的服务可处理账号同步、分享的消息与诊断数据；隐私政策列明接收者和可管理选项。";
 "terms.links.title" = "阅读完整文档";
 "terms.links.privacy" = "隐私政策";
 "terms.links.tos" = "用户协议";
@@ -1683,7 +1682,7 @@
 "terms.declined.title" = "需要同意后才能继续";
 "terms.declined.body" = "未获得你对《隐私政策》和《用户协议》的同意前，Roamorrow 无法展示地图、获取附近地点或调用 AI。我们尚未收集任何数据。点击下方按钮可重新查看。";
 "terms.declined.review" = "重新查看";
-"nearby.chip.closingNow" = "即将关闭";
+"nearby.chip.closingNow" = "推荐时段即将结束";
 
 /* Solo score breakdown */
 "solo.breakdown.title" = "独行评分";
@@ -1744,8 +1743,8 @@
 "nowscore.sunset.after_min" = "日落已过 %d 分钟";
 
 /* Parity backfill (US-005): zh-Hans translations for pre-existing en-only keys. */
-"bestTimes.now.pill.closing" = "%d 分钟后关闭 — 现在就去";
-"bestTimes.now.pill.closing.a11y" = "即将关闭，本时段还剩 %d 分钟 — 现在就去";
+"bestTimes.now.pill.closing" = "推荐时段将在 %d 分钟后结束";
+"bestTimes.now.pill.closing.a11y" = "推荐时段将在 %d 分钟后结束";
 "bestTimes.now.pill.left" = "此刻适合 · 还剩 %d 分钟";
 "bestTimes.now.pill.left.a11y" = "现在正合适，本时段还剩 %d 分钟";
 "card.distance.onCourse.a11y" = "在路线上";
@@ -1759,8 +1758,8 @@
 "confidence.strength.strong" = "强";
 "confidence.strength.weak" = "弱";
 "confidence.strongest" = "主要依据 %@";
-"experience.bestNow.closingSoon" = "即将关闭 · 还剩 %d 分钟";
-"experience.bestNow.closingSoon.a11y" = "即将关闭，还剩 %d 分钟";
+"experience.bestNow.closingSoon" = "推荐时段 · 剩余 %d 分钟";
+"experience.bestNow.closingSoon.a11y" = "推荐时段将在 %d 分钟后结束";
 "favorites.empty.tip1" = "点击任意体验上的爱心即可收藏到这里。";
 "favorites.empty.tip2" = "可步行抵达的收藏地点会显示绿点。";
 "favorites.empty.tip3" = "收藏按当前时段适合做什么排序。";
@@ -1795,8 +1794,8 @@
 "favorites.remaining.allDone.title" = "你全部完成了";
 "favorites.remaining.hint" = "筛选出尚未完成的收藏";
 "favorites.remaining.show.a11y" = "显示剩余体验";
-"favorites.row.closingSoon" = "即将关闭 · 还剩 %d 分钟";
-"favorites.row.closingSoon.a11y" = "即将关闭，还剩 %d 分钟";
+"favorites.row.closingSoon" = "推荐时段 · 剩余 %d 分钟";
+"favorites.row.closingSoon.a11y" = "推荐时段将在 %d 分钟后结束";
 "favorites.row.goodNow" = "此刻适合";
 "favorites.row.goodNow.a11y" = "此刻适合前往";
 "favorites.row.markNotVisited" = "标记为未到访";
@@ -1944,7 +1943,7 @@
 "trust.questioned" = "待确认";
 
 /* ── 旅人共建层 ── */
-"notes.title" = "旅人笔记";
+"notes.title" = "本机笔记";
 "notes.signals" = "信号";
 "notes.signals.aiEstimate" = "AI 估算";
 "notes.signal.plus" = "+1 信号";
@@ -1958,18 +1957,18 @@
 "notes.filter.correction" = "修正";
 "notes.tag.experience" = "体验";
 "notes.tag.correction" = "修正";
-"notes.status.adopted" = "AI 已采纳";
-"notes.status.verified" = "已验证 · %d 位旅人";
-"notes.status.pending" = "待验证 · %d";
+"notes.status.adopted" = "已保存笔记";
+"notes.status.verified" = "本机确认 %d 次";
+"notes.status.pending" = "本机确认 %d 次";
 "notes.confirm" = "我也确认";
 "notes.confirmed" = "已确认";
-"notes.addPrompt" = "留一条笔记给后来的人";
-"notes.addHint" = "AI 将交叉验证 · 你可保持匿名";
+"notes.addPrompt" = "记下亲身体验";
+"notes.addHint" = "仅保存在本机";
 "notes.input.placeholder" = "比如：周二下午很安静…";
 "notes.input.placeholderWithMood" = "加一句话（可选）…";
 "notes.submit" = "发送笔记";
-"notes.contributed.toast" = "谢谢 · 你的笔记将供 AI 交叉验证";
-"notes.level.up.toast" = "信号 +1 · 数据等级 L2";
+"notes.contributed.toast" = "已保存在本机。";
+"notes.level.up.toast" = "已保存在本机。";
 "notes.field.hours" = "营业时间";
 "notes.correction.source.demo" = "3 位旅人在过去 2 周提到";
 
@@ -1977,8 +1976,7 @@
 "correction.heading" = "信息可能需要更新";
 "correction.confirm" = "确认";
 "correction.dismiss" = "不准确";
-"correction.confirmed.toast" = "已确认 ·「%@」已更新";
-
+"correction.confirmed.toast" = "已在本机记录你对“%@”的判断。";
 /* 心情芯片（轻量录入） */
 "mood.quiet" = "很安静";
 "mood.slowWifi" = "WiFi 慢";
@@ -2066,7 +2064,7 @@
 
 /* Friend profile */
 "friend.profile.action.addFriend" = "添加好友";
-"friend.profile.action.invite" = "邀请见面";
+"friend.profile.action.invite" = "起草邀请";
 "friend.profile.action.message" = "发消息";
 "friend.profile.action.requestPending" = "请求已发送";
 "friend.profile.bio.header" = "简介";
@@ -2310,8 +2308,8 @@
 "cityos.health.unverified" = "未核实";
 
 /* City OS v2: 签证 / 183 天税务 */
-"cityos.visa.daysLeft" = "剩 N 天签证";
-"cityos.visa.taxLine" = "距 183 天税务线";
+"cityos.visa.daysLeft" = "已确认停留的剩余天数";
+"cityos.visa.taxLine" = "距本次停留第183天";
 "cityos.visa.reminder.toggle" = "到期提醒";
 "cityos.visa.entryDate" = "入境日期";
 "cityos.visa.length" = "签证 %d 天";
@@ -2412,8 +2410,8 @@
 "cityos.kit.todo.pending.a11y" = "标记已备";
 
 /* City OS v3: 印证 sheet（Recall） */
-"cityos.verify.title" = "30 秒，帮下一个独行者";
-"cityos.verify.subtitle" = "%@ —— 三下点完，你的印证会直接进入这个点的信心分。";
+"cityos.verify.title" = "记录这次亲身体验";
+"cityos.verify.subtitle" = "%@ · 你的答案会成为本机笔记，不会直接改变公开信心分。";
 "cityos.verify.q.exists" = "它还在、还开着吗？";
 "cityos.verify.q.exists.yes" = "还在 ✓";
 "cityos.verify.q.exists.no" = "变了 / 关了";
@@ -2424,7 +2422,7 @@
 "cityos.verify.q.crowd.few" = "人少";
 "cityos.verify.q.crowd.many" = "挺挤";
 "cityos.verify.submit" = "提交印证";
-"cityos.verify.toast" = "已印证 · 这个点的信心 +1，谢谢你";
+"cityos.verify.toast" = "已在本机保存这次印证。";
 "cityos.verify.note.prefix" = "印证：";
 "cityos.verify.note.exists" = "还在营业";
 "cityos.verify.note.changed" = "已变动/关闭";
@@ -2588,3 +2586,261 @@
 "ux.ritual.insight" = "每月回顾";
 "ux.ritual.capsule" = "打开时光胶囊";
 "ux.discover.experiences" = "值得体验";
+
+"soloScore.unassessed" = "尚未评估";
+"explore.toast.partial" = "部分地点暂未加载，请稍后重试。";
+
+"map.coordinates.unavailable" = "地图位置暂时无法核实，可继续查看地点列表。";
+"common.retry" = "重试";
+
+"map.coordinates.styleUnverified" = "此地图模式的位置尚未核实，可切换标准地图或查看地点列表。";
+"map.coordinates.useStandard" = "切换标准地图";
+
+// Interaction-quality batch — shared control semantics, honest states (EN+ZH parity)
+"ai.provider.status.saved" = "已保存 %@ 的 API 密钥。此处未验证连接。";
+"archive.capsule.empty" = "还没有成熟的时间胶囊。可在体验页埋下一个。";
+"archive.capsule.open.title" = "写给自己的话";
+"archive.codex.empty" = "城市图鉴会随到访记录逐步解锁——目前还没有记录。";
+"archive.ritual.blindbox.title" = "盲盒旅行";
+"archive.ritual.bookManifest.title" = "旅行之书";
+"archive.ritual.brag.title" = "分享旅行瞬间";
+"archive.ritual.capsuleOpen.title" = "时光胶囊";
+"archive.ritual.cityCodex.title" = "城市图鉴";
+"archive.ritual.insight.title" = "月度洞察";
+"archive.ritual.liveActivity.title" = "实时活动预览";
+"archive.ritual.omen.title" = "今日签文";
+"archive.ritual.ost.title" = "今日原声";
+"archive.ritual.preview.badge" = "预览";
+"archive.ritual.preview.note" = "仅为预览——这里不会保存、发送或出售任何内容。";
+"archive.ritual.toolContract.title" = "工具契约预览";
+"blindbox.launch.duration" = "时长";
+"blindbox.launch.notNow" = "暂不";
+"brag.metric.days" = "天";
+"brag.metric.km" = "公里";
+"brag.metric.places" = "个地方";
+"brag.share" = "分享";
+"brag.share.a11y" = "分享这张卡片";
+"brag.video.preview" = "视频 · 预览";
+"brag.video.preview.a11y" = "视频回顾，仅预览";
+"brag.wallpaper" = "壁纸";
+"brag.wallpaper.a11y" = "保存卡片用作壁纸";
+"capsule.buried.toast" = "已埋下——%d 个月后开启";
+"capsule.compose.discard.confirm" = "丢弃";
+"capsule.compose.discard.keep" = "继续编辑";
+"capsule.compose.discard.message" = "这条笔记还没有埋下。";
+"capsule.compose.discard.title" = "丢弃这条笔记？";
+"capsule.compose.editor.a11y" = "写给未来自己的笔记";
+"capsule.compose.months" = "%d 个月";
+"capsule.compose.saveFailed" = "没能埋下这条笔记——内容还在。点击“埋下”重试。";
+"capsule.compose.surfaceIn" = "开启时间";
+"capsule.compose.title" = "时光胶囊";
+"capsule.open.reply" = "给未来的自己回信";
+"chat.record.stop.hint" = "停止录音并发送语音消息。";
+"chat.send.attachmentsFailed" = "消息已发送，但附件未能上传，仍保留在输入栏：%@";
+"chat.send.failed" = "消息未发送——内容仍在输入框中。";
+"common.selected" = "已选择";
+"companion.inbox.accepted.open" = "打开对话";
+"friend.add.failed" = "未能发送好友申请：%@";
+"friend.add.state.sending" = "发送中…";
+"join.submit.failed" = "申请未发送——草稿已保留。%@";
+"join.submit.unavailable" = "暂不支持申请加入路线——草稿已保留。";
+"locationPicker.map.coords.invalid" = "坐标超出范围或无法识别。";
+"locationPicker.map.east" = "东";
+"locationPicker.map.north" = "北";
+"locationPicker.map.south" = "南";
+"locationPicker.map.west" = "西";
+"omen.markDone" = "标记完成";
+"paywall.period.day" = "/天";
+"paywall.period.dayN" = "/%1$d天";
+"paywall.period.week" = "/周";
+"paywall.period.weekN" = "/%1$d周";
+"paywall.period.month" = "/月";
+"paywall.period.monthN" = "/%1$d月";
+"paywall.period.year" = "/年";
+"paywall.period.yearN" = "/%1$d年";
+"paywall.plan.a11y" = "%1$@，%2$@%3$@";
+"paywall.plan.selected" = "已选择";
+"paywall.restore.a11y" = "恢复购买";
+"paywall.restore.failed" = "恢复失败：%@";
+"paywall.restore.none" = "此 Apple ID 未找到可恢复的购买记录。";
+"settings.category.state.hidden" = "已隐藏";
+"settings.category.state.neutral" = "未设置";
+"settings.category.state.preferred" = "已偏好";
+"settings.hidden.remove.a11y" = "重新显示%@";
+"share.preview.failed" = "预览渲染失败。";
+"share.preview.retry" = "重试预览";
+"userLocation.form.photo.remove.a11y" = "移除第 %1$d 张照片，共 %2$d 张";
+"companion.chat.attachment.uploadFailed.generic" = "附件未能上传";
+
+"chat.send.tooLong" = "消息超过 1,000 字。请缩短后重试，草稿仍保留在输入框中。";
+
+"map.options" = "地图选项与资料库";
+"map.style.title" = "地图样式";
+
+"chat.send.pendingAttachments" = "尚未发送的附件";
+"chat.send.retryAttachments" = "仅重试附件";
+"archive.record.readOnly.badge" = "只读记录";
+"archive.record.readOnly.note" = "这里可阅读你保存的文字和日期。分享与回复尚未开放，点击顶部关闭可返回归档。";
+
+/* Interaction quality round 2 — route detail, save recovery, voice, reports. */
+"route.detail.cta.groupChat.unavailable" = "群聊尚不可用";
+"route.detail.completion.replay" = "回顾完成时刻";
+"route.detail.save.savedIn" = "已保存到 %@";
+"stops.row.hint" = "打开这一站的详情";
+"itinerary.addTo.error.retry" = "重试";
+"route.create.save.error" = "路线保存失败。草稿未改变，请重试。";
+"route.create.save.retry" = "重试保存";
+"route.create.suggestion.stale.title" = "在你编辑后到达了一条建议——要使用吗？";
+"route.create.suggestion.adopt" = "使用建议";
+"route.create.suggestion.keep" = "保留我的编辑";
+"route.create.localFallback" = "本地规划——AI 服务当前不可用。";
+"route.create.modelCopy" = "标题与摘要由 AI 起草 · 站点由本地确定";
+"route.create.ai.retry" = "重试 AI";
+"openForCompanions.save.error" = "招募路线创建失败。没有保存任何内容，请重试。";
+"openForCompanions.retry" = "重试";
+"itinerary.detail.save.error" = "更改保存失败。已保留原值。";
+"itinerary.detail.save.retry" = "重试";
+"approval.queue.error.title" = "申请未更新";
+"approval.queue.error.retry" = "重试";
+"approval.queue.error.message" = "这条申请仍在等待中——没有任何改动。请重试。";
+"friends.list.remove.error" = "无法删除 %@。对方仍然是你的好友。";
+"friends.list.remove.retry" = "重试";
+"messages.load.error" = "无法加载你的会话。";
+"messages.load.retry" = "重试";
+"notes.submit.error" = "笔记保存失败。内容还在，请重试。";
+"userLocation.form.photo.save.error" = "%d 张照片保存失败";
+"userLocation.form.photo.save.error.hint" = "失败的照片仍保留在表单中。可重试，或不带这些照片保存。";
+"userLocation.form.photo.save.retry" = "重试保存";
+"userLocation.form.photo.save.omit" = "不带失败照片保存";
+"report.savedLocally" = "已保存到本设备——尚未发送";
+"report.sent" = "已通过你的邮件应用发送给支持邮箱";
+"report.delivery.title" = "发送你的报告";
+"report.delivery.email" = "发送邮件给支持邮箱";
+"report.delivery.share" = "分享副本";
+"report.delivery.share.message" = "来自 Roamorrow 的地点报告";
+"report.delivery.notSentHint" = "草稿会保存在本设备，直到你发送为止。";
+"report.delivery.notSent" = "未发送——草稿仍保存在本设备。";
+"report.delivery.preview" = "报告内容";
+"report.email.body.experience" = "体验：%@";
+"report.email.body.place" = "地点：%@";
+"report.email.body.city" = "城市：%@";
+"report.email.body.reason" = "原因：%@";
+"report.email.body.noDetail" = "（无补充细节）";
+
+/* Interaction quality round 2 follow-up — completion flow + friend invite. */
+"completion.confirm.title" = "将这条路线标记为完成？";
+"completion.confirm.message" = "确认后会为全组记录这次步行完成。在你确认之前不会保存任何内容。";
+"completion.committing" = "保存中…";
+"completion.error.unavailable" = "暂时无法在服务器记录完成——未标记任何内容。";
+"completion.error.failed" = "无法将路线标记为完成——未保存任何内容。";
+"completion.error.retry" = "重试";
+"friends.invite.draft.default" = "嗨！想和我一起走下一条路线吗？找个时间。";
+"friends.invite.composer.title" = "邀请草稿";
+"friends.invite.composer.header" = "给 %@ 的邀请";
+"friends.invite.composer.hint" = "先检查这条消息，再在聊天中打开。只有你在聊天中发送后才会发出。";
+"friends.invite.open" = "打开邀请草稿";
+
+/* Interaction quality round 2 — consolidated review closures. */
+"discover.recruiting.empty.noCity" = "在地图上选择城市后即可查看或创建招募路线。";
+"discover.recruiting.empty.noCandidates" = "这个城市还没有可用于建路线的策划地点。";
+"discover.recruiting.empty.chooseCity" = "在地图上选择城市";
+"discover.recruiting.empty.backToMap" = "回地图选择城市";
+"invite.friends.error.title" = "成员未保存";
+"invite.friends.error.message" = "没有任何成员加入路线——你的选择已保留。请重试。";
+"invite.friends.error.retry" = "重试";
+"userLocation.form.photo.save.editAgain" = "返回编辑照片";
+"report.delivery.edit" = "编辑草稿";
+
+"companion.post.action.retry" = "未能保存，草稿仍在这里，请重试。";
+
+"companion.post.action.unavailable" = "这条动态已不可用。请刷新发现页，看看其他旅伴。";
+
+"companion.post.action.edited" = "上一次提交已经保存；你新修改的文字尚未发送。请刷新后查看状态。";
+
+"companion.post.action.sending" = "正在发送…";
+
+"companion.service.featureDisabled" = "同行功能尚未启用。";
+
+"companion.service.encodingFailed" = "未能准备这条请求，请重试。";
+
+"companion.service.notSignedIn" = "请先连接账号，再使用同行功能。";
+
+"notes.save.failed" = "未能保存，你的答案仍在这里，请重试。";
+
+"notes.action.failed" = "未能保存这次修改，请重试。";
+
+"today.entry.days" = "已确认的停留天数";
+
+"today.entry.explanation" = "请填写你已确认的停留天数，入境当天计为第 1 天。这里只提供个人倒计时，不判断签证或税务资格。";
+
+"today.entry.edit" = "修改倒计时";
+
+"today.entry.personalCountdown" = "个人停留倒计时";
+
+"today.receipt.saved" = "封存日期";
+
+"today.receipt.return" = "最早重逢日期";
+
+"today.receipt.explanation" = "这一刻仍在封存中。到上述日期后，回到原地点附近，它才会再次浮现。";
+
+"today.receipt.title" = "封存回执";
+
+"cityos.kit.link.failed" = "未能打开 %@。请确认已安装对应应用，再试一次。";
+
+"action.save" = "保存";
+
+"chat.history.delete.confirm" = "删除选中的对话？此操作无法撤销。";
+
+"chat.history.delete.failed" = "未能删除对话，记录仍保留在历史中，请重试。";
+
+"itinerary.mutation.failed" = "未能保存这次修改，原有状态仍保留，请重试。";
+
+"notes.local.count" = "本机笔记 %d 条";
+
+"userLocation.form.photo.loading" = "正在读取所选照片…";
+
+"userLocation.form.photo.loadFailed" = "有 %d 张所选照片无法读取。请重新选择，或明确跳过后再保存。";
+
+"userLocation.form.photo.skipUnreadable" = "跳过无法读取的照片";
+
+"paywall.offer.headline" = "此方案有订阅优惠";
+
+"paywall.offer.details" = "请在 Apple 的订阅确认页核对优惠期限与续订价格。";
+
+"paywall.offer.badge" = "优惠可用";
+
+"paywall.cta.offer" = "使用优惠订阅";
+
+"today.entry.days.label" = "停留天数";
+
+"today.entry.days.example" = "例如 30";
+
+"today.entry.days.unit" = "天";
+
+"paywall.products.unavailable" = "暂时无法加载方案价格。你可以重试查看，也可以继续免费使用。";
+
+"paywall.products.retry" = "重试加载方案";
+
+"paywall.products.loading" = "正在加载方案…";
+
+"userLocation.form.name.fieldLabel" = "地点名称（必填）";
+
+"userLocation.form.nameLocal.fieldLabel" = "当地名称（可选）";
+
+"userLocation.form.oneLiner.fieldLabel" = "一句话体验（可选）";
+
+"location.copyAddress" = "复制地址";
+
+"chat.thinking.status.completed" = "已完成：";
+
+"chat.thinking.status.active" = "进行中：";
+
+"chat.thinking.status.waiting" = "等待中：";
+
+"chat.route.viewRoute" = "查看路线";
+
+"chat.route.saveFailed" = "路线未能保存。提案仍保留在这里，请重试。";
+
+"chat.route.saveAndView" = "保存并查看路线";
+
+"paywall.products.errorTitle" = "方案加载失败";

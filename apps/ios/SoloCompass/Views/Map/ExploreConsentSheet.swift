@@ -5,9 +5,9 @@ import UIKit
 /// Explore-Here button (or triggers a voice-driven explore intent).
 ///
 /// We tell them — in plain language — what data leaves the device:
-///   1. coarse location → OpenStreetMap (no account, no tracking)
-///   2. raw OSM tags + city slug → Anthropic (no PII, no user content)
-///   3. nothing else: no contacts, no purchase history, no ads
+///   1. selected coordinates and radius → OpenStreetMap/Overpass
+///   2. public place details + city → configured AI text provider
+///   3. this place lookup does not attach photos or contacts
 ///
 /// The sheet is one-time. Tapping "Got it" persists
 /// `UserPreferences.hasAcceptedExploreConsent = true` and the user
@@ -20,6 +20,10 @@ struct ExploreConsentSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Scrollable body: at large Dynamic Type the bullets and both
+            // actions must stay reachable (I22). The action row is pinned
+            // below the scroll area.
+            ScrollView {
             VStack(spacing: 12) {
                 // Hero icon — sized + framed to render fully inside the sheet's
                 // safe area. The previous 44pt glyph + 32pt top padding caused
@@ -49,11 +53,11 @@ struct ExploreConsentSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 bullet(
                     icon: "location.fill",
-                    text: NSLocalizedString("explore.consent.bullet.location", comment: "Coarse location to OSM")
+                    text: NSLocalizedString("explore.consent.bullet.location", comment: "Current coordinates to OpenStreetMap")
                 )
                 bullet(
                     icon: "sparkles",
-                    text: NSLocalizedString("explore.consent.bullet.ai", comment: "OSM tags to Anthropic")
+                    text: NSLocalizedString("explore.consent.bullet.ai", comment: "Place tags + city to the AI text provider")
                 )
                 bullet(
                     icon: "lock.shield.fill",
@@ -62,16 +66,17 @@ struct ExploreConsentSheet: View {
             }
             .padding(.horizontal, 28)
             .padding(.vertical, 28)
-
-            Spacer()
+            }
 
             VStack(spacing: 10) {
                 Button(action: onAccept) {
                     Text(NSLocalizedString("explore.consent.accept", comment: "Got it, continue"))
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        // Dark accent on the warm gold fill — the same
+                        // WCAG-AA pairing the Paywall CTA uses (I22).
+                        .foregroundStyle(CT.accent)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 52)
+                        .frame(minHeight: 52)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(CT.sunGold)
@@ -84,7 +89,8 @@ struct ExploreConsentSheet: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 36)
+                        // 44pt minimum target (I22).
+                        .frame(minHeight: HitTargetMetrics.minimum)
                 }
                 .buttonStyle(.plain)
             }

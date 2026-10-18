@@ -23,6 +23,7 @@ public struct CapsuleOpenView: View {
     public let onReply: () -> Void
 
     @State private var revealed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         payload: PayloadRender,
@@ -43,57 +44,68 @@ public struct CapsuleOpenView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                Spacer()
-                Image(systemName: "envelope.open.fill")
-                    .font(.system(size: 44, weight: .light))
-                    .foregroundColor(CT.omenGold)
-                    .scaleEffect(revealed ? 1.0 : 0.75)
-                    .opacity(revealed ? 1 : 0.3)
+            VStack(spacing: 0) {
+                // Scrollable content + pinned actions (I13): long notes and
+                // large Dynamic Type must never push the buttons off screen.
+                ScrollView {
+                    VStack(spacing: 24) {
+                        Spacer(minLength: 8)
+                        Image(systemName: "envelope.open.fill")
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundColor(CT.omenGold)
+                            .scaleEffect(revealed ? 1.0 : 0.75)
+                            .opacity(revealed ? 1 : 0.3)
 
-                Text(payload.title)
-                    .font(.title2.weight(.semibold))
-                    .foregroundColor(CT.fgPrimary)
+                        Text(payload.title)
+                            .font(.title2.weight(.semibold))
+                            .foregroundColor(CT.fgPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                Text(payload.bodyText)
-                    .font(.system(size: 18, design: .serif))
-                    .foregroundColor(CT.fgPrimary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                    .opacity(revealed ? 1 : 0)
-                    .animation(.easeOut(duration: 1.1).delay(0.2), value: revealed)
+                        Text(payload.bodyText)
+                            .font(.system(size: 18, design: .serif))
+                            .foregroundColor(CT.fgPrimary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 32)
+                            .opacity(revealed ? 1 : 0)
+                            .animation(reduceMotion ? nil : .easeOut(duration: 1.1).delay(0.2), value: revealed)
 
-                if let line = payload.contextLine {
-                    Text(line)
-                        .font(.footnote.italic())
-                        .foregroundColor(CT.fgMuted)
-                        .opacity(revealed ? 1 : 0)
-                        .animation(.easeOut(duration: 1.1).delay(0.6), value: revealed)
+                        if let line = payload.contextLine {
+                            Text(line)
+                                .font(.footnote.italic())
+                                .foregroundColor(CT.fgMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .opacity(revealed ? 1 : 0)
+                                .animation(reduceMotion ? nil : .easeOut(duration: 1.1).delay(0.6), value: revealed)
+                        }
+
+                        Text(payload.buriedAt.formatted(date: .abbreviated, time: .omitted))
+                            .font(.caption)
+                            .foregroundColor(CT.fgSubtle)
+                        Spacer(minLength: 8)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-
-                Text(payload.buriedAt.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption)
-                    .foregroundColor(CT.fgSubtle)
-
-                Spacer()
 
                 VStack(spacing: 8) {
                     Button(action: onReply) {
-                        Label("Reply to yourself", systemImage: "arrow.uturn.up")
+                        Label(NSLocalizedString("capsule.open.reply", comment: "Reply to yourself"), systemImage: "arrow.uturn.up")
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(CT.omenGold)
                             .foregroundColor(.white)
                             .cornerRadius(20)
                     }
-                    Button("Close", action: onDismiss)
+                    .frame(minHeight: HitTargetMetrics.minimum)
+                    Button(NSLocalizedString("common.close", comment: "Close"), action: onDismiss)
                         .font(.footnote)
                         .foregroundColor(CT.fgMuted)
+                        .frame(minHeight: HitTargetMetrics.minimum)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
             }
-            .animation(.easeOut(duration: 0.6), value: revealed)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.6), value: revealed)
         }
         .onAppear {
             revealed = true

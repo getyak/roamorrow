@@ -12,7 +12,7 @@
  * with the comment `anti-pattern-lint:allow <reason>` on the same line.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 
 interface Rule {
   pattern: RegExp;
@@ -45,17 +45,25 @@ const RULES: Rule[] = [
   { pattern: /\bemergency[_-]?contact\b/i, reason: "no emergency contact requirement" },
 ];
 
+// Bundled country geometry can exceed execSync's default 1 MiB stdout limit.
+// A buffer error is not a missing base ref and must not hide the real diff.
+const DIFF_OPTIONS = { encoding: "utf8" as const, maxBuffer: 32 * 1024 * 1024 };
+
 function getDiff(): string {
   // Compare against the merge-base of main. Falls back to HEAD vs main if
   // merge-base lookup fails (detached HEAD on a fresh checkout, etc.).
   try {
     const base = execSync("git merge-base HEAD origin/main", { encoding: "utf8" }).trim();
-    return execSync(`git diff --unified=0 ${base} HEAD`, { encoding: "utf8" });
+    return execFileSync("git", ["diff", "--unified=0", base, "HEAD", "--"], DIFF_OPTIONS);
   } catch {
     try {
-      return execSync("git diff --unified=0 origin/main HEAD", { encoding: "utf8" });
+      return execFileSync(
+        "git",
+        ["diff", "--unified=0", "origin/main", "HEAD", "--"],
+        DIFF_OPTIONS,
+      );
     } catch {
-      return execSync("git diff --unified=0 main HEAD", { encoding: "utf8" });
+      return execFileSync("git", ["diff", "--unified=0", "main", "HEAD", "--"], DIFF_OPTIONS);
     }
   }
 }

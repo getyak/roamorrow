@@ -1,0 +1,26 @@
+[
+  {
+    "document": "privacy",
+    "httpStatus": 200,
+    "finalUrl": "https://gist.github.com/kubbot/e177b6ab042c8d5bd79417300031a5c9",
+    "noAuthorizationOrCookieSent": true,
+    "englishBodyPresent": true,
+    "chineseBodyPresent": true,
+    "contactPresent": true,
+    "crossLinkPresent": true,
+    "title": "Solo Compass Privacy Policy / 隐私政策 · GitHub",
+    "htmlSha256": "804b9595b388b2f5c41b3dc55cb3b017ca69ccefd5daf85e19d90c19cc59f99a"
+  },
+  {
+    "document": "terms",
+    "httpStatus": 200,
+    "finalUrl": "https://gist.github.com/kubbot/08f720b1191b6f9c913699c16227581a",
+    "noAuthorizationOrCookieSent": true,
+    "englishBodyPresent": true,
+    "chineseBodyPresent": true,
+    "contactPresent": true,
+    "crossLinkPresent": true,
+    "title": "Solo Compass Terms of Service / 用户协议 · GitHub",
+    "htmlSha256": "136f66e720c72147d47f0c5f2d4396f2ff125e605993dd0bd7c734224921ecb2"
+  }
+]

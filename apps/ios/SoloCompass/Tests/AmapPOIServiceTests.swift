@@ -85,11 +85,11 @@ final class AmapPOIServiceTests: XCTestCase {
         XCTAssertEqual(items["types"] ?? nil, AmapPOIService.broadTourismTypes)
     }
 
-    func testBroadTourismTypesExcludeFastFoodAndUtility() {
+    func testBroadTourismTypesIncludeAllDiningAndExcludeUtility() {
         let types = AmapPOIService.broadTourismTypes.split(separator: "|").map(String.init)
         XCTAssertTrue(types.contains("110000"), "sights must be in the broad whitelist")
         XCTAssertTrue(types.contains("140000"), "culture must be in the broad whitelist")
-        XCTAssertFalse(types.contains { $0.hasPrefix("0503") }, "fast food is not 精品")
+        XCTAssertTrue(types.contains("050000"), "real dining venues include fast food")
         XCTAssertFalse(types.contains { $0.hasPrefix("16") }, "no banks in a travel whitelist")
     }
 
@@ -101,7 +101,7 @@ final class AmapPOIServiceTests: XCTestCase {
         // 停车场 under 交通设施 15.
         XCTAssertFalse(AmapPOIService.isQualityPOI(name: "购物公园地下停车场", typecode: "150900", rating: nil))
         // 快餐厅 0503 — chain fast food.
-        XCTAssertFalse(AmapPOIService.isQualityPOI(name: "华莱士(某某店)", typecode: "050301", rating: "4.8"))
+        XCTAssertTrue(AmapPOIService.isQualityPOI(name: "华莱士(某某店)", typecode: "050301", rating: "4.8"))
         // 公司企业 17.
         XCTAssertFalse(AmapPOIService.isQualityPOI(name: "某某科技有限公司", typecode: "170000", rating: nil))
     }
@@ -117,9 +117,9 @@ final class AmapPOIServiceTests: XCTestCase {
         XCTAssertTrue(AmapPOIService.isQualityPOI(name: "银行博物馆", typecode: "110000", rating: nil))
     }
 
-    func testQualityGateRatingFloor() {
-        XCTAssertFalse(AmapPOIService.isQualityPOI(name: "某小吃店", typecode: "050100", rating: "2.4"),
-                       "rated-and-bad must be dropped")
+    func testLowRatingDoesNotHideRealDiningVenues() {
+        XCTAssertTrue(AmapPOIService.isQualityPOI(name: "某小吃店", typecode: "050100", rating: "2.4"),
+                       "ratings affect ordering, not venue existence")
         XCTAssertTrue(AmapPOIService.isQualityPOI(name: "鹤松·居酒屋", typecode: "050200", rating: "4.6"))
         XCTAssertTrue(AmapPOIService.isQualityPOI(name: "无评分小馆", typecode: "050100", rating: nil),
                       "unrated places must pass — absence of rating is not evidence of badness")
@@ -162,15 +162,30 @@ final class AmapPOIServiceTests: XCTestCase {
 
         XCTAssertEqual(poi.name, "测试咖啡馆")
         XCTAssertEqual(poi.tags["source"], "amap")
+        XCTAssertEqual(poi.tags["amap_id"], "B0FFABCDEF")
         XCTAssertEqual(poi.tags["amenity"], "cafe")
         // Compliance (ADR §3.2): Amap's raw structured fields must NOT be
         // projected into tags, because the downstream Experience is persisted to
         // SwiftData and Amap's ToS forbids storing/redistributing its raw data.
-        // Only name + source marker + category bucket survive.
+        // Only name + source identity + category bucket survive.
         XCTAssertNil(poi.tags["addr"], "raw address must not be persisted")
         XCTAssertNil(poi.tags["phone"], "raw phone must not be persisted")
         XCTAssertNil(poi.tags["opening_hours"], "raw hours must not be persisted")
         XCTAssertNil(poi.tags["amap_rating"], "raw rating must not be persisted")
+    }
+
+    func testPOIMappingTreatsBlankProviderIdAsSynthetic() throws {
+        @MainActor func poi(_ id: String?, name: String = "Cafe") throws -> POI {
+            try XCTUnwrap(AmapPOIService.poi(from: .init(
+                id: id, name: name, location: "114.06,22.54", typecode: "050500",
+                address: nil, tel: nil, business: nil)))
+        }
+        XCTAssertNil(try poi("   ").tags["amap_id"])
+        XCTAssertEqual(try poi("   ").osmId, try poi(nil).osmId)
+        XCTAssertNotEqual(try poi("   ").osmId, try poi("   ", name: "Other cafe").osmId)
+        XCTAssertEqual(try poi(" B123 ").tags["amap_id"], "B123")
+        XCTAssertEqual(try poi(" B123 ").osmId, try poi("B123").osmId)
+        XCTAssertEqual(POIMerger.merge(primary: [try poi("B123")], secondary: [try poi("B124")]).count, 2)
     }
 
     func testPOIMappingDropsMissingNameOrCoordinate() {

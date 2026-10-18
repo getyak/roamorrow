@@ -1,0 +1,3 @@
+FAIL: synthetic MapKit IDs must allow corroborated proximity matching
+FAIL: Amap coordinate hashes without upstream IDs are not authoritative
+Map accuracy host checks: 30/32 passed

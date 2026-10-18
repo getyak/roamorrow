@@ -1,5 +1,26 @@
 import SwiftUI
 
+/// Recovery decision for the visibility-off gate on the companion-post flow.
+///
+/// When a user tries to open an itinerary to companions while their companion
+/// visibility is `.off`, the alert routes them to the real profile editor. On
+/// return the flow re-checks the (possibly edited) visibility and either
+/// resumes the interrupted intent or leaves the itinerary closed. Kept as a
+/// pure decision so XCTest can cover every branch.
+enum VisibilityOffRecovery: Equatable {
+    /// No interrupted intent — nothing to resume.
+    case none
+    /// Visibility is now on and the user was mid-intent: continue the flow.
+    case resumeCompanionPost
+    /// Visibility is still off: keep the itinerary closed.
+    case stillBlocked
+
+    static func decide(visibility: CompanionVisibility, hadPendingIntent: Bool) -> VisibilityOffRecovery {
+        guard hadPendingIntent else { return .none }
+        return visibility == .off ? .stillBlocked : .resumeCompanionPost
+    }
+}
+
 /// Detail view for a single itinerary.
 /// Shows all fields: title, city, dates, note, companion toggle, and pinned experiences.
 /// Supports drag-to-reorder and "Import from Favorites".
@@ -24,8 +45,19 @@ public struct ItineraryDetailView: View {
     @State private var showingVisibilityOffAlert = false
     @State private var showingRemovePostConfirm = false
 
+    // Visibility recovery (I05): open the real profile editor from the
+    // visibility-off alert, then re-check visibility when the user returns.
+    @State private var showingProfileSettings = false
+    @State private var pendingCompanionPostIntent = false
+
     // Open for companions flow (US-039)
     @State private var showingOpenForCompanionsSheet = false
+
+    // Save-failure recovery (contract 3): a failed publish / unpublish / reorder
+    // keeps the previous values, explains, and offers a retry that re-runs the
+    // exact failed write. Success feedback only after the durable ack.
+    @State private var saveErrorMessage: String?
+    @State private var retryAction: (() -> Void)?
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -105,7 +137,7 @@ public struct ItineraryDetailView: View {
                         experienceIds.count
                     ))
                     Spacer()
-                    if !preferences.favoritedExperiences.isEmpty {
+                    if !preferences.favoritedExperiences.subtracting(Set(experienceIds)).isEmpty {
                         Button {
                             showingImportConfirm = true
                         } label: {
@@ -142,12 +174,34 @@ public struct ItineraryDetailView: View {
             isPresented: $showingVisibilityOffAlert
         ) {
             Button(NSLocalizedString("companion.post.visibilityOff.action", comment: "Open profile settings")) {
-                // In a full navigation stack this would push CompanionProfileView.
-                // For Phase 2 the user can navigate there from Settings.
+                // The alert is dismissing while this runs, so present the real
+                // profile editor on the next runloop instead of racing it.
+                pendingCompanionPostIntent = true
+                DispatchQueue.main.async {
+                    showingProfileSettings = true
+                }
             }
-            Button(NSLocalizedString("action.cancel", comment: "Cancel"), role: .cancel) {}
+            Button(NSLocalizedString("action.cancel", comment: "Cancel"), role: .cancel) {
+                pendingCompanionPostIntent = false
+            }
         } message: {
             Text(NSLocalizedString("companion.post.visibilityOff.message", comment: "Visibility off alert message"))
+        }
+        .sheet(isPresented: $showingProfileSettings, onDismiss: resumeBlockedFlow) {
+            // The real "My Profile" editor (CompanionProfileView alias) with its
+            // required UserPreferences dependency, in its own stack so the inner
+            // walked-routes push still works from this modal entry point.
+            NavigationStack {
+                MyProfileEditView()
+                    .environment(preferences)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(NSLocalizedString("common.done", comment: "Done")) {
+                                showingProfileSettings = false
+                            }
+                        }
+                    }
+            }
         }
         .sheet(isPresented: $showingCompanionPostSheet) {
             CompanionPostCreationSheet(itinerary: itinerary) { post in
@@ -162,8 +216,55 @@ public struct ItineraryDetailView: View {
                 importedToast(count: count)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 16)
+            } else if let saveErrorMessage {
+                saveErrorToast(message: saveErrorMessage)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 16)
             }
         }
+    }
+
+    /// Inline failure toast with a real retry (contract 3) — the previous
+    /// value/order is already restored by the action that failed.
+    private func saveErrorToast(message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(CT.sunGoldDeep)
+            Text(message)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            if retryAction != nil {
+                Button(NSLocalizedString("itinerary.detail.save.retry", comment: "Retry the failed itinerary write")) {
+                    let retry = retryAction
+                    saveErrorMessage = nil
+                    retryAction = nil
+                    retry?()
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(CT.accent)
+                .frame(minHeight: HitTargetMetrics.minimum)
+            }
+            Button {
+                withAnimation {
+                    saveErrorMessage = nil
+                    retryAction = nil
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(NSLocalizedString("common.ok", comment: "Dismiss")))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Capsule().fill(Color(.systemBackground)).shadow(radius: 4))
     }
 
     // MARK: - Experience row
@@ -270,6 +371,7 @@ public struct ItineraryDetailView: View {
                 if newValue {
                     // Block if visibility is off
                     guard preferences.companionVisibility != .off else {
+                        pendingCompanionPostIntent = true
                         showingVisibilityOffAlert = true
                         return
                     }
@@ -282,12 +384,27 @@ public struct ItineraryDetailView: View {
         )
     }
 
+    /// Called when the profile editor sheet closes. Re-checks the visibility
+    /// the user just edited: if they turned it on, continue the companion-post
+    /// flow they were in the middle of; if it is still off, leave the itinerary
+    /// closed and drop the pending intent.
+    private func resumeBlockedFlow() {
+        let outcome = VisibilityOffRecovery.decide(
+            visibility: preferences.companionVisibility,
+            hadPendingIntent: pendingCompanionPostIntent
+        )
+        pendingCompanionPostIntent = false
+        switch outcome {
+        case .none, .stillBlocked:
+            break
+        case .resumeCompanionPost:
+            showingCompanionPostSheet = true
+        }
+    }
+
     // MARK: - Actions
 
     private func activateCompanionPost(_ post: CompanionPost) {
-        openToCompanions = true
-        preferences.activeCompanionPosts[itinerary.id.rawValue] = post
-        // Persist openToCompanions on the itinerary value
         let now = ISO8601DateFormatter().string(from: Date())
         let updated = Itinerary(
             id: itinerary.id,
@@ -302,13 +419,28 @@ public struct ItineraryDetailView: View {
             createdAt: itinerary.createdAt,
             updatedAt: now
         )
-        try? store.update(updated)
+        do {
+            // Durable ack first (contract 3): only a successful write flips
+            // the UI state, records the post and fires the haptic.
+            try store.update(updated)
+        } catch {
+            openToCompanions = false
+            withAnimation {
+                saveErrorMessage = NSLocalizedString(
+                    "itinerary.detail.save.error",
+                    comment: "Shown when an itinerary write fails"
+                )
+                retryAction = { activateCompanionPost(post) }
+            }
+            return
+        }
+        openToCompanions = true
+        preferences.activeCompanionPosts[itinerary.id.rawValue] = post
+        withAnimation { saveErrorMessage = nil; retryAction = nil }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     private func removeCompanionPost() {
-        openToCompanions = false
-        preferences.activeCompanionPosts.removeValue(forKey: itinerary.id.rawValue)
         let now = ISO8601DateFormatter().string(from: Date())
         let updated = Itinerary(
             id: itinerary.id,
@@ -323,15 +455,54 @@ public struct ItineraryDetailView: View {
             createdAt: itinerary.createdAt,
             updatedAt: now
         )
-        try? store.update(updated)
+        do {
+            try store.update(updated)
+        } catch {
+            // Stay open (the previous value) and offer a retry — closing
+            // without a write would claim a state that never persisted.
+            openToCompanions = true
+            withAnimation {
+                saveErrorMessage = NSLocalizedString(
+                    "itinerary.detail.save.error",
+                    comment: "Shown when an itinerary write fails"
+                )
+                retryAction = { removeCompanionPost() }
+            }
+            return
+        }
+        openToCompanions = false
+        preferences.activeCompanionPosts.removeValue(forKey: itinerary.id.rawValue)
+        withAnimation { saveErrorMessage = nil; retryAction = nil }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func moveExperience(from source: IndexSet, to destination: Int) {
         var ids = experienceIds
         ids.move(fromOffsets: source, toOffset: destination)
+        let previous = experienceIds
         experienceIds = ids
-        try? store.reorderExperiences(ids, in: itinerary.id)
+        persistOrder(ids, previous: previous)
+    }
+
+    /// Persist a reorder; on failure restore the previous visible order and
+    /// offer a retry of the exact new order (contract 3).
+    private func persistOrder(_ ids: [String], previous: [String]) {
+        do {
+            try store.reorderExperiences(ids, in: itinerary.id)
+            withAnimation { saveErrorMessage = nil; retryAction = nil }
+        } catch {
+            experienceIds = previous
+            withAnimation {
+                saveErrorMessage = NSLocalizedString(
+                    "itinerary.detail.save.error",
+                    comment: "Shown when an itinerary write fails"
+                )
+                retryAction = {
+                    experienceIds = ids
+                    persistOrder(ids, previous: previous)
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -386,13 +557,29 @@ public struct ItineraryDetailView: View {
 
     private func importFavorites() {
         let favIds = preferences.favoritedExperiences
-        guard let count = try? store.importFavorites(favIds, into: itinerary.id), count > 0 else { return }
-        experienceIds = store.load(id: itinerary.id)?.experienceIds ?? experienceIds
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        withAnimation { importedCount = count }
-        Task {
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            withAnimation { importedCount = nil }
+        do {
+            let count = try store.importFavorites(favIds, into: itinerary.id)
+            guard count > 0 else { return }
+            experienceIds = store.load(id: itinerary.id)?.experienceIds ?? experienceIds
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            withAnimation {
+                importedCount = count
+                saveErrorMessage = nil
+                retryAction = nil
+            }
+            Task {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                withAnimation { importedCount = nil }
+            }
+        } catch {
+            // Keep the current list untouched and offer a retry (contract 3).
+            withAnimation {
+                saveErrorMessage = NSLocalizedString(
+                    "itinerary.detail.save.error",
+                    comment: "Shown when an itinerary write fails"
+                )
+                retryAction = { importFavorites() }
+            }
         }
     }
 

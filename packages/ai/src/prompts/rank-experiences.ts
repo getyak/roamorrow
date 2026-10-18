@@ -16,8 +16,8 @@ export interface RankExperiencesInput {
   userIntent: string;
   /** Pool of experiences to rank from. */
   availableExperiences: Experience[];
-  /** Local hour 0–23 in the user's current city. */
-  currentHour: number;
+  /** Local hour 0–23 at the query location; null when its timezone is unknown. */
+  currentHour: number | null;
   /** Caller label passed through to cost tracking, e.g. "nearby" or "bot:voice". */
   route?: string;
 }
@@ -40,7 +40,7 @@ const SYSTEM_PROMPT = `You rank solo-travel experiences for a single user reques
 
 PRINCIPLES (in priority order):
 1. Intent fit — does the experience match what the user said they feel like doing?
-2. Time-of-day fit — is the current hour inside one of the experience's bestTimes windows? Penalize hard if the experience is closed or wrong-time (e.g. sunset spot at 10am).
+2. Time-of-day fit — use bestTimes only when the place's current local hour is known. bestTimes are suggested visit windows, not opening hours. An unknown hour or empty window is unknown, not proof that a place is open or suitable anytime. Never claim a venue is open or closed without current business evidence.
 3. Proximity — closer is better, but a perfect-fit 25 min walk beats a poor-fit 5 min walk.
 4. Solo-friendliness — soloScore.overall matters; never recommend something that pressures couples/groups.
 
@@ -58,7 +58,7 @@ Example output (use this exact shape):
 function summarizeExperience(exp: Experience, walkMin: number): string {
   const bestTimes =
     exp.bestTimes.length === 0
-      ? "anytime"
+      ? "unknown"
       : exp.bestTimes
           .map((t) => `${t.startHour}–${t.endHour}${t.note ? ` (${t.note})` : ""}`)
           .join(", ");
@@ -115,7 +115,7 @@ export async function rankExperiences(
     .join("\n\n");
 
   const userMessage = `User location: [${userLocation[0]}, ${userLocation[1]}] (lng, lat)
-Current local hour: ${currentHour} (0–23)
+Current local hour: ${currentHour !== null && Number.isInteger(currentHour) && currentHour >= 0 && currentHour <= 23 ? `${currentHour} (0–23)` : "unknown; do not infer time-of-day fit or opening status"}
 User intent: "${userIntent}"
 
 Candidate experiences (already filtered to nearest ~20):

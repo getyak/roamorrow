@@ -26,16 +26,47 @@ public struct StopsList: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(stops.enumerated()), id: \.offset) { index, experience in
-                StopRow(
+                let leg = distanceLabel(index: index)
+                // Real Button (R2-05): VoiceOver can focus and activate each
+                // stop row. The label carries the number, title, leg info and
+                // a ≥44pt tappable region; `StopRow` keeps its quiet visuals.
+                Button {
+                    onTapStop(experience)
+                } label: {
+                    StopRow(
+                        index: index,
+                        experience: experience,
+                        distanceText: leg,
+                        isLast: index == stops.count - 1
+                    )
+                    .frame(minHeight: HitTargetMetrics.minimum, alignment: .top)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(Self.rowAccessibilityLabel(
                     index: index,
                     experience: experience,
-                    distanceText: distanceLabel(index: index),
-                    isLast: index == stops.count - 1
-                )
-                .contentShape(Rectangle())
-                .onTapGesture { onTapStop(experience) }
+                    distanceText: leg
+                )))
+                .accessibilityHint(Text(NSLocalizedString(
+                    "stops.row.hint",
+                    comment: "Hint: opens the stop's experience detail"
+                )))
+                .accessibilityAddTraits(.isButton)
             }
         }
+    }
+
+    /// Number + title + place + leg distance in one VoiceOver label so the row
+    /// announces everything the visual row shows.
+    static func rowAccessibilityLabel(index: Int, experience: Experience, distanceText: String) -> String {
+        let number = String(format: "%02d", index + 1)
+        var parts = [number, experience.title]
+        if let romanized = experience.location.placeNameRomanized, !romanized.isEmpty {
+            parts.append(romanized)
+        }
+        parts.append(distanceText)
+        return parts.joined(separator: ", ")
     }
 
     private func distanceLabel(index: Int) -> String {
@@ -67,7 +98,7 @@ private struct StopRow: View {
     let distanceText: String
     let isLast: Bool
 
-    private let discSize: CGFloat = 30
+    @ScaledMetric(relativeTo: .footnote) private var discSize: CGFloat = 30
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -99,7 +130,7 @@ private struct StopRow: View {
                     .frame(width: 1.5, height: 12)
             }
         }
-        .frame(width: 30)
+        .frame(width: discSize)
     }
 
     private var categoryDisc: some View {
@@ -110,6 +141,8 @@ private struct StopRow: View {
             Text(String(format: "%02d", index + 1))
                 .ctMono(11, .semibold)
                 .foregroundStyle(.white)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 

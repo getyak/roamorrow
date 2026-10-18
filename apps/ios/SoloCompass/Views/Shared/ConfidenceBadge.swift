@@ -64,8 +64,13 @@ public struct ConfidenceBadge: View {
                 }
             }
             .contentShape(Rectangle())
-            .frame(minWidth: 44, minHeight: 32, alignment: .leading)
-            .scaleEffect(pressed ? 0.86 : 1.0)
+            // Visual pill stays compact; the hit target is a transparent 44pt
+            // area (I18). `frame` comes BEFORE `contentShape` so the expanded
+            // transparent area is part of the tappable shape. The press scale
+            // is a subtle affordance, not a squash.
+            .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum, alignment: .leading)
+            .contentShape(Rectangle())
+            .scaleEffect(pressed ? 0.96 : 1.0)
         }
         .buttonStyle(.plain)
         .popover(isPresented: $showSignals) {

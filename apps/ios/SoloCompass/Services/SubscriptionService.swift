@@ -326,6 +326,7 @@ public final class SubscriptionService {
     /// we also call refresh directly to ensure the view sees the
     /// new state synchronously after this returns.
     public func restorePurchases() async -> Bool {
+        lastError = nil
         do {
             try await AppStore.sync()
             await refreshEntitlement()

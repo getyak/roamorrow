@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ShareButton } from "@/components/ShareButton";
 import type { Metadata } from "next";
 import { BRAND, publicUrl } from "@/lib/brand";
 import { findTripBySlug, type Trip } from "@/lib/trips-data";
@@ -31,6 +32,12 @@ function resolveLang(searchParams: Record<string, string | string[] | undefined>
   return single === "zh" ? "zh" : "en";
 }
 
+function sampleTripIntro(lang: "zh" | "en"): string {
+  return lang === "zh"
+    ? "这是一份示例行程，展示如何记录一次城市漫步。作者、故事与统计仅作演示。"
+    : "An illustrative trip recap. The author, story and statistics are examples of how a city walk could be recorded.";
+}
+
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const sp = await searchParams;
@@ -39,8 +46,8 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   if (!trip) return { title: "Roamorrow — Not found" };
 
   const title = lang === "zh" ? trip.titleZh : trip.titleEn;
-  const description = lang === "zh" ? trip.introZh : trip.intro;
-  const fullTitle = `${title} — ${trip.author} · Roamorrow`;
+  const description = sampleTripIntro(lang);
+  const fullTitle = `${title} · ${lang === "zh" ? "行程示例" : "Sample trip"} · Roamorrow`;
 
   return {
     title: { absolute: fullTitle },
@@ -88,10 +95,14 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
           solo: "独自",
           stats: { walked: "走了", places: "体验", favorite: "最爱" },
           dayLabels: ["第一天", "第二天", "第三天", "第四天"],
-          cta1: "想做你自己的？",
-          cta2: "免费 · 不用账号",
-          cta3: "从你在的地方开始",
-          poweredBy: "由 Roamorrow 整理 · 你的故事，你拥有",
+          // Truthful copy (R2): the button opens the real city guide — no
+          // invented compass.io address, no plan-building promise.
+          cta1: "从这座城市的指南开始规划",
+          cta2: "示例指南 · 出行前请核实",
+          cta3: "地点、地图与诚实笔记",
+          ctaButton: "打开城市指南",
+          topMeta: "Roamorrow · 行程示例",
+          poweredBy: "Roamorrow 行程回顾示例",
           share: "分享",
           km: "公里",
         }
@@ -100,25 +111,28 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
           solo: "Solo",
           stats: { walked: "Walked", places: "Places", favorite: "Favorite" },
           dayLabels: ["Day 1", "Day 2", "Day 3", "Day 4"],
-          cta1: "Want to make yours?",
-          cta2: "Free · no account",
-          cta3: "Start from where you are",
-          poweredBy: "Made with Roamorrow · Your story, yours",
+          cta1: "Plan from this city's guide",
+          cta2: "Sample guide · verify before you go",
+          cta3: "Places, maps and honest notes",
+          ctaButton: "Open the city guide",
+          topMeta: "Roamorrow · Sample trip",
+          poweredBy: "A sample Roamorrow trip recap",
           share: "Share",
           km: "km",
         };
 
   const monthLabel = lang === "zh" ? trip.monthLabelZh : trip.monthLabel;
   const title = lang === "zh" ? trip.titleZh : trip.titleEn;
-  const intro = lang === "zh" ? trip.introZh : trip.intro;
+  const intro = sampleTripIntro(lang);
   const quote = lang === "zh" ? trip.quoteZh : trip.quote;
 
   return (
     <main
+      id="main"
+      className="trip-recap"
       style={{
         minHeight: "100vh",
         background: "#F1ECDF",
-        padding: "48px 24px 80px",
         fontFamily: fontStack,
         color: "#1A1612",
       }}
@@ -136,6 +150,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
       >
         {/* Top bar */}
         <div
+          className="trip-topbar"
           style={{
             padding: "12px 22px",
             borderBottom: "0.5px solid #E5DDCD",
@@ -161,40 +176,40 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
             </svg>
           </div>
           <span
+            className="trip-crumb"
             style={{
               fontFamily: FONT_MONO,
               fontSize: 11,
-              color: "#8A7860",
+              color: "#74695C",
               letterSpacing: 0.5,
             }}
           >
-            roamorrow.com / {trip.author.toLowerCase().replace(/\s+/g, "-")} / {trip.slug}
+            {/* Truthful page meta (R2): no invented compass.io address. */}
+            {T.topMeta}
           </span>
           <span style={{ flex: 1 }} />
-          <button
-            type="button"
-            style={{
-              padding: "4px 10px",
-              borderRadius: 4,
-              background: "transparent",
-              border: "0.5px solid #D6CEC0",
-              fontFamily: fontStack,
-              fontSize: 11,
-              color: "var(--accent)",
-              cursor: "pointer",
+          <ShareButton
+            title={title}
+            text={intro}
+            labels={{
+              idle: T.share,
+              shared: lang === "zh" ? "已分享" : "Shared",
+              copied: lang === "zh" ? "链接已复制" : "Link copied",
+              failed:
+                lang === "zh"
+                  ? "分享失败，请手动复制地址栏链接"
+                  : "Sharing failed — copy the URL from the address bar",
             }}
-          >
-            ↗ {T.share}
-          </button>
+          />
         </div>
 
         {/* Hero */}
-        <div style={{ padding: "40px 56px 32px" }}>
+        <div className="trip-section" style={{ paddingTop: 40, paddingBottom: 32 }}>
           <div
             style={{
               fontFamily: FONT_MONO,
               fontSize: 10,
-              color: "#A39F99",
+              color: "#74695C",
               letterSpacing: 2,
               textTransform: "uppercase",
               marginBottom: 18,
@@ -205,13 +220,14 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
           <h1
             style={{
               fontFamily: lang === "zh" ? FONT_CN : FONT_SERIF,
-              fontSize: lang === "zh" ? 44 : 56,
+              fontSize: lang === "zh" ? "clamp(28px, 8vw, 44px)" : "clamp(32px, 9vw, 56px)",
               fontWeight: lang === "zh" ? 600 : 400,
               fontStyle: lang === "zh" ? "normal" : "italic",
               lineHeight: 1.05,
               letterSpacing: lang === "zh" ? "-0.5px" : "-1.5px",
               color: "#1A1612",
               margin: "0 0 14px",
+              overflowWrap: "anywhere",
             }}
           >
             {title}
@@ -231,6 +247,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
 
           {/* Stats row */}
           <div
+            className="trip-stats"
             style={{
               display: "flex",
               gap: 0,
@@ -264,17 +281,16 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
             ).map((s, i) => (
               <div
                 key={s.label}
+                className="trip-stat"
                 style={{
-                  flex: 1,
                   borderLeft: i > 0 ? "0.5px solid #E5DDCD" : "none",
-                  padding: i === 0 ? "0 16px 0 0" : "0 16px",
                 }}
               >
                 <div
                   style={{
                     fontFamily: FONT_MONO,
-                    fontSize: 9.5,
-                    color: "#A39F99",
+                    fontSize: 12,
+                    color: "#74695C",
                     letterSpacing: 1,
                     textTransform: "uppercase",
                     marginBottom: 6,
@@ -300,7 +316,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
         </div>
 
         {/* Pull quote */}
-        <div style={{ padding: "0 56px 36px" }}>
+        <div className="trip-section" style={{ paddingBottom: 36 }}>
           <div
             style={{
               fontFamily: lang === "zh" ? FONT_CN : FONT_SERIF,
@@ -319,28 +335,27 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
         </div>
 
         {/* Day cards */}
-        <div style={{ padding: "0 56px 40px" }}>
+        <div className="trip-section" style={{ paddingBottom: 40 }}>
           {trip.days.map((d, i) => {
             const dayTitle = lang === "zh" ? d.titleZh : d.title;
             const label = T.dayLabels[i] ?? (lang === "zh" ? `第 ${i + 1} 天` : `Day ${i + 1}`);
             return (
               <div
                 key={d.title}
+                className="trip-day-grid"
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "60px 1fr 80px",
                   padding: "20px 0",
                   borderTop: "0.5px solid #E5DDCD",
                   alignItems: "flex-start",
                   gap: 18,
                 }}
               >
-                <div>
+                <div className="trip-day-meta">
                   <div
                     style={{
                       fontFamily: FONT_MONO,
                       fontSize: 10,
-                      color: "#A39F99",
+                      color: "#74695C",
                       letterSpacing: 1,
                       marginBottom: 4,
                     }}
@@ -357,7 +372,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
                     {d.icon}
                   </div>
                 </div>
-                <div>
+                <div className="trip-day-main">
                   <div
                     style={{
                       fontFamily: lang === "zh" ? FONT_CN : FONT_SERIF,
@@ -383,12 +398,12 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
                     {d.places.join(" · ")}
                   </div>
                 </div>
-                <div style={{ textAlign: "right" }}>
+                <div className="trip-day-km">
                   <div
                     style={{
                       fontFamily: FONT_MONO,
-                      fontSize: 9.5,
-                      color: "#A39F99",
+                      fontSize: 12,
+                      color: "#74695C",
                       letterSpacing: 1,
                       marginBottom: 2,
                     }}
@@ -413,15 +428,12 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
 
         {/* CTA */}
         <div
+          className="trip-cta"
           style={{
-            margin: "0 56px 40px",
             padding: "28px 32px",
             background: "linear-gradient(135deg, #2A2218 0%, #1A1612 100%)",
             borderRadius: 12,
             color: "var(--dark-fg)",
-            display: "flex",
-            alignItems: "center",
-            gap: 20,
           }}
         >
           <div style={{ flex: 1 }}>
@@ -450,6 +462,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
           </div>
           <Link
             href={`/${trip.citySlug}${lang === "zh" ? "?lang=zh" : ""}`}
+            className="trip-cta-button"
             style={{
               padding: "10px 18px",
               borderRadius: 6,
@@ -464,7 +477,8 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
               textDecoration: "none",
             }}
           >
-            roamorrow.com →
+            {/* The action the link really performs (R2): open the city guide. */}
+            {T.ctaButton}
           </Link>
         </div>
 
@@ -476,7 +490,7 @@ function TripRecap({ trip, lang }: { trip: Trip; lang: Lang }) {
             background: "#FBF7F0",
             fontFamily: FONT_MONO,
             fontSize: 10,
-            color: "#A39F99",
+            color: "#74695C",
             letterSpacing: 0.5,
             textAlign: "center",
           }}

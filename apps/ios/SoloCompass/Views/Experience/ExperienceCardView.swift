@@ -480,7 +480,7 @@ public struct ExperienceCardView: View {
         .accessibilityLabel(Text(
             "\(experience.title). \(experience.oneLiner). " +
             String(format: NSLocalizedString("solo.a11y", comment: "Solo Score %@ of 10"),
-                   String(format: "%.1f", experience.soloScore.overall)) +
+                   experience.soloScoreDisplay) +
             {
                 var parts = ""
                 if isArrived {

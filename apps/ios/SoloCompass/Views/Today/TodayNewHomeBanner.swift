@@ -60,7 +60,8 @@ struct TodayNewHomeBanner: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(CT.fgSubtle)
-                        .padding(6)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)

@@ -13,6 +13,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 FIXTURE="$REPO_ROOT/apps/ios/SoloCompass/Tests/fixtures/user_stories.json"
 EVIDENCE_ROOT="$REPO_ROOT/apps/ios/rubric_evidence/user_stories"
 APP_BUNDLE_ID="${SC_BUNDLE_ID:-com.solocompass.app}"
@@ -30,27 +31,51 @@ require xcrun
 
 [[ -f "$FIXTURE" ]] || die "fixture not found: $FIXTURE"
 
-# ---- pick a booted simulator (prefer iPhone 17 Pro) ----
-UDID="$(xcrun simctl list devices booted -j \
-  | jq -r '.devices | to_entries[] | .value[] | select(.state=="Booted") | .udid' \
-  | head -n1 || true)"
+# ---- shared local simulator session policy ----
+# Reexec inside the shared host helper before touching the simulator. On local
+# macOS outside CI this acquires the shared lock and exports IOS_SIMULATOR_ID /
+# SIMULATOR_UDID; nesting is validated with `is-owner`, not env alone. An
+# explicit but unusable DEV_IOS_SESSION_BIN fails closed.
+# shellcheck source=../ios/session.sh
+[[ -f "$REPO_ROOT/scripts/ios/session.sh" ]] || die "shared session library missing: $REPO_ROOT/scripts/ios/session.sh"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/ios/session.sh"
+ios_session_reexec_if_needed "$SCRIPT_PATH" "$@"
 
-if [[ -z "$UDID" ]]; then
-  # Boot iPhone 17 Pro (any iOS).
-  UDID="$(xcrun simctl list devices -j \
-    | jq -r '.devices | to_entries[] | .value[] | select(.name=="iPhone 17 Pro") | .udid' \
-    | head -n1)"
-  [[ -n "$UDID" ]] || die "no iPhone 17 Pro simulator found"
+# ---- deterministic simulator selection (shared policy) ----
+# Never inherit an arbitrary booted device: a booted SE/iPad must not override
+# the declared iPhone 17 Pro preference. Explicit IOS_SIMULATOR_ID is honored
+# and validated (see docs/development/ios-testing.md).
+SEL_ERR="$(mktemp)"
+if SEL_JSON="$(ios_select_simulator_json "iPhone 17 Pro" 2>"$SEL_ERR")" \
+  && [[ -n "$SEL_JSON" ]]; then
+  UDID="$(ios_json_field "$SEL_JSON" udid)"
+  SIM_NAME="$(ios_json_field "$SEL_JSON" name)"
+  SIM_STATE="$(ios_json_field "$SEL_JSON" state)"
+  rm -f "$SEL_ERR"
+else
+  cat "$SEL_ERR" >&2 || true
+  rm -f "$SEL_ERR"
+  die "no suitable iPhone simulator (need iPhone 17 Pro or any numbered iPhone)"
+fi
+[[ -n "$UDID" ]] || die "simulator selector returned no UDID"
+log "using simulator $SIM_NAME ($UDID)"
+
+if [[ "$SIM_STATE" != "Booted" ]]; then
   log "booting $UDID"
-  xcrun simctl boot "$UDID" || true
+  if [[ "$SIM_STATE" == "Shutdown" ]]; then
+    xcrun simctl boot "$UDID" || die "could not boot simulator $UDID ($SIM_NAME)"
+  fi
+  # Readiness gate: hidden boot failures previously let the run continue
+  # against a device that never became ready.
+  state=""
   for _ in {1..30}; do
     state="$(xcrun simctl list devices -j | jq -r --arg u "$UDID" '.devices | to_entries[] | .value[] | select(.udid==$u) | .state')"
     [[ "$state" == "Booted" ]] && break
     sleep 1
   done
+  [[ "$state" == "Booted" ]] || die "simulator $UDID never reached Booted state (last: ${state:-unknown})"
 fi
-
-log "using simulator $UDID"
 
 # Pre-grant location permission so the CLLocationManager prompt does not gate
 # the first frame and obscure every screenshot. Silent no-op if the app isn't
@@ -63,13 +88,15 @@ if ! xcrun simctl get_app_container "$UDID" "$APP_BUNDLE_ID" >/dev/null 2>&1; th
   log "app $APP_BUNDLE_ID not installed — building"
   (
     cd "$IOS_APP_DIR"
+    DERIVED_DATA="${IOS_DERIVED_DATA_PATH:-build}"
     xcodebuild build \
       -project SoloCompass.xcodeproj \
       -scheme SoloCompass \
       -destination "platform=iOS Simulator,id=$UDID" \
-      -derivedDataPath build \
+      -derivedDataPath "$DERIVED_DATA" \
+      -parallel-testing-enabled NO \
       -quiet
-    APP_PATH="$(find build/Build/Products -maxdepth 3 -name 'SoloCompass.app' | head -n1)"
+    APP_PATH="$(find "$DERIVED_DATA/Build/Products" -maxdepth 3 -name 'SoloCompass.app' | head -n1)"
     [[ -n "$APP_PATH" ]] || exit 1
     xcrun simctl install "$UDID" "$APP_PATH"
   ) || die "app build/install failed"

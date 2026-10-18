@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { NearbyResult } from "@/app/api/experiences/nearby/route";
 import { categoryEmoji } from "@/lib/category";
+import { buildTodayBrief } from "@/lib/today-copy";
 
 interface TodayBannerProps {
   readonly results: readonly NearbyResult[];
@@ -10,14 +11,14 @@ interface TodayBannerProps {
 }
 
 /**
- * Dismissable banner under the top nav that surfaces "what's good right now"
- * from the viewer's local hour. Uses only client data — no extra API call.
+ * Dismissable evidence-bound picks under the top controls. Uses only client data — no extra API call.
  * Dismissal persists for the session via sessionStorage.
  */
 export function TodayBanner({ results, onSelect }: TodayBannerProps) {
   const [dismissed, setDismissed] = useState(() => readDismissed());
 
-  const { headline, picks } = useMemo(() => pickForNow(results), [results]);
+  // W02: the brief ranks by real evidence and the copy claims nothing live.
+  const { headline, basis, picks } = useMemo(() => buildTodayBrief(results), [results]);
 
   if (dismissed) return null;
   if (picks.length === 0) return null;
@@ -29,25 +30,23 @@ export function TodayBanner({ results, onSelect }: TodayBannerProps) {
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-12 z-10 flex justify-center px-3">
-      <div className="pointer-events-auto flex max-w-xl items-start gap-3 rounded-2xl bg-deep-teal/95 px-4 py-3 text-paper-cream shadow-lg ring-1 ring-deep-teal/60 backdrop-blur-md">
-        <span className="text-xl leading-none" aria-hidden="true">
-          ✨
-        </span>
+      <div className="pointer-events-auto relative w-full max-w-xl rounded-2xl bg-paper-cream/95 px-3 py-2 text-ink-warm shadow-sm ring-1 ring-ink-warm/10 backdrop-blur-md">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium leading-snug">{headline}</p>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
+          <p className="flex min-h-[36px] items-center pr-10 text-sm font-medium leading-snug">
+            {headline}
+          </p>
+          <p className="hidden text-xs leading-snug text-ink-warm/70 sm:block">{basis}</p>
+          <ul className="mt-1 flex gap-2 overflow-x-auto pb-1">
             {picks.map((p) => (
-              <li key={p.experience.id}>
+              <li key={p.experience.id} className="min-w-[220px] flex-1">
                 <button
                   type="button"
                   onClick={() => onSelect(p.experience.id)}
-                  className="flex items-center gap-1.5 rounded-full bg-paper-cream/15 px-2.5 py-1 text-xs font-medium text-paper-cream ring-1 ring-paper-cream/20 transition hover:bg-paper-cream/25"
+                  className="flex min-h-[56px] w-full flex-wrap items-center gap-x-2 rounded-xl bg-ink-warm/5 px-3 py-2 text-left text-xs font-medium text-ink-warm transition hover:bg-ink-warm/10"
                 >
                   <span aria-hidden="true">{categoryEmoji[p.experience.category]}</span>
-                  <span className="max-w-[140px] truncate">{p.experience.title}</span>
-                  <span className="text-paper-cream/70">
-                    {p.experience.soloScore.overall.toFixed(1)}
-                  </span>
+                  <span className="min-w-0 flex-1 truncate">{p.experience.title}</span>
+                  <span className="block w-full pl-5 text-ink-warm/70">{p.evidence}</span>
                 </button>
               </li>
             ))}
@@ -57,97 +56,13 @@ export function TodayBanner({ results, onSelect }: TodayBannerProps) {
           type="button"
           onClick={handleDismiss}
           aria-label="Dismiss today's picks"
-          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-paper-cream/70 transition hover:bg-paper-cream/15 hover:text-paper-cream"
+          className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full text-ink-warm/70 transition hover:bg-ink-warm/10 hover:text-ink-warm"
         >
           ×
         </button>
       </div>
     </div>
   );
-}
-
-interface Pick {
-  readonly experience: NearbyResult["experience"];
-  readonly score: number;
-}
-
-interface PickResult {
-  readonly headline: string;
-  readonly picks: readonly Pick[];
-}
-
-function pickForNow(results: readonly NearbyResult[]): PickResult {
-  if (results.length === 0) return { headline: "", picks: [] };
-
-  const now = new Date();
-  const hour = now.getHours();
-  const slot = timeSlot(hour);
-
-  const scored: Pick[] = results.map((r) => {
-    const exp = r.experience;
-    let score = exp.soloScore.overall * 10;
-    const fits = exp.bestTimes.some((t) => hourInWindow(hour, t));
-    if (fits) score += 25;
-    else if (exp.bestTimes.length > 0) score -= 10;
-    score -= Math.min(15, r.walkingMinutes * 0.6);
-    return { experience: exp, score };
-  });
-
-  const picks = scored
-    .slice()
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-
-  return { headline: headlineFor(slot, picks[0]?.experience.category), picks };
-}
-
-function hourInWindow(hour: number, t: { startHour: number; endHour: number }): boolean {
-  if (t.startHour <= t.endHour) {
-    return hour >= t.startHour && hour < t.endHour;
-  }
-  // Wrap-around window (e.g. 22→4 = nightlife).
-  return hour >= t.startHour || hour < t.endHour;
-}
-
-type Slot = "morning" | "afternoon" | "evening" | "night";
-
-function timeSlot(hour: number): Slot {
-  if (hour < 6) return "night";
-  if (hour < 12) return "morning";
-  if (hour < 18) return "afternoon";
-  if (hour < 22) return "evening";
-  return "night";
-}
-
-function headlineFor(slot: Slot, leadCategory: string | undefined): string {
-  const base: Record<Slot, string> = {
-    morning: "Good for a solo morning",
-    afternoon: "What fits this afternoon",
-    evening: "Calm pick for tonight",
-    night: "Open right now",
-  };
-  if (!leadCategory) return base[slot];
-  const hint: Record<string, Record<Slot, string>> = {
-    coffee: {
-      morning: "Pick a quiet café before the crowd",
-      afternoon: "An afternoon café break, solo-friendly",
-      evening: "An evening café for slow reading",
-      night: "Late café — open and uncrowded",
-    },
-    food: {
-      morning: "Light bite to start the day",
-      afternoon: "A solo-friendly lunch nearby",
-      evening: "Dinner without the couples vibe",
-      night: "Open kitchen this late",
-    },
-    nature: {
-      morning: "A morning walk while it's cool",
-      afternoon: "Park time — shaded picks",
-      evening: "Golden-hour outdoors",
-      night: "Outdoors that's safe after dark",
-    },
-  };
-  return hint[leadCategory]?.[slot] ?? base[slot];
 }
 
 const STORAGE_KEY = "sc_today_banner_dismissed";

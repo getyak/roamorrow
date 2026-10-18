@@ -17,6 +17,8 @@ struct LocationPickerSheet: View {
     let onDismiss: () -> Void
 
     @State private var state: LocationPickerState
+    @State private var coordinateNotice: String?
+    @State private var showCoordinateError = false
     @State private var searchService = LocationSearchService()
     @State private var searchDebounceTask: Task<Void, Never>? = nil
     @State private var userLocation: CLLocation?
@@ -291,6 +293,9 @@ struct LocationPickerSheet: View {
             }
 
             Divider()
+            if let coordinateNotice {
+                Text(coordinateNotice).font(.caption).padding(12)
+            }
 
             if let error = state.searchError {
                 ContentUnavailableView(
@@ -308,6 +313,11 @@ struct LocationPickerSheet: View {
                         selectSearchResult(item)
                     } label: {
                         SearchResultRow(item: item)
+                    }
+                    .contextMenu {
+                        Button(NSLocalizedString("location.openIn.apple", comment: "Open original map result")) {
+                            item.openInMaps()
+                        }
                     }
                     .swipeActions(edge: .trailing) {
                         Button {
@@ -350,12 +360,16 @@ struct LocationPickerSheet: View {
                         CoordinateField(
                             label: NSLocalizedString("locationPicker.map.lat", comment: "Latitude field label"),
                             text: bs.manualLatText,
-                            placeholder: "18.7877"
+                            placeholder: "18.7877",
+                            axis: .latitude,
+                            isInvalid: showCoordinateError
                         )
                         CoordinateField(
                             label: NSLocalizedString("locationPicker.map.lon", comment: "Longitude field label"),
                             text: bs.manualLonText,
-                            placeholder: "98.9938"
+                            placeholder: "98.9938",
+                            axis: .longitude,
+                            isInvalid: showCoordinateError
                         )
                     }
 
@@ -368,6 +382,16 @@ struct LocationPickerSheet: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.regular)
+
+                    if showCoordinateError {
+                        Text(NSLocalizedString(
+                            "locationPicker.map.coords.invalid",
+                            comment: "Coordinates out of range or unreadable"
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(CT.bannerError)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
                 .padding(.horizontal, 16)
 
@@ -450,7 +474,10 @@ struct LocationPickerSheet: View {
 
     private func selectSearchResult(_ item: MKMapItem) {
         commitHaptic()
-        let coord = item.placemark.coordinate
+        guard let coord = MapKitCoordinateSpace.shared.canonicalSearchCoordinate(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode) else {
+            coordinateNotice = MapKitCoordinateSpace.CalibrationError.unavailable.localizedDescription
+            return
+        }
         let label = item.name
             ?? item.placemark.locality
             ?? item.placemark.administrativeArea
@@ -478,7 +505,10 @@ struct LocationPickerSheet: View {
         let name = state.saveNameText.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
 
-        let coord = item.placemark.coordinate
+        guard let coord = MapKitCoordinateSpace.shared.canonicalSearchCoordinate(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode) else {
+            coordinateNotice = MapKitCoordinateSpace.CalibrationError.unavailable.localizedDescription
+            return
+        }
         let city = SavedCity(
             id: "custom_\(UUID().uuidString)",
             name: name,
@@ -544,7 +574,19 @@ struct LocationPickerSheet: View {
     }
 
     private func applyCoordinateFields() {
-        guard let coord = state.parsedCoordinate() else { return }
+        // Accept a locale decimal comma before parsing (Double wants ".").
+        state.manualLatText = state.manualLatText
+            .replacingOccurrences(of: ",", with: ".")
+            .trimmingCharacters(in: .whitespaces)
+        state.manualLonText = state.manualLonText
+            .replacingOccurrences(of: ",", with: ".")
+            .trimmingCharacters(in: .whitespaces)
+        guard let coord = state.parsedCoordinate() else {
+            // Keep the pin where it is and show why nothing moved.
+            showCoordinateError = true
+            return
+        }
+        showCoordinateError = false
         state.updatePin(to: coord)
         scheduleReverseGeocode()
     }
@@ -680,20 +722,52 @@ private struct SearchResultRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            let coord = item.placemark.coordinate
+            if let coord = MapKitCoordinateSpace.shared.canonicalSearchCoordinate(item.placemark.coordinate, countryCode: item.placemark.isoCountryCode) {
             Text(String(format: "%.4f, %.4f", coord.latitude, coord.longitude))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
+            }
         }
         .padding(.vertical, 2)
     }
 }
 
+/// Latitude / longitude text entry with an explicit hemisphere picker so west
+/// and south values are reachable without a minus key (decimalPad has none).
+/// The sign lives in the segmented control and is mirrored into the typed
+/// magnitude, keeping GeoJSON [lon, lat] ordering untouched.
 private struct CoordinateField: View {
+    enum Axis {
+        case latitude
+        case longitude
+
+        var positiveTitle: String {
+            switch self {
+            case .latitude: return NSLocalizedString("locationPicker.map.north", comment: "North")
+            case .longitude: return NSLocalizedString("locationPicker.map.east", comment: "East")
+            }
+        }
+
+        var negativeTitle: String {
+            switch self {
+            case .latitude: return NSLocalizedString("locationPicker.map.south", comment: "South")
+            case .longitude: return NSLocalizedString("locationPicker.map.west", comment: "West")
+            }
+        }
+    }
+
     let label: String
     @Binding var text: String
     let placeholder: String
+    var axis: Axis = .latitude
+    /// True after an apply attempt failed: the field border turns error-red so
+    /// out-of-range or unparseable input is visible, not silently ignored.
+    var isInvalid: Bool = false
+
+    private var isNegative: Bool {
+        text.trimmingCharacters(in: .whitespaces).hasPrefix("-")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -702,10 +776,34 @@ private struct CoordinateField: View {
                 .foregroundStyle(.secondary)
             TextField(placeholder, text: $text)
                 .textFieldStyle(.roundedBorder)
-                .keyboardType(.decimalPad)
+                // numbersAndPunctuation keeps "-" and "." reachable for typed entry.
+                .keyboardType(.numbersAndPunctuation)
                 .monospacedDigit()
                 .autocorrectionDisabled()
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(isInvalid ? CT.bannerError : .clear, lineWidth: 1)
+                )
+            Picker(label, selection: signBinding) {
+                Text(axis.positiveTitle).tag(false)
+                Text(axis.negativeTitle).tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .accessibilityLabel(Text(label))
         }
+    }
+
+    /// Mirrors the hemisphere choice into the typed text's sign.
+    private var signBinding: Binding<Bool> {
+        Binding(
+            get: { isNegative },
+            set: { negative in
+                var value = text.trimmingCharacters(in: .whitespaces)
+                if value.hasPrefix("-") { value.removeFirst() }
+                text = negative ? "-" + value : value
+            }
+        )
     }
 }
 

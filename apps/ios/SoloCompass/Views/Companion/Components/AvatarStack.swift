@@ -140,7 +140,7 @@ public struct AvatarStack: View {
         } label: {
             overflowBubble
         }
-        .buttonStyle(PressableButtonStyle(pressedScale: 0.94, haptic: false))
+        .buttonStyle(PressableButtonStyle())
         .accessibilityHint(NSLocalizedString("avatarstack.overflow.hint", comment: ""))
         .popover(isPresented: $showAll) {
             membersPopover

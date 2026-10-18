@@ -5,8 +5,8 @@ import SwiftUI
 /// countdown before the card commits ("撤回 · 2s"), and taps to pull the
 /// card back through `onUndo`.
 ///
-/// Timing is driven by `TimelineView(.animation)` so the label updates
-/// every frame without a Timer allocation per card. When `deadline` has
+/// Timing is driven by a one-second TimelineView cadence, matching the
+/// displayed whole-second countdown. When `deadline` has
 /// passed, the pill folds away.
 @MainActor
 struct UndoPill: View {
@@ -20,10 +20,7 @@ struct UndoPill: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        // .animation ticks every display refresh; we recompute the label
-        // each tick against `context.date`. TimelineView collapses to a
-        // static render when the app backgrounds.
-        TimelineView(.animation(minimumInterval: 0.1, paused: false)) { context in
+        TimelineView(.periodic(from: .now, by: 1)) { context in
             let remaining = max(0, deadline.timeIntervalSince(context.date))
             if remaining > 0 {
                 Button(action: {
@@ -51,6 +48,11 @@ struct UndoPill: View {
                         Capsule()
                             .strokeBorder(CT.sunGoldDeep.opacity(0.25), lineWidth: 0.5)
                     )
+                    // Small visible pill, transparent 44pt tap target (I23).
+                    // `frame` precedes `contentShape` so the expanded area is
+                    // part of the tappable shape.
+                    .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(

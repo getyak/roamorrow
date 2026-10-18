@@ -12,9 +12,9 @@ import SwiftUI
 /// ledger; B1-d reuses the existing TimeCapsule / CapsuleStore as-is (no new
 /// persistence).
 struct TodaySealReceipt: View {
-    /// Called when the receipt is tapped — routes to the capsule detail /
-    /// chapter card. Wired by the container in a later slice.
-    var onOpen: (TimeCapsule) -> Void = { _ in }
+    /// Called when the receipt is tapped — opens metadata without unsealing
+    /// the capsule early. The container owns presentation.
+    let onOpen: (TimeCapsule) -> Void
 
     @State private var yesterdayCapsule: TimeCapsule?
 

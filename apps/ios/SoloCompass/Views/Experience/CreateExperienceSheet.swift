@@ -32,6 +32,24 @@ public struct CreateExperienceSheet: View {
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var images: [UIImage] = []
     @State private var isShowingCamera = false
+    @State private var photoLoadingTask: Task<Void, Never>?
+    @State private var photoLoadGeneration = UUID()
+    @State private var isLoadingPhotos = false
+    @State private var photoLoadFailureCount = 0
+
+    // Photo-write recovery (R2-10 + review closure 5): a failed write retains
+    // the form and the raw images, names the failure, and offers retry or an
+    // EXPLICIT omit. Never a silent `compactMap` loss. Batch identity is
+    // stable per draft image (no duplicate output files on retry), photo
+    // editing is locked while a failed batch is pending, and the omit path
+    // only runs against an UNCHANGED batch — never removed/new photos.
+    @State private var photoSaveFailureCount = 0
+    @State private var lastFailedIndices: [Int] = []
+    /// Stable per-image ids + attempt receipt (pure logic, unit-tested).
+    @State private var draftBatch = PlacePhotoDraftBatch()
+    /// Exact file URLs THIS draft wrote (across attempts) — the only files
+    /// cleanup may ever touch.
+    @State private var writtenFileUrls: Set<String> = []
 
     @Environment(\.dismiss) private var dismiss
 
@@ -50,6 +68,7 @@ public struct CreateExperienceSheet: View {
     /// Save is meaningful only when there's at least a place name.
     private var canSave: Bool {
         !placeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !isLoadingPhotos && photoLoadFailureCount == 0
     }
 
     /// Any field touched or photo added → protect against an accidental
@@ -69,6 +88,8 @@ public struct CreateExperienceSheet: View {
                 categorySection
                 descriptionSection
                 photosSection
+                photoSaveErrorSection
+                photoLoadingSection
                 voiceSection
             }
             .navigationTitle(NSLocalizedString("userLocation.create.title", comment: "Add a place"))
@@ -89,36 +110,78 @@ public struct CreateExperienceSheet: View {
             }
             .sheet(isPresented: $isShowingCamera) {
                 CameraPicker { captured in
-                    if let captured { images.append(captured) }
+                    if let captured {
+                        images.append(captured)
+                        draftBatch.appendImage()
+                        invalidatePendingReceipt()
+                    }
                 }
                 .ignoresSafeArea()
             }
             .onChange(of: pickerItems) { _, newItems in
-                Task { await loadPickedImages(newItems) }
+                guard !newItems.isEmpty else { return }
+                photoLoadingTask?.cancel()
+                let generation = UUID()
+                photoLoadGeneration = generation
+                isLoadingPhotos = true
+                photoLoadFailureCount = 0
+                photoLoadingTask = Task { await loadPickedImages(newItems, generation: generation) }
             }
         }
-        .interactiveDismissDisabled(isDirty)
+        .interactiveDismissDisabled(isDirty || isLoadingPhotos)
+        .onDisappear {
+            photoLoadGeneration = UUID()
+            photoLoadingTask?.cancel()
+            photoLoadingTask = nil
+            isLoadingPhotos = false
+        }
     }
 
     // MARK: - Sections
 
     private var nameSection: some View {
         Section {
-            TextField(
-                NSLocalizedString("userLocation.form.name.placeholder", comment: "Place name placeholder"),
+            labeledField(
+                label: NSLocalizedString("userLocation.form.name.fieldLabel", comment: "Required place name field label"),
+                placeholder: NSLocalizedString("userLocation.form.name.placeholder", comment: "Place name example prompt"),
                 text: $placeName
             )
-            TextField(
-                NSLocalizedString("userLocation.form.nameLocal.placeholder", comment: "Local-language name placeholder"),
+            labeledField(
+                label: NSLocalizedString("userLocation.form.nameLocal.fieldLabel", comment: "Optional local-language name field label"),
+                placeholder: NSLocalizedString("userLocation.form.nameLocal.placeholder", comment: "Local-language name example prompt"),
                 text: $placeNameLocal
             )
-            TextField(
-                NSLocalizedString("userLocation.form.oneLiner.placeholder", comment: "One-line summary placeholder"),
+            labeledField(
+                label: NSLocalizedString("userLocation.form.oneLiner.fieldLabel", comment: "Optional one-line experience field label"),
+                placeholder: NSLocalizedString("userLocation.form.oneLiner.placeholder", comment: "One-line experience example prompt"),
                 text: $oneLiner
             )
         } header: {
             Text(NSLocalizedString("userLocation.form.name.label", comment: "Place name section header"))
         }
+    }
+
+    /// One field row with a persistent visible label above the input. The
+    /// label — not the placeholder — is the field's identity: it stays on
+    /// screen after the user types, so the first field is still identifiable
+    /// once filled, and the placeholder can stay a plain example/prompt.
+    /// Label and field stack vertically, so the row keeps its hierarchy at
+    /// every Dynamic Type size instead of shrinking type to fit one line.
+    private func labeledField(
+        label: String,
+        placeholder: String,
+        text: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityHidden(true)
+            TextField(placeholder, text: text)
+                .accessibilityLabel(Text(label))
+        }
+        .padding(.vertical, 2)
     }
 
     private var categorySection: some View {
@@ -157,15 +220,48 @@ public struct CreateExperienceSheet: View {
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 72, height: 72)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .clipShape(Radius.shape(Radius.sm))
+                                .overlay(alignment: .bottomLeading) {
+                                    // Name WHICH photo failed to write (R2-10).
+                                    if lastFailedIndices.contains(idx) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundStyle(.white, CT.sunGoldDeep)
+                                            .padding(3)
+                                    }
+                                }
                                 .overlay(alignment: .topTrailing) {
+                                    // 44pt hit target with a small visible glyph,
+                                    // and a contextual label so VoiceOver knows
+                                    // WHICH photo the button removes.
                                     Button {
                                         images.remove(at: idx)
+                                        draftBatch.removeImage(at: idx)
+                                        invalidatePendingReceipt()
                                     } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundStyle(.white, .black.opacity(0.5))
+                                        Color.clear
+                                            .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                                            .overlay(alignment: .topTrailing) {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.system(size: 18, weight: .semibold))
+                                                    .foregroundStyle(.white, .black.opacity(0.55))
+                                                    .padding(4)
+                                            }
+                                            .contentShape(Rectangle())
                                     }
-                                    .padding(2)
+                                    .buttonStyle(.plain)
+                                    // Photo editing is locked while a failed
+                                    // batch is pending (review closure 5) —
+                                    // the omit receipt must match the images.
+                                    .disabled(photoSaveFailureCount > 0 || isLoadingPhotos)
+                                    .accessibilityLabel(Text(String(
+                                        format: NSLocalizedString(
+                                            "userLocation.form.photo.remove.a11y",
+                                            comment: "Remove photo %1$d of %2$d"
+                                        ),
+                                        idx + 1,
+                                        images.count
+                                    )))
                                 }
                         }
                     }
@@ -182,6 +278,7 @@ public struct CreateExperienceSheet: View {
                     systemImage: "photo.on.rectangle"
                 )
             }
+            .disabled(photoSaveFailureCount > 0 || isLoadingPhotos)
             Button {
                 isShowingCamera = true
             } label: {
@@ -190,8 +287,70 @@ public struct CreateExperienceSheet: View {
                     systemImage: "camera"
                 )
             }
+            .disabled(photoSaveFailureCount > 0 || isLoadingPhotos)
         } header: {
             Text(NSLocalizedString("userLocation.form.photo.label", comment: "Photos section header"))
+        }
+    }
+
+    /// Honest photo-write failure surface (R2-10 + review closure 5): says
+    /// how many writes failed, keeps every raw image + form field, and offers
+    /// retry, an explicit "save without these photos", or return-to-edit.
+    @ViewBuilder
+    private var photoSaveErrorSection: some View {
+        if photoSaveFailureCount > 0 {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(
+                        String(format: NSLocalizedString(
+                            "userLocation.form.photo.save.error",
+                            comment: "Photo write failure count (%d photos)"
+                        ), photoSaveFailureCount),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(CT.sunGoldDeep)
+                    Text(NSLocalizedString(
+                        "userLocation.form.photo.save.error.hint",
+                        comment: "Failed photos stay in the form; retry or omit them"
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 16) {
+                        Button(NSLocalizedString(
+                            "userLocation.form.photo.save.retry",
+                            comment: "Retry saving the photos"
+                        )) {
+                            photoSaveFailureCount = 0
+                            submit()
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(CT.accent)
+                        .frame(minHeight: HitTargetMetrics.minimum)
+                        Button(NSLocalizedString(
+                            "userLocation.form.photo.save.omit",
+                            comment: "Save without the photos that failed to write"
+                        )) {
+                            submitOmittingFailedPhotos()
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(CT.sunGoldDeep)
+                        .frame(minHeight: HitTargetMetrics.minimum)
+                    }
+                    // Explicit return-to-edit (review closure 5): drops the
+                    // pending receipt and unlocks photo editing again.
+                    Button(NSLocalizedString(
+                        "userLocation.form.photo.save.editAgain",
+                        comment: "Return to editing the photos; the pending save receipt is dropped"
+                    )) {
+                        returnToPhotoEditing()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(CT.accent)
+                    .frame(minHeight: HitTargetMetrics.minimum)
+                }
+            }
         }
     }
 
@@ -213,20 +372,113 @@ public struct CreateExperienceSheet: View {
 
     // MARK: - Actions
 
-    private func loadPickedImages(_ items: [PhotosPickerItem]) async {
+    @ViewBuilder
+    private var photoLoadingSection: some View {
+        if isLoadingPhotos {
+            Section {
+                ProgressView(NSLocalizedString("userLocation.form.photo.loading", comment: "Loading selected photos"))
+            }
+        } else if photoLoadFailureCount > 0 {
+            Section {
+                Text(String(format: NSLocalizedString("userLocation.form.photo.loadFailed", comment: "Unreadable photo count"), photoLoadFailureCount))
+                    .foregroundStyle(.secondary)
+                Button(NSLocalizedString("userLocation.form.photo.skipUnreadable", comment: "Explicitly omit unreadable photos")) {
+                    photoLoadFailureCount = 0
+                }
+                .frame(minHeight: HitTargetMetrics.minimum)
+            }
+        }
+    }
+
+    private func loadPickedImages(_ items: [PhotosPickerItem], generation: UUID) async {
         var loaded: [UIImage] = []
+        var failed = 0
         for item in items {
+            guard !Task.isCancelled, photoLoadGeneration == generation else { return }
             if let data = try? await item.loadTransferable(type: Data.self),
                let img = UIImage(data: data) {
                 loaded.append(img)
+            } else {
+                failed += 1
             }
         }
-        await MainActor.run { images.append(contentsOf: loaded); pickerItems = [] }
+        guard !Task.isCancelled, photoLoadGeneration == generation else { return }
+        images.append(contentsOf: loaded)
+        for _ in loaded { draftBatch.appendImage() }
+        invalidatePendingReceipt()
+        photoLoadFailureCount = failed
+        isLoadingPhotos = false
+        pickerItems = []
+        photoLoadingTask = nil
+    }
+
+    /// Any photo edit invalidates the pending attempt receipt (review closure
+    /// 5) — its URLs may reference removed images or miss new ones.
+    private func invalidatePendingReceipt() {
+        draftBatch.clearAttempt()
+        photoSaveFailureCount = 0
+        lastFailedIndices = []
+    }
+
+    /// The explicit return-to-edit action: drop the receipt and unlock photo
+    /// editing (review closure 5).
+    private func returnToPhotoEditing() {
+        draftBatch.clearAttempt()
+        photoSaveFailureCount = 0
+        lastFailedIndices = []
     }
 
     private func submit() {
-        // Persist images to disk now so the form hands back ready-to-store URLs.
-        let urls = PlacePhotoStore.save(images, uuids: images.map { _ in UUID().uuidString })
+        guard canSave else { return }
+        // Persist images to disk with a result per photo (R2-10). STABLE ids
+        // per draft image (review closure 5): a retry overwrites the same
+        // output files instead of writing new UUID files every attempt.
+        let results = PlacePhotoStore.saveAll(images, uuids: draftBatch.imageIds)
+        var urls: [String] = []
+        var failed: [Int] = []
+        for result in results {
+            switch result {
+            case .saved(let url):
+                urls.append(url)
+                writtenFileUrls.insert(url)
+            case .failed(let index, _):
+                failed.append(index)
+            }
+        }
+        draftBatch.recordAttempt(savedUrls: urls, failedIndices: failed)
+        guard failed.isEmpty else {
+            // Keep the form and EVERY raw image; explain and offer retry or an
+            // explicit omit. Nothing is saved, nothing is dismissed. Photo
+            // editing is locked until the batch is resolved.
+            lastFailedIndices = failed
+            photoSaveFailureCount = failed.count
+            return
+        }
+        finishSubmit(photoUrls: urls)
+    }
+
+    /// The traveler explicitly chose to save without the photos whose writes
+    /// failed — the only path that may drop them (R2-10). Valid only for an
+    /// UNCHANGED batch (review closure 5): never a removed image, never a
+    /// silently omitted new one.
+    private func submitOmittingFailedPhotos() {
+        guard let omitUrls = draftBatch.omitCandidateUrls else {
+            // Stale receipt — return to editing instead of guessing.
+            returnToPhotoEditing()
+            return
+        }
+        photoSaveFailureCount = 0
+        finishSubmit(photoUrls: omitUrls)
+    }
+
+    private func finishSubmit(photoUrls: [String]) {
+        // Cleanup is strictly limited to files THIS draft wrote and the final
+        // submission doesn't reference (review closure 5). Old user photos are
+        // never touched — removeDraftFile refuses foreign paths.
+        let keep = Set(photoUrls)
+        for url in writtenFileUrls where !keep.contains(url) {
+            PlacePhotoStore.removeDraftFile(url)
+        }
         let trimmedName = placeName.trimmingCharacters(in: .whitespacesAndNewlines)
         let input = NewPlaceFormInput(
             coordinate: coordinate,
@@ -237,7 +489,7 @@ public struct CreateExperienceSheet: View {
             oneLiner: oneLiner.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
             category: category,
-            photoUrls: urls.isEmpty ? nil : urls
+            photoUrls: photoUrls.isEmpty ? nil : photoUrls
         )
         onSave(input)
         dismiss()

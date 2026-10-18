@@ -262,6 +262,10 @@ public final class AIService {
     /// identity or walking order. When the model is unavailable, the exact same
     /// planned stops are returned with local copy.
     ///
+    /// Compatibility wrapper over `generateRouteDetailed` — returns just the
+    /// route. Note the fallback route is now honestly sourced `.userCreated`
+    /// (a deterministic local plan is NOT model output), not `.aiGenerated`.
+    ///
     /// - Parameters:
     ///   - candidates: nearby experiences to choose stops from.
     ///   - cityCode: city the route belongs to (VTE/HAN/…).
@@ -274,6 +278,43 @@ public final class AIService {
         userCoordinate: CLLocationCoordinate2D?,
         now: Date = Date()
     ) async throws -> Route {
+        try await generateRouteDetailed(
+            from: candidates,
+            cityCode: cityCode,
+            userCoordinate: userCoordinate,
+            now: now
+        ).route
+    }
+
+    /// Where generated route copy actually came from (R2-11 transparency).
+    public enum RouteProvenance: String, Sendable, Equatable {
+        /// The model authored the title/summary in a successful round trip.
+        case model
+        /// The deterministic local plan was returned because the model was
+        /// unavailable or its response unusable. NOT AI output — the UI must
+        /// say so and offer a deliberate retry.
+        case localFallback
+    }
+
+    /// A generated route plus its provenance. `fallbackReason` is non-nil only
+    /// for `.localFallback` and explains what happened (for logs, tests and
+    /// the honest UI line).
+    public struct GeneratedRoute: Sendable {
+        public let route: Route
+        public let provenance: RouteProvenance
+        public let fallbackReason: String?
+    }
+
+    /// Same deterministic stop plan as `generateRoute`, but reports whether
+    /// the copy is model-authored or a local fallback — and why. The fallback
+    /// keeps the useful local result (`route` is always present on success)
+    /// while the caller can surface `fallbackReason` and offer a retry.
+    public func generateRouteDetailed(
+        from candidates: [Experience],
+        cityCode: String,
+        userCoordinate: CLLocationCoordinate2D?,
+        now: Date = Date()
+    ) async throws -> GeneratedRoute {
         let routeId = RouteId(rawValue: "ai-\(UUID().uuidString.prefix(8))")
         let ordered = RouteBuilder.rankedWalk(candidates, from: userCoordinate, now: now)
         guard !ordered.isEmpty else { throw AIError.decodingFailed("no candidates to build a route") }
@@ -291,7 +332,7 @@ public final class AIService {
             let prompt = Self.routeGenerationPrompt(candidates: ordered, cityCode: cityCode)
             let raw = try await sendMessage(prompt: prompt, kind: .synthesis)
             let plan = try Self.parseRoutePlan(raw)
-            return RouteBuilder.makeRoute(
+            let route = RouteBuilder.makeRoute(
                 id: routeId,
                 title: plan.title.isEmpty ? Self.fallbackRouteTitle(ordered) : plan.title,
                 summary: plan.summary,
@@ -303,6 +344,7 @@ public final class AIService {
                 bestStartHour: nowHour,
                 reasonNow: plan.reasonNow?.isEmpty == false ? plan.reasonNow : nil
             )
+            return GeneratedRoute(route: route, provenance: .model, fallbackReason: nil)
         } catch {
             // #66: Surface JSON parse failures to Sentry so we can spot the
             // model drifting away from the route-plan schema before the
@@ -326,8 +368,10 @@ public final class AIService {
                 )
             }
             // Local fallback uses the same deterministic plan, only without
-            // model-authored copy.
-            return RouteBuilder.makeRoute(
+            // model-authored copy. It is honest LOCAL output — source
+            // `.userCreated`, never `.aiGenerated` (R2-11): a non-empty
+            // fallback summary must not read as "the model finished this".
+            let route = RouteBuilder.makeRoute(
                 id: routeId,
                 title: Self.fallbackRouteTitle(ordered),
                 summary: NSLocalizedString("route.generate.fallback.summary",
@@ -336,8 +380,13 @@ public final class AIService {
                 cityCode: cityCode,
                 pace: .relaxed,
                 tags: Self.tags(from: ordered),
-                source: .aiGenerated,
+                source: .userCreated,
                 bestStartHour: nowHour
+            )
+            return GeneratedRoute(
+                route: route,
+                provenance: .localFallback,
+                fallbackReason: captureErr
             )
         }
     }
@@ -382,7 +431,7 @@ public final class AIService {
             nearbyContext = "There are no curated experiences within 10km."
         } else {
             nearbyContext = nearbyExperiences.prefix(20).map { exp in
-                "  [\(exp.id)] \(exp.title) — \(exp.category.rawValue) — \(String(format: "%.1f", exp.soloScore.overall))/10"
+                "  [\(exp.id)] \(exp.title) — \(exp.category.rawValue) — \(exp.soloScoreDisplay)"
             }.joined(separator: "\n")
         }
 
@@ -893,7 +942,7 @@ public final class AIService {
 
     private static func recommendationPrompt(candidates: [Experience], context: UserContext) -> String {
         let candidateLines = candidates.map { exp in
-            "- \(exp.id): \(exp.title) [\(exp.category.rawValue), solo=\(String(format: "%.1f", exp.soloScore.overall))]"
+            "- \(exp.id): \(exp.title) [\(exp.category.rawValue), solo=\(exp.soloScoreDisplay)]"
         }.joined(separator: "\n")
         let preferred = context.preferredCategories.map(\.rawValue).joined(separator: ",")
         let disliked = context.dislikedCategories.map(\.rawValue).joined(separator: ",")
@@ -917,7 +966,7 @@ public final class AIService {
     private static func routeGenerationPrompt(candidates: [Experience], cityCode: String) -> String {
         let candidateLines = candidates.prefix(40).map { exp in
             let coord = exp.coordinate.map { String(format: "%.4f,%.4f", $0.latitude, $0.longitude) } ?? "?"
-            return "- \(exp.id): \(exp.title) [\(exp.category.rawValue), solo=\(String(format: "%.1f", exp.soloScore.overall)), @\(coord)]"
+            return "- \(exp.id): \(exp.title) [\(exp.category.rawValue), solo=\(exp.soloScoreDisplay), @\(coord)]"
         }.joined(separator: "\n")
         return """
         You are naming and explaining ONE already-planned walkable route for a solo traveler in city \(cityCode).
@@ -1132,7 +1181,7 @@ public final class AIService {
         cacheKey: String
     ) async throws -> [Experience] {
         struct EdgePOI: Encodable {
-            let osmId: Int64
+            let osmId: String
             let name: String
             let nameEn: String?
             let lat: Double
@@ -1146,8 +1195,9 @@ public final class AIService {
             let cacheKey: String
         }
         let body = EdgeRequest(
-            pois: pois.map { EdgePOI(osmId: $0.osmId, name: $0.name, nameEn: $0.nameEn,
-                                     lat: $0.lat, lon: $0.lon, tags: $0.tags) },
+            // Preserve 64-bit provider identity across the JavaScript boundary.
+            pois: pois.map { EdgePOI(osmId: String($0.osmId), name: $0.name, nameEn: $0.nameEn,
+                                    lat: $0.lat, lon: $0.lon, tags: $0.tags) },
             cityCode: cityCode,
             locale: locale.identifier,
             cacheKey: cacheKey
@@ -1162,7 +1212,7 @@ public final class AIService {
                 let cached: Bool?
             }
             struct EdgeItem: Decodable {
-                let osmId: Int64
+                @LosslessInt64 var osmId: Int64
                 let title: String
                 let oneLiner: String
                 let whyItMatters: String
@@ -1180,12 +1230,10 @@ public final class AIService {
             let now = Date()
             return decoded.experiences.compactMap { item -> Experience? in
                 guard let poi = poiById[item.osmId] else { return nil }
-                let category = ExperienceCategory(rawValue: item.category) ?? OverpassService.category(for: poi.tags)
-                let startHour = item.bestStartHour.map { max(0, min(23, $0)) } ?? 9
-                let endHour = item.bestEndHour.map { max(0, min(23, $0)) } ?? 21
+                let category = OverpassService.category(for: poi.tags)
                 let dMin = item.durationMinMinutes ?? 30
                 let dMax = max(dMin, item.durationMaxMinutes ?? 90)
-                let overall = max(6.0, min(9.5, item.soloOverall ?? 7.0))
+                let overall = Self.validSoloEstimate(item.soloOverall)
                 let breakdown = SoloScore.Breakdown(
                     seatingFriendly: overall, soloPatronRatio: overall, staffPressure: overall,
                     soloPortioning: overall, ambianceFit: overall, safety: overall
@@ -1204,7 +1252,7 @@ public final class AIService {
                         placeNameLocal: poi.name,
                         placeNameRomanized: poi.nameEn
                     ),
-                    bestTimes: [TimeWindow(startHour: startHour, endHour: endHour)],
+                    bestTimes: Self.verifiedVisitWindows(start: item.bestStartHour, end: item.bestEndHour),
                     durationMinutes: .init(min: dMin, max: dMax),
                     howTo: howTo,
                     realInconveniences: [],
@@ -1387,8 +1435,12 @@ public final class AIService {
         locale: Locale,
         modelName: String
     ) -> String {
-        let sortedIds = pois.map { String($0.osmId) }.sorted()
-        let canonical = sortedIds.joined(separator: "|")
+        let facts: [[String: Any]] = pois.sorted { $0.osmId < $1.osmId }.map {
+            ["id": String($0.osmId), "name": $0.name, "nameEn": $0.nameEn ?? "",
+             "lat": $0.lat, "lon": $0.lon, "tags": $0.tags]
+        }
+        let factsData = (try? JSONSerialization.data(withJSONObject: facts, options: [.sortedKeys])) ?? Data()
+        let canonical = "synthesis-facts-v2|" + factsData.base64EncodedString()
             + "|" + cityCode
             + "|" + locale.identifier
             + "|" + modelName
@@ -1406,7 +1458,7 @@ public final class AIService {
             )
             guard let row = (try? context.fetch(descriptor))?.first else { return nil }
             let age = Date().timeIntervalSince(row.synthesizedAt)
-            guard age < Self.synthesisCacheTTLSeconds else { return nil }
+            guard age >= 0, age < Self.synthesisCacheTTLSeconds else { return nil }
             return try? JSONDecoder.iso8601Decoder.decode([Experience].self, from: row.experiencesJSON)
         }
     }
@@ -1416,6 +1468,9 @@ public final class AIService {
         experiences: [Experience],
         modelName: String
     ) async {
+        // Keep source-restricted live fields out of disk caches. Amap's
+        // process-local POI cache already handles repeated requests.
+        guard !experiences.contains(where: { $0.sources.contains { $0.type == .amap } }) else { return }
         await MainActor.run { [weak self] in
             guard let self, let context = self.modelContext else { return }
             let descriptor = FetchDescriptor<AISynthesisCacheRecord>(
@@ -1670,7 +1725,7 @@ public final class AIService {
         cityCode: String
     ) -> ExperienceLocation {
         // Foursquare rating is already 0–10. Clamp defensively.
-        let rating = poi.tags["fsq_rating"].flatMap(Double.init).map { max(0, min(10, $0)) }
+        let rating = POIRating.normalized10(tags: poi.tags)
         let openingHours = poi.tags["opening_hours"]
         let priceLevel = poi.tags["fsq_price"].flatMap(Double.init).map { max(1, min(4, $0)) }
         let website = poi.tags["website"]
@@ -1792,9 +1847,10 @@ public final class AIService {
         - You have TWO kinds of input per POI: OSM `tags` (categorical, reliable) and an optional `realSignals` bag (rating/priceLevel/popularity/address sourced from Foursquare or Apple Maps — REAL provider data you MAY cite).
         - You MAY reference anything in `realSignals` as fact: cite the rating, reflect the price level in your framing, use the address in orientation. These are real.
         - You may NOT invent specifics NOT present in either bag: no menu items, dish names, owner backstories, or interior/seating details. If `realSignals` has no opening hours, do not state hours.
-        - When a POI has NO `realSignals`, fall back to generic-safe framing exactly as before: bestStartHour 9 / bestEndHour 21 when category gives no better hint.
+        - Missing facts stay unknown. If no supported visit timing is available, return null for bestStartHour and bestEndHour. Suggested visit windows are not business opening hours or evidence that a venue is currently open.
         - howTo must contain navigation/orientation steps only. Do NOT write "order the X", "try the X", "ask for X", "sit at the bar/window/back" — those are interior specifics you cannot verify.
-        - Solo Score: anchor on REAL signals when present. A high rating (>= 8/10) or strong popularity supports up to 9.0–9.5; a low/absent rating or sparse data should stay 6.5–8.0. With NO realSignals, keep it conservative 7.0–8.0. Make the six breakdown dimensions genuinely DIFFERENT from each other based on the place type (e.g. a library scores high on seatingFriendly + low staffPressure; a bar scores lower on soloPatronRatio) — do NOT output the same number across all six.
+        - Solo Score is a separate estimate, not a provider rating or a count of solo travelers. Only assess dimensions supported by explicit facts. General popularity, business category, or missing observations do not establish seating, portion sizes, staff behavior, or safety. When unsupported, return null for soloOverall/soloBreakdown. Do not invent a reassuring default.
+
 
         CATEGORY-SPECIFIC SHAPE — a temple, a noodle shop, and a café need DIFFERENT facts. Tailor your output to the POI's category:
 
@@ -1812,9 +1868,9 @@ public final class AIService {
 
         Examples of GOOD output (tag-derived, generic):
         - title: "Sit with locals at a Hanoi café"
-        - oneLiner: "A local cafe in the Old Quarter with sidewalk seating."
-        - whyItMatters: "OpenStreetMap lists this as a café in a walkable neighbourhood. Solo travellers often find sidewalk-style cafés easier to enter alone than enclosed restaurants. Verify the vibe on arrival."
-        - howTo: ["Find the entrance from the main street.", "Step inside; seating is usually self-service.", "Pay at the counter when you leave."]
+        - oneLiner: "A café listed in the source data."
+        - whyItMatters: "The source lists a café at this location. Seating, menu and opening status have not been verified."
+        - howTo: ["Find the location on the map.", "Confirm the entrance and current opening status on arrival."]
 
         Examples of BAD output (hallucinated, do NOT do this):
         - title: "Eat the famous beef pho at Ms. Linh's"  ← invented owner + dish
@@ -1834,7 +1890,7 @@ public final class AIService {
           "durationMaxMinutes": <int>,
           "howTo": ["navigation step 1", "navigation step 2", "navigation step 3"],
           "soloHint": "<one short hint for solo visitors>",
-          "soloOverall": <number 6.0-9.5>,
+          "soloOverall": <number 0-10 or null if unsupported>,
           "soloBreakdown": {
             "seatingFriendly": <0-10>,
             "soloPatronRatio": <0-10>,
@@ -1909,28 +1965,11 @@ public final class AIService {
 
         return items.compactMap { item in
             guard let poi = poiById[item.osmId] else { return nil }
-            let category = ExperienceCategory(rawValue: item.category) ?? OverpassService.category(for: poi.tags)
-            // Rubric fix: log per-synthesis bestTimes so QA can spot food POIs
-            // stuck on the generic 9–21 fallback vs. real dinner-appropriate
-            // ranges the model returned. `sourceBest` distinguishes model-
-            // provided from clamped-default so a "9–21 for every card" pattern
-            // in DEBUG logs is a red-flag for prompt regression, not routine.
-            let modelProvidedStart = item.bestStartHour != nil
-            let modelProvidedEnd = item.bestEndHour != nil
-            let startHour = item.bestStartHour.map { max(0, min(23, $0)) } ?? 9
-            let endHour = item.bestEndHour.map { max(0, min(23, $0)) } ?? 21
-            Self.logger.debug(
-                "🕐 bestTimes id=\(poi.osmId, privacy: .public) cat=\(item.category, privacy: .public) start=\(startHour, privacy: .public)h end=\(endHour, privacy: .public)h modelStart=\(modelProvidedStart, privacy: .public) modelEnd=\(modelProvidedEnd, privacy: .public)"
-            )
+            let category = OverpassService.category(for: poi.tags)
             let dMin = item.durationMinMinutes ?? 30
             let dMax = max(dMin, item.durationMaxMinutes ?? 90)
-            // Wider clamp now that real signals can justify higher/lower scores;
-            // still bounded to a sane 5.0–9.8 to reject obvious model garbage.
-            let overall = max(5.0, min(9.8, item.soloOverall ?? 7.0))
-            // Prefer the model's per-dimension breakdown when it returned one;
-            // fall back to `overall` per dimension only when absent. Each dim
-            // independently clamped 0–10.
-            func dim(_ value: Double?) -> Double { max(0, min(10, value ?? overall)) }
+            let overall = Self.validSoloEstimate(item.soloOverall)
+            func dim(_ value: Double?) -> Double { Self.validSoloEstimate(value) }
             let breakdown = SoloScore.Breakdown(
                 seatingFriendly: dim(item.soloBreakdown?.seatingFriendly),
                 soloPatronRatio: dim(item.soloBreakdown?.soloPatronRatio),
@@ -1943,9 +1982,8 @@ public final class AIService {
             let highlights = Self.mapHighlights(
                 item.highlights?.map { (kind: $0.kind, label: $0.label, value: $0.value) }
             )
-            // basedOnCount reflects whether this score is anchored on real
-            // provider signals (>0) or pure category inference (0).
-            let basedOnCount = hasHardSignals(poi) ? 1 : 0
+            // Provider metadata is not a solo-traveler survey.
+            let basedOnCount = 0
             return Experience(
                 id: "exp_osm_\(poi.osmId)",
                 title: item.title,
@@ -1953,7 +1991,7 @@ public final class AIService {
                 whyItMatters: item.whyItMatters,
                 category: category,
                 location: enrichedLocation(from: poi, cityCode: cityCode),
-                bestTimes: [TimeWindow(startHour: startHour, endHour: endHour)],
+                bestTimes: Self.verifiedVisitWindows(start: item.bestStartHour, end: item.bestEndHour),
                 durationMinutes: .init(min: dMin, max: dMax),
                 howTo: howTo,
                 realInconveniences: [],
@@ -2042,8 +2080,8 @@ public final class AIService {
         let displayName = poi.nameEn ?? poi.name
         let isAmapPOI = poi.tags["source"] == "amap"
         let breakdown = SoloScore.Breakdown(
-            seatingFriendly: 7, soloPatronRatio: 7, staffPressure: 7,
-            soloPortioning: 7, ambianceFit: 7, safety: 7
+            seatingFriendly: 0, soloPatronRatio: 0, staffPressure: 0,
+            soloPortioning: 0, ambianceFit: 0, safety: 0
         )
         return Experience(
             id: "exp_osm_\(poi.osmId)",
@@ -2063,11 +2101,11 @@ public final class AIService {
             ),
             category: category,
             location: enrichedLocation(from: poi, cityCode: cityCode),
-            bestTimes: [TimeWindow(startHour: 9, endHour: 21)],
+            bestTimes: [],
             durationMinutes: .init(min: 30, max: 90),
             howTo: [],
             realInconveniences: [],
-            soloScore: SoloScore(overall: 7.0, breakdown: breakdown, hint: nil, basedOnCount: 0),
+            soloScore: SoloScore(overall: 0, breakdown: breakdown, hint: NSLocalizedString("soloScore.unassessed", comment: "No assessment available"), basedOnCount: 0),
             sources: [
                 // Same provenance-honesty fix as the AI-enriched path — the
                 // skeleton fallback used to also mislabel Amap POIs as .user.
@@ -2096,6 +2134,18 @@ public final class AIService {
             createdAt: now,
             updatedAt: now
         )
+    }
+
+    static func validSoloEstimate(_ value: Double?) -> Double {
+        guard let value, value.isFinite, value > 0, value <= 10 else { return 0 }
+        return value
+    }
+
+    /// Model suggestions may be absent; never replace missing timing with a
+    /// fabricated all-day recommendation. These are visit windows, not hours.
+    static func verifiedVisitWindows(start: Int?, end: Int?) -> [TimeWindow] {
+        guard let start, let end, (0...23).contains(start), (0...23).contains(end), start != end else { return [] }
+        return [TimeWindow(startHour: start, endHour: end)]
     }
 
     // MARK: - P1.2 #122 Taste Profile

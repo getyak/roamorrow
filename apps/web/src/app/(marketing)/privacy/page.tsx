@@ -1,3 +1,4 @@
+import { LEGAL_URLS } from "@/lib/legal";
 import type { Metadata } from "next";
 import { copy } from "@/components/marketing/copy";
 import { Footer, MarketingNav } from "@/components/marketing/sections";
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Privacy",
   description:
-    "What Roamorrow collects, what it doesn't, and where your data lives. Location stays on device. No advertising SDKs. No third-party trackers. Written in plain English.",
+    "How Roamorrow handles account, location, voice, photos and diagnostics across native and web features.",
   alternates: {
     canonical: `${SITE_URL}/privacy`,
     languages: {
@@ -22,70 +23,70 @@ export const metadata: Metadata = {
   openGraph: {
     type: "article",
     url: `${SITE_URL}/privacy`,
-    title: "Roamorrow · Privacy",
-    description: "Location stays on device. No ads. No third-party trackers. Plain English.",
+    title: `${BRAND.name} · Privacy`,
+    description: "Data use for location, voice, photos, sync and configured services.",
     images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Roamorrow · Privacy",
-    description: "Location on device. No ads. No trackers.",
+    title: `${BRAND.name} · Privacy`,
+    description: "Location, voice, sync and service data use.",
     images: ["/opengraph-image"],
   },
 };
 
 const COLLECT: [string, string][] = [
   [
-    "Email address",
-    "Only if you paid or signed up for the newsletter. Stored by our payment processor (Paddle) and email provider (Buttondown). We can see it, they can see it, nobody else can.",
+    "Account and sync",
+    "Signing in and using sync sends account information and synced records to the configured Supabase backend. Local sample exploration does not require an account.",
   ],
   [
-    "Anonymous crash reports",
-    "If the app crashes and you have crash reporting enabled (default: on, toggle in Settings), Sentry receives a stack trace with device model and iOS version. No email, no user ID, no location.",
+    "Diagnostics",
+    "App builds configured with a Sentry DSN send crash and error diagnostics to Sentry. This page does not claim that every report is anonymous or that reporting is enabled in every build.",
   ],
   [
-    "Anonymous usage counters",
-    "Which features you tap, how often, aggregated. No IP, no device fingerprint. Toggle off in Settings > Privacy.",
+    "Web usage events",
+    "The website can use configured PostHog analytics for product events. The current client respects Do Not Track and skips analytics when no project key is configured.",
   ],
 ];
 
 const NEVER_COLLECT: [string, string][] = [
   [
-    "Your location",
-    "Stays on device. Ever. The map runs on Apple's MapKit, which we cannot see. Nothing about where you are or where you've been leaves your phone.",
+    "Location and exploration",
+    "Location access is requested for location features. Confirmed exploration sends the selected coordinates and radius to OpenStreetMap/Overpass. AI requests may include city and experience context; location is not guaranteed to stay only on the device.",
   ],
   [
-    "Your saved experiences",
-    "The list of places you've saved, planned, or completed lives in your iCloud (if you enable Pro sync) or nowhere but your device. We don't have a copy.",
+    "Saved experiences and messages",
+    "Saved and completed experiences can be stored locally or synced through the app backend. Sending a message or an attachment shares that content with the selected conversation.",
   ],
   [
-    "Your voice recordings",
-    'The "Ask" voice input transcribes on-device via Apple\'s SFSpeechRecognizer. The audio never leaves your phone. Only the transcribed text is sent to the AI, and only for that one query.',
+    "Voice input",
+    "Native voice input uses Apple speech recognition. Web voice input uses the browser speech service. Processing depends on system and service capabilities; this page does not promise that all audio stays on the device. Transcripts submitted to AI go to the configured provider.",
   ],
   [
-    "Contacts, calendar, photos",
-    "We never ask for these permissions. Check the app's Info.plist yourself — the entitlements are minimal.",
-  ],
-  [
-    "Advertising identifiers",
-    "No AdSupport framework. No SKAdNetwork. No SDKs from ad networks. We don't have your IDFA and don't want it.",
+    "Photos and camera",
+    "Creating an experience or attaching a photo can request photo-library or camera access. Only choose content you intend to use in that feature. Permissions can be managed in system settings.",
   ],
 ];
 
 const THIRD_PARTY: [string, string][] = [
   [
-    "Apple",
-    "MapKit (map tiles), SFSpeechRecognizer (voice), StoreKit (payments). Apple's privacy policy applies.",
+    "Apple and the browser platform",
+    "Native maps, speech recognition and purchases use Apple services. Web maps use Mapbox when configured; web speech uses the browser service.",
   ],
   [
-    "Sentry",
-    "Anonymous crash reports only. Located in EU (Frankfurt). Can be disabled in Settings.",
+    "AI providers",
+    "The default native AI provider is DeepSeek. Provider settings or the Pro proxy determine the destination for submitted prompts and context.",
   ],
   [
-    "Anthropic",
-    "The AI recommendations use Claude. Your question text is sent — no location, no email, no device ID. Anthropic does not train on API data.",
+    "OpenStreetMap / Overpass",
+    "Receives coordinates and radius for exploration after confirmation.",
   ],
-  ["Paddle", "Payment processor. Handles cards, tax, refunds. We never see your card number."],
+  ["Supabase", "Provides configured account, sync, conversation and Pro proxy services."],
+  [
+    "Sentry / PostHog",
+    "Receive diagnostics or web product events when configured. Their service policies apply.",
+  ],
 ];
 
 export default function PrivacyEn() {
@@ -108,13 +109,19 @@ export default function PrivacyEn() {
               What we collect, and what we don&apos;t.
             </h1>
             <p className="ds-body-xl mt-6 text-fg-muted">
-              Last updated: July 2026. Written for humans, not lawyers.
+              Updated October 2026. Data use by feature.
             </p>
           </Container>
         </Section>
 
         <Section className="pt-4 pb-16">
           <Container width="narrow">
+            <a
+              href={LEGAL_URLS.privacy}
+              className="mb-8 inline-flex min-h-[44px] items-center text-accent-interactive underline underline-offset-4"
+            >
+              Read the full Privacy Policy
+            </a>
             <article>
               <h2 className="font-display text-[28px] font-medium text-fg-primary md:text-[32px]">
                 What we collect
@@ -131,7 +138,7 @@ export default function PrivacyEn() {
 
             <article className="mt-16">
               <h2 className="font-display text-[28px] font-medium text-fg-primary md:text-[32px]">
-                What we never collect
+                Data handled by feature
               </h2>
               <dl className="mt-8 divide-y divide-border-subtle">
                 {NEVER_COLLECT.map(([k, v]) => (
@@ -159,16 +166,12 @@ export default function PrivacyEn() {
 
             <article className="mt-16">
               <h2 className="font-display text-[28px] font-medium text-fg-primary md:text-[32px]">
-                Your rights
+                Your controls
               </h2>
               <p className="ds-body-lg mt-4 text-fg-muted">
-                You can delete your account from Settings inside the app — this removes your email
-                and any server-side sync data within 30 days. You can also email{" "}
-                <a className="underline" href={`mailto:${BRAND.privacyEmail}`}>
-                  {BRAND.privacyEmail}
-                </a>{" "}
-                to request a copy of everything we hold, or to have it deleted immediately. GDPR and
-                CCPA apply and we honor them for everyone, not just EU and California residents.
+                Manage location, microphone, camera and photo permissions in system settings.
+                Account and sync controls are available in the app. This implementation summary does
+                not set a data-retention deadline or replace the published legal policy.
               </p>
             </article>
           </Container>

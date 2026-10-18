@@ -15,8 +15,8 @@ export function HomeJsonLd({ locale }: { locale: Locale }) {
   const name = BRAND.name;
   const description =
     locale === "zh"
-      ? "为独自旅行者做的 iOS 地图应用。跨来源交叉编译，AI 展示不确定性，无广告，无追踪。¥118 一次买断，¥198 每年。"
-      : "A map-first companion for solo travelers on iOS. Cross-referenced sources, honest AI, no ads, no tracking. $29 one-time or $50 a year.";
+      ? "为独自旅行者做的 iOS 地图应用。跨来源交叉编译，AI 展示不确定性，无广告，说明数据用途。免费版即真实产品；Pro 为月度/年度订阅，价格以 App Store 实时为准。"
+      : "A map-first companion for solo travelers on iOS. Cross-referenced sources, honest AI, no ads, data use explained. Free tier is the real product; Pro is a monthly or yearly subscription, priced live in the App Store.";
 
   const softwareApp = {
     "@context": "https://schema.org",
@@ -26,24 +26,14 @@ export function HomeJsonLd({ locale }: { locale: Locale }) {
     operatingSystem: "iOS 17.0+",
     applicationCategory: "TravelApplication",
     description,
+    // No invented prices: only the genuinely free web tier is offered here.
+    // Pro pricing is live App Store data and cannot be hard-coded.
     offers: [
       {
         "@type": "Offer",
         price: "0",
         priceCurrency: locale === "zh" ? "CNY" : "USD",
-        description: locale === "zh" ? "免费" : "Free",
-      },
-      {
-        "@type": "Offer",
-        price: locale === "zh" ? "118" : "29",
-        priceCurrency: locale === "zh" ? "CNY" : "USD",
-        description: locale === "zh" ? "一次买断" : "Lifetime",
-      },
-      {
-        "@type": "Offer",
-        price: locale === "zh" ? "198" : "50",
-        priceCurrency: locale === "zh" ? "CNY" : "USD",
-        description: locale === "zh" ? "年度订阅" : "Yearly",
+        description: locale === "zh" ? "免费（网页地图与免费层）" : "Free (web map and free tier)",
       },
     ],
     creator: {

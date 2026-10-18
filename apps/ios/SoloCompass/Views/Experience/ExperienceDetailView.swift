@@ -75,9 +75,12 @@ public struct ExperienceDetailView: View {
     /// Picked mood chips + free-text in the quick-add row.
     @State internal var pickedMoods: Set<String> = []
     @State internal var noteDraft: String = ""
+    /// True after a note submission failed to persist — the draft is retained
+    /// and the panel explains instead of silently dropping the input (R2-09).
+    @State internal var noteSubmitError: Bool = false
     /// Whether the current user has contributed anything this session — bumps
     /// the hero "L{n} · {n} 信号" line and shows a one-shot toast.
-    @State internal var userContributed = false
+    @State internal var noteActionFailed = false
     @State internal var levelToast: String? = nil
     @State internal var levelToastTask: Task<Void, Never>? = nil
     @State private var barsAppeared = false
@@ -119,8 +122,9 @@ public struct ExperienceDetailView: View {
                     .onLongPressGesture(minimumDuration: 0.55) {
                         isShowingCapsuleCompose = true
                     }
-                // Hero block — provenance tag, category disc + trust chip, title,
-                // place names. Quiet mono meta baseline sits just below it.
+                // Hero block — title, one-liner, place names, then one quiet
+                // context line (category · provenance · trust status). Badges
+                // sit AFTER the content they describe, never above the title.
                 heroSection
                 metaBaselineRow
                 if !viewModel.experience.highlights.isEmpty {
@@ -256,9 +260,11 @@ public struct ExperienceDetailView: View {
             }
         }
         .sheet(isPresented: $isShowingReport) {
+            // The sheet owns the report flow (contract 5): saves an honest
+            // local draft and offers user-controlled email/share delivery.
             ReportIssueSheet(
                 experience: viewModel.experience,
-                onSubmit: { _, _ in isShowingReport = false },
+                onFinished: { isShowingReport = false },
                 onCancel: { isShowingReport = false }
             )
         }
@@ -320,14 +326,21 @@ public struct ExperienceDetailView: View {
                         context: nil,
                         monthsFromNow: payload.monthsFromNow
                     ) != nil
-                    if ok {
-                        AnalyticsService.shared.track(
-                            .capsuleBuried,
-                            properties: ["months": .int(payload.monthsFromNow)]
-                        )
-                        capsuleBuryToast = "Buried. It'll surface in \(payload.monthsFromNow) months."
-                    }
-                    isShowingCapsuleCompose = false
+                    // Success drives the close (I16): on failure the editor
+                    // stays open with the draft and offers a retry.
+                    guard ok else { return false }
+                    AnalyticsService.shared.track(
+                        .capsuleBuried,
+                        properties: ["months": .int(payload.monthsFromNow)]
+                    )
+                    capsuleBuryToast = String(
+                        format: NSLocalizedString(
+                            "capsule.buried.toast",
+                            comment: "Buried — it will surface in %d months"
+                        ),
+                        payload.monthsFromNow
+                    )
+                    return true
                 },
                 onCancel: { isShowingCapsuleCompose = false }
             )
@@ -371,9 +384,7 @@ public struct ExperienceDetailView: View {
     private func levelToastView(_ text: String) -> some View {
         HStack(spacing: 8) {
             HStack(spacing: 4) {
-                Image(systemName: "sparkles").font(.system(size: 10))
-                Text(text.contains("L2") ? "L1 → L2" : NSLocalizedString("notes.signal.plus", comment: "+1 signal"))
-                    .ctMono(11, .semibold)
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 13))
             }
             .foregroundStyle(CT.accent)
             Text(text)
@@ -478,42 +489,12 @@ public struct ExperienceDetailView: View {
 
     private var heroSection: some View {
         VStack(alignment: .leading, spacing: 11) {
-            // Provenance chip — TrustBadge unifies the five source buckets
-            // (verified / amap / osm / user / curated). Replaced the
-            // isFromOpenStreetMap+isAIEnriched string-match dual-badge with a
-            // structured chip so AutoNavi is visibly distinct from OSM at a
-            // glance (slice A of the Explore-Mode redesign).
-            TrustBadge(level: viewModel.experience.trustBadgeLevel, size: .full)
-
-            // Category row — colored disc + uppercase label + level/signals +
-            // trust chip (verified / observing / questioned).
-            HStack(spacing: 7) {
-                Image(systemName: viewModel.experience.category.symbol)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 18, height: 18)
-                    .background(Circle().fill(viewModel.experience.category.color))
-                Text(viewModel.experience.category.localizedTitle.uppercased())
-                    .ctDisplay(11.5, .bold)
-                    .tracking(1.4)
-                    .foregroundStyle(CT.fgMuted)
-                    .minimumScaleFactor(0.8)
-                    .lineLimit(1)
-                Text(levelSignalText)
-                    .ctMono(10.5, userContributed ? .semibold : .regular)
-                    .tracking(0.5)
-                    .foregroundStyle(userContributed ? CT.accent : CT.fgMuted)
-                    .contentTransition(.numericText())
-                Spacer(minLength: 0)
-                trustChip
-            }
-            .fixedSize(horizontal: false, vertical: true)
-
             Text(viewModel.experience.title)
                 .ctDisplay(27, .bold)
                 .foregroundStyle(CT.fgPrimary)
                 .lineLimit(nil)
-                .minimumScaleFactor(0.8)
+                // Natural wrapping at every Dynamic Type size — the title is
+                // never shrunk or truncated to fake a fit.
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 1)
                 .background(
@@ -532,35 +513,69 @@ public struct ExperienceDetailView: View {
                 .foregroundStyle(CT.fgMuted)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Place names — local + romanized, romanized in mono.
-            if let local = viewModel.experience.location.placeNameLocal, !local.isEmpty {
-                let romanized = viewModel.experience.location.placeNameRomanized
-                if let romanized, !romanized.isEmpty {
-                    Text(romanized)
-                        .ctMono(12.5)
+            placeNames
+            heroContext
+        }
+    }
+
+    /// Place names — romanized (mono) then local, whichever the data carries.
+    @ViewBuilder
+    private var placeNames: some View {
+        let romanized = viewModel.experience.location.placeNameRomanized ?? ""
+        let local = viewModel.experience.location.placeNameLocal ?? ""
+        if !romanized.isEmpty {
+            Text(romanized)
+                .ctMono(12.5)
+                .foregroundStyle(CT.fgMuted)
+        }
+        if !local.isEmpty {
+            Text(local)
+                .ctBody(13)
+                .foregroundStyle(CT.fgMuted)
+        }
+    }
+
+    /// One quiet context block below the content: category disc + name with the
+    /// confidence status chip, then provenance (TrustBadge — curated / amap /
+    /// osm / user / verified) inline, not as a separate outlined pill owning
+    /// its own row. The device-note count appears only when there ARE notes —
+    /// a "0 notes" line is noise — and stays quiet next to the provenance it
+    /// belongs to.
+    private var heroContext: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Image(systemName: viewModel.experience.category.symbol)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 18, height: 18)
+                    .background(Circle().fill(viewModel.experience.category.color))
+                Text(viewModel.experience.category.localizedTitle.uppercased())
+                    .ctDisplay(11.5, .bold)
+                    .tracking(1.4)
+                    .foregroundStyle(CT.fgMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                trustChip
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                TrustBadge(level: viewModel.experience.trustBadgeLevel, size: .compact)
+                if notes.count > 0 {
+                    Text(levelSignalText)
+                        .ctMono(10.5)
                         .foregroundStyle(CT.fgMuted)
-                    Text(local)
-                        .ctBody(13)
-                        .foregroundStyle(CT.fgMuted)
-                } else {
-                    Text(local)
-                        .ctBody(13)
-                        .foregroundStyle(CT.fgMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                Spacer(minLength: 0)
             }
         }
     }
 
-    /// Hero "L{n} · {n} 信号" mono line. Base level 1, +1 once the user
-    /// contributes a note/confirmation this session (matches the design's data-
-    /// level progression).
+    /// Local note count does not imply a public confidence-level increase.
+    /// Rendered only for a nonzero count (see `heroContext`).
     private var levelSignalText: String {
-        let level = 1 + (userContributed ? 1 : 0)
-        let signals = notes.count + (userContributed ? 1 : 0)
-        if signals == 0 {
-            return NSLocalizedString("notes.signals.aiEstimate", comment: "AI estimate label for cold-start")
-        }
-        return "L\(level) · \(signals) " + NSLocalizedString("notes.signals", comment: "signals unit")
+        String(format: NSLocalizedString("notes.local.count", comment: "Number of notes saved on this device"), notes.count)
     }
 
     /// Trust chip mapped from `confidence.health` to the design's three states:
@@ -634,10 +649,9 @@ public struct ExperienceDetailView: View {
                 }
             }
             HStack(spacing: 5) {
-                Text(String(
-                    format: NSLocalizedString("experience.soloScore.short", comment: "Compact Solo Score value"),
-                    viewModel.displaySoloScore.overall
-                ))
+                Text(viewModel.displaySoloScore.overall > 0
+                    ? String(format: NSLocalizedString("experience.soloScore.short", comment: "Compact Solo Score value"), viewModel.displaySoloScore.overall)
+                    : NSLocalizedString("soloScore.unassessed", comment: "No solo assessment available"))
             }
             .foregroundStyle(CT.successText)
             .fontWeight(.semibold)
@@ -920,7 +934,9 @@ public struct ExperienceDetailView: View {
                         Text(name)
                             .ctBody(13, .medium)
                             .foregroundStyle(CT.fgPrimary)
-                            .lineLimit(1)
+                            // Natural wrapping — a long local/romanized name is
+                            // never truncated to fake a fit.
+                            .fixedSize(horizontal: false, vertical: true)
                         Text(String(format: "%.4f, %.4f", coord.latitude, coord.longitude))
                             .ctMono(10.5)
                             .foregroundStyle(CT.fgMuted)
@@ -944,6 +960,8 @@ public struct ExperienceDetailView: View {
                         .padding(.horizontal, 13)
                         .padding(.vertical, 8)
                         .background(Capsule().fill(CT.accent))
+                        .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text(NSLocalizedString("action.directions", comment: "")))
@@ -1065,6 +1083,8 @@ public struct ExperienceDetailView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Capsule().fill(background))
+                .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
@@ -1189,7 +1209,7 @@ public struct ExperienceDetailView: View {
 
         switch count {
         case 0:
-            titleKey = "solo.section.estimate"
+            titleKey = score.overall > 0 ? "solo.section.estimate" : "soloScore.unassessed"
             subtitle = nil
             isEstimate = true
         case 1...2:
@@ -1218,6 +1238,7 @@ public struct ExperienceDetailView: View {
                     .tracking(1.6)
                     .foregroundStyle(CT.fgMuted)
                 Spacer()
+                if score.overall > 0 {
                 Text(String(format: "%.1f", score.overall))
                     .ctDisplay(34, .bold)
                     .foregroundStyle(isEstimate ? CT.accent.opacity(0.55) : CT.accent)
@@ -1226,8 +1247,11 @@ public struct ExperienceDetailView: View {
                         format: NSLocalizedString("solo.a11y", comment: "Solo Score %@ of 10"),
                         String(format: "%.1f", score.overall)
                     )))
+                }
             }
-            soloScoreCard(score: score, subtitle: subtitle, isEstimate: isEstimate)
+            if score.overall > 0 {
+                soloScoreCard(score: score, subtitle: subtitle, isEstimate: isEstimate)
+            }
         }
     }
 
@@ -1274,6 +1298,7 @@ public struct ExperienceDetailView: View {
                 .foregroundStyle(CT.fgMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 10)
+                .frame(minHeight: HitTargetMetrics.minimum)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -1562,7 +1587,7 @@ public struct ExperienceDetailView: View {
 
         var body: some View {
             if let onSelect = onSelectExperience {
-                let scoreStr = String(format: "%.1f", exp.soloScore.overall)
+                let scoreStr = exp.soloScoreDisplay
                 let a11yLabel = String(
                     format: NSLocalizedString("detail.nearby.open.a11y", comment: "Nearby card accessibility label: title and Solo Score"),
                     exp.title, scoreStr
@@ -1634,8 +1659,11 @@ public struct ExperienceDetailView: View {
 
     // MARK: - Action bar
 
-    /// A circular secondary dock action — warm-white disc, hairline border, amber
-    /// when toggled on (styles.css .sc-detail-dock .dock-act).
+    /// A circular secondary dock action — warm-white disc, hairline border,
+    /// filled glyph + quiet tint halo when toggled on. The unselected state
+    /// uses the readable secondary-action tint (never disabled-looking gray);
+    /// selection stays visible through the filled glyph, the halo, the label
+    /// change (Save/Saved) and the `.isSelected` trait.
     private func dockIconButton(
         systemName: String,
         isOn: Bool = false,
@@ -1651,9 +1679,15 @@ public struct ExperienceDetailView: View {
                     Text(visibleLabel).font(.caption2).lineLimit(2)
                 }
             }
-            .foregroundStyle(isOn ? CT.accent : Color.secondary)
+            .foregroundStyle(CT.actionTintAdaptive)
             .frame(minWidth: 48, minHeight: 48)
             .contentShape(Rectangle())
+            .background {
+                if isOn {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(CT.actionTintAdaptive.opacity(0.12))
+                }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(accessibilityLabel))

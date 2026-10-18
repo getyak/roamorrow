@@ -145,6 +145,22 @@ public final class ExperienceService {
         return added
     }
 
+    /// Merge a batch of discovery (Explore) experiences — the same-ID refresh
+    /// path. New ids are inserted; recognized machine-generated rows are
+    /// refreshed in place under `DiscoveryRefreshPolicy`; everything else is
+    /// left untouched. The @Observable mirrors reload whenever anything was
+    /// inserted **or** refreshed (a refresh changes visible content without
+    /// inserting rows). Use `result.insertedIDs` / `result.insertedCount` for
+    /// new-only badges and toasts.
+    @discardableResult
+    public func mergeDiscovered(_ incoming: [Experience]) -> DiscoveryMergeResult {
+        let result = repository.mergeDiscovered(incoming)
+        if result.didChangeStore {
+            reload()
+        }
+        return result
+    }
+
     /// Persist a user-created place and queue its upload to Supabase
     /// `user_experiences` (Phase 2), then refresh the @Observable mirrors so
     /// the new pin renders. Wraps `repo.recordUserExperience`.

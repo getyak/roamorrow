@@ -4,7 +4,9 @@
 >
 > A personal companion for solo travel and life on the move.
 >
-> [roamorrow.com](https://roamorrow.com) · 为独立旅行与旅居者发现附近值得体验的生活。
+> https://roamorrow.com
+>
+> 为独自旅行者设计的"活地图"——打开就是地图,地图上自动显示周边值得做的事。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![pnpm](https://img.shields.io/badge/pnpm-workspaces-orange)](https://pnpm.io/workspaces)
@@ -56,7 +58,7 @@ roamorrow/
 
 ## Quickstart
 
-> Requires Node 20+, pnpm 9+. iOS app requires Xcode 15+ (added in Phase 3).
+> Requires Node 22.13+, pnpm 11.24.0 (pinned in `package.json`). iOS app requires Xcode.
 
 ```bash
 # Clone
@@ -78,6 +80,12 @@ pnpm --filter @solo-compass/bot dev
 ```
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow.
+
+- [`docs/development/map-food-accuracy-delivery.md`](./docs/development/map-food-accuracy-delivery.md): map coordinate boundaries, restaurant fact refresh, verified compatibility and acceptance evidence.
+- [`docs/development/ios-testing.md`](./docs/development/ios-testing.md): local simulator selection, shared session ownership and registered test artifacts.
+- [`docs/CI_TEST_MATRIX.md`](./docs/CI_TEST_MATRIX.md): native test suites and portable/macOS simulator policy gates.
+- [`docs/development/dependency-security.md`](./docs/development/dependency-security.md): dependency updates, the braces mitigation and its mandatory audit checks.
+- [`docs/design/2026-10-08-core-flow-refinement.md`](./docs/design/2026-10-08-core-flow-refinement.md): core flow design evidence and remaining native validation.
 
 ---
 

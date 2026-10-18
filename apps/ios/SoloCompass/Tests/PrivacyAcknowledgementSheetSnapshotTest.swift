@@ -3,8 +3,8 @@ import SwiftUI
 @testable import SoloCompass
 
 /// V-001 regression coverage: the Explore-Here privacy acknowledgement sheet
-/// (`ExploreConsentSheet`) must render its full subtitle — the phrase ending in
-/// "…on your behalf." — without truncation, at both the default and the largest
+/// (`ExploreConsentSheet`) must render the full explanation of map position and
+/// public place information without truncation, at both the default and largest
 /// accessibility Dynamic Type sizes.
 ///
 /// We don't ship a third-party snapshot library, so instead of comparing pixels
@@ -60,13 +60,12 @@ final class PrivacyAcknowledgementSheetSnapshotTest: XCTestCase {
         )
     }
 
-    /// Guards the localized string itself: the full subtitle phrase must end in
-    /// "on your behalf." so the UI has the complete sentence to render.
-    func testSubtitleLocalizedStringIsComplete() {
-        let subtitle = NSLocalizedString("explore.consent.subtitle", comment: "")
-        XCTAssertTrue(
-            subtitle.contains("on your behalf"),
-            "Subtitle must contain the full phrase ending in '…on your behalf'"
-        )
+    /// The English copy must explain both inputs, independently of host locale.
+    func testSubtitleLocalizedStringIsComplete() throws {
+        let path = try XCTUnwrap(Bundle.main.path(forResource: "en", ofType: "lproj"))
+        let english = try XCTUnwrap(Bundle(path: path))
+        let subtitle = english.localizedString(forKey: "explore.consent.subtitle", value: nil, table: nil)
+        XCTAssertTrue(subtitle.contains("map position"), "Explain the location input")
+        XCTAssertTrue(subtitle.contains("public place information."), "Keep the complete public-data explanation")
     }
 }

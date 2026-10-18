@@ -95,8 +95,12 @@ extension ExperienceDetailView {
             }
             HStack(spacing: 7) {
                 Button {
-                    Haptics.impact(.light)
-                    travelerNoteStore?.acceptCorrection(id: c.id)
+                    guard travelerNoteStore?.acceptCorrection(id: c.id) == true else {
+                        noteActionFailed = true
+                        return
+                    }
+                    noteActionFailed = false
+                    Haptics.notify(.success)
                     registerContribution(String(
                         format: NSLocalizedString("correction.confirmed.toast", comment: "Confirmed toast"),
                         c.field
@@ -110,11 +114,17 @@ extension ExperienceDetailView {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 13).padding(.vertical, 6)
                     .background(Capsule().fill(CT.accent))
+                    .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 Button {
+                    guard travelerNoteStore?.dismissCorrection(id: c.id) == true else {
+                        noteActionFailed = true
+                        return
+                    }
+                    noteActionFailed = false
                     Haptics.impact(.light)
-                    travelerNoteStore?.dismissCorrection(id: c.id)
                     reloadCoBuild()
                 } label: {
                     Text(NSLocalizedString("correction.dismiss", comment: "Inaccurate"))
@@ -122,6 +132,8 @@ extension ExperienceDetailView {
                         .foregroundStyle(CT.fgPrimary)
                         .padding(.horizontal, 13).padding(.vertical, 6)
                         .background(Capsule().fill(Color.black.opacity(0.04)))
+                        .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -169,6 +181,8 @@ extension ExperienceDetailView {
                                 .foregroundStyle(CT.accent)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 9)
+                                .frame(minHeight: HitTargetMetrics.minimum)
+                                .contentShape(Rectangle())
                                 .overlay(alignment: .top) {
                                     Rectangle().fill(CT.borderSubtle).frame(height: 0.5)
                                 }
@@ -176,23 +190,27 @@ extension ExperienceDetailView {
                         .buttonStyle(.plain)
                     }
                 }
+                if noteActionFailed {
+                    Text(NSLocalizedString("notes.action.failed", comment: "Saved mutation failed"))
+                        .ctBody(13)
+                        .foregroundStyle(CT.savedRed)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 quickAddPanel
             }
         }
     }
 
     private var notesHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Text(NSLocalizedString("notes.title", comment: "Traveler notes").uppercased())
-                    .ctDisplay(11, .bold)
-                    .tracking(1.6)
+                Text(NSLocalizedString("notes.title", comment: "Notes on this device"))
+                    .ctBody(13, .semibold)
                     .foregroundStyle(CT.fgMuted)
                 Text("\(notes.count)")
                     .ctMono(10)
                     .foregroundStyle(CT.fgSubtle)
             }
-            Spacer()
             // Filter segments — all / experience / correction.
             HStack(spacing: 2) {
                 ForEach(NoteFilter.allCases, id: \.self) { filter in
@@ -209,8 +227,11 @@ extension ExperienceDetailView {
                                     Capsule().fill(CT.surfaceWhite).shadow(color: .black.opacity(0.06), radius: 1, y: 1)
                                 }
                             }
+                            .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(notesFilter == filter ? [.isSelected] : [])
                 }
             }
             .padding(2)
@@ -272,9 +293,13 @@ extension ExperienceDetailView {
                     let confirmed = confirmedNoteIds.contains(note.id)
                     Button {
                         guard !confirmed else { return }
-                        Haptics.impact(.light)
+                        guard travelerNoteStore?.confirmNote(id: note.id) == true else {
+                            noteActionFailed = true
+                            return
+                        }
+                        noteActionFailed = false
                         confirmedNoteIds.insert(note.id)
-                        travelerNoteStore?.confirmNote(id: note.id)
+                        Haptics.notify(.success)
                         registerContribution(NSLocalizedString("notes.contributed.toast", comment: "Thanks toast"))
                     } label: {
                         HStack(spacing: 4) {
@@ -289,6 +314,8 @@ extension ExperienceDetailView {
                         .padding(.horizontal, 9).padding(.vertical, 4)
                         .background(Capsule().fill(confirmed ? CT.successSoft : .clear))
                         .overlay(Capsule().strokeBorder(confirmed ? CT.successText.opacity(0.3) : CT.borderSubtle, lineWidth: 0.5))
+                        .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -344,12 +371,15 @@ extension ExperienceDetailView {
             }
             .foregroundStyle(CT.fgMuted)
 
-            // Mood chips, category-specific.
+            // Mood chips, category-specific. Visual chips keep their quiet
+            // size; each label's hit region is a real 44pt target and the
+            // selected trait is read back (R2-09).
             FlowLayout(spacing: 5) {
                 ForEach(moodPresets, id: \.self) { mood in
                     let picked = pickedMoods.contains(mood)
                     Button {
                         Haptics.selection()
+                        noteSubmitError = false
                         if picked { pickedMoods.remove(mood) } else { pickedMoods.insert(mood) }
                     } label: {
                         Text(mood)
@@ -357,9 +387,26 @@ extension ExperienceDetailView {
                             .foregroundStyle(picked ? .white : CT.fgPrimary)
                             .padding(.horizontal, 11).padding(.vertical, 5)
                             .background(Capsule().fill(picked ? CT.accent : CT.surfaceSunken))
+                            .frame(minWidth: HitTargetMetrics.minimum, minHeight: HitTargetMetrics.minimum)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(Text(mood))
+                    .accessibilityValue(Text(picked
+                        ? NSLocalizedString("common.selected", comment: "Selected")
+                        : ""))
+                    .accessibilityAddTraits(picked ? [.isButton, .isSelected] : .isButton)
                 }
+            }
+
+            if noteSubmitError {
+                Text(NSLocalizedString(
+                    "notes.submit.error",
+                    comment: "Shown when a traveler note failed to save; the draft is kept"
+                ))
+                .ctBody(11)
+                .foregroundStyle(CT.savedRed)
+                .fixedSize(horizontal: false, vertical: true)
             }
 
             HStack(spacing: 8) {
@@ -373,6 +420,7 @@ extension ExperienceDetailView {
                 .textFieldStyle(.plain)
                 .submitLabel(.send)
                 .onSubmit(submitNote)
+                .onChange(of: noteDraft) { _, _ in noteSubmitError = false }
                 Button {
                     submitNote()
                 } label: {
@@ -381,6 +429,9 @@ extension ExperienceDetailView {
                         .foregroundStyle(canSubmitNote ? .white : CT.fgSubtle)
                         .frame(width: 30, height: 30)
                         .background(Circle().fill(canSubmitNote ? CT.accent : CT.surfaceSunken))
+                        // 30pt visual inside a real 44pt hit region (R2-09).
+                        .frame(width: HitTargetMetrics.minimum, height: HitTargetMetrics.minimum)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!canSubmitNote)
@@ -411,19 +462,24 @@ extension ExperienceDetailView {
         let text = noteDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         let composed = [moods, text].filter { !$0.isEmpty }.joined(separator: "。")
         let final = composed.hasSuffix("。") || composed.isEmpty ? composed : composed + "。"
-        _ = store.addNote(experienceId: viewModel.experience.id, text: final, kind: .experience)
+        guard store.addNote(experienceId: viewModel.experience.id, text: final, kind: .experience) != nil else {
+            // Nothing persisted — keep the draft and say so (R2-09). No
+            // success haptic, no cleared input.
+            withAnimation { noteSubmitError = true }
+            return
+        }
         pickedMoods.removeAll()
         noteDraft = ""
+        noteSubmitError = false
+        reloadCoBuild()
         Haptics.notify(.success)
         registerContribution(NSLocalizedString("notes.contributed.toast", comment: "Thanks toast"))
     }
 
-    /// Mark the user as having contributed, reload, and show the level toast.
+    /// Acknowledges only the local mutation; public confidence is independent.
     func registerContribution(_ toast: String) {
-        let firstTime = !userContributed
-        userContributed = true
         reloadCoBuild()
-        flashLevelToast(firstTime ? NSLocalizedString("notes.level.up.toast", comment: "Level up toast") : toast)
+        flashLevelToast(toast)
     }
 
     /// Relative-time label ("3 天前") from an ISO 8601 string.

@@ -88,17 +88,19 @@ test.describe("Roamorrow landing — quality rubric", () => {
       `h2 count: ${h2Count}`,
     );
 
-    /* 6. Pricing */
+    /* 6. Pricing — truthful after W01: no invented price numbers. Both real
+       Pro plans must render, with the price disclosed as live App Store data. */
     const priceText = await page.locator("main").innerText();
-    const has29 = priceText.includes("$29");
-    const has50 = priceText.includes("$50");
-    const pricingScore = (has29 ? 4 : 0) + (has50 ? 4 : 0);
+    const hasMonthly = priceText.includes("Pro · Monthly");
+    const hasYearly = priceText.includes("Pro · Yearly");
+    const hasHonestPrice = priceText.includes("App Store price");
+    const pricingScore = (hasMonthly ? 3 : 0) + (hasYearly ? 3 : 0) + (hasHonestPrice ? 2 : 0);
     record(
       "pricing",
-      "Both price points rendered ($29 & $50)",
+      "Both Pro plans rendered with live App Store price disclosure",
       8,
       pricingScore,
-      `$29: ${has29}, $50: ${has50}`,
+      `monthly: ${hasMonthly}, yearly: ${hasYearly}, price note: ${hasHonestPrice}`,
     );
 
     /* 7. hreflang */

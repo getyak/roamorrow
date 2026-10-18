@@ -121,7 +121,7 @@ function BlindboxMock({ copy }: { copy: Copy }) {
             className="absolute inset-4 rounded-full border border-white/20 sc-halo-pulse"
             style={{ animationDelay: "1200ms" }}
           />
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-bg-warm/90 shadow-lg">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-bg-warm shadow-lg">
             <span className="font-serif text-[22px] font-medium text-fg-primary">✦</span>
           </div>
         </div>

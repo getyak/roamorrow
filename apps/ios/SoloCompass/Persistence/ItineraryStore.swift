@@ -15,9 +15,11 @@ import SwiftData
 @MainActor
 public final class ItineraryStore {
     private let context: ModelContext
+    private let saveContext: () throws -> Void
 
-    public init(context: ModelContext) {
+    public init(context: ModelContext, saveContext: (() throws -> Void)? = nil) {
         self.context = context
+        self.saveContext = saveContext ?? { try context.save() }
     }
 
     /// Convenience init using the shared on-disk container.
@@ -30,9 +32,18 @@ public final class ItineraryStore {
     /// Persist a new itinerary. Silently replaces an existing record with the
     /// same id (delete-then-insert to avoid SwiftData's implicit upsert gaps).
     public func save(_ itinerary: Itinerary) throws {
-        deleteRecord(id: itinerary.id.rawValue)
-        context.insert(ItineraryRecord(from: itinerary))
-        try context.save()
+        if record(for: itinerary.id.rawValue) != nil {
+            try update(itinerary)
+            return
+        }
+        let inserted = ItineraryRecord(from: itinerary)
+        context.insert(inserted)
+        do {
+            try saveContext()
+        } catch {
+            context.delete(inserted)
+            throw error
+        }
         enqueueSync(itinerary, isDeleted: false)
     }
 
@@ -51,9 +62,15 @@ public final class ItineraryStore {
     }
 
     /// Update mutable fields of an existing itinerary. No-op if id not found.
+    /// Throws when the durable write fails; in that case only this record's
+    /// field mutations are rolled back (never `context.rollback()`, which
+    /// would wipe unrelated pending edits).
     public func update(_ itinerary: Itinerary) throws {
         let rawId = itinerary.id.rawValue
         guard let existing = record(for: rawId) else { return }
+        // Snapshot the prior value so a failed commit can restore this
+        // record's own pending field changes.
+        let prior = existing.asValue
         let fresh = ItineraryRecord(from: itinerary)
         existing.ownerId = fresh.ownerId
         existing.title = fresh.title
@@ -64,7 +81,20 @@ public final class ItineraryStore {
         existing.note = fresh.note
         existing.openToCompanions = fresh.openToCompanions
         existing.updatedAt = fresh.updatedAt
-        try context.save()
+        do {
+            try saveContext()
+        } catch {
+            existing.ownerId = prior.ownerId
+            existing.title = prior.title
+            existing.cityCode = prior.cityCode
+            existing.startDate = prior.startDate
+            existing.endDate = prior.endDate
+            existing.experienceIdsBlob = ItineraryRecord(from: prior).experienceIdsBlob
+            existing.note = prior.note
+            existing.openToCompanions = prior.openToCompanions
+            existing.updatedAt = prior.updatedAt
+            throw error
+        }
         enqueueSync(itinerary, isDeleted: false)
     }
 
@@ -73,7 +103,12 @@ public final class ItineraryStore {
         guard let rec = record(for: id.rawValue) else { return }
         let value = rec.asValue
         context.delete(rec)
-        try context.save()
+        do {
+            try saveContext()
+        } catch {
+            context.insert(ItineraryRecord(from: value))
+            throw error
+        }
         // Enqueue a tombstone so the row is soft-deleted on the server.
         enqueueSync(value, isDeleted: true)
     }
@@ -82,13 +117,33 @@ public final class ItineraryStore {
     /// Returns the updated `Itinerary` value, or nil if the itinerary was not found.
     @discardableResult
     public func addExperience(_ experienceId: String, to itineraryId: ItineraryId) throws -> Itinerary? {
+        try addExperiences([experienceId], to: itineraryId)
+    }
+
+    /// Append several experience ids in ONE durable save (route add-to-
+    /// itinerary writes every stop together). Idempotent per id; returns the
+    /// updated value or nil when the itinerary doesn't exist. On write failure
+    /// the record's own pending blob change is rolled back and the error
+    /// rethrown so callers can retain the selection and retry.
+    @discardableResult
+    public func addExperiences(_ experienceIds: [String], to itineraryId: ItineraryId) throws -> Itinerary? {
         guard let rec = record(for: itineraryId.rawValue) else { return nil }
         var ids = (try? JSONDecoder().decode([String].self, from: rec.experienceIdsBlob)) ?? []
-        guard !ids.contains(experienceId) else { return rec.asValue }
-        ids.append(experienceId)
-        rec.experienceIdsBlob = (try? JSONEncoder().encode(ids)) ?? rec.experienceIdsBlob
+        var seen = Set(ids)
+        let toAdd = experienceIds.filter { seen.insert($0).inserted }
+        guard !toAdd.isEmpty else { return rec.asValue }
+        let priorBlob = rec.experienceIdsBlob
+        let priorUpdatedAt = rec.updatedAt
+        ids.append(contentsOf: toAdd)
+        rec.experienceIdsBlob = (try? JSONEncoder().encode(ids)) ?? priorBlob
         rec.updatedAt = ISO8601DateFormatter().string(from: Date())
-        try context.save()
+        do {
+            try saveContext()
+        } catch {
+            rec.experienceIdsBlob = priorBlob
+            rec.updatedAt = priorUpdatedAt
+            throw error
+        }
         let updated = rec.asValue
         enqueueSync(updated, isDeleted: false)
         return updated
@@ -96,13 +151,22 @@ public final class ItineraryStore {
 
     /// Replace `experienceIds` with a reordered list. No-op if the itinerary is not found
     /// or the set of IDs differs from the current set (prevents accidental drops).
+    /// Rolls back its own pending blob change on write failure before rethrowing.
     public func reorderExperiences(_ orderedIds: [String], in itineraryId: ItineraryId) throws {
         guard let rec = record(for: itineraryId.rawValue) else { return }
         let current = Set((try? JSONDecoder().decode([String].self, from: rec.experienceIdsBlob)) ?? [])
         guard Set(orderedIds) == current else { return }
-        rec.experienceIdsBlob = (try? JSONEncoder().encode(orderedIds)) ?? rec.experienceIdsBlob
+        let priorBlob = rec.experienceIdsBlob
+        let priorUpdatedAt = rec.updatedAt
+        rec.experienceIdsBlob = (try? JSONEncoder().encode(orderedIds)) ?? priorBlob
         rec.updatedAt = ISO8601DateFormatter().string(from: Date())
-        try context.save()
+        do {
+            try saveContext()
+        } catch {
+            rec.experienceIdsBlob = priorBlob
+            rec.updatedAt = priorUpdatedAt
+            throw error
+        }
         enqueueSync(rec.asValue, isDeleted: false)
     }
 
@@ -114,13 +178,7 @@ public final class ItineraryStore {
         var ids = (try? JSONDecoder().decode([String].self, from: rec.experienceIdsBlob)) ?? []
         let existing = Set(ids)
         let toAdd = favoriteIds.filter { !existing.contains($0) }.sorted()
-        ids.append(contentsOf: toAdd)
-        if !toAdd.isEmpty {
-            rec.experienceIdsBlob = (try? JSONEncoder().encode(ids)) ?? rec.experienceIdsBlob
-            rec.updatedAt = ISO8601DateFormatter().string(from: Date())
-            try context.save()
-            enqueueSync(rec.asValue, isDeleted: false)
-        }
+        if !toAdd.isEmpty { _ = try addExperiences(toAdd, to: itineraryId) }
         return toAdd.count
     }
 

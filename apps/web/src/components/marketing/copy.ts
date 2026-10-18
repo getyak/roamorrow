@@ -1,3 +1,6 @@
+import { SUPPORT_EMAIL } from "@/lib/legal";
+import { BRAND } from "@/lib/brand";
+
 /**
  * Marketing copy — English + Simplified Chinese.
  * Doc: WEB_LANDING_DESIGN.md §6
@@ -7,8 +10,6 @@
  * same sentence structure — parallel translation would sound
  * stiff. See WEB_LANDING_DESIGN.md §6.3 for CN discipline.
  */
-
-import { BRAND } from "@/lib/brand";
 
 export type Locale = "en" | "zh";
 
@@ -26,7 +27,9 @@ export interface Copy {
     eyebrow: string;
     h1Lines: string[];
     sub: string;
-    ctaPrimary: string;
+    ctaPrimaryStore: string;
+    ctaPrimaryWeb: string;
+    iosStatus: string;
     ctaSecondary: string;
   };
   problem: {
@@ -111,7 +114,8 @@ export interface Copy {
     eyebrow: string;
     title: string;
     sub: string;
-    lifetime: {
+    priceNote: string;
+    monthly: {
       name: string;
       price: string;
       pricePer: string;
@@ -147,20 +151,26 @@ export const copy: Record<Locale, Copy> = {
       blog: "Journal",
       manifesto: "Manifesto",
       signIn: "Sign in",
-      getApp: "Open web map",
+      getApp: "Get on App Store",
     },
     hero: {
       eyebrow: "since 2026 · made for iOS 17+",
       h1Lines: ["Find your way.", "Feel at home."],
-      sub: "Roamorrow is your companion for solo travel and life on the move. Find local experiences worth your afternoon, and make a new place feel like yours.",
-      ctaPrimary: "Open web map",
+      sub: `${BRAND.name} is your companion for solo travel and life on the move. Find local experiences worth your afternoon, and make a new place feel like yours.`,
+      ctaPrimaryStore: "Get on App Store",
+      ctaPrimaryWeb: "Open the web map",
+      iosStatus: "The iPhone app is built but not publicly listed yet — the web map is open today.",
       ctaSecondary: "See how it works",
     },
     problem: {
       eyebrow: "Why we built this",
       paragraphs: [
-        { text: "It's 4 PM." },
-        { text: "You're alone in a city you don't know." },
+        {
+          text: "It's 4 PM.",
+        },
+        {
+          text: "You're alone in a city you don't know.",
+        },
         {
           text: "You could open Google Maps — but the top-rated café will be full of couples on dates.",
           muted: ["Google Maps"],
@@ -186,7 +196,7 @@ export const copy: Record<Locale, Copy> = {
         {
           dot: "sun",
           title: "Map-first",
-          body: "The map is the home screen. No tabs. No drawer. No onboarding. Everything happens on the map.",
+          body: "The map is the home screen. No tabs, no drawer. A short setup picks your city and your pace — then everything happens on the map.",
         },
         {
           dot: "omen",
@@ -205,8 +215,8 @@ export const copy: Record<Locale, Copy> = {
       title: "Three promises we don't break.",
       items: [
         {
-          heading: "Privacy is a promise, not a checkbox.",
-          body: 'Your location never leaves your phone. No accounts to try. No email. No "sign up with Google." Anonymous by default.',
+          heading: "What leaves your phone.",
+          body: "Confirming exploration sends the selected coordinates and radius to OpenStreetMap/Overpass. AI requests can include city and experience context. Review the data-use page for service details.",
         },
         {
           heading: "AI is a filter, not an oracle.",
@@ -214,38 +224,38 @@ export const copy: Record<Locale, Copy> = {
         },
         {
           heading: "Pricing is honest.",
-          body: "$29 one-time, or $50 a year. That's it. No ads ever. No selling your data ever. No free-then-paywall bait.",
+          body: "Pro is a monthly or yearly subscription, priced live in the App Store — no invented numbers on this page. No ads ever. No selling your data ever. No free-then-paywall bait.",
         },
       ],
     },
     capabilities: {
       eyebrow: "What you actually get",
-      title: "Six things nobody else does the way we do.",
-      sub: "Not a feature list. Six rituals built for a person traveling alone — each takes 30 seconds to try and rewires how you use a map.",
-      intro: "Every tile below is a real screen from the app.",
+      title: "From a map to a moment worth taking.",
+      sub: "Explore the current app flows and preview the travel rituals being developed.",
+      intro: "Illustrations, not live results or product screenshots.",
     },
     askSolo: {
       eyebrow: "01 · Ask",
       title: "The friend in every city, in your pocket.",
-      body: "Long-press anywhere on the map, or hold to talk. Roamorrow reads the neighborhood, the time of day, the weather — and answers in cards, not walls of text. Every recommendation cites its sources.",
+      body: "Ask a question about your city or a selected experience. Roamorrow uses the available map context and returns suggestions you can inspect before deciding.",
       bullets: [
-        "Voice-first — hold to talk, release to send",
-        "Grounded on the map you're looking at, not the world",
-        "Shows its reasoning trace — never a black box",
+        "Type a question or choose voice input",
+        "Keep the selected place in context",
+        "Inspect available sources and confidence",
       ],
       demoUser: "Somewhere quiet I can read for 2 hours. Not a chain.",
       demoAgent: "Three candidates within 8 min walk.",
       demoReason:
-        "Ranked by ambient dB (measured), power outlets, and how full a solo traveler said it was Tuesday afternoon.",
+        "Compare the available experience details, reported solo scores, and estimated walking times.",
     },
     blindbox: {
       eyebrow: "02 · Blindbox",
       title: "For the days you can't choose.",
-      body: "Some afternoons the tyranny of choice is the enemy. Tap the blindbox and Roamorrow picks one experience for you, based on where you are and what fits this hour. You can't preview it. That's the point.",
+      body: "A direction for days when choosing feels difficult: reveal one experience from the available city collection. Some reveal and archive views are still previews.",
       bullets: [
-        "One decision, taken out of your hands",
-        "Only opens experiences that match this hour of this day",
-        "Cannot re-roll — the whole point is to commit",
+        "A quieter way to narrow the choice",
+        "Suggestions come from available experiences",
+        "Preview availability is shown in the app",
       ],
       cardHint: "Chiang Mai · 4:12 PM · sunny",
       cardReveal: "A rooftop nobody's told you about.",
@@ -254,11 +264,11 @@ export const copy: Record<Locale, Copy> = {
     capsule: {
       eyebrow: "03 · Time Capsule",
       title: "Leave a note for a future you.",
-      body: "Standing somewhere you love — a bench, a corner, a viewpoint? Seal a capsule to that exact spot. Return in six months and it opens. Or leave it for whoever you were.",
+      body: "Write a note tied to a place and a future opening time. The current compose flow supports text; available opening conditions are shown in the app.",
       bullets: [
-        "Anchored to a geofence — opens only when you're back",
-        "Text, voice, or photo — sealed on device",
-        "Time-locks: 1 month · 6 months · 1 year · when-you're-ready",
+        "A text note with a place and time",
+        "Keep the draft if saving fails",
+        "Read the opening conditions before sealing",
       ],
       sealTitle: "Sealed at Nimman corner café",
       sealMeta: "opens in 6 months · when you're here",
@@ -267,11 +277,11 @@ export const copy: Record<Locale, Copy> = {
     omen: {
       eyebrow: "04 · Daily Omen",
       title: "One small prompt, every morning.",
-      body: "Not a horoscope. One quiet card at breakfast — a nudge Roamorrow drew from your city, your rhythm, the weather. A gentle direction for the day, not a schedule.",
+      body: "A short city prompt for the start of a day. The example shows the intended reading experience, rather than a verified event or weather report.",
       bullets: [
-        "Draws once per morning — no scroll, no feed",
-        "Reads local weather, calendar, and your last week",
-        "Written by a language model, tuned to be terse",
+        "One small prompt, with room to ignore it",
+        "An illustrative city moment",
+        "Some archive views remain previews",
       ],
       cardDate: "Tuesday · Chiang Mai",
       cardTitle: "Today, take the long way.",
@@ -280,12 +290,12 @@ export const copy: Record<Locale, Copy> = {
     },
     bestNow: {
       eyebrow: "05 · Best Now",
-      title: "Every place has a golden hour. We show it.",
-      body: "Roamorrow knows when each experience is best — not \"open,\" but at its peak. A café's quiet window is 8–10 AM. A viewpoint's is 5:47 PM sharp. Every card shows a live heatmap of when to go.",
+      title: "See the available windows for an experience.",
+      body: "Experience cards can include reported best-time windows. They help plan a visit; they do not confirm that a place is open, quiet, safe or at an exact astronomical peak.",
       bullets: [
-        "Learned from solo travelers' honest reports, not vendor claims",
-        "Live now-badge when you're inside the peak window",
-        "Countdown when peak is soon — silent when it's not",
+        "Read the available time windows",
+        "Keep reported timing separate from live opening status",
+        "Check current conditions before a trip",
       ],
       peakLabel: "Peak in 42 min",
       peakWindow: "5:47 – 6:15 PM · golden hour",
@@ -294,11 +304,11 @@ export const copy: Record<Locale, Copy> = {
     brag: {
       eyebrow: "06 · Brag Card",
       title: "A travel passport, not a highlight reel.",
-      body: "At the end of a trip Roamorrow compiles what you actually did — the walks, the peaks you hit, the places nobody else on the app has been. One shareable card. Zero engagement optimization.",
+      body: "Bring the experiences you have recorded into one view. The passport here is an illustration; some archive and export actions remain previews or read-only.",
       bullets: [
-        "Auto-composed from your archive — you don't caption anything",
-        "Shows genuine rarity, not likes",
-        "Exports to print — magazine-style, ready for a frame",
+        "Read the records already available",
+        "Keep example statistics clearly marked",
+        "Export availability is shown in the app",
       ],
       cardName: "Nikita · Solo Traveler",
       cardMeta: "Chiang Mai · 8 days · Feb 2026",
@@ -309,64 +319,84 @@ export const copy: Record<Locale, Copy> = {
     },
     pricing: {
       eyebrow: "Pricing",
-      title: "One decision. Two options.",
-      sub: "Pay once and it's yours. Or pay yearly and get first access to everything new. Either way, no ads, no data selling, no subscription bloat.",
-      lifetime: {
-        name: "Lifetime",
-        price: "$29",
-        pricePer: "one time",
-        tagline: "Every feature today. Forever yours.",
-        cta: "Check iPhone availability",
+      title: "One product. Two ways to pay.",
+      sub: "Explore the free map and experiences first. Pro is monthly or yearly; some ritual and archive views remain previews or read-only.",
+      priceNote:
+        "Prices vary by region. The App Store shows the live price and any free-trial eligibility before you pay — nothing is invented here.",
+      monthly: {
+        name: "Pro · Monthly",
+        price: "App Store price",
+        pricePer: "per month",
+        tagline: "Everything Pro, month to month.",
+        cta: "See it in the App Store",
         features: [
-          "Unlimited AI cross-referencing",
-          "Custom routes across cities",
-          "Rituals · Time Capsule · Omen · Blindbox",
-          "Print export (magazine-style journal)",
-          "iCloud sync across devices",
-          "Every future minor update",
+          "Ask AI — up to 30 answers a day (60 explanations)",
+          "Available route tools",
+          "Some rituals and archive views remain previews",
+          "Current entitlements are shown before purchase",
+          "Sync across devices (beta)",
         ],
       },
       yearly: {
-        badge: "Most popular",
-        name: "Yearly",
-        price: "$50",
+        badge: "Best value",
+        name: "Pro · Yearly",
+        price: "App Store price",
         pricePer: "per year",
-        tagline: "Everything in Lifetime, plus first access to what's next.",
-        cta: "Check iPhone availability",
+        tagline: "The same Pro, one yearly payment.",
+        cta: "See it in the App Store",
         features: [
-          "Everything in Lifetime",
-          "First access to new AI models",
-          "First access to new Rituals",
-          "Priority support",
-          "Contribute to the roadmap",
+          "Everything in Pro Monthly",
+          "One payment instead of twelve",
           "Cancel anytime — no lock-in",
         ],
       },
-      free: "Or try Free first — no card, no signup",
+      free: "Or explore the web map first — free, no account",
     },
     footer: {
-      tagline: BRAND.tagline,
+      tagline:
+        "A map, the evidence behind each experience, and a clearer next step for solo travel.",
       columns: [
         {
           heading: "Product",
           links: [
-            { label: "Features", href: "/#features" },
-            { label: "Pricing", href: "/pricing" },
-            { label: "Download", href: "/download" },
+            {
+              label: "Features",
+              href: "/#features",
+            },
+            {
+              label: "Pricing",
+              href: "/pricing",
+            },
+            {
+              label: "Download",
+              href: "/download",
+            },
           ],
         },
         {
           heading: "Company",
           links: [
-            { label: "Manifesto", href: "/manifesto" },
-            { label: "Contact", href: `mailto:${BRAND.supportEmail}` },
+            {
+              label: "Manifesto",
+              href: "/manifesto",
+            },
+            {
+              label: "Contact",
+              href: `mailto:${SUPPORT_EMAIL}`,
+            },
           ],
         },
         {
           heading: "Legal",
           links: [
-            { label: "Privacy", href: "/privacy" },
-            { label: "Terms", href: "/terms" },
+            {
+              label: "Privacy",
+              href: "/privacy",
+            },
+            {
+              label: "Terms",
+              href: "/terms",
+            },
             { label: "Support", href: "/support" },
           ],
         },
@@ -383,20 +413,26 @@ export const copy: Record<Locale, Copy> = {
       blog: "刊物",
       manifesto: "宣言",
       signIn: "登录",
-      getApp: "打开网页地图",
+      getApp: "App Store 下载",
     },
     hero: {
       eyebrow: "since 2026 · 面向 iOS 17+",
       h1Lines: ["一个人出发，", "也能在远方", "过好日常。"],
-      sub: "Roamorrow 是你的独自旅行与旅居伙伴。发现值得花一个下午的本地体验，让陌生的地方也有熟悉的日常。",
-      ctaPrimary: "打开网页地图",
+      sub: `${BRAND.name} 是你的独自旅行与旅居伙伴。发现值得花一个下午的本地体验，让陌生的地方也有熟悉的日常。`,
+      ctaPrimaryStore: "App Store 下载",
+      ctaPrimaryWeb: "打开网页地图",
+      iosStatus: "iPhone 版已开发完成，尚未公开上架 —— 网页地图今天就能用。",
       ctaSecondary: "看看它是什么样",
     },
     problem: {
       eyebrow: "为什么我们做这个",
       paragraphs: [
-        { text: "下午 4 点。" },
-        { text: "你独自在一座陌生的城市。" },
+        {
+          text: "下午 4 点。",
+        },
+        {
+          text: "你独自在一座陌生的城市。",
+        },
         {
           text: "你可以打开 Google 地图 —— 但热门咖啡馆里全是情侣约会。",
           muted: ["Google 地图"],
@@ -422,7 +458,7 @@ export const copy: Record<Locale, Copy> = {
         {
           dot: "sun",
           title: "地图为家",
-          body: "地图就是首页。没有 tab，没有抽屉，没有引导页。一切都在地图上发生。",
+          body: "地图就是首页。没有 tab，没有抽屉。简短的初始设置选好城市和节奏 —— 之后一切都在地图上发生。",
         },
         {
           dot: "omen",
@@ -441,8 +477,8 @@ export const copy: Record<Locale, Copy> = {
       title: "三个不会破的承诺。",
       items: [
         {
-          heading: "隐私是承诺，不是勾选项。",
-          body: '你的位置永远不离开你的手机。试用无需注册、无需邮箱、无需"Google 登录"。默认匿名。',
+          heading: "哪些数据会离开你的手机。",
+          body: "确认探索后，选定坐标和半径会发送至 OpenStreetMap/Overpass。AI 请求可能包含城市与体验上下文；数据使用页说明各项服务。",
         },
         {
           heading: "AI 是过滤器，不是神谕。",
@@ -450,38 +486,30 @@ export const copy: Record<Locale, Copy> = {
         },
         {
           heading: "定价是诚实的。",
-          body: '一次性 ¥118，或每年 ¥198。就这两档。永远不接广告，永远不卖数据，永远不做"免费然后付费墙"的诱饵。',
+          body: "Pro 是按月或按年订阅，价格以 App Store 实时显示为准 —— 本页不编造数字。永远不接广告，永远不卖数据，永远不做“免费然后付费墙”的诱饵。",
         },
       ],
     },
     capabilities: {
       eyebrow: "你实际能拿到什么",
-      title: "六件事，别人不这么做。",
-      sub: "不是功能清单，是六个为独自旅行者做的仪式。每个 30 秒内可上手，能重新改写你使用地图的方式。",
-      intro: "下面每张卡都是 App 里的真实界面。",
+      title: "从地图，走到值得停留的一刻。",
+      sub: "了解当前可用的体验流程，以及正在完善的旅行仪式。",
+      intro: "以下均为示意，不是实时结果或产品截图。",
     },
     askSolo: {
       eyebrow: "01 · 问",
       title: "每座城市都有的那个懂行朋友。",
-      body: "长按地图任意处，或按住语音键。Roamorrow 会读取当前街区、时间、天气 —— 用卡片回答你，而不是一大段文字。每条建议都标注来源。",
-      bullets: [
-        "语音优先 —— 按住说话，松开发送",
-        "锚定在你正看的地图上，不是漫无边际",
-        "推理过程可展开 —— 不做黑盒",
-      ],
+      body: "围绕所在城市或选定体验提问。Roamorrow 使用已有地图上下文提供建议，你可以先查看依据，再决定下一步。",
+      bullets: ["文字与语音均有入口", "保留选定地点的上下文", "查看已有来源和置信度"],
       demoUser: "找个安静地方读书 2 小时，别是连锁店。",
       demoAgent: "8 分钟步行内 3 个候选。",
-      demoReason: "按环境音分贝（实测）、有无插座、以及独行者上个周二下午的忙碌记录排序。",
+      demoReason: "比较已有体验详情、记录的一人友好评分，以及预计步行时间。",
     },
     blindbox: {
       eyebrow: "02 · 盲盒",
       title: "选择困难的时候，交给它。",
-      body: "有些下午，选择本身是敌人。点开盲盒，Roamorrow 根据你所在的位置和此刻的时间，替你挑一件事。事前不能预览。这就是重点。",
-      bullets: [
-        '把"选什么"从你手上拿走',
-        "只推此时此地此刻合适的体验",
-        "不允许重开 —— 就是要你去做",
-      ],
+      body: "不想反复比较时，从当前城市已有体验中揭晓一个方向。部分揭晓与归档页面仍为预览。",
+      bullets: ["少一点比较，更容易做决定", "建议来自已有的体验集合", "可用范围以应用内页面为准"],
       cardHint: "清迈 · 下午 4:12 · 晴",
       cardReveal: "一个没人告诉过你的天台。",
       cardReason: "5:47 山头开始泛金。你走 12 分钟能到。咖啡馆 8 点打烊。",
@@ -489,12 +517,8 @@ export const copy: Record<Locale, Copy> = {
     capsule: {
       eyebrow: "03 · 时光胶囊",
       title: "给未来的自己写一张便条。",
-      body: "站在你喜欢的地方 —— 一条长椅、一个转角、一处观景台 —— 把胶囊封在这个坐标上。半年后回来，它自动打开。或者留给下一个到这里的你。",
-      bullets: [
-        "绑在地理围栏上 —— 你回来才能开",
-        "文字、语音、照片 —— 都在本地封存",
-        "时锁：1 个月 · 6 个月 · 1 年 · 等你准备好",
-      ],
+      body: "给一个地点写下一段文字，选好未来的开启时间。当前编辑流程支持文字，具体开启条件会在应用内说明。",
+      bullets: ["给文字记录关联地点与时间", "保存失败时保留草稿", "封存前查看开启条件"],
       sealTitle: "封存于宁曼路转角咖啡馆",
       sealMeta: "6 个月后 · 你回来时开启",
       sealBody: "「你今天很累。差点就没走完这条路。记住这一趟值得。」",
@@ -502,25 +526,17 @@ export const copy: Record<Locale, Copy> = {
     omen: {
       eyebrow: "04 · 每日签",
       title: "每天早上，一句轻推。",
-      body: "不是星座运势。早餐时一张安静的卡片 —— Roamorrow 结合你的城市、你的节奏和天气写的一句提醒。给今天一个方向，不是一份日程。",
-      bullets: [
-        "每天早上抽一张 —— 无信息流，无红点",
-        "读取当地天气、日程和你过去一周",
-        "由语言模型撰写，被调教得很克制",
-      ],
+      body: "用一段简短的城市提示开始一天。这里展示阅读体验，不把示例当作已验证的活动或天气报告。",
+      bullets: ["一个可以自由接受或跳过的小提示", "以城市片刻作为示意", "部分归档页面仍为预览"],
       cardDate: "周二 · 清迈",
       cardTitle: "今天，绕远路。",
       cardLine: "双龙寺那棵芒果树下午 3 点会落果。没人告诉过算法。",
     },
     bestNow: {
       eyebrow: "05 · 此刻最佳",
-      title: "每个地方都有黄金时刻。我们标出来。",
-      body: "Roamorrow 知道每个体验在哪个时段最好 —— 不是「营业中」，是「正在最佳」。咖啡馆的安静窗口是早 8-10 点，观景台是傍晚 5:47。每张卡片都有一张实时的最佳时段热力图。",
-      bullets: [
-        "从独行者的诚实反馈里学，不是店主自吹",
-        "在黄金窗口内会亮出一个 Now 徽章",
-        "临近黄金时刻才倒计时 —— 平时静默",
-      ],
+      title: "先看体验已有的时间窗口。",
+      body: "体验卡可包含记录的适合时段，用来辅助安排。它不证明场所此刻营业、安静、安全，也不承诺精确到分钟的天文峰值。",
+      bullets: ["查看已有的适合时段", "区分记录的时段与实时营业状态", "出发前再确认当前情况"],
       peakLabel: "42 分钟后最佳",
       peakWindow: "17:47 – 18:15 · 金光时段",
       peakReason: "光线以这个角度照到白塔，一天正好 28 分钟。",
@@ -528,12 +544,8 @@ export const copy: Record<Locale, Copy> = {
     brag: {
       eyebrow: "06 · 旅记名片",
       title: "旅行护照，不是精彩集锦。",
-      body: "一次旅行结束，Roamorrow 会把你真实走过的路线、你踩到的最佳时刻、别人都没去过的地方汇成一张可分享的卡片。不做话题，不做点赞。",
-      bullets: [
-        "自动从你的档案里编 —— 不用你写任何标题",
-        "呈现真实的稀有度，不是点赞数",
-        "可导出打印 —— 杂志排版，可以装裱",
-      ],
+      body: "把已经记录的体验放在一起回看。这里的旅行护照是示意，部分归档与导出操作仍为预览或只读。",
+      bullets: ["回看已有记录", "清楚区分示例统计", "导出范围以应用内说明为准"],
       cardName: "Nikita · 独行者",
       cardMeta: "清迈 · 8 天 · 2026 年 2 月",
       cardLine: "走了 47.2 公里。封了 3 个胶囊。找到 1 个没被标记过的地方。",
@@ -543,64 +555,79 @@ export const copy: Record<Locale, Copy> = {
     },
     pricing: {
       eyebrow: "价格",
-      title: "一次决定。两种选择。",
-      sub: "一次付清，永远是你的。或按年订阅，第一时间用到所有新功能。无论哪种，都没有广告，没有数据变现，没有订阅膨胀。",
-      lifetime: {
-        name: "一次买断",
-        price: "¥118",
-        pricePer: "一次付清",
-        tagline: "现有全部功能，永远归你。",
-        cta: "查看 iPhone 版发布状态",
+      title: "一个产品。两种付法。",
+      sub: "免费版包含地图与体验探索。Pro 按月或按年订阅；部分仪式与归档仍为预览或只读，开放范围以应用内说明为准。",
+      priceNote:
+        "价格因地区而异。付款前 App Store 会显示实时价格和是否有免费试用资格 —— 本页不编造数字。",
+      monthly: {
+        name: "Pro · 月度",
+        price: "App Store 价格",
+        pricePer: "每月",
+        tagline: "完整 Pro，按月付费。",
+        cta: "去 App Store 查看",
         features: [
-          "无限次 AI 交叉编译",
-          "跨城市自定义路线",
-          "Rituals · 时光胶囊 · 每日预兆 · 盲盒",
-          "杂志式旅记导出打印",
-          "iCloud 跨设备同步",
-          "所有未来次要更新",
+          "问 AI —— 每天最多 30 次回答（60 次解释）",
+          "当前开放的路线工具",
+          "部分仪式与归档仍为预览",
+          "购买前查看当前开放的权益",
+          "跨设备同步（测试中）",
         ],
       },
       yearly: {
-        badge: "多数人的选择",
-        name: "年度",
-        price: "¥198",
+        badge: "更划算",
+        name: "Pro · 年度",
+        price: "App Store 价格",
         pricePer: "每年",
-        tagline: "包含一次买断全部功能 · 首发新功能",
-        cta: "查看 iPhone 版发布状态",
-        features: [
-          "包含一次买断所有内容",
-          "第一时间用上新 AI 模型",
-          "第一时间用上新 Rituals",
-          "优先支持",
-          "参与路线图讨论",
-          "随时取消，无锁定",
-        ],
+        tagline: "同一个 Pro，一年付一次。",
+        cta: "去 App Store 查看",
+        features: ["包含 Pro 月度全部内容", "一年付一次而不是十二次", "随时取消，无锁定"],
       },
-      free: "或先免费试用 —— 无需信用卡，无需注册",
+      free: "或先玩网页地图 —— 免费，不用账号",
     },
     footer: {
-      tagline: BRAND.supportingLineZh,
+      tagline: "地图、每个体验的依据，以及独自旅行时更清楚的下一步。",
       columns: [
         {
           heading: "产品",
           links: [
-            { label: "功能", href: "/zh/#features" },
-            { label: "价格", href: "/zh/pricing" },
-            { label: "下载", href: "/download" },
+            {
+              label: "功能",
+              href: "/zh/#features",
+            },
+            {
+              label: "价格",
+              href: "/zh/pricing",
+            },
+            {
+              label: "下载",
+              href: "/download",
+            },
           ],
         },
         {
           heading: "关于",
           links: [
-            { label: "宣言", href: "/zh/manifesto" },
-            { label: "联系", href: `mailto:${BRAND.supportEmail}` },
+            {
+              label: "宣言",
+              href: "/zh/manifesto",
+            },
+            {
+              label: "联系",
+              href: `mailto:${SUPPORT_EMAIL}`,
+            },
           ],
         },
         {
           heading: "法律",
           links: [
-            { label: "隐私", href: "/zh/privacy" },
-            { label: "用户协议", href: "/terms" },
+            {
+              label: "隐私",
+              href: "/zh/privacy",
+            },
+            {
+              label: "用户协议",
+              href: "/terms",
+            },
             { label: "支持", href: "/support" },
           ],
         },

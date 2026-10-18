@@ -1,0 +1,5 @@
+$ tsx scripts/check-swift-parity.ts
+✅  TS↔Swift schema parity: all fields match.
+✅  TS↔DB schema parity: Drizzle experiences table matches Experience core type.
+✅  Supabase SQL↔Swift sync-payload parity: all payloads match table columns.
+✅  TS↔SwiftData @Model parity: all fields match.
