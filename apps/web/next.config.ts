@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
+          source: "/nomads/:path*/",
+          destination: "https://nomads.cubxxw.com/nomads/:path*/",
+        },
+        {
           source: "/nomads/:path*",
           destination: "https://nomads.cubxxw.com/nomads/:path*",
         },

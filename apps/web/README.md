@@ -51,7 +51,7 @@ There is **no separate mobile site**. The same Next.js app responds to mobile vi
 
 `/nomads` and its descendants are served by the separate `cubxxw/RemoteAI-Nomads` Cloudflare Worker. `next.config.ts` forwards only this namespace to `https://nomads.cubxxw.com/nomads/:path*`; do not remove that upstream domain when retiring its public links. The databases, builds and release processes remain independent.
 
-Nomads owns its directory trailing slashes, so `skipTrailingSlashRedirect` prevents a Next.js/Worker redirect loop. Marketing navigation uses a full page navigation when entering Nomads rather than requesting a Next.js RSC payload. The root robots file advertises both sitemaps; only the canonical `/nomads` page enters this application's sitemap.
+Nomads owns its directory trailing slashes, so `skipTrailingSlashRedirect` disables Next.js normalization, while a slash-specific rewrite before the general rule preserves directory slashes at the upstream. Both are required to avoid a Next.js/Worker redirect loop. Marketing navigation uses a full page navigation when entering Nomads rather than requesting a Next.js RSC payload. The root robots file advertises both sitemaps; only the canonical `/nomads` page enters this application's sitemap.
 
 Deploy the compatible Worker before promoting a web deployment containing this rewrite. Verify the new entry and deep links before enabling legacy redirects. Local record transfer is user-triggered at `/nomads/local-data/`; backups never upload to the server. Roll back by disabling legacy redirects first, then restore the previous web deployment. No database restore is involved.
 

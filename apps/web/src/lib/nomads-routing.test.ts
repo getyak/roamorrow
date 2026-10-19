@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import config from "../../next.config";
+import { getPathMatch } from "next/dist/shared/lib/router/utils/path-match";
+import { prepareDestination } from "next/dist/shared/lib/router/utils/prepare-destination";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 
@@ -12,6 +14,30 @@ describe("independent Nomads service", () => {
       destination: "https://nomads.cubxxw.com/nomads/:path*",
     });
     expect(config.skipTrailingSlashRedirect).toBe(true);
+  });
+
+  it("retains directory slashes and query parameters in Next's actual rewrite compiler", async () => {
+    const rewrites = await config.rewrites?.();
+    const rules = Array.isArray(rewrites) ? rewrites : (rewrites?.beforeFiles ?? []);
+    for (const pathname of [
+      "/nomads",
+      "/nomads/compare/",
+      "/nomads/cities/chiang-mai/",
+      "/nomads/app.js",
+      "/nomads/api/agent/status",
+    ]) {
+      const rule = rules.find((candidate) => getPathMatch(candidate.source)(pathname));
+      expect(rule).toBeDefined();
+      const params = getPathMatch(rule!.source)(pathname);
+      const { parsedDestination } = prepareDestination({
+        destination: rule!.destination,
+        params: params || {},
+        query: { month: "11" },
+        appendParamsToQuery: true,
+      });
+      expect(parsedDestination.pathname).toBe(pathname);
+      expect(parsedDestination.query.month).toBe("11");
+    }
   });
 
   it("advertises both sitemaps while keeping mounted APIs out of crawl paths", () => {
