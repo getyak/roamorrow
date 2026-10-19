@@ -13,10 +13,16 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/app/"],
+        disallow: [
+          "/api/",
+          "/app/",
+          "/nomads/api/",
+          "/nomads/published-pages/",
+          "/nomads/local-data/",
+        ],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: [`${SITE_URL}/sitemap.xml`, `${SITE_URL}/nomads/sitemap.xml`],
     host: SITE_URL,
   };
 }

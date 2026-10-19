@@ -18,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths: { path: string; priority: number; freq: Freq }[] = [
     { path: "/", priority: 1.0, freq: "weekly" },
     { path: "/zh", priority: 1.0, freq: "weekly" },
+    { path: "/nomads", priority: 0.9, freq: "weekly" },
     { path: "/pricing", priority: 0.9, freq: "monthly" },
     { path: "/zh/pricing", priority: 0.9, freq: "monthly" },
     { path: "/manifesto", priority: 0.7, freq: "monthly" },
@@ -35,7 +36,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: NOW,
     changeFrequency: s.freq,
     priority: s.priority,
-    alternates: ["/download", "/terms", "/support", "/privacy/policy"].includes(s.path)
+    alternates: ["/download", "/terms", "/support", "/privacy/policy", "/nomads"].includes(s.path)
       ? undefined
       : s.path.startsWith("/zh")
         ? {

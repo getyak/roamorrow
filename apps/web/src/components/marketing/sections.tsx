@@ -37,10 +37,15 @@ interface Props {
 
 export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
   const items = [
-    { href: `${homePath === "/" ? "" : homePath}/#features`, label: copy.nav.features },
+    {
+      href: `${homePath === "/" ? "" : homePath}/#features`,
+      label: copy.nav.features,
+      fullPage: false,
+    },
     { href: `/lisbon${locale === "zh" ? "?lang=zh" : ""}`, label: copy.nav.cities },
     { href: locale === "zh" ? "/zh/pricing" : "/pricing", label: copy.nav.pricing },
     { href: locale === "zh" ? "/zh/manifesto" : "/manifesto", label: copy.nav.manifesto },
+    { href: "/nomads", label: locale === "zh" ? "旅居选城" : "Nomad cities", fullPage: true },
   ];
   const ctaLabel = distributionCopy(dist.primaryKind, locale).action;
   const ctaHref = dist.primaryHref;
@@ -57,29 +62,32 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
           >
             <RoamorrowWordmark />
           </Link>
-          <div className="hidden items-center gap-1 md:flex">
-            {items.map((it) => (
-              <Link
-                key={it.href}
-                href={it.href}
-                className="group relative inline-flex min-h-[44px] items-center rounded-md px-3 py-2 font-body text-[14px] font-normal text-fg-muted transition-colors duration-fast hover:text-fg-primary"
-              >
-                {it.label}
-                <span
-                  aria-hidden
-                  className="absolute inset-x-3 -bottom-[2px] h-[1.5px] origin-left scale-x-0 bg-accent transition-transform duration-normal ease-decel group-hover:scale-x-100"
-                />
-              </Link>
-            ))}
+          <div className="hidden items-center gap-1 lg:flex">
+            {items.map((it) => {
+              const NavigationLink = it.fullPage ? "a" : Link;
+              return (
+                <NavigationLink
+                  key={it.href}
+                  href={it.href}
+                  className="group relative inline-flex min-h-[44px] items-center rounded-md px-3 py-2 font-body text-[14px] font-normal text-fg-muted transition-colors duration-fast hover:text-fg-primary"
+                >
+                  {it.label}
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-3 -bottom-[2px] h-[1.5px] origin-left scale-x-0 bg-accent transition-transform duration-normal ease-decel group-hover:scale-x-100"
+                  />
+                </NavigationLink>
+              );
+            })}
           </div>
           <div className="flex items-center gap-3">
             <Link
               href={altPath}
-              className="hidden min-h-[44px] min-w-[44px] items-center justify-center font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-fg-muted hover:text-fg-primary md:inline-flex"
+              className="hidden min-h-[44px] min-w-[44px] items-center justify-center font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-fg-muted hover:text-fg-primary lg:inline-flex"
             >
               {copy.langSwitch}
             </Link>
-            <ButtonLink href={ctaHref} variant="primary" className="hidden md:inline-flex">
+            <ButtonLink href={ctaHref} variant="primary" className="hidden lg:inline-flex">
               {ctaLabel}
             </ButtonLink>
             <MobileNav

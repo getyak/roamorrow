@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 export interface MobileNavItem {
   readonly href: string;
   readonly label: string;
+  readonly fullPage?: boolean;
 }
 
 interface MobileNavProps {
@@ -79,7 +80,7 @@ export function MobileNav({
   }, [open]);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         ref={triggerRef}
         type="button"
@@ -99,17 +100,20 @@ export function MobileNav({
           className="absolute inset-x-0 top-[72px] z-50 border-b border-border-subtle bg-bg-warm px-5 pb-6 pt-2 shadow-lg"
         >
           <ul className="flex flex-col">
-            {items.map((it) => (
-              <li key={it.href}>
-                <Link
-                  href={it.href}
-                  onClick={() => close(false)}
-                  className="block min-h-[44px] py-3 font-body text-[16px] text-fg-primary"
-                >
-                  {it.label}
-                </Link>
-              </li>
-            ))}
+            {items.map((it) => {
+              const NavigationLink = it.fullPage ? "a" : Link;
+              return (
+                <li key={it.href}>
+                  <NavigationLink
+                    href={it.href}
+                    onClick={() => close(false)}
+                    className="block min-h-[44px] py-3 font-body text-[16px] text-fg-primary"
+                  >
+                    {it.label}
+                  </NavigationLink>
+                </li>
+              );
+            })}
           </ul>
           <div className="mt-2 flex flex-col gap-3 border-t border-border-subtle pt-4">
             <Link
