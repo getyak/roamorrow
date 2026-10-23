@@ -80,6 +80,7 @@ public final class VoiceService {
     private let recognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
+    private var continuation: AsyncThrowingStream<String, Error>.Continuation?
     private let permissions: PermissionRequester
     private var generation = VoiceCaptureGeneration()
     private var hasInstalledTap = false
@@ -174,6 +175,7 @@ public final class VoiceService {
         isListening = true
 
         let (stream, continuation) = AsyncThrowingStream<String, Error>.makeStream()
+        self.continuation = continuation
 
         // Start the recognition task on the main actor (we're already isolated
         // here) so assigning `recognitionTask` is race-free. The recognizer's
@@ -210,6 +212,8 @@ public final class VoiceService {
 
     private func cleanup(ifGeneration token: UUID? = nil) {
         guard generation.finish(token: token) else { return }
+        continuation?.finish()
+        continuation = nil
         if audioEngine.isRunning {
             audioEngine.stop()
         }

@@ -36,18 +36,22 @@ public struct WebSearchResult: Codable, Equatable, Identifiable, Sendable {
 /// back actual pages — titles, URLs, and extracted snippets — to ground its
 /// answer in current, citable sources.
 ///
-/// Best-effort by contract: every failure mode (backend off, not signed in,
-/// quota exhausted, provider error) resolves to an empty result array rather
-/// than throwing, so the agent degrades to its own knowledge instead of the
-/// turn erroring out.
+/// `searchOutcome` distinguishes a completed empty search from unavailable
+/// search. `search` retains the older best-effort array contract for callers
+/// that only need source cards.
 @MainActor
 public final class WebSearchService {
     public static let shared = WebSearchService()
 
     private let client: SupabaseClientProtocol
+    private let backendEnabled: @MainActor () -> Bool
 
-    public init(client: SupabaseClientProtocol = SupabaseClient.shared) {
+    public init(
+        client: SupabaseClientProtocol = SupabaseClient.shared,
+        backendEnabled: @escaping @MainActor () -> Bool = { FeatureFlags.backendSync }
+    ) {
         self.client = client
+        self.backendEnabled = backendEnabled
     }
 
     /// Topic hint passed to Tavily. `.news` biases toward recent, time-sensitive
@@ -57,8 +61,37 @@ public final class WebSearchService {
         case news
     }
 
+    public struct SearchOutcome: Equatable, Sendable {
+        public enum Status: String, Sendable { case results, empty, unavailable }
+        /// Safe categories only. Never carry a response body, exception text or token.
+        public enum ErrorCategory: String, Sendable {
+            case backendDisabled = "backend_disabled"
+            case notConfigured = "not_configured"
+            case authenticationRequired = "authentication_required"
+            case accessDenied = "access_denied"
+            case rateLimited = "rate_limited"
+            case requestFailed = "request_failed"
+            case invalidResponse = "invalid_response"
+            case invalidQuery = "invalid_query"
+            case cancelled
+        }
+
+        public let status: Status
+        public let results: [WebSearchResult]
+        public let errorCategory: ErrorCategory?
+        public var available: Bool { status != .unavailable }
+
+        fileprivate static func completed(_ results: [WebSearchResult]) -> Self {
+            .init(status: results.isEmpty ? .empty : .results, results: results, errorCategory: nil)
+        }
+
+        fileprivate static func unavailable(_ category: ErrorCategory) -> Self {
+            .init(status: .unavailable, results: [], errorCategory: category)
+        }
+    }
+
     /// Run a live web search. Returns up to a handful of deduped pages, or an
-    /// empty array on any failure (never throws — see the type doc).
+    /// empty array on any failure. Use `searchOutcome` when failure semantics matter.
     ///
     /// - Parameters:
     ///   - query: The natural-language search string.
@@ -69,8 +102,21 @@ public final class WebSearchService {
         topic: Topic = .general,
         days: Int? = nil
     ) async -> [WebSearchResult] {
+        await searchOutcome(query: query, topic: topic, days: days).results
+    }
+
+    /// Only a valid results envelope proves that a live search completed.
+    /// In particular, the client's disabled-backend empty-Data no-op is not
+    /// evidence of a completed search with no matches.
+    public func searchOutcome(
+        query: String,
+        topic: Topic = .general,
+        days: Int? = nil
+    ) async -> SearchOutcome {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return [] }
+        guard !trimmed.isEmpty else { return .unavailable(.invalidQuery) }
+        guard !Task.isCancelled else { return .unavailable(.cancelled) }
+        guard backendEnabled() else { return .unavailable(.backendDisabled) }
 
         var payload: [String: Any] = [
             "query": trimmed,
@@ -79,16 +125,38 @@ public final class WebSearchService {
         if topic == .news, let days { payload["days"] = days }
 
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
-            return []
+            return .unavailable(.invalidQuery)
         }
 
         let result = await client.invoke(function: "tavily-search", body: body)
-        guard case .success(let data) = result, !data.isEmpty else { return [] }
+        guard !Task.isCancelled else { return .unavailable(.cancelled) }
+        let data: Data
+        switch result {
+        case .success(let response): data = response
+        case .failure(let error):
+            switch error {
+            case .backendDisabled: return .unavailable(.backendDisabled)
+            case .missingConfig: return .unavailable(.notConfigured)
+            case .notSignedIn: return .unavailable(.authenticationRequired)
+            case .decoding: return .unavailable(.invalidResponse)
+            case .requestFailed(let status, _):
+                switch status {
+                case 401: return .unavailable(.authenticationRequired)
+                case 403: return .unavailable(.accessDenied)
+                case 429: return .unavailable(.rateLimited)
+                // The client collapses non-HTTP failures into status 0. There
+                // is no reliable evidence here to label them offline or auth.
+                default: return .unavailable(.requestFailed)
+                }
+            }
+        }
 
         struct Envelope: Decodable {
-            let results: [WebSearchResult]?
+            let results: [WebSearchResult]
         }
-        let decoded = try? JSONDecoder().decode(Envelope.self, from: data)
-        return decoded?.results ?? []
+        guard !data.isEmpty, let decoded = try? JSONDecoder().decode(Envelope.self, from: data) else {
+            return .unavailable(.invalidResponse)
+        }
+        return .completed(decoded.results)
     }
 }

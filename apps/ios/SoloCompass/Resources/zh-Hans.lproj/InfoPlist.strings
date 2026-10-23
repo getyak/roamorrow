@@ -2,7 +2,7 @@
 "CFBundleDisplayName" = "Roamorrow";
 "NSLocationWhenInUseUsageDescription" = "Roamorrow 使用你的位置，在地图上展示附近的体验。";
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "Roamorrow 使用后台位置，在你靠近值得体验的地点时提醒你，即使应用已关闭。";
-"NSSpeechRecognitionUsageDescription" = "Roamorrow 使用语音识别，让你说出想寻找的体验。";
-"NSMicrophoneUsageDescription" = "Roamorrow 使用麦克风进行语音搜索。";
-"NSCameraUsageDescription" = "Roamorrow 使用相机，让你为添加到地图的地点拍照。";
-"NSPhotoLibraryUsageDescription" = "Roamorrow 需要访问你选择的照片，为添加的地点附上图片。";
+"NSSpeechRecognitionUsageDescription" = "Roamorrow 在你选择听写或转写时使用语音识别。";
+"NSMicrophoneUsageDescription" = "Roamorrow 使用麦克风，录制你选择发送的语音消息或进行语音输入。";
+"NSCameraUsageDescription" = "Roamorrow 使用相机，拍摄你选择附在对话或地点里的照片。";
+"NSPhotoLibraryUsageDescription" = "Roamorrow 读取你选择的照片，将它附在对话或地点里。";

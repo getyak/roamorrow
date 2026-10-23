@@ -1308,7 +1308,7 @@ struct CompassMapContentView: View {
             // US-023: a tapped friend-request push deep-links to the inbox. The
             // friend-request inbox lives inside the personal hub (MeSheet), so
             // surface it and consume the link so a re-render won't re-open it.
-            .onChange(of: notificationService.pendingDeepLink) { _, link in
+            .onChange(of: notificationService.pendingDeepLink, initial: true) { _, link in
                 switch link {
                 case .friendRequestInbox:
                     deepLinkConversationId = nil

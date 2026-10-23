@@ -59,17 +59,17 @@
 		</dict>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Roamorrow uses the camera so you can photograph a place when you add it to the map.</string>
+	<string>Roamorrow uses the camera to take photos you choose to attach to a conversation or a place.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Roamorrow uses background location to alert you when you're near a place worth visiting — even when the app is closed.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Roamorrow uses your location to show experiences near you on the map.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Roamorrow uses the microphone for voice search.</string>
+	<string>Roamorrow uses the microphone to record voice messages you choose to send or for voice input.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Roamorrow needs access to your photos so you can attach an image to a place you add.</string>
+	<string>Roamorrow reads the photos you choose to attach to a conversation or a place.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Roamorrow uses speech recognition so you can describe what you're looking for by voice.</string>
+	<string>Roamorrow uses speech recognition when you request dictation or transcription.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>

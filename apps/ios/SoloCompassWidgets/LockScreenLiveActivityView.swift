@@ -151,6 +151,7 @@ struct LockScreenLiveActivityView: View {
     @ViewBuilder private var trailing: some View {
         switch kind {
         case .route:
+            if !state.etaText.isEmpty {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(state.etaText)
                     .font(.islandMono(20, .medium))
@@ -158,6 +159,7 @@ struct LockScreenLiveActivityView: View {
                 Text("ETA")
                     .font(.islandMono(9)).textCase(.uppercase)
                     .foregroundStyle(IP.cream(0.5))
+            }
             }
         case .countdown:
             CountdownText(date: state.departureDate, font: .islandMono(22, .medium))

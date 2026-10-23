@@ -51,6 +51,8 @@ public struct SoloCompassActivityAttributes: ActivityAttributes {
 /// subset relevant to `attributes.kind` is populated. ActivityKit budgets the
 /// serialized `ContentState` to ~4KB, which this stays comfortably under.
 public struct SoloCompassActivityState: Codable, Hashable, Sendable {
+    /// Optional for older activities. Identifies the durable task owning this projection.
+    public var contextID: String? = nil
 
     // MARK: route — 路线进行中
 
