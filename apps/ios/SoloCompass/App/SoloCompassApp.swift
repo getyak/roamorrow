@@ -165,13 +165,14 @@ struct SoloCompassApp: App {
 
     var body: some Scene {
         WindowGroup {
-            // Nomad OS B1: the root is `TodayContainer`, which either renders
-            // the Today home (map as a pull-up layer) or falls straight through
-            // to `CompassMapView` when `FeatureFlags.todayHome` is off. Every
-            // environment / cover / lifecycle modifier below stays attached to
-            // the single root view and flows down to whichever branch renders,
-            // so the first-launch gate and bootstrap wiring are unchanged.
-            TodayContainer()
+            // The companion shares the existing service graph and consent gate.
+            // Prior roots remain available through reversible feature flags.
+            Group {
+                if !TermsConsentSheet.hasAccepted { CompanionHomeStyle.paper.ignoresSafeArea() }
+                else if FeatureFlags.continuousCompanion { CompanionHomeView() }
+                else if FeatureFlags.lifeStudio { StudioHomeView() }
+                else { TodayContainer() }
+            }
                 .environment(locationService)
                 .environment(experienceService)
                 .environment(travelerNoteStore)
@@ -218,7 +219,9 @@ struct SoloCompassApp: App {
                                 // is a no-op. Without this hook, push was never
                                 // requested cold-start and the user discovered it
                                 // only after opening Friends or Settings.
-                                Task { await PushTokenService.shared.requestAuthorizationAndRegister() }
+                                if !FeatureFlags.continuousCompanion && !FeatureFlags.lifeStudio {
+                                    Task { await PushTokenService.shared.requestAuthorizationAndRegister() }
+                                }
                             },
                             onDecline: {
                                 // Per Apple 5.1.1 / PIPL / GDPR: refusal must NOT
@@ -230,19 +233,31 @@ struct SoloCompassApp: App {
                             }
                         )
                     case .onboarding:
-                        OnboardingView {
-                            // OnboardingView sets preferences.hasCompletedOnboarding
-                            // internally via preferences.completeOnboarding().
-                            firstLaunchCover = nil
+                        if FeatureFlags.continuousCompanion {
+                            CompanionWelcomeView {
+                                preferences.completeOnboarding()
+                                firstLaunchCover = nil
+                            }
+                        } else if FeatureFlags.lifeStudio {
+                            StudioWelcomeView {
+                                preferences.completeOnboarding()
+                                firstLaunchCover = nil
+                            }
+                        } else {
+                            OnboardingView {
+                                // OnboardingView sets preferences.hasCompletedOnboarding
+                                // internally via preferences.completeOnboarding().
+                                firstLaunchCover = nil
+                            }
+                            .environment(locationService)
+                            .environment(preferences)
+                            // OnboardingView reads `SubscriptionService` on the
+                            // paywall step; without this injection SwiftUI hits
+                            // a fatal "No Observable of type SubscriptionService"
+                            // as soon as the view resolves environment.
+                            .environment(subscriptionService)
+                            .environment(aiService)
                         }
-                        .environment(locationService)
-                        .environment(preferences)
-                        // OnboardingView reads `SubscriptionService` on the
-                        // paywall step; without this injection SwiftUI hits
-                        // a fatal "No Observable of type SubscriptionService"
-                        // as soon as the view resolves environment.
-                        .environment(subscriptionService)
-                        .environment(aiService)
                     }
                 }
                 .onAppear {
@@ -319,7 +334,7 @@ struct SoloCompassApp: App {
         // re-presented onboarding cover — the exact stacking the audit flagged.
         // CompassMapView's `onChange(of: hasCompletedOnboarding)` still fires
         // the request the moment onboarding completes, so nothing is lost.
-        if preferences.hasCompletedOnboarding {
+        if preferences.hasCompletedOnboarding && !FeatureFlags.continuousCompanion && !FeatureFlags.lifeStudio {
             locationService.requestPermission()
         }
 

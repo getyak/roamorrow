@@ -45,7 +45,7 @@ final class WebSearchServiceTests: XCTestCase {
 
     func testEmptyQueryNeverCallsNetwork() async {
         let stub = StubClient()
-        let service = WebSearchService(client: stub)
+        let service = WebSearchService(client: stub, backendEnabled: { true })
         let results = await service.search(query: "   ")
         XCTAssertTrue(results.isEmpty)
         XCTAssertEqual(stub.invokeCount, 0, "empty query must short-circuit before invoke")
@@ -59,7 +59,7 @@ final class WebSearchServiceTests: XCTestCase {
           {"title":"More Coffee","url":"https://blog.example.org/coffee","content":"Even more."}
         ]}
         """
-        let service = WebSearchService(client: stub)
+        let service = WebSearchService(client: stub, backendEnabled: { true })
         let results = await service.search(query: "coffee")
 
         XCTAssertEqual(stub.lastFunction, "tavily-search")
@@ -71,7 +71,7 @@ final class WebSearchServiceTests: XCTestCase {
     func testEmptyDataDegradesToEmptyResults() async {
         let stub = StubClient()
         stub.returnsEmptyData = true
-        let service = WebSearchService(client: stub)
+        let service = WebSearchService(client: stub, backendEnabled: { true })
         let results = await service.search(query: "anything")
         XCTAssertTrue(results.isEmpty)
     }
@@ -79,14 +79,14 @@ final class WebSearchServiceTests: XCTestCase {
     func testFailureDegradesToEmptyResults() async {
         let stub = StubClient()
         stub.failure = .notSignedIn
-        let service = WebSearchService(client: stub)
+        let service = WebSearchService(client: stub, backendEnabled: { true })
         let results = await service.search(query: "anything")
         XCTAssertTrue(results.isEmpty, "any client failure must degrade to empty, never throw")
     }
 
     func testNewsTopicSendsDaysInBody() async {
         let stub = StubClient()
-        let service = WebSearchService(client: stub)
+        let service = WebSearchService(client: stub, backendEnabled: { true })
         _ = await service.search(query: "exhibitions", topic: .news, days: 7)
 
         let body = try? JSONSerialization.jsonObject(with: stub.lastBody ?? Data()) as? [String: Any]

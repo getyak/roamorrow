@@ -29,6 +29,8 @@ public struct SettingsView: View {
     @Environment(\.themeService) private var themeService
     var onClose: () -> Void
     var onDistanceCommitted: (() -> Void)?
+    private var onClearAdditionalData: (@MainActor () -> Bool)?
+    private var additionalExportFiles: (@MainActor () throws -> [PersonalDataExporter.File])?
 
     @State private var showingClearConfirm = false
     // P2.0 #204: "Forget me" — wipes the AgentMemorySnapshot + TasteProfile
@@ -76,10 +78,14 @@ public struct SettingsView: View {
 
     public init(
         onClose: @escaping () -> Void = {},
-        onDistanceCommitted: (() -> Void)? = nil
+        onDistanceCommitted: (() -> Void)? = nil,
+        onClearAdditionalData: (@MainActor () -> Bool)? = nil,
+        additionalExportFiles: (@MainActor () throws -> [PersonalDataExporter.File])? = nil
     ) {
         self.onClose = onClose
         self.onDistanceCommitted = onDistanceCommitted
+        self.onClearAdditionalData = onClearAdditionalData
+        self.additionalExportFiles = additionalExportFiles
     }
 
     public var body: some View {
@@ -520,6 +526,10 @@ public struct SettingsView: View {
                 titleVisibility: .visible
             ) {
                 Button(NSLocalizedString("settings.clearData.confirm.action", comment: "Clear"), role: .destructive) {
+                    guard onClearAdditionalData?() != false else {
+                        exportToast = NSLocalizedString("companion.clear_failed", value: "本机记录未能全部清除，请稍后重试。", comment: "Clear failure")
+                        return
+                    }
                     preferences.completedExperiences = []
                     preferences.favoritedExperiences = []
                     preferences.favoritedAt = [:]
@@ -531,7 +541,9 @@ public struct SettingsView: View {
                 }
                 Button(NSLocalizedString("common.cancel", comment: "Cancel"), role: .cancel) {}
             } message: {
-                Text(NSLocalizedString("settings.clearData.confirm.message", comment: "Clear all data message"))
+                Text(onClearAdditionalData == nil
+                     ? NSLocalizedString("settings.clearData.confirm.message", comment: "Clear all data message")
+                     : NSLocalizedString("companion.clear_confirm", value: "这会清除本机的对话、未发送文字、待办、同行选择、邀约草稿，以及已完成体验、收藏与偏好。无法恢复；不会删除已经分享出去的副本。", comment: "Companion clear scope"))
             }
 
             // Data-sovereignty export — the read-side twin of "Forget me".
@@ -539,14 +551,20 @@ public struct SettingsView: View {
             // a way to carry their data out before offering ways to erase it.
             Button {
                 let result = PersonalDataExporter.shared.exportEverything()
-                if result.isEmpty {
+                let extraFiles: [PersonalDataExporter.File]
+                do { extraFiles = try additionalExportFiles?() ?? [] }
+                catch {
+                    exportToast = NSLocalizedString("settings.exportData.toast.failure", comment: "Export write failed")
+                    return
+                }
+                if result.isEmpty && extraFiles.isEmpty {
                     exportToast = NSLocalizedString(
                         "settings.exportData.toast.empty",
                         comment: "Export empty (nothing accrued yet)"
                     )
                     return
                 }
-                exportedFileURLs = Self.writeExportFiles(result.files)
+                exportedFileURLs = Self.writeExportFiles(result.files + extraFiles)
                 if exportedFileURLs.isEmpty {
                     exportToast = NSLocalizedString(
                         "settings.exportData.toast.failure",
@@ -654,27 +672,23 @@ public struct SettingsView: View {
     /// return the URLs for the share sheet. A per-export subdirectory keeps
     /// filenames stable (the share target shows `roamorrow-visits-….csv`,
     /// not a UUID) while still avoiding collisions across repeat exports. A
-    /// file that fails to write is skipped rather than aborting the whole
-    /// export — the user still gets whatever assets serialized cleanly.
+    /// failed write aborts the export so a partial set cannot look complete.
     private static func writeExportFiles(_ files: [PersonalDataExporter.File]) -> [URL] {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("data-export-\(UUID().uuidString)", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        } catch {
-            return []
-        }
-        var urls: [URL] = []
-        for file in files {
-            let url = dir.appendingPathComponent(file.filename)
-            do {
+            var urls: [URL] = []
+            for file in files {
+                let url = dir.appendingPathComponent(file.filename)
                 try file.contents.write(to: url, atomically: true, encoding: .utf8)
                 urls.append(url)
-            } catch {
-                continue
             }
+            return urls
+        } catch {
+            try? FileManager.default.removeItem(at: dir)
+            return []
         }
-        return urls
     }
 
     private func handleVersionTap() {

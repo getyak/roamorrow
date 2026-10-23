@@ -26,6 +26,8 @@ public final class LiveActivityService {
     public private(set) var current: Activity<SoloCompassActivityAttributes>?
     /// Which scenario `current` represents (mirrors `current.attributes.kind`).
     public private(set) var currentKind: SoloCompassActivityAttributes.Kind?
+    @ObservationIgnored private var companionActivityMonitor: Task<Void, Never>?
+    @ObservationIgnored private var companionMonitoredID: String?
 
     private init() {}
 
@@ -303,6 +305,80 @@ public final class LiveActivityService {
     #endif
 
     // MARK: - End
+
+    /// Recover the system activity after process death; never replace another task's activity.
+    func synchronizeCompanionRoute(_ value: CompanionRouteProgress) async -> Bool {
+        guard !Task.isCancelled else { return false }
+        if let current, current.activityState != .active && current.activityState != .stale {
+            self.current = nil
+            currentKind = nil
+        }
+        if current == nil {
+            current = Activity<SoloCompassActivityAttributes>.activities.first {
+                $0.content.state.contextID == value.contextID && ($0.activityState == .active || $0.activityState == .stale)
+            }
+            currentKind = current?.attributes.kind
+        }
+        guard current == nil || current?.content.state.contextID == value.contextID else { return false }
+        // A missing previously requested activity may have been dismissed by the
+        // user. Keep the in-app route instead of recreating it on every foreground.
+        if current == nil, UserDefaults.standard.string(forKey: "companion.route.lastActivityContext") == value.contextID {
+            return false
+        }
+        var state = SoloCompassActivityState(
+            routeTitle: value.title, nextStopName: value.placeName,
+            nextStopMeta: NSLocalizedString("companion.route.timeUnknown", value: "时间待更新 · 到达后请标记", comment: "Route progress"),
+            etaText: value.etaText, currentStopIndex: value.stopIndex + 1, totalStops: value.totalStops)
+        state.contextID = value.contextID
+        if let current {
+            observeCompanionRoute(current)
+            await update(state)
+            return current.activityState == .active || current.activityState == .stale
+        }
+        let started = start(kind: .route, state: state)
+        if started {
+            UserDefaults.standard.set(value.contextID, forKey: "companion.route.lastActivityContext")
+            if let current { observeCompanionRoute(current) }
+        }
+        return started
+    }
+
+    private func observeCompanionRoute(_ activity: Activity<SoloCompassActivityAttributes>) {
+        guard companionMonitoredID != activity.id else { return }
+        companionActivityMonitor?.cancel()
+        companionMonitoredID = activity.id
+        companionActivityMonitor = Task { [weak self] in
+            for await value in activity.activityStateUpdates {
+                guard !Task.isCancelled, let self, self.current?.id == activity.id else { return }
+                if value == .dismissed || value == .ended {
+                    self.current = nil
+                    self.currentKind = nil
+                    return
+                }
+            }
+        }
+    }
+
+    func endCompanionRoute(contextID: String) async {
+        if UserDefaults.standard.string(forKey: "companion.route.lastActivityContext") == contextID {
+            UserDefaults.standard.removeObject(forKey: "companion.route.lastActivityContext")
+        }
+        for activity in Activity<SoloCompassActivityAttributes>.activities
+        where activity.content.state.contextID == contextID {
+            if current?.id == activity.id { current = nil; currentKind = nil }
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+    }
+
+    func removeOrphanedCompanionRoutes(keeping contextID: String?) async {
+        if UserDefaults.standard.string(forKey: "companion.route.lastActivityContext") != contextID {
+            UserDefaults.standard.removeObject(forKey: "companion.route.lastActivityContext")
+        }
+        for activity in Activity<SoloCompassActivityAttributes>.activities {
+            guard let id = activity.content.state.contextID, id.hasPrefix("companion-route:"), id != contextID else { continue }
+            await endCompanionRoute(contextID: id)
+        }
+    }
 
     /// End the running activity immediately and drop the handle.
     public func end() async {

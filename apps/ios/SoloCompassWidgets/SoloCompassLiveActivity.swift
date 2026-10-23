@@ -21,6 +21,8 @@ struct SoloCompassLiveActivity: Widget {
             LockScreenLiveActivityView(kind: context.attributes.kind, state: context.state)
                 .activityBackgroundTint(Color.black.opacity(0.92))
                 .activitySystemActionForegroundColor(IP.sunGoldSoft)
+                .widgetURL(context.state.contextID?.hasPrefix("companion-route:") == true
+                    ? URL(string: "solocompass://companion/route") : nil)
         } dynamicIsland: { context in
             let kind = context.attributes.kind
             let state = context.state
@@ -34,6 +36,8 @@ struct SoloCompassLiveActivity: Widget {
                 MinimalGlyph(kind: kind, state: state)
             }
             .keylineTint(IP.sunGold)
+            .widgetURL(context.state.contextID?.hasPrefix("companion-route:") == true
+                ? URL(string: "solocompass://companion/route") : nil)
         }
     }
 
@@ -86,7 +90,8 @@ private struct ExpandedTrailing: View {
     let state: SoloCompassActivityState
     var body: some View {
         switch kind {
-        case .route:          IslandPill(text: "\(state.currentStopIndex) / \(state.totalStops) 站")
+        case .route:          IslandPill(text: "\(state.currentStopIndex)/\(state.totalStops)")
+                .lineLimit(1).fixedSize(horizontal: true, vertical: false)
         case .countdown:      CountdownPill(date: state.departureDate)
         case .recording:      RecPill(start: state.recordingStartDate)
         case .compile:        IslandCompileDots()
@@ -247,9 +252,10 @@ private struct CompactTrailing: View {
         case .route:
             HStack(spacing: 3) {
                 Image(systemName: "figure.walk").font(.system(size: 11)).foregroundStyle(IP.cream(0.5))
-                Text(state.etaText)
+                Text(state.etaText.isEmpty ? "\(state.currentStopIndex)/\(state.totalStops)" : state.etaText)
                     .font(.islandMono(13, .medium))
                     .foregroundStyle(IP.cream)
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
             }
         case .countdown:
             CountdownText(date: state.departureDate, font: .islandMono(13, .medium))
@@ -315,14 +321,14 @@ private struct RouteBottom: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 3) {
+                if !state.etaText.isEmpty { VStack(alignment: .trailing, spacing: 3) {
                     Text(state.etaText)
                         .font(.islandMono(22, .medium))
                         .foregroundStyle(IP.sunGoldSoft)
                     Text("预计到达")
                         .font(.islandMono(10)).textCase(.uppercase)
                         .foregroundStyle(IP.cream(0.5))
-                }
+                } }
             }
             IslandStopProgress(current: state.currentStopIndex, total: state.totalStops)
         }

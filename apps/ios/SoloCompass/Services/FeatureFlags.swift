@@ -6,6 +6,20 @@ import Foundation
 /// fall back to the defaults defined here. Override per-build by
 /// editing the plist or setting the matching env var prefixed `FF_`.
 public enum FeatureFlags {
+    /// Reversible companion entry; no existing Studio or map data is migrated.
+    public static var continuousCompanion: Bool {
+        readBool("FF_CONTINUOUS_COMPANION", default: true)
+    }
+
+    /// Reversible Life Studio product experiment; travel remains available inside it.
+    public static var lifeStudio: Bool {
+        #if DEBUG
+        readBool("FF_LIFE_STUDIO", default: true)
+        #else
+        readBool("FF_LIFE_STUDIO", default: false)
+        #endif
+    }
+
     /// Master switch for all Supabase-backed code paths (auth, sync,
     /// Edge Functions). When false, every backend call is a no-op
     /// returning empty / .success — the app must remain fully usable

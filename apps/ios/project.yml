@@ -25,6 +25,8 @@ targets:
       - path: SoloCompass
         excludes:
           - Tests/**
+          - Resources/Secrets.plist
+          - Resources/JSON/*.backup
       # GeneratedSecrets.swift is .gitignored (emitted by the preBuildScript
       # from .env), so xcodegen's directory scan skips it and leaves it out of
       # Compile Sources — `Secrets` then fails to resolve on a clean build.
@@ -71,10 +73,10 @@ targets:
           # the Push Notifications capability (Apple Developer portal + `match
           # appstore --force`). Re-add once the profile in solo-compass-certs
           # includes aps-environment, otherwise Release archive code-signing fails.
-        NSSpeechRecognitionUsageDescription: "Roamorrow uses speech recognition so you can describe what you're looking for by voice."
-        NSMicrophoneUsageDescription: "Roamorrow uses the microphone for voice search."
-        NSCameraUsageDescription: "Roamorrow uses the camera so you can photograph a place when you add it to the map."
-        NSPhotoLibraryUsageDescription: "Roamorrow needs access to your photos so you can attach an image to a place you add."
+        NSSpeechRecognitionUsageDescription: "Roamorrow uses speech recognition when you request dictation or transcription."
+        NSMicrophoneUsageDescription: "Roamorrow uses the microphone to record voice messages you choose to send or for voice input."
+        NSCameraUsageDescription: "Roamorrow uses the camera to take photos you choose to attach to a conversation or a place."
+        NSPhotoLibraryUsageDescription: "Roamorrow reads the photos you choose to attach to a conversation or a place."
         LSApplicationQueriesSchemes:
           - comgooglemaps
           - iosamap
@@ -101,6 +103,12 @@ targets:
         DEVELOPMENT_TEAM: "6RG2F8YY59"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+      configs:
+        Debug:
+          # UI acceptance can opt this executable out of Xcode's debug loader
+          # without changing the ordinary preview or release configuration.
+          ROAMORROW_DEBUG_DYLIB: "YES"
+          ENABLE_DEBUG_DYLIB: "$(ROAMORROW_DEBUG_DYLIB)"
     entitlements:
       path: SoloCompass/Resources/SoloCompass.entitlements
       properties:
@@ -208,6 +216,61 @@ targets:
     dependencies:
       - target: SoloCompass
 
+  # Fast regression suite against the shipping app module. The full test target
+  # above still includes these files; this target avoids compiling unrelated
+  # legacy suites during interaction iteration.
+  CompanionRegressionTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: SoloCompass/Tests/CompanionHomeMediaTests.swift
+      - path: SoloCompass/Tests/CompanionCharacterTests.swift
+      - path: SoloCompass/Tests/CompanionHomeStoreTests.swift
+      - path: SoloCompass/Tests/CompanionRouteSessionTests.swift
+      - path: SoloCompass/Tests/CompanionHomeCommitmentTests.swift
+      - path: SoloCompass/Tests/CompanionHomeAgentSourceTests.swift
+      - path: SoloCompass/Tests/CompanionHomeJournalTests.swift
+      - path: SoloCompass/Tests/CompanionHomeDataManagementTests.swift
+      - path: SoloCompass/Tests/CompanionHomeInviteTimelineTests.swift
+      - path: SoloCompass/Tests/CompanionHomeFailurePresentationTests.swift
+      - path: SoloCompass/Tests/CompanionHomeSearchAreaTests.swift
+      - path: SoloCompass/Tests/CompanionHomeSearchContextObservationTests.swift
+      - path: SoloCompass/Tests/CompanionTimelineTests.swift
+      - path: SoloCompass/Tests/CompanionPlacePresentationTests.swift
+      - path: SoloCompass/Tests/VoiceServiceGenerationTests.swift
+      - path: SoloCompass/Tests/VoiceServiceActorIsolationTest.swift
+      - path: SoloCompass/Tests/VoiceAgentOrchestratorLifecycleTests.swift
+      - path: SoloCompass/Tests/WebSearchServiceTests.swift
+      - path: SoloCompass/Tests/WebSearchOutcomeTests.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.solocompass.companion-regression-tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGNING_ALLOWED: NO
+    dependencies:
+      - target: SoloCompass
+
+  CompanionAcceptanceUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: ../../docs/qa/companion-ios-20261023/round2/CompanionAcceptanceUITests.swift
+      - path: ../../docs/qa/companion-ios-20261023/round3/CompanionMapPanelUITests.swift
+      - path: ../../docs/qa/companion-ios-20261023/round4/CompanionTravelIMUITests.swift
+      - path: ../../docs/qa/companion-ios-20261023/round5/CompanionCharacterUITests.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.solocompass.companion-acceptance-ui-tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGNING_ALLOWED: NO
+        TEST_TARGET_NAME: SoloCompass
+    dependencies:
+      - target: SoloCompass
+
 packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift
@@ -220,6 +283,24 @@ packages:
     from: 2.4.1
 
 schemes:
+  CompanionAcceptance:
+    build:
+      targets:
+        SoloCompass: all
+        CompanionAcceptanceUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - CompanionAcceptanceUITests
+  CompanionRegression:
+    build:
+      targets:
+        SoloCompass: all
+        CompanionRegressionTests: [test]
+    test:
+      config: Debug
+      targets:
+        - CompanionRegressionTests
   SoloCompass:
     build:
       targets:

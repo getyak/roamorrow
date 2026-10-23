@@ -618,9 +618,16 @@ public final class AIService {
         await MainActor.run { self.isProcessing = true }
         defer { Task { @MainActor [weak self] in self?.isProcessing = false } }
 
+        let serializedMessages = Self.serializeAgentMessages(messages)
+        #if DEBUG
+        if let city = Self.debugCompanionSearchCity(serializedMessages: serializedMessages) {
+            let entryID = messages.last(where: { $0.role == .user })?.id.uuidString ?? "unavailable"
+            Self.logger.debug("CompanionHomeSearchContext entryID=\(entryID, privacy: .public) city=\(city, privacy: .public)")
+        }
+        #endif
         let body: [String: Any] = [
             "model": Self.modelName(for: .voice),
-            "messages": Self.serializeAgentMessages(messages),
+            "messages": serializedMessages,
             "tools": Self.serializeAgentTools(tools),
             "tool_choice": "auto",
             "parallel_tool_calls": true,
@@ -658,6 +665,26 @@ public final class AIService {
 
         return try Self.parseAgentResponse(data)
     }
+
+    #if DEBUG
+    /// Inspect only the exact serialized first system row reused by the request body.
+    /// nil means this is not a CompanionHome turn; no raw payload is ever returned.
+    static func debugCompanionSearchCity(serializedMessages: [[String: Any]]) -> String? {
+        guard let first = serializedMessages.first, first["role"] as? String == "system",
+              let content = first["content"] as? String,
+              content.contains("Selected map search area (read fresh for this turn):") else { return nil }
+        let opening = "<selected_public_map_search_center>"
+        let closing = "</selected_public_map_search_center>"
+        guard let start = content.range(of: opening),
+              let end = content.range(of: closing, range: start.upperBound..<content.endIndex) else { return "unavailable" }
+        let json = String(content[start.upperBound..<end.lowerBound])
+        guard json.utf8.count <= 2_000, let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let name = object["name"] as? String, !name.isEmpty, name.count <= 120,
+              name.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) }) else { return "unavailable" }
+        return name
+    }
+    #endif
 
     /// Serialise the conversation as the array DeepSeek wants. We map
     /// each Role / Message field by hand so the wire shape stays

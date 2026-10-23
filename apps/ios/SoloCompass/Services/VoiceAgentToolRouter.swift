@@ -518,7 +518,7 @@ public final class VoiceAgentToolRouter {
         ),
         .init(
             name: "web_search",
-            description: "Search the live web for current, real-world information you don't already know or that changes over time — opening hours, this week's events/exhibitions, recent news, prices, whether a place still exists, travel advisories. Returns real web pages (title, url, snippet) to ground your answer; cite them. Use this instead of guessing from training knowledge whenever the question is time-sensitive or asks about a specific real place/event. Do NOT use it for on-map actions (use explore_nearby / search_places for those).",
+            description: "Search the live web for current, real-world information you don't already know or that changes over time — opening hours, this week's events/exhibitions, recent news, prices, whether a place still exists, travel advisories. Returns real web pages (title, url, snippet) to ground your answer; cite them. If available is false, disclose that live search could not be completed; do not call that no results or present training knowledge as current verification. Use this instead of guessing from training knowledge whenever the question is time-sensitive or asks about a specific real place/event. Do NOT use it for on-map actions (use explore_nearby / search_places for those).",
             parametersJSON: #"""
             {
               "type": "object",
@@ -1176,8 +1176,8 @@ public final class VoiceAgentToolRouter {
     /// Run a live web search and hand the model back real pages to ground its
     /// answer. The result envelope includes the snippets (so the model can cite
     /// them) and sets `lastEffect = .webSources` (so the UI can render tappable
-    /// source cards). Best-effort: an empty result set is a valid, non-error
-    /// outcome — the model then answers from its own knowledge and says so.
+    /// source cards). An available empty result differs from an unavailable
+    /// search; the latter must not be described as a completed search.
     private func executeWebSearch(args: String) async throws -> String {
         let parsed: WebSearchArgs = try Self.decode(args, tool: "web_search")
         let query = parsed.query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1186,7 +1186,8 @@ public final class VoiceAgentToolRouter {
         }
 
         let topic: WebSearchService.Topic = (parsed.topic == "news") ? .news : .general
-        let results = await webSearchService.search(query: query, topic: topic, days: parsed.days)
+        let outcome = await webSearchService.searchOutcome(query: query, topic: topic, days: parsed.days)
+        let results = outcome.results
 
         // Surface source cards to the UI only when the search actually returned
         // pages — an empty result leaves the chat clean.
@@ -1199,11 +1200,24 @@ public final class VoiceAgentToolRouter {
         let sources: [[String: Any]] = results.map { r in
             ["title": r.title, "url": r.url, "content": r.content]
         }
-        return Self.successJSON([
+        var payload: [String: Any] = [
+            "ok": outcome.available,
+            "success": outcome.available,
+            "available": outcome.available,
+            "status": outcome.status.rawValue,
+            "errorCategory": outcome.errorCategory?.rawValue as Any? ?? NSNull(),
             "query": query,
             "result_count": results.count,
             "sources": sources,
-        ])
+        ]
+        if !outcome.available {
+            payload["hint"] = "Live web search could not be completed. Explain this limitation; do not claim the search found no matches or that current facts were verified. Do not retry until the unavailable dependency changes."
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return #"{"ok":false,"success":false,"available":false,"status":"unavailable","errorCategory":"invalid_response","sources":[]}"#
+        }
+        return encoded
     }
 
     // MARK: - build_route (conversational route creation)

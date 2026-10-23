@@ -1,0 +1,16 @@
+{
+  "createdAt": "2026-10-23T11:29:41.423595+00:00",
+  "artifact": "visual-board.png",
+  "kind": "generated visual design, not native UI acceptance",
+  "width": 1597,
+  "height": 985,
+  "sha256": "f81e9746e3c22ea62972bdda63264fc53a9588563b2e1896b22974363390b17a",
+  "currentAppReference": "docs/qa/companion-ios-20261023/round3/final-normal-app.png",
+  "referenceWasAttached": true,
+  "states": ["daily conversation", "photo and voice", "place and invite", "attachments and dark"],
+  "dataIsIllustrative": true,
+  "productionSourceChanges": [],
+  "decisionAtGeneration": "awaiting user visual approval before native implementation",
+  "currentDecision": "approved by the user and implemented in native iOS; acceptance boundaries are documented separately",
+  "readOnlyBuilderCheck": "nothing important left"
+}
