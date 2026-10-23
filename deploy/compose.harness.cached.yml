@@ -1,0 +1,11 @@
+# Resource-limited local acceptance only. Reuses the already cached PostgreSQL
+# Alpine image as a Linux runtime. up-cached.sh copies the reviewed static API
+# into the stopped container via Docker, without requiring new host/VM mounts.
+# The normal Dockerfile remains the deployable build. This avoids another image
+# build/download while the host is under resource pressure.
+services:
+  api:
+    build: !reset null
+    image: postgres:18-alpine
+    entrypoint: ["/app/api-server"]
+    user: postgres

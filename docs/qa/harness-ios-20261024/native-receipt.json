@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-23T18:39:33.889077+00:00",
+  "device": "Primary iPhone / iPhone 17 Pro",
+  "build_for_testing": "passed",
+  "unit_tests": "not executed in this attempt",
+  "ui_tests": "not executed in this attempt",
+  "stop_reason": "Resource pressure during simulator test startup: 12.32 GiB free disk, 24.36 GiB swap; task-owned xcodebuild interrupted. No test success claim.",
+  "simulator_count": 1,
+  "actual_build_jobs": 4,
+  "next_run_jobs": 2,
+  "first_attempt_fixed_error": "Swift synthetic test fixture String/NSNull conditional type mismatch",
+  "deepseek_key_in_native_env": false,
+  "test_exit_code": 73,
+  "test_result_bundle": "incomplete; staging action log did not finish after interruption",
+  "direct_launch": "bootstatus timed out after 180 seconds; app not launched",
+  "boot_failure_root_cause": "unconfirmed; observed severe concurrent host resource pressure",
+  "full_build_log": "/Users/cubxxw/ops/evidence/roamorrow-harness-20261024/native-build.log",
+  "interrupted_test_log": "/Users/cubxxw/ops/evidence/roamorrow-harness-20261024/native-test-interrupted.log",
+  "terminated_test_pid": 21405,
+  "owned_simulator_shutdown": true
+}

@@ -1,0 +1,4 @@
+=== RUN   TestDeepSeekLiveHarness
+    deepseek_live_test.go:58: real DeepSeek harness completed with 1 profile tool call(s); synthetic data only
+--- PASS: TestDeepSeekLiveHarness (2.28s)
+PASS

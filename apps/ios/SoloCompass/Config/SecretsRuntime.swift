@@ -217,6 +217,14 @@ extension Secrets {
         return URL(string: cleaned)
     }
 
+    /// Separate HTTPS origin for account tools; no implicit public or localhost fallback.
+    static func resolvedHarnessBaseURL() -> URL? {
+        let raw = ProcessInfo.processInfo.environment["SOLO_HARNESS_BASE_URL"]
+            ?? secretsPlistString("SOLO_HARNESS_BASE_URL")
+            ?? (harnessBaseURL.isEmpty ? nil : harnessBaseURL)
+        return raw.flatMap(TravelerHarnessClient.validatedOrigin)
+    }
+
     /// Single bundled-plist string reader used by `resolvedSupabaseConfig()`.
     /// Kept private so callers always go through a typed surface like
     /// `resolvedSupabaseConfig()` rather than reading raw keys ad-hoc.

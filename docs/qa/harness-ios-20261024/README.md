@@ -1,0 +1,65 @@
+# DeepSeek Harness 与邮箱用户故事验收
+
+2026-10-24；分支 `codex/deepseek-onboarding-harness`。源码和后端运行时已完成一轮验收，完整用户故事仍有以下真实接入缺项，不能据此发布或认定 iOS 启动成功。
+
+## 现在具备的流程
+
+1. 原有条款步骤后进入邮箱页，支持邮箱验证码、已有账户密码登录和游客继续。地址本身不产生登录身份。
+2. 验证身份后，可分别选择只读 Google Calendar、Gmail，或跳过 Google。
+3. 用户确认姓名、常住城市和兴趣，另行选择是否允许 AI 读取账户上下文。邮箱不会被推断成姓名、城市或性格。
+4. 资料建议通过服务端 DeepSeek 工具循环生成；建议留在当前页面，用户自行审核。不会写入设备共用的旧对话日志，也不会自动变成确认事实。
+5. 设置页可管理资料、断开 Google 和退出。邮箱会话独立存入 Keychain，避免旧匿名同步覆盖身份或把旧设备数据迁入新账户。
+
+服务端与 MCP 共用三个只读工具：`get_traveler_profile`、`list_calendar_events`、`search_travel_mail`。日历最多未来 14 天、20 项；邮件最多过去 30 天、10 项，只读选定 headers/snippets，无正文附件、发送或日历写入。Google 数据要求对应 scope 和单独的 AI 上下文同意。
+
+## 实测结果
+
+| 项目 | 结果与证据 |
+| --- | --- |
+| Go 全包 / vet / race | 通过；[包测试](go-test.log)、[race](go-race.log) |
+| 真实 PostgreSQL | 迁移及重入通过，4 张表；[数据库记录](database.json) |
+| 真实 SQL 隔离和竞态 | 4 项通过：账户隔离、断开和 state、旧宽权限刷新拒绝、真实锁等待后的撤销；[日志](postgres-live.log) |
+| 真实 DeepSeek provider | 两轮 HTTP 200，工具调用和结果消费通过；只用合成资料；[记录](deepseek-provider.json) |
+| 真实 Go Harness → DeepSeek | 通过，一次资料工具调用及最终回答；身份/资料为测试夹具，模型是实际服务；[日志](deepseek-harness-live.log) |
+| API 运行时 | `127.0.0.1:4437`，9 项探针通过，无 token MCP 401，真实 Supabase 拒绝无效 bearer 401；[汇总](acceptance.json) |
+| iOS 编译 | 真正 `build-for-testing` 通过，应用及受影响测试 bundle 已编译；[记录](native-receipt.json) |
+| iOS 执行 / 页面启动 | 未通过验收：XCTest 启动期间中断，直接 `bootstatus` 180 秒超时，App 尚未运行。未生成页面截图，不记为测试通过 |
+| 独立 review | 已修复并复核关闭确认的 P0/P1；[后端](review-backend.md)、[iOS](review-ios.md)。源码 review 与运行证据分别记录 |
+
+iOS 测试时观察到磁盘降至 12.32 GiB、swap 达 24.36 GiB；停止本任务测试后回落。启动超时的根因未确认，不把资源阈值当作已证明的根因。只使用 Primary iPhone，无新建、擦除或抢占其他设备。测试启动的设备已由共享会话关闭。
+
+## 仍需接入的信息
+
+- 默认测试账号 `test@cubxxw.com` 的私密凭据登录返回 `invalid_credentials`。没有改用其他账户，也没有发送 OTP。需要有效私密凭据，或用户选择邮箱验证并完成验证码步骤。Supabase 邮件模板是否包含 OTP 尚未实测。
+- Google OAuth client/secret 尚未提供，`google=false`。未读取真实邮箱、日历或联系人；缺配置时 UI 可跳过。
+- Tailscale proposed origin：`https://smile-m4-minimac-mini.tail25e61f.ts.net:18443`。专用端口空闲，dry-run 已通过，具体 Serve 命令仍待确认。没有变更现有入口。
+- 未执行 TestFlight archive、上传、Release CI 或物理设备测试。
+
+## 运行和复验
+
+正式运行配置见 [backend guide](../../development/harness-backend.md)。真实运行环境文件 `deploy/harness.runtime-env` 已忽略且 mode `0600`；没有服务端密钥进入 Git。本次原生构建的 DeepSeek key 为空；Harness 使用后端的独立运行环境。
+
+机器资源受限时可先在注册的测试产物目录生成 Linux arm64 静态二进制，再使用已缓存的镜像。`up-cached.sh` 清除 Docker build，通过 Docker API 复制二进制和迁移，无需扩大 Colima 的宿主机目录挂载。使用非 root 用户，API/DB 各限制 256 MiB、1 CPU，日志有界。普通 Dockerfile 镜像构建本次未运行。
+
+```bash
+# 在 apps/api，输出路径由 dev-storage-guard new-artifact 创建
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 GOMAXPROCS=2 go build -p 2 -o <artifact>/api-server .
+# 在仓库根目录；只使用本项目的私密 env
+DOCKER_CONTEXT=colima bash scripts/harness/up-cached.sh <artifact>/api-server
+DOCKER_CONTEXT=colima bash scripts/harness/probe.sh
+DOCKER_CONTEXT=colima bash scripts/harness/down.sh
+```
+
+数据库不发布端口。DB 只接收 `POSTGRES_*`，没有 DeepSeek、Supabase 或令牌加密密钥。测试栈 `restart=no`，验收结束后执行 `down -v --remove-orphans`；不作为常驻服务。
+
+后续 iOS 复验复用已编译产物，保持单设备共享会话。`scripts/ios/account-acceptance.sh` 显式设置宿主 wrapper 的 `IOS_XCODE_JOBS=2`。不要删除、擦除共享设备或把未运行的用例记为通过。
+
+MCP 客户端需要本项目已验证邮箱会话的 access token。以下仅为当前 CLI 已核对的连接方式，没有修改全局 Codex 配置，也没有把任何 token 写入配置：
+
+```bash
+codex mcp add roamorrow-harness \
+  --url https://smile-m4-minimac-mini.tail25e61f.ts.net:18443/mcp \
+  --bearer-token-env-var ROAMORROW_HARNESS_ACCESS_TOKEN
+```
+
+`ROAMORROW_HARNESS_ACCESS_TOKEN` 由调用进程的私密环境提供，过期需通过真实登录刷新。MCP 没有加入产品外的写入、shell 或任意远程工具。

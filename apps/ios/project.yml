@@ -252,11 +252,27 @@ targets:
     dependencies:
       - target: SoloCompass
 
+  AccountRegressionTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: SoloCompass/Tests/EmailAccountServiceTests.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.solocompass.account-regression-tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGNING_ALLOWED: NO
+    dependencies:
+      - target: SoloCompass
+
   CompanionAcceptanceUITests:
     type: bundle.ui-testing
     platform: iOS
     deploymentTarget: "17.0"
     sources:
+      - path: ../../docs/qa/harness-ios-20261024/AccountOnboardingUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round2/CompanionAcceptanceUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round3/CompanionMapPanelUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round4/CompanionTravelIMUITests.swift
@@ -283,6 +299,17 @@ packages:
     from: 2.4.1
 
 schemes:
+  AccountAcceptance:
+    build:
+      targets:
+        SoloCompass: all
+        AccountRegressionTests: [test]
+        CompanionAcceptanceUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - AccountRegressionTests
+        - CompanionAcceptanceUITests
   CompanionAcceptance:
     build:
       targets:

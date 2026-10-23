@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-23T19:16:16.958612+00:00",
+  "runtime": "real PostgreSQL container, cached postgres:18-alpine",
+  "project": "roamorrow-harness-local",
+  "database_health": "accepting connections",
+  "migration_runs": 2,
+  "migration_result": "API startup and explicit migrate command both passed",
+  "harness_tables": 4,
+  "migration_sha256": "5973e397a8cf648a2ecb01a6b44579842c805496eee60a2ad3f4b882b97f4b9f",
+  "host_database_ports": [],
+  "database_has_api_secrets": false,
+  "memory_limit_bytes": 268435456,
+  "restart_policy": "no",
+  "docker_context": "colima",
+  "sql_race_tests": "passed; see postgres-live.log",
+  "migration_runs_on_current_database": 2,
+  "postgres_18_volume_parent": "/var/lib/postgresql"
+}

@@ -1,0 +1,11 @@
+=== RUN   TestPostgresLiveHarness
+=== RUN   TestPostgresLiveHarness/profile_owner_isolation
+=== RUN   TestPostgresLiveHarness/state_one_use_and_real_disconnect
+=== RUN   TestPostgresLiveHarness/new_connection_rejects_old_broad_refresh
+=== RUN   TestPostgresLiveHarness/late_commit_waits_and_rechecks_revoked_epoch
+--- PASS: TestPostgresLiveHarness (0.05s)
+    --- PASS: TestPostgresLiveHarness/profile_owner_isolation (0.01s)
+    --- PASS: TestPostgresLiveHarness/state_one_use_and_real_disconnect (0.01s)
+    --- PASS: TestPostgresLiveHarness/new_connection_rejects_old_broad_refresh (0.00s)
+    --- PASS: TestPostgresLiveHarness/late_commit_waits_and_rechecks_revoked_epoch (0.01s)
+PASS

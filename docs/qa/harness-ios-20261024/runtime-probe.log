@@ -1,0 +1,12 @@
+PASS  loopback GET /healthz -> 200 (got 200)
+PASS  GET /v1/harness/capabilities booleans only
+PASS  API reports private database ready
+PASS  POST /mcp without token -> 401 (got 401)
+PASS  POST /v1/harness/tools/call without token -> 401 (got 401)
+PASS  GET /mcp -> 405 (no SSE) (got 405)
+PASS  db pg_isready over compose network
+PASS  harness.profiles readiness query (got: 0)
+PASS  db publishes no host port
+SKIP  authenticated round trip (export HARNESS_PROBE_TOKEN to enable)
+---
+probe summary: 9 passed, 0 failed

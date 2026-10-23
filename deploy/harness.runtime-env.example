@@ -1,0 +1,50 @@
+# DeepSeek onboarding harness — runtime environment EXAMPLE.
+#
+# Copy to deploy/harness.runtime-env (git-ignored) and fill in real values.
+# The real file is provided outside source control and must never be committed.
+# No DeepSeek or Google secret belongs in the iOS app; they live here only.
+
+# --- Private PostgreSQL (db service) -------------------------------------
+# The database has no host port; these credentials are internal to the stack.
+POSTGRES_USER=harness
+POSTGRES_PASSWORD=change-me-strong-password
+POSTGRES_DB=harness
+# Full DSN used by the API service. Host is the compose service name.
+# sslmode=disable is required here: the private Compose Postgres has no TLS
+# and lib/pq would otherwise default to sslmode=require and fail to connect.
+HARNESS_DATABASE_URL=postgres://harness:change-me-strong-password@db:5432/harness?sslmode=disable
+
+# --- Supabase Auth (project's own instance) ------------------------------
+# Verified with GET /auth/v1/user; anonymous and unverified-email users are
+# rejected. Missing values disable email_auth and protected routes return 503.
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+
+# --- Google OAuth (optional; read-only scopes only) ----------------------
+# GOOGLE_REDIRECT_URI must point at the deployed callback route
+#   https://<tailscale-host>:18443/v1/harness/google/callback
+# Missing values disable the google capability and /google/start returns 503.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+
+# AES-256 key for Google token encryption at rest.
+# Generate: openssl rand -base64 32
+# Without it no Google tokens can be stored (google capability stays off).
+HARNESS_TOKEN_KEY=
+
+# --- DeepSeek (server-side only; never shipped in iOS) -------------------
+# Missing key disables the deepseek capability and /chat returns 503.
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+
+# --- MCP / browser Origin allow-list (comma separated) -------------------
+# The exact deployed origin(s); /mcp rejects any other Origin (fail closed
+# when unset). Example:
+# HARNESS_ALLOWED_ORIGINS=https://smile-m4-minimac-mini.tail25e61f.ts.net:18443
+HARNESS_ALLOWED_ORIGINS=
+
+# --- Paid-request limits (optional; defaults shown) ----------------------
+# HARNESS_RATE_LIMIT_PER_MIN=6
+# HARNESS_MAX_CONCURRENT_PER_USER=2
+# HARNESS_MAX_CONCURRENT_TOTAL=8

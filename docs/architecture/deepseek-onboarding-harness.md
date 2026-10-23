@@ -8,11 +8,14 @@ Status: implementation and live acceptance in progress, 2026-10-24.
 2. A verified traveler can separately choose read-only Google Calendar and Gmail access or skip Google. Missing provider configuration, denial, cancellation and expiry remain visible recoverable states.
 3. They can review and edit their name, home city and interests. The address never becomes evidence of a name, location, occupation or personality. Imported records retain provenance; model suggestions are not silently saved as facts.
 4. Explicit separate consent permits selected account context to reach DeepSeek. Without this consent, model requests cannot read calendar or mail. A traveler can revoke Google access and clear model-context consent from account settings.
-5. The same bounded read tools work from the native companion, the server DeepSeek loop and the authenticated MCP endpoint. Unavailable or unauthorized sources return a clear error, never an invented empty result.
+5. The native account page invokes the stateless server DeepSeek loop; the same bounded read tools are available through authenticated MCP. Unavailable or unauthorized sources return a clear error, never an invented empty result. Private profile/provider context is not injected into the existing device-local conversation journal: that journal has no account ownership boundary. Suggestions stay in the account page's transient state and are discarded when it closes or signs out.
 
 ## Architecture
 
-Reuse the existing Go API and Supabase email identity. Add a private PostgreSQL
+Reuse the existing Go API and Supabase email identity provider. Store the harness
+email session in its own Keychain account: legacy anonymous sync bootstrap cannot
+replace it, and legacy device-local/outbox data is not migrated into a new email
+account. The account setup authorizes private context/provider tools. Add a private PostgreSQL
 schema for this harness, with encrypted provider tokens. Do not reuse another
 application's database, OAuth credentials, users or Tailscale handler.
 
