@@ -4,6 +4,6 @@
 
 ![旅行私信四状态设计预览](visual-board.png)
 
-照片、实录语音、文件、地点与草稿已接入本机真实功能；原生实现使用现有「此刻／附近」导航。实际完成项、失败过程和未验证部分见 [第四轮原生验收](../../qa/companion-ios-20261023/round4/acceptance.md) 与 [真实截图集](../../qa/companion-ios-20261023/round4/gallery/index.html)。这张图本身仍是设计预览，不作为 UI 验收证据。
+照片、实录语音、文件、地点与草稿已接入本机真实功能；原生实现使用现有「此刻／附近」导航。实际范围与未验证部分见[公开验收摘要](../../qa/companion-ios-20261023/PUBLISHED_ACCEPTANCE.md)。完整第四轮验收与真实截图保留在本机 `docs/qa/companion-ios-20261023/round4/`，不随公开代码提交。这张图本身仍是设计预览，不作为 UI 验收证据。
 
-[设计与行为约定](../../superpowers/specs/2026-10-23-travel-im-design.md) · [设计图来源](provenance.json)
+设计与行为约定保留在本机 `docs/superpowers/specs/2026-10-23-travel-im-design.md`。公开[设计图来源](provenance.json)保留生成时状态与后续批准记录。

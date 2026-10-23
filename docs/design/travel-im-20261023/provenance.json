@@ -10,6 +10,7 @@
   "states": ["daily conversation", "photo and voice", "place and invite", "attachments and dark"],
   "dataIsIllustrative": true,
   "productionSourceChanges": [],
-  "currentDecision": "awaiting user visual approval before native implementation",
+  "decisionAtGeneration": "awaiting user visual approval before native implementation",
+  "currentDecision": "approved by the user and implemented in native iOS; acceptance boundaries are documented separately",
   "readOnlyBuilderCheck": "nothing important left"
 }
