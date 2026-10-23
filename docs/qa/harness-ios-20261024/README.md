@@ -54,6 +54,14 @@ DOCKER_CONTEXT=colima bash scripts/harness/down.sh
 
 后续 iOS 复验复用已编译产物，保持单设备共享会话。`scripts/ios/account-acceptance.sh` 显式设置宿主 wrapper 的 `IOS_XCODE_JOBS=2`。不要删除、擦除共享设备或把未运行的用例记为通过。
 
+## 本轮收尾状态
+
+实现及验证凭据已保存在本地提交 `492184de`，未推送、创建 PR 或发布。测试后已执行 `down -v --remove-orphans`，读回确认本任务的 API/DB 容器、网络和测试卷均不存在；Docker context 仍为 `colima`。上述健康状态和探针结果是运行时验收记录，当前没有常驻 Harness 服务。Tailscale 仅完成 dry-run，未应用入口。
+
+原生启动尚未验收，因此保留 `/private/tmp/ai-test-roamorrow-deepseek-harness.Lk95UC` 的编译产物，以及 `/private/tmp/ai-test-roamorrow-harness-runtime.9NlvxH` 的已验证运行二进制用于复验。正式原生日志另存于 `/Users/cubxxw/ops/evidence/roamorrow-harness-20261024/`。这两个已登记目录仍属于未完成任务，后续验收完成再精确回收，不作为永久证据库。
+
+仅回收已核对无活动引用的 npm/pnpm 下载元数据缓存，共 `391876608` bytes（0.36 GiB）；不计磁盘读数波动或 Docker VM 内卷空间。详细记录：`/Users/cubxxw/ops/reports/roamorrow-harness-cleanup-20261024.json`。原 main 同步前的修改仍保存在 stash `444fde3643358b3fdb11358fa83ad44a0ed8780c`，未应用或删除。
+
 MCP 客户端需要本项目已验证邮箱会话的 access token。以下仅为当前 CLI 已核对的连接方式，没有修改全局 Codex 配置，也没有把任何 token 写入配置：
 
 ```bash
