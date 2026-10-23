@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-24",
+  "platform": "iPhone 17 Pro Simulator, iOS 26.4",
+  "affectedUnitTests": {
+    "passed": 102,
+    "failed": 0,
+    "skipped": 0
+  },
+  "postReviewNativeSmokeTests": {
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "priorDistinctNativeInteractionAndSettingsCasesPassed": 20,
+  "isolatedStoreRecoveryProbePassed": true,
+  "newRegression": "Final save failure preserves and saves the exact existing response without regenerating model/tool work",
+  "projectLocalOnlyResourcesExcluded": true,
+  "fullAccessibilityAccepted": false,
+  "outstandingAccessibilityAuditIssues": {
+    "largerTypeTextWarnings": 2,
+    "offViewportContrastWarning": 1
+  },
+  "physicalVoiceOver": "deferred until a physical iPhone is available",
+  "originalAppRecordsAndDraftPreserved": true,
+  "appSigningUnchanged": true,
+  "privateRuntimeEvidencePublished": false
+}
