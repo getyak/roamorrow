@@ -41,6 +41,7 @@ const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
     z.boolean(),
     z.null(),
     z.array(JsonValueSchema),
+    // Zod 4 requires an explicit key schema: https://zod.dev/v4/changelog#zrecord
     z.record(z.string(), JsonValueSchema),
   ]),
 );

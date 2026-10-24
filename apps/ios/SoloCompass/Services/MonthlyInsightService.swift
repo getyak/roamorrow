@@ -17,7 +17,6 @@ public final class MonthlyInsightService {
 
     public static let shared = MonthlyInsightService()
 
-    private let log = OSLog(subsystem: "com.solocompass.app", category: "MonthlyInsight")
 
     public init() {}
 

@@ -11,6 +11,7 @@ Target CI: `.github/workflows/ios-ci.yml` (`macos-latest`) and
 | `ci.yml` / build (Linux)         | Portable `scripts/ios/test_local_policy.py` suite, explicit skips for macOS-only tests, and `bash -n` for all five simulator entrypoint/library scripts. |
 | `ios-ci.yml` / SwiftLint (macOS) | Full fake-tool simulator policy suite; any skipped test fails this step.                                                                                 |
 | `ci.yml` / build (Linux)         | `pnpm security:patch-check` against real Tailwind dependency paths before `pnpm audit --audit-level=low`.                                                |
+| `ci.yml` / build (Linux)         | Dependency floors and Zod/fast-uri/Undici regressions, plus `security:browser` against the real DOMPurify dependency in Chromium.                        |
 
 The policy suite uses fake subprocess tools and never runs a real Simulator.
 It verifies script behavior, not app/UI acceptance. See

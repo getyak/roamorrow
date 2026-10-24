@@ -214,17 +214,11 @@ struct HalfExpandedEmptyState: View {
         colorScheme == .dark ? CT.fgPrimaryDark : CT.fgPrimary
     }
 
-    private var pillTextColor: Color {
-        colorScheme == .dark ? CT.fgPrimaryDark : CT.fgPrimary
-    }
 
     private var pillFill: Color {
         colorScheme == .dark ? Color(.secondarySystemBackground) : CT.surfaceWhite
     }
 
-    private var pillBorder: Color {
-        colorScheme == .dark ? Color(.separator) : CT.borderSubtle
-    }
 }
 
 #Preview("Half-Expanded Empty — light") {

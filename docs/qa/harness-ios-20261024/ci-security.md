@@ -51,3 +51,30 @@ Real default-account profile/MCP round trips, the exact accepted HTTPS endpoint,
 and usable native account-page evidence remain required before leaving Draft.
 The optional Google source is unconfigured. No secrets, real mailbox content,
 or private raw CI/model logs are included in this record.
+
+## Verified head and subsequent main integration
+
+Head `273ecf38406eb9ce505c593038edbed3b46c9831` passed all applicable CI,
+including Go 1.27.3 tests/vulnerability scanning and the Web install, audit,
+typecheck, test, build and formatting gates. Native run
+[40057651261](https://github.com/getyak/roamorrow/actions/runs/40057651261)
+reported 2013 unit tests executed, 14 skipped, zero failures, followed by all
+three original account UI tests passing without skips. The earlier pending
+entries above describe historical runs rather than the current result.
+
+Main subsequently advanced to `145b5ec6247a466d41d0816d365d5f530330264e`.
+Its dependency cleanup and browser security regressions are retained in this
+branch integration. The main workspace policy and lockfile replace the
+overlapping updates; strict release age, the braces patch and its sole audit
+exception remain. Main's two exact synthetic-fixture scanner fingerprints and
+the existing exact binary-checksum fingerprint are retained without broader
+scanner exceptions. Harness migration packaging and serial account UI checks
+remain in place; XcodeGen regenerated the combined native project.
+
+Local syntax/plist/whitespace checks passed. The dependency security scripts
+passed two static lockfile checks, while five runtime checks could not pass
+because this worktree has no installed workspace dependencies. No local install,
+Simulator or full build was added under the current process/swap warnings.
+The integrated head requires a fresh complete CI run and independent review;
+the preceding green head cannot establish integration success. Real-account
+and exact HTTPS acceptance still prevent leaving Draft.

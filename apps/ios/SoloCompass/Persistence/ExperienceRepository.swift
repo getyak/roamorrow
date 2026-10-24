@@ -196,14 +196,6 @@ public final class ExperienceRepository {
         return DiscoveryMergeResult(insertedIDs: inserted, refreshedIDs: refreshed, skipped: skipped)
     }
 
-    /// Fetch the single stored row for `id`, if any.
-    private func fetchExperienceRecord(id: String) -> ExperienceRecord? {
-        let descriptor = FetchDescriptor<ExperienceRecord>(
-            predicate: #Predicate { $0.id == id }
-        )
-        return (try? context.fetch(descriptor))?.first
-    }
-
     /// Write a policy-merged `Experience` over `record` field-by-field.
     /// Deliberately not `update(_:)`: the caller passes an already-merged
     /// value, this path additionally persists `userTagsBlob` /

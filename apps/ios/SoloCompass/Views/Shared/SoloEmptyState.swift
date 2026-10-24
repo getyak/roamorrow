@@ -20,7 +20,6 @@ public struct SoloEmptyState: View {
     let actionTitle: String?
     let action: (() -> Void)?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         systemImage: String,

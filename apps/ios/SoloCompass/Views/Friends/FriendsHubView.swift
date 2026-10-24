@@ -16,6 +16,7 @@ import UIKit
 /// data layer allows.
 struct FriendsHubView: View {
     @State private var service: FriendService
+    private let autoRefresh: Bool
 
     // Inline add-by-code state (lifted from the old AddFriendSheet).
     @State private var typedCode = ""
@@ -34,8 +35,11 @@ struct FriendsHubView: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    init(service: FriendService = .shared) {
+    init(service: FriendService = .shared, autoRefresh: Bool = true, initiallyShowsMyCode: Bool = false) {
         _service = State(initialValue: service)
+        self.autoRefresh = autoRefresh
+        _showMyCode = State(initialValue: initiallyShowsMyCode)
+        _myCode = State(initialValue: initiallyShowsMyCode ? service.myFriendCode : nil)
     }
 
     private var normalisedTyped: String {
@@ -66,7 +70,7 @@ struct FriendsHubView: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(NSLocalizedString("me.friends", comment: "Friends"))
         .navigationBarTitleDisplayMode(.inline)
-        .task { await service.refresh() }
+        .task { if autoRefresh { await service.refresh() } }
         .animation(.easeInOut(duration: 0.2), value: redeemError)
         .animation(.easeInOut(duration: 0.25), value: showMyCode)
         .sheet(isPresented: $isScanning) { scannerSheet }

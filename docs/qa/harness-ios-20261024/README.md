@@ -106,3 +106,26 @@ CI 树中发送验证码、游客继续等按钮都继承了父 ScrollView 的 `
 候选修复只移除未被调用者使用的父容器标识符，保留所有子控件标识符及原来的 3 个
 UI 测试，不改用 label 绕过、不跳过检查。Swift 语法检查通过；必须等待新 head
 的同组真实 UI 测试重新验证后，才能关闭该回归。
+
+## CI 复验与 main 合入 — 2026-10-24
+
+head `273ecf38406eb9ce505c593038edbed3b46c9831` 的适用 CI 已全部通过。
+[iOS run 40057651261](https://github.com/getyak/roamorrow/actions/runs/40057651261)
+执行完整原生 unit：2013 项执行、14 项跳过、0 失败；原来的 3 项账户 UI 测试
+全部通过、无跳过。父容器 ID 回归已由同组实际 Simulator 测试关闭。
+完整 xcresult ZIP、summary、5 张已检查截图和绑定该 head/run 的 receipt 保存在
+`/Users/cubxxw/ops/evidence/roamorrow-harness-20261024/ci273/`；临时下载目录已回收。
+这些证据只覆盖邮箱、错误恢复、Guest 与密码入口，不代表真实账户登录。
+
+随后 main 合入 PR #675，更新到 `145b5ec6247a466d41d0816d365d5f530330264e`，
+与本分支的重复安全、本地化及 Xcode 工程修改发生冲突。本次在原分支合入 main，
+采用 main 的依赖锁文件、精确扫描指纹及安全回归，保留 Harness 的迁移打包、
+受限 Go 构建和 3 项账户 UI CI；Xcode 工程由合并后的源码重新生成。
+Studio 采用 main 的 key 名并保留已有中文译文，移除重复的未引用 key。
+
+合入后的 strings/pbxproj 校验、涉及冲突的 Swift parse 与 diff whitespace 检查通过。
+本地未安装 workspace 依赖：安全脚本中的 2 项静态 lockfile 检查通过，5 项运行时
+检查因缺少依赖未通过，不将整组记为成功。资源仍有 Node/swap 告警，本轮不增加
+本地安装、完整构建或 Simulator；必须由新 head 的全部适用 CI 和独立集成审查重新
+验证，不能沿用 `273ecf38` 的绿灯。真实身份/profile/MCP、已批准精确 HTTPS 及认证后
+source skip/资料/设置验收仍未完成，PR 继续保持 Draft。

@@ -2847,6 +2847,9 @@
 
 // Life Studio — local creative space
 "studio.brand" = "小木";
+// Preserve the existing artwork's English brand copy in both localizations.
+"studio.collection_stamp" = "小木 / 私人收藏";
+"studio.collection_tagline" = "把生活，慢慢收好。";
 "studio.headline" = "把喜欢的日常，\n慢慢住进来。";
 "studio.subtitle" = "一杯咖啡、一本书、一片偶然遇见的风景。";
 "studio.account" = "我的与设置";
@@ -2867,8 +2870,6 @@
 "studio.paper.1" = "苔绿纸面";
 "studio.paper.2" = "陶土纸面";
 "studio.collection" = "收进来的小事";
-"studio.canvas.signature" = "小木 / 私人收藏";
-"studio.eyebrow" = "把生活，慢慢收好。";
 "studio.count" = "%d 件";
 "studio.collection.empty" = "下一件，可以来自你今天的生活。";
 "studio.explore" = "出去走走";

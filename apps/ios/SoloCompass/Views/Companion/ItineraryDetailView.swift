@@ -43,7 +43,6 @@ public struct ItineraryDetailView: View {
     // Companion post flow (US-010)
     @State private var showingCompanionPostSheet = false
     @State private var showingVisibilityOffAlert = false
-    @State private var showingRemovePostConfirm = false
 
     // Visibility recovery (I05): open the real profile editor from the
     // visibility-off alert, then re-check visibility when the user returns.

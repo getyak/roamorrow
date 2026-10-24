@@ -77,6 +77,10 @@ efcb8fc523f59c8333b010c9bc710d8d5b2e4559:docs/design/interaction-quality/scoreca
 efcb8fc523f59c8333b010c9bc710d8d5b2e4559:docs/design/interaction-quality/scorecard.json:generic-api-key:30433
 efcb8fc523f59c8333b010c9bc710d8d5b2e4559:docs/design/interaction-quality/scorecard.json:generic-api-key:30434
 
-# Verified Linux executable SHA-256, not an authentication value.
-# Recomputed from the retained acceptance binary before adding this fingerprint.
+# Exact historical false positives, bound to immutable commit/file/rule/line.
+# Synthetic anonymous key in the environment validation fixture.
+b587238f015b072719b2ee9367b9ddea6b74fb62:apps/web/src/lib/env-validation.test.ts:generic-api-key:25
+# Synthetic explicit key in the same fixture; cannot authenticate a service.
+b587238f015b072719b2ee9367b9ddea6b74fb62:apps/web/src/lib/env-validation.test.ts:generic-api-key:49
+# Public SHA-256 of an API binary in an old acceptance record, not a credential.
 492184de134b058b5055e1c3702129aef25e9185:docs/qa/harness-ios-20261024/acceptance.json:generic-api-key:22

@@ -362,9 +362,6 @@ struct CompassMapContentView: View {
     /// Session-scoped dismissal of the compliance banner — it reappears next day
     /// (a fresh interruption-budget day), never again this session.
     @State private var complianceBannerDismissed: Bool = false
-    /// Mirror of the BottomInfoSheet's current detent, so the drawer tabs only
-    /// show at `.peek`. Threaded via `onDetentChange`.
-    @State private var sheetDetent: BottomSheetDetent = .peek
     @State private var voiceOrchestrator: VoiceAgentOrchestrator? = nil
     /// Owns the single map ⇄ conversation ⇄ discovery scene: panel detent,
     /// draft, scroll intent and the explicit-ask channel. One instance for the
@@ -831,38 +828,6 @@ struct CompassMapContentView: View {
             preferredContentSizeCategory: dynamicTypeSize.uiContentSizeCategory
         )
         return BottomSheetDetent.peekHeight(for: traits)
-    }
-
-    /// The single experience featured in the BottomInfoSheet's peek summary card
-    /// ("此刻最值得去"). Prefers the first visible AI smart pick, else the nearest
-    /// visible experience to the user (or the selected city's centre when GPS is
-    /// unavailable). Resolved by the pure `PeekPickResolver` so the rule is unit-
-    /// tested independently of the view graph.
-    private var peekExperience: Experience? {
-        PeekPickResolver.resolve(
-            experiences: viewModel.visibleExperiences,
-            smartPickIds: viewModel.aiSmartPickIds,
-            referenceCoordinate: locationService.currentLocation?.coordinate
-                ?? viewModel.defaultCenterForSelectedCity,
-            excluding: Set(peekShuffledIds)
-        )
-    }
-
-    /// Ids the traveler shuffled away via the peek card's "换一个" pill, in
-    /// order. The resolver skips them so each shuffle deals the next-best
-    /// pick; when the rotation has cycled through everything visible the
-    /// handler clears the list and the deck starts again from the top pick.
-    /// Stale ids from a previous city/filter are harmless — they simply no
-    /// longer match anything visible.
-    @State private var peekShuffledIds: [String] = []
-
-    /// Whether `peekExperience` is the AI smart pick — drives the peek card's
-    /// gold gradient and "AI Pick" tag.
-    private var peekExperienceIsSmartPick: Bool {
-        PeekPickResolver.isSmartPick(
-            resolved: peekExperience,
-            smartPickIds: viewModel.aiSmartPickIds
-        )
     }
 
     @ViewBuilder

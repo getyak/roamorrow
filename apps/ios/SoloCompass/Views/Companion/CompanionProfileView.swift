@@ -19,7 +19,6 @@ public struct MyProfileEditView: View {
     @Environment(UserPreferences.self) private var preferences
 
     @State private var showingEmojiPicker = false
-    @State private var languageInput = ""
     @State private var walkedRoutes: [Route] = []
     @State private var showAllWalked = false
 

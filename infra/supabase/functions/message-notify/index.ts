@@ -40,7 +40,8 @@
 //                     defaults to the sandbox host when unset.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { create, getNumericDate } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
+import { authenticateBearerRequest, json } from "../_shared/request-auth.ts";
+import { createApnsSender } from "../_shared/apns.ts";
 
 interface NotifyResult {
   delivered: number;
@@ -67,23 +68,16 @@ Deno.serve(async (req: Request) => {
   }
 
   // 1. Verify JWT — caller must be signed in.
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const jwt = authHeader.replace(/^Bearer /i, "");
-  if (!jwt) return json({ error: "missing bearer token" }, 401);
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-  const userClient = createClient(supabaseUrl, jwt, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-    auth: { persistSession: false },
-  });
-  const {
-    data: { user },
-    error: authError,
-  } = await userClient.auth.getUser();
-  if (authError || !user) return json({ error: "unauthorized" }, 401);
-  const callerId = user.id;
+  const authentication = await authenticateBearerRequest(req, (jwt) =>
+    createClient(supabaseUrl, jwt, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+      auth: { persistSession: false },
+    }),
+  );
+  if (authentication instanceof Response) return authentication;
+  const callerId = authentication.userId;
 
   // 2. Parse the message id.
   let body: { messageId?: unknown };
@@ -179,16 +173,11 @@ Deno.serve(async (req: Request) => {
   }
 
   // 9. Build the APNs provider JWT (token-based auth, ES256 over the .p8 key).
-  let apnsJwt: string;
-  let topic: string;
-  let apnsHost: string;
+  let sender: Awaited<ReturnType<typeof createApnsSender>>;
   try {
-    const cfg = readApnsConfig();
-    topic = cfg.topic;
-    apnsHost = cfg.host;
-    apnsJwt = await buildApnsJwt(cfg);
-  } catch (e) {
-    return json({ error: `apns config error: ${(e as Error).message}` }, 500);
+    sender = await createApnsSender((name) => Deno.env.get(name));
+  } catch (error) {
+    return json({ error: `apns config error: ${(error as Error).message}` }, 500);
   }
 
   // 10. Send to every registered device. APNs is one request per token.
@@ -206,100 +195,8 @@ Deno.serve(async (req: Request) => {
     preview,
   });
 
-  let delivered = 0;
-  await Promise.all(
-    deviceTokens.map(async (deviceToken) => {
-      try {
-        const resp = await fetch(`https://${apnsHost}/3/device/${deviceToken}`, {
-          method: "POST",
-          headers: {
-            authorization: `bearer ${apnsJwt}`,
-            "apns-topic": topic,
-            "apns-push-type": "alert",
-            "apns-priority": "10",
-            "content-type": "application/json",
-          },
-          body: apsPayload,
-        });
-        if (resp.status === 200) {
-          delivered += 1;
-        } else if (resp.status === 410) {
-          // Token is no longer valid — prune it so we stop retrying.
-          await svc.from("device_push_tokens").delete().eq("token", deviceToken);
-        }
-        // Other statuses (400/403/429/5xx) are left for the next attempt.
-      } catch {
-        // Network error to APNs — counted as not delivered; client may retry.
-      }
-    }),
-  );
-
-  const result: NotifyResult = { delivered, total: deviceTokens.length };
+  const result = await sender.send(deviceTokens, apsPayload, async (token) => {
+    await svc.from("device_push_tokens").delete().eq("token", token);
+  });
   return json(result, 200);
 });
-
-// ── APNs token-based auth ─────────────────────────────────────────────────────
-
-interface ApnsConfig {
-  keyId: string;
-  teamId: string;
-  topic: string;
-  host: string;
-  p8: string;
-}
-
-function readApnsConfig(): ApnsConfig {
-  const p8 = Deno.env.get("APNS_KEY_P8") ?? "";
-  const keyId = Deno.env.get("APNS_KEY_ID") ?? "";
-  const teamId = Deno.env.get("APNS_TEAM_ID") ?? "";
-  const topic = Deno.env.get("APNS_TOPIC") ?? "";
-  const host = Deno.env.get("APNS_HOST") ?? "api.sandbox.push.apple.com";
-  if (!p8 || !keyId || !teamId || !topic) {
-    throw new Error("missing APNS_KEY_P8 / APNS_KEY_ID / APNS_TEAM_ID / APNS_TOPIC");
-  }
-  return { keyId, teamId, topic, host, p8 };
-}
-
-/// Build a short-lived APNs provider JWT signed with the .p8 ES256 key.
-async function buildApnsJwt(cfg: ApnsConfig): Promise<string> {
-  const privateKey = await importP8Key(cfg.p8);
-  return await create(
-    { alg: "ES256", kid: cfg.keyId, typ: "JWT" },
-    { iss: cfg.teamId, iat: getNumericDate(0) },
-    privateKey,
-  );
-}
-
-/// Import a PKCS#8 .p8 PEM private key as a WebCrypto ES256 signing key.
-async function importP8Key(pem: string): Promise<CryptoKey> {
-  const der = pemToDer(pem);
-  return await crypto.subtle.importKey(
-    "pkcs8",
-    der,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"],
-  );
-}
-
-/// Strip PEM armor + whitespace and base64-decode to the DER bytes.
-function pemToDer(pem: string): ArrayBuffer {
-  const b64 = pem
-    .replace(/-----BEGIN [^-]+-----/g, "")
-    .replace(/-----END [^-]+-----/g, "")
-    .replace(/\s+/g, "");
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes.buffer;
-}
-
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
-}

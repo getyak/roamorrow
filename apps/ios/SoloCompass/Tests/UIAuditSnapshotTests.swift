@@ -5,7 +5,7 @@ import CoreLocation
 
 /// UI audit harness: renders the interaction-gated core surfaces (detail sheet,
 /// settings, onboarding, paywall, UGC create form, chat cards, shared visual
-/// components) to PNGs under `/tmp/sc-audit/xctest/` for human review. These are
+/// components) to XCTest attachments for human review. These are
 /// screens `simctl` can't reach without driving navigation, so we render them
 /// directly. No snapshot library ships — we assert only that a non-empty image
 /// is produced; the PNGs themselves are eyeballed.
@@ -20,7 +20,6 @@ final class UIAuditSnapshotTests: XCTestCase {
 
     private static let outDir = ProcessInfo.processInfo.environment["UI_AUDIT_OUTPUT_DIR"]
         .map { URL(fileURLWithPath: $0, isDirectory: true) }
-        ?? FileManager.default.temporaryDirectory.appendingPathComponent("interaction-audit", isDirectory: true)
 
     // MARK: - Render helpers
 
@@ -46,6 +45,7 @@ final class UIAuditSnapshotTests: XCTestCase {
         let window = UIWindow(frame: host.view.frame)
         window.rootViewController = host
         window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
         if settle > 0 {
@@ -64,9 +64,15 @@ final class UIAuditSnapshotTests: XCTestCase {
         let img = try XCTUnwrap(image, "render produced no image for \(name)")
         XCTAssertGreaterThan(img.size.width, 0, "\(name): zero width")
         XCTAssertGreaterThan(img.size.height, 0, "\(name): zero height")
-        try? FileManager.default.createDirectory(at: Self.outDir, withIntermediateDirectories: true)
-        let data = try XCTUnwrap(img.pngData(), "\(name): pngData failed")
-        try data.write(to: Self.outDir.appendingPathComponent("\(name).png"))
+        let attachment = XCTAttachment(image: img)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        if let outDir = Self.outDir {
+            try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+            let data = try XCTUnwrap(img.pngData(), "\(name): pngData failed")
+            try data.write(to: outDir.appendingPathComponent("\(name).png"))
+        }
     }
 
     // MARK: - Shared environment chain
@@ -306,33 +312,20 @@ final class UIAuditSnapshotTests: XCTestCase {
         try write(render(stack), "confidence-badge")
     }
 
-    func testSoloScoreRadarChart() throws {
+    func testSoloScoreBreakdownCard() throws {
         let score = SoloScore(
             overall: 7.8,
             breakdown: .init(seatingFriendly: 9, soloPatronRatio: 3, staffPressure: 9, soloPortioning: 8, ambianceFit: 2, safety: 9),
             hint: "Great seating and safety, but noisy and few solo patrons.",
             basedOnCount: 22
         )
-        let chart = SoloScoreRadarChart(score: score)
-            .frame(width: 280, height: 280)
-            .padding()
-            .background(Color.white)
-        try write(renderPage(chart, settle: 1.2), "solo-score-radar")
-    }
-
-    func testLocationCard() throws {
-        let coord = CLLocationCoordinate2D(latitude: 18.7883, longitude: 98.9853)
-        let locationService = LocationService()
-        locationService.simulate(location: CLLocation(latitude: coord.latitude + 0.004, longitude: coord.longitude))
-        let card = LocationCard(
-            coordinate: coord,
-            displayName: "Wat Phra Singh",
-            addressHint: "2 Singharat Rd, Phra Sing, Chiang Mai"
-        )
-        .padding()
-        .background(Color.white)
-        .environment(locationService)
-        try write(render(card), "location-card")
+        for expanded in [false, true] {
+            let card = SoloScoreBreakdownCard(
+                score: score, subtitle: "22 traveler signals", isEstimate: false,
+                isExpanded: .constant(expanded), barsAppeared: .constant(true)
+            ).padding().background(Color.white)
+            try write(renderPage(card, settle: 0.3), expanded ? "solo-score-expanded" : "solo-score-collapsed")
+        }
     }
 
     /// Empty city data still offers a useful personal countdown. These PNGs

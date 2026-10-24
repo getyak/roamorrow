@@ -123,13 +123,6 @@ public struct ChatSheet: View {
     /// conversation; this observes the transition.
     @Environment(\.scenePhase) private var scenePhase
 
-    private static let starterPrompts: [String] = [
-        NSLocalizedString("chat.empty.prompt.nearby",  comment: "Starter chip — what's good around me"),
-        NSLocalizedString("chat.empty.prompt.coffee",  comment: "Starter chip — find a quiet café"),
-        NSLocalizedString("chat.empty.prompt.events",  comment: "Starter chip — what's on this week"),
-        NSLocalizedString("chat.empty.prompt.evening", comment: "Starter chip — plan my evening"),
-    ]
-
     public init(
         orchestrator: VoiceAgentOrchestrator,
         voiceService: VoiceService,
@@ -941,7 +934,7 @@ public struct ChatSheet: View {
         }
     }
 
-    /// The minimal compact layout. Wires `starterPrompts` into the
+    /// The compact layout wires `halfExpandedSuggestions` into the
     /// `HalfExpandedEmptyState` pills so taps still produce the same full
     /// question the large state would have sent. The standalone mic handle is
     /// suppressed because the composer below (with its own text field + mic)
@@ -1016,107 +1009,6 @@ public struct ChatSheet: View {
             fullPrompt: NSLocalizedString("chat.empty.prompt.evening", comment: "Starter chip — plan my evening")
         ),
     ]
-
-    /// Hour-aware global empty state (the "+" entry). Sequence: hero glyph →
-    /// title → subtitle → NOW banner → starter cards. Rebuilt for a single warm
-    /// identity in both schemes — the cold systemGray fallback is gone; every
-    /// surface here sits on the amber ladder (`warm*Dark` / `CT.surface*`) with
-    /// a deliberate vertical rhythm instead of evenly-spaced rows.
-    private var genericEmptyState: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 24)
-
-            heroGlyph
-                .padding(.bottom, 20)
-
-            Text(NSLocalizedString("chat.empty.title", comment: "Ask me anything about places near you"))
-                .ctDisplay(22, .bold)
-                .foregroundStyle(emptyTitleColor)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 7)
-
-            Text(NSLocalizedString("chat.empty.subtitle", comment: "Try ‘what’s good around me?’ or hold the mic to talk."))
-                .font(.system(size: 13.5, weight: .regular))
-                .foregroundStyle(emptySubtitleColor)
-                .multilineTextAlignment(.center)
-                .lineSpacing(2)
-                .padding(.horizontal, 36)
-                .padding(.bottom, 18)
-
-            nowContextBanner
-                .padding(.bottom, 22)
-
-            starterPromptChips
-
-            Spacer(minLength: 24)
-        }
-        .frame(maxWidth: .infinity)
-        .opacity(starterPromptsAppeared ? 1 : 0)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.45).delay(0.1)) {
-                starterPromptsAppeared = true
-            }
-        }
-    }
-
-    /// Hero glyph for the global empty state — a layered, breathing badge rather
-    /// than a flat disc. Two soft amber halos radiate behind a gradient-filled
-    /// inner circle so the mark reads as warm and dimensional on the dark sheet,
-    /// not a hard米白 cutout. The faint outer ring + inner highlight give it the
-    /// "lit from within" quality the detail page hero has.
-    private var heroGlyph: some View {
-        ZStack {
-            // Outer ambient halo — barely-there bloom that softens the edge
-            // against the near-black sheet.
-            Circle()
-                .fill(CT.accent.opacity(colorScheme == .dark ? 0.16 : 0.10))
-                .frame(width: 108, height: 108)
-                .blur(radius: 14)
-
-            // Mid ring — a thin warm border floating just outside the core.
-            Circle()
-                .strokeBorder(CT.sunGold.opacity(colorScheme == .dark ? 0.30 : 0.40), lineWidth: 1)
-                .frame(width: 82, height: 82)
-
-            // Core — gradient amber fill with a top highlight, white glyph.
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: colorScheme == .dark
-                            ? [CT.accent, CT.accentHover]
-                            : [CT.sunGoldSoft, CT.accentSoft],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 68, height: 68)
-                .overlay(
-                    Circle().strokeBorder(
-                        Color.white.opacity(colorScheme == .dark ? 0.10 : 0.55),
-                        lineWidth: 0.75
-                    )
-                )
-                .overlay(
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(colorScheme == .dark ? Color.white : CT.accent)
-                )
-                .shadow(color: CT.accent.opacity(colorScheme == .dark ? 0.45 : 0.18), radius: 12, y: 5)
-        }
-        .scaleEffect(starterPromptsAppeared ? 1 : 0.88)
-        .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.7), value: starterPromptsAppeared)
-        .accessibilityHidden(true)
-    }
-
-    private var emptyTitleColor: Color {
-        colorScheme == .dark ? CT.fgPrimaryDark : CT.fgPrimary
-    }
-
-    private var emptySubtitleColor: Color {
-        colorScheme == .dark ? CT.fgMutedDark : CT.fgMuted
-    }
 
     /// Place-anchored empty state. Leads with a compact hero of the place the
     /// chat is bound to (so "I'm asking about *this*" is felt, not just read),
@@ -1325,36 +1217,7 @@ public struct ChatSheet: View {
         colorScheme == .dark ? Color(.secondarySystemBackground) : CT.surfaceWhite
     }
 
-    private var starterPromptChips: some View {
-        VStack(spacing: 11) {
-            ForEach(Array(Self.starterPrompts.enumerated()), id: \.offset) { index, prompt in
-                Button {
-                    Haptics.impact(.light)
-                    _ = handleSend(prompt)
-                } label: {
-                    starterCardRow(
-                        icon: promptIcon(for: index),
-                        iconColor: promptIconColor(for: index),
-                        label: prompt
-                    )
-                }
-                .buttonStyle(PressableButtonStyle())
-                .accessibilityLabel(prompt)
-                .opacity(starterPromptsAppeared ? 1 : 0)
-                .offset(y: starterPromptsAppeared ? 0 : 10)
-                .animation(
-                    reduceMotion
-                        ? nil
-                        : .spring(response: 0.42, dampingFraction: 0.8).delay(0.18 + Double(index) * 0.07),
-                    value: starterPromptsAppeared
-                )
-            }
-        }
-        .padding(.horizontal, 24)
-    }
-
-    /// One opener row — shared by the global starter prompts and the
-    /// place-anchored intents so the two empty states read as one family.
+    /// One opener row for the place-anchored intents.
     /// The icon sits in a tinted rounded square (the handoff `.sugg .ic` chip),
     /// a step up in tactility from a bare glyph, and the chevron is the quiet
     /// "go" cue on the trailing edge.
@@ -1414,91 +1277,12 @@ public struct ChatSheet: View {
         colorScheme == .dark ? CT.fgMutedDark.opacity(0.7) : CT.fgSubtle
     }
 
-    private func promptIcon(for index: Int) -> String {
-        switch index {
-        case 0:  return "mappin.and.ellipse"
-        case 1:  return "cup.and.saucer.fill"
-        case 2:  return "calendar"
-        default: return "moon.stars.fill"
-        }
-    }
-
-    /// Warm-family icon tints for the starter cards. Deep-amber accent →
-    /// sun-gold → verified green (the events card borrows the Live sheet's
-    /// solo-chip green so "what's on" reads as the same City-OS surface) →
-    /// a dusk plum that still lives next to the amber palette (not a cold
-    /// `.indigo` that fights the warm sheet). All four read as one family.
-    private func promptIconColor(for index: Int) -> Color {
-        switch index {
-        case 0:  return CT.accent
-        case 1:  return CT.sunGoldDeep
-        case 2:  return CT.verifiedGreenDot
-        default: return Color(.sRGB, red: 0x6B / 255, green: 0x4E / 255, blue: 0x7D / 255, opacity: 1) // dusk plum #6B4E7D
-        }
-    }
-
     // MARK: - Contextual NOW banner
-
-    /// A single sun-gold pill on the empty chat that shifts copy with the hour —
-    /// the chat's equivalent of the map's "AI · NOW" framing. It grounds the
-    /// blank state in *this moment* ("Golden light soon · the river bank is
-    /// calling") instead of a generic prompt, nudging the right question.
-    private var nowContextBanner: some View {
-        let copy = Self.nowContextCopy(hour: nowHour)
-        return HStack(spacing: 7) {
-            Image(systemName: nowContextIcon)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(CT.sunGoldDeep)
-            Text(copy)
-                .font(.system(size: 11.5, weight: .medium))
-                .lineLimit(1)
-                .foregroundStyle(nowBannerTextColor)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            Capsule().fill(nowBannerFill)
-        )
-        .overlay(
-            Capsule().strokeBorder(CT.sunGold.opacity(colorScheme == .dark ? 0.30 : 0.0), lineWidth: 0.75)
-        )
-        .padding(.horizontal, 28)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(String(
-            format: NSLocalizedString("chat.empty.now.a11y", comment: "NOW banner a11y prefix"),
-            copy
-        )))
-    }
-
-    /// NOW pill fill — warm-translucent gold on the dark sheet (so it reads as
-    /// "lit, belongs here" not a pasted-on bright yellow chip), the original
-    /// soft-gold parchment in light mode.
-    private var nowBannerFill: Color {
-        colorScheme == .dark
-            ? CT.sunGold.opacity(0.14)
-            : CT.sunGoldSoft
-    }
-
-    private var nowBannerTextColor: Color {
-        colorScheme == .dark ? CT.fgPrimaryDark : CT.sunGoldDeep
-    }
 
     /// Current local hour (0–23). A computed property so the banner reflects the
     /// hour the sheet was opened.
     private var nowHour: Int {
         Calendar.current.component(.hour, from: Date())
-    }
-
-    private var nowContextIcon: String {
-        switch nowHour {
-        case 5..<8:   return "sunrise.fill"
-        case 8..<11:  return "cup.and.saucer.fill"
-        case 11..<15: return "sun.max.fill"
-        case 15..<17: return "sun.haze.fill"
-        case 17..<19: return "sunset.fill"
-        case 19..<22: return "moon.stars.fill"
-        default:      return "moon.fill"
-        }
     }
 
     /// Map an hour to a contextual one-liner. Static + pure so it's trivially

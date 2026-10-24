@@ -4645,56 +4645,6 @@ final class LanguageServiceTests: XCTestCase {
         XCTAssertEqual(skeleton.lineCount, 1, "lineCount must be at least 1")
     }
 
-    // MARK: - US-008 SoloScoreRadarChart
-
-    func testRadarChartVarianceHighEnoughTriggersRadar() {
-        // seating=9, staffPressure=2, safety=9, others mid-range → high variance
-        let score = SoloScore(
-            overall: 7.0,
-            breakdown: .init(
-                seatingFriendly: 9,
-                soloPatronRatio: 3,
-                staffPressure: 9,
-                soloPortioning: 8,
-                ambianceFit: 2,
-                safety: 9
-            ),
-            hint: nil,
-            basedOnCount: 10
-        )
-        let chart = SoloScoreRadarChart(score: score)
-        // Variance: values = [9,3,9,8,2,9], mean = 6.67
-        // variance = ((9-6.67)²+(3-6.67)²+(9-6.67)²+(8-6.67)²+(2-6.67)²+(9-6.67)²)/6 ≈ 6.22
-        let vals: [Double] = [9, 3, 9, 8, 2, 9]
-        let mean = vals.reduce(0, +) / Double(vals.count)
-        let variance = vals.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(vals.count)
-        XCTAssertGreaterThanOrEqual(variance, 0.5, "High-spread score must have variance ≥ 0.5 (shows radar)")
-        _ = chart // Verify it constructs without crash
-    }
-
-    func testRadarChartVarianceLowTriggersFallbackBars() {
-        // All dimensions identical → zero variance → fallback bars
-        let score = SoloScore(
-            overall: 9.0,
-            breakdown: .init(
-                seatingFriendly: 9,
-                soloPatronRatio: 9,
-                staffPressure: 9,
-                soloPortioning: 9,
-                ambianceFit: 9,
-                safety: 9
-            ),
-            hint: nil,
-            basedOnCount: 5
-        )
-        let chart = SoloScoreRadarChart(score: score)
-        let vals: [Double] = [9, 9, 9, 9, 9, 9]
-        let mean = vals.reduce(0, +) / Double(vals.count)
-        let variance = vals.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(vals.count)
-        XCTAssertLessThan(variance, 0.5, "Uniform score must have variance < 0.5 (shows fallback bars)")
-        _ = chart
-    }
-
     func testSeedDifferentiatedSoloScoresHaveHighVariance() {
         // Verify the 3 updated seed POIs have breakdown variance >= 1.5
         let highVarianceIds: Set<String> = [
@@ -4710,63 +4660,8 @@ final class LanguageServiceTests: XCTestCase {
             let mean = vals.reduce(0, +) / Double(vals.count)
             let variance = vals.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(vals.count)
             XCTAssertGreaterThanOrEqual(variance, 1.5,
-                "'\(exp.id)' breakdown variance \(variance) must be ≥ 1.5 for radar to render")
+                "'\(exp.id)' breakdown variance \(variance) must be ≥ 1.5 to preserve differentiated seed breakdowns")
         }
-    }
-
-    // MARK: - SoloScoreRadarChart strongest dimension
-
-    func testStrongestIndexPicksMaxDimension() {
-        // seating=9 is max; staffPressure=2 is min
-        // axes order: seating(0), staff(1), patrons(2), ambiance(3), safety(4), portioning(5)
-        // values:      9           2         5           7            8           6
-        let vals: [Double] = [9, 2, 5, 7, 8, 6]
-        let expectedStrongestIndex = vals.indices.max(by: { vals[$0] < vals[$1] })!
-        let expectedWeakestIndex = vals.indices.min(by: { vals[$0] < vals[$1] })!
-        XCTAssertNotEqual(expectedStrongestIndex, expectedWeakestIndex,
-                          "Strongest and weakest must be distinct for this high-variance score")
-        XCTAssertGreaterThanOrEqual(vals[expectedStrongestIndex], 8.0,
-                                    "Strongest value must be >= 8 to show green caption")
-    }
-
-    func testStrongestGatingRequiresValueAtLeastEight() {
-        // Max dim is 7 — below the >=8 threshold, no strongest caption should appear
-        let vals: [Double] = [7, 7, 4, 5, 3, 6]
-        let strongestVal = vals.max()!
-        XCTAssertLessThan(strongestVal, 8.0,
-                          "When max dim < 8 no strongest caption should be shown")
-    }
-
-    func testStrongestGatingRequiresDistinctFromWeakest() {
-        // All equal — strongest == weakest index, guard must prevent double-marking
-        let vals: [Double] = [9, 9, 9, 9, 9, 9]
-        let si = vals.indices.max(by: { vals[$0] < vals[$1] })!
-        let wi = vals.indices.min(by: { vals[$0] < vals[$1] })!
-        // When all are equal, max/min indices coincide — no strongest caption
-        XCTAssertEqual(si, wi, "When all dims equal, strongestIndex == weakestIndex — no green caption")
-    }
-
-    func testRadarAccessibilityLabelContainsStrongestDimensionName() {
-        // Seating=9 is the qualifying strongest (>=8, distinct from weakest ambianceFit=2)
-        let vals: [Double] = [9, 3, 5, 2, 8, 6]
-        let si = vals.indices.max(by: { vals[$0] < vals[$1] })!
-        let wi = vals.indices.min(by: { vals[$0] < vals[$1] })!
-        XCTAssertGreaterThanOrEqual(vals[si], 8.0, "Strongest must be >=8 to qualify")
-        XCTAssertNotEqual(si, wi, "Strongest must differ from weakest to qualify")
-        let score = SoloScore(
-            overall: 7.5,
-            breakdown: .init(
-                seatingFriendly: 9,
-                soloPatronRatio: 5,
-                staffPressure: 3,
-                soloPortioning: 6,
-                ambianceFit: 2,
-                safety: 8
-            ),
-            hint: nil,
-            basedOnCount: 12
-        )
-        _ = SoloScoreRadarChart(score: score) // constructs without crash
     }
 
     // MARK: - US-011 ChatUIState transitions

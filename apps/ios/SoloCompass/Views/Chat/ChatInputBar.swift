@@ -632,36 +632,15 @@ public struct ChatInputBar: View {
     /// photo decode (10–50 MB) blocks for tens–hundreds of ms; run it off the
     /// main actor so the picker dismiss stays smooth, then hop back to append.
     private func ingest(photoItems: [PhotosPickerItem]) async {
-        var picked: [LocalAttachment] = []
-        for item in photoItems {
-            guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
-            let ext = (item.supportedContentTypes.first?.preferredFilenameExtension) ?? "jpg"
-            let mime = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
-            let draft = await ChatAttachmentDecoder.imageDraft(
-                data: data,
-                fileName: "image-\(UUID().uuidString.prefix(8)).\(ext)",
-                mimeType: mime
-            )
-            picked.append(draft)
-        }
-        if !picked.isEmpty {
-            attachments.append(contentsOf: picked)
-        }
+        attachments.append(contentsOf: await ChatAttachmentDecoder.photoDrafts(photoItems))
         photoSelections = []
     }
 
     /// Wrap a freshly captured camera photo as a JPEG image draft.
     private func appendCameraImage(_ image: UIImage) {
-        guard let data = image.jpegData(compressionQuality: 0.9) else { return }
-        attachments.append(
-            LocalAttachment(
-                kind: .image,
-                fileName: "camera-\(UUID().uuidString.prefix(8)).jpg",
-                mimeType: "image/jpeg",
-                data: data,
-                image: image
-            )
-        )
+        if let draft = ChatAttachmentDecoder.cameraDraft(image) {
+            attachments.append(draft)
+        }
     }
 
     /// Read security-scoped files chosen via the document picker into drafts.
@@ -669,59 +648,7 @@ public struct ChatInputBar: View {
     /// videos) so the picker dismiss stays smooth; hops back only to append.
     private func ingest(fileResult: Result<[URL], Error>) async {
         guard case let .success(urls) = fileResult else { return }
-        var picked: [LocalAttachment] = []
-        for url in urls {
-            if let draft = await ChatAttachmentDecoder.fileDraft(url) {
-                picked.append(draft)
-            }
-        }
-        if !picked.isEmpty {
-            attachments.append(contentsOf: picked)
-        }
-    }
-}
-
-/// Shared off-main-actor decoders for chat attachment drafts. Both the Voice
-/// Agent composer (`ChatInputBar`) and the companion composer (`AttachmentInputBar`)
-/// pick photos/files; decoding a full-resolution image or reading a large file
-/// blocks, so every path funnels through here to keep it off the main actor.
-enum ChatAttachmentDecoder {
-    /// Decode image bytes into a preview-ready draft off the main actor.
-    /// `preparingForDisplay()` forces the decode now instead of lazily on the
-    /// render thread at first draw.
-    static func imageDraft(data: Data, fileName: String, mimeType: String) async -> LocalAttachment {
-        let prepared: UIImage? = await Task.detached(priority: .userInitiated) {
-            guard let raw = UIImage(data: data) else { return nil }
-            return raw.preparingForDisplay() ?? raw
-        }.value
-        return LocalAttachment(
-            kind: .image,
-            fileName: fileName,
-            mimeType: mimeType,
-            data: data,
-            image: prepared
-        )
-    }
-
-    /// Read one picked file off the main actor: opens its security scope, reads
-    /// the bytes, and (for images) decodes a preview. Returns nil on read failure.
-    static func fileDraft(_ url: URL) async -> LocalAttachment? {
-        await Task.detached(priority: .userInitiated) {
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            let type = UTType(filenameExtension: url.pathExtension)
-            let isImage = type?.conforms(to: .image) ?? false
-            let mime = type?.preferredMIMEType ?? "application/octet-stream"
-            let image = isImage ? UIImage(data: data)?.preparingForDisplay() : nil
-            return LocalAttachment(
-                kind: isImage ? .image : .file,
-                fileName: url.lastPathComponent,
-                mimeType: mime,
-                data: data,
-                image: image
-            )
-        }.value
+        attachments.append(contentsOf: await ChatAttachmentDecoder.fileDrafts(urls))
     }
 }
 

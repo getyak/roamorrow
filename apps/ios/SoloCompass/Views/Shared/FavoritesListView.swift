@@ -24,7 +24,6 @@ public struct FavoritesListView: View {
 
     @State private var lastUnfavorited: (id: String, title: String, date: Date)?
     @State private var undoDismissTask: Task<Void, Never>?
-    @State private var animatePulse = false
     @State private var undoProgress: CGFloat = 1
     @State private var undoDragOffset: CGFloat = 0
     @State private var searchText = ""

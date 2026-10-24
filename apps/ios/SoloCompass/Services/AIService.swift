@@ -1595,52 +1595,6 @@ public final class AIService {
         }
     }
 
-    /// True if the per-day cap for `kind` is reached. Pure read; no
-    /// mutation. Used internally to keep synthesizeExperiences readable.
-    private func isQuotaExceeded(kind: ModelKind) async -> Bool {
-        await MainActor.run { [weak self] in
-            guard let self, let context = self.modelContext else { return false }
-            let limit = dailyLimit(for: kind)
-            let today = AIUsageRecord.todayUTC()
-            let descriptor = FetchDescriptor<AIUsageRecord>(
-                predicate: #Predicate { $0.date == today }
-            )
-            guard let row = (try? context.fetch(descriptor))?.first else {
-                return limit == 0
-            }
-            switch kind {
-            case .synthesis, .voice:
-                return row.synthesisCalls >= limit
-            case .explanation:
-                return row.explanationCalls >= limit
-            }
-        }
-    }
-
-    /// Increment the counter for `kind`, creating today's row on first call.
-    private func incrementQuota(kind: ModelKind) async {
-        await MainActor.run { [weak self] in
-            guard let self, let context = self.modelContext else { return }
-            let today = AIUsageRecord.todayUTC()
-            let descriptor = FetchDescriptor<AIUsageRecord>(
-                predicate: #Predicate { $0.date == today }
-            )
-            let row = (try? context.fetch(descriptor))?.first
-                ?? {
-                    let r = AIUsageRecord(date: today)
-                    context.insert(r)
-                    return r
-                }()
-            switch kind {
-            case .synthesis, .voice:
-                row.synthesisCalls += 1
-            case .explanation:
-                row.explanationCalls += 1
-            }
-            try? context.save()
-        }
-    }
-
     @MainActor
     private func setQuotaExceeded() {
         self.quotaExceededAt = Date()
