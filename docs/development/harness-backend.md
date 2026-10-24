@@ -1,8 +1,9 @@
 # DeepSeek onboarding harness — Go backend
 
-Status: implementation complete in this worktree; live acceptance (real
-Supabase / Google / DeepSeek / Tailscale) is parent-owned and **not claimed
-here**. The frozen wire contract lives in
+Implementation and live acceptance have separate evidence. Real private
+PostgreSQL and DeepSeek checks passed; remaining identity, native and endpoint
+acceptance is listed in the [acceptance record](../qa/harness-ios-20261024/README.md).
+The frozen wire contract lives in
 [docs/architecture/deepseek-onboarding-harness.md](../architecture/deepseek-onboarding-harness.md);
 this document records the concrete backend configuration, response shapes and
 runtime contract that were implemented against it.
@@ -13,21 +14,20 @@ runtime contract that were implemented against it.
 - Migrations: `apps/api/migrations/harness/**` (private `harness` schema,
   separate from `DATABASE_URL` / `reviews_extracted`).
 - Runtime: `deploy/compose.harness.yml`, `deploy/harness.runtime-env.example`
-  (the real file `deploy/harness.runtime-env` must never be committed; its
-  git-ignore rule is parent-owned, not part of this change),
+  (the real file `deploy/harness.runtime-env` is git-ignored and must never be committed),
   `scripts/harness/**`.
 
 ## Runtime contract
 
 Project `roamorrow-harness-local` (`deploy/compose.harness.yml`):
 
-| Property | Value |
-| --- | --- |
-| API | `http://127.0.0.1:4437` (loopback bind only) |
-| PostgreSQL | `postgres:18-alpine`, **no host ports**, compose network only |
-| restart | `no` on every service (test runtime, never a daemon) |
+| Property   | Value                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| API        | `http://127.0.0.1:4437` (loopback bind only)                                                                      |
+| PostgreSQL | `postgres:18-alpine`, **no host ports**, compose network only                                                     |
+| restart    | `no` on every service (test runtime, never a daemon)                                                              |
 | Migrations | inside the runtime image (`/app/migrations/harness`), applied idempotently at startup or via `api-server migrate` |
-| Secrets | `deploy/harness.runtime-env` (never committed, provided outside source) |
+| Secrets    | `deploy/harness.runtime-env` (never committed, provided outside source)                                           |
 
 Lifecycle/probe commands: `scripts/harness/up.sh`, `status.sh`, `probe.sh`,
 `migrate.sh`, `down.sh` (tears down volumes too). See
@@ -35,17 +35,17 @@ Lifecycle/probe commands: `scripts/harness/up.sh`, `status.sh`, `probe.sh`,
 
 ## Configuration (all optional sections degrade visibly, never silently)
 
-| Variable | Missing behavior |
-| --- | --- |
-| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | `email_auth=false`; protected routes return 503 `auth not configured` |
-| `HARNESS_DATABASE_URL` | `database=false`; DB-backed routes return 503 |
-| `HARNESS_MIGRATIONS_DIR` | default `migrations/harness` (compose sets `/app/migrations/harness`) |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | `google=false`; `POST /google/start` returns 503 |
-| `HARNESS_TOKEN_KEY` (base64, 32 bytes; `openssl rand -base64 32`) | `google=false`; no Google tokens can be stored |
-| `DEEPSEEK_API_KEY` | `deepseek=false`; `POST /chat` returns 503 |
-| `DEEPSEEK_BASE_URL` | default `https://api.deepseek.com/v1` |
-| `HARNESS_ALLOWED_ORIGINS` (comma separated) | `/mcp` rejects every `Origin` (fail closed); absent `Origin` (non-browser) allowed |
-| `HARNESS_RATE_LIMIT_PER_MIN` / `HARNESS_MAX_CONCURRENT_PER_USER` / `HARNESS_MAX_CONCURRENT_TOTAL` | defaults `6` / `2` / `8` |
+| Variable                                                                                          | Missing behavior                                                                   |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY`                                                               | `email_auth=false`; protected routes return 503 `auth not configured`              |
+| `HARNESS_DATABASE_URL`                                                                            | `database=false`; DB-backed routes return 503                                      |
+| `HARNESS_MIGRATIONS_DIR`                                                                          | default `migrations/harness` (compose sets `/app/migrations/harness`)              |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`                                 | `google=false`; `POST /google/start` returns 503                                   |
+| `HARNESS_TOKEN_KEY` (base64, 32 bytes; `openssl rand -base64 32`)                                 | `google=false`; no Google tokens can be stored                                     |
+| `DEEPSEEK_API_KEY`                                                                                | `deepseek=false`; `POST /chat` returns 503                                         |
+| `DEEPSEEK_BASE_URL`                                                                               | default `https://api.deepseek.com/v1`                                              |
+| `HARNESS_ALLOWED_ORIGINS` (comma separated)                                                       | `/mcp` rejects every `Origin` (fail closed); absent `Origin` (non-browser) allowed |
+| `HARNESS_RATE_LIMIT_PER_MIN` / `HARNESS_MAX_CONCURRENT_PER_USER` / `HARNESS_MAX_CONCURRENT_TOTAL` | defaults `6` / `2` / `8`                                                           |
 
 A malformed `HARNESS_TOKEN_KEY` is a hard startup error.
 
@@ -53,6 +53,25 @@ The Compose sample `HARNESS_DATABASE_URL` in
 `deploy/harness.runtime-env.example` pins `?sslmode=disable`: the private
 Compose Postgres has no TLS and lib/pq would otherwise default to
 `sslmode=require`.
+
+## Native account configuration
+
+Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` for the same project as the server,
+and `SOLO_HARNESS_BASE_URL` to the accepted HTTPS origin. The origin cannot be
+loopback HTTP or contain `/v1/harness`; the client adds endpoint paths itself.
+Resolution is process environment, then bundled `Secrets.plist`, then generated
+values from the repository-root private `.env`. Keep provider/model secrets on
+the server; the native account flow does not need a DeepSeek key.
+
+The current TestFlight workflow does not inject these three account settings.
+Its build/upload success alone does not verify that an installed release can
+use this flow. Configure and accept a release separately before claiming it.
+
+`scripts/ios/account-acceptance.sh <registered-artifact>` builds the focused
+`AccountAcceptance` scheme inside the shared iOS session, then executes the
+account regression and onboarding UI tests. Reuse an existing matching
+`.xctestrun` with `xcodebuild test-without-building` inside `dev-ios-session`
+for follow-up runs; use a new result-bundle path in that registered directory.
 
 ## Wire contract (as implemented)
 
@@ -62,18 +81,18 @@ identities are rejected**. The verified subject (`sub`) is the only owner key �
 no client-supplied id or metadata ever authorizes access (bodies containing
 `user_id`/`email` are rejected as unknown fields).
 
-| Route | Response fields |
-| --- | --- |
-| `GET /v1/harness/capabilities` | exactly `{email_auth,google,deepseek,database}` booleans |
-| `GET /v1/harness/profile` | `{user_id,email,display_name,home_city,interests,ai_context_consent,google:{connected,email,scopes}}` |
-| `PUT /v1/harness/profile` | accepts only `{display_name,home_city,interests,ai_context_consent}` (all four required; full replacement), returns the profile |
-| `POST /v1/harness/google/start` | `{calendar,mail}` booleans, ≥1 true → `{authorization_url,expires_at}`; 503 when unconfigured |
-| `GET /v1/harness/google/callback` | one-use expiring PKCE state → 302 to `solocompass://google-connected?status=connected\|error` (never tokens/PII) |
-| `DELETE /v1/harness/google` | `{disconnected,provider_revocation_confirmed}` (local erasure first, provider revocation attempted, flag honest) |
-| `GET /v1/harness/context` | `{items:[{kind,value,provenance,confirmed}]}` — manual/confirmed context + Google connection scopes; no raw mail or tokens |
-| `POST /v1/harness/tools/call` | `{name,arguments}` → `{name,status,result,error,provenance}` (`status` is `ok`\|`error`) |
-| `POST /v1/harness/chat` | `{message}` (1–4000 runes) → `{reply,tool_calls:[{name,status}],sources:[string]}` (`sources` = provenance labels, e.g. `google_calendar`) |
-| `POST /mcp` | MCP Streamable HTTP stateless JSON (2025-11-25): `initialize`, `ping`, `tools/list`, `tools/call`; notifications → 202 empty; `GET`/`DELETE` → 405 |
+| Route                             | Response fields                                                                                                                                    |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/harness/capabilities`    | exactly `{email_auth,google,deepseek,database}` booleans                                                                                           |
+| `GET /v1/harness/profile`         | `{user_id,email,display_name,home_city,interests,ai_context_consent,google:{connected,email,scopes}}`                                              |
+| `PUT /v1/harness/profile`         | accepts only `{display_name,home_city,interests,ai_context_consent}` (all four required; full replacement), returns the profile                    |
+| `POST /v1/harness/google/start`   | `{calendar,mail}` booleans, ≥1 true → `{authorization_url,expires_at}`; 503 when unconfigured                                                      |
+| `GET /v1/harness/google/callback` | one-use expiring PKCE state → 302 to `solocompass://google-connected?status=connected\|error` (never tokens/PII)                                   |
+| `DELETE /v1/harness/google`       | `{disconnected,provider_revocation_confirmed}` (local erasure first, provider revocation attempted, flag honest)                                   |
+| `GET /v1/harness/context`         | `{items:[{kind,value,provenance,confirmed}]}` — manual/confirmed context + Google connection scopes; no raw mail or tokens                         |
+| `POST /v1/harness/tools/call`     | `{name,arguments}` → `{name,status,result,error,provenance}` (`status` is `ok`\|`error`)                                                           |
+| `POST /v1/harness/chat`           | `{message}` (1–4000 runes) → `{reply,tool_calls:[{name,status}],sources:[string]}` (`sources` = provenance labels, e.g. `google_calendar`)         |
+| `POST /mcp`                       | MCP Streamable HTTP stateless JSON (2025-11-25): `initialize`, `ping`, `tools/list`, `tools/call`; notifications → 202 empty; `GET`/`DELETE` → 405 |
 
 Tool trace `status` values in `/chat`: `ok`, `error`, `limit_reached`.
 
@@ -105,11 +124,11 @@ Tool trace `status` values in `/chat`: `ok`, `error`, `limit_reached`.
 
 ### Read tools and bounds (server-owned)
 
-| Tool | Arguments | Bounds |
-| --- | --- | --- |
-| `get_traveler_profile` | none (any field rejected) | confirmed/manual fields only, **no email** |
-| `list_calendar_events` | none | primary calendar, ≤20 events, next 14 days |
-| `search_travel_mail` | optional `query` (≤80 chars, `a-z0-9 ,.'@` only, lower-cased) | ≤10 messages, ≤10 metadata attempts, last 30 days, headers + snippet (≤300 chars) only; no bodies/attachments |
+| Tool                   | Arguments                                                     | Bounds                                                                                                        |
+| ---------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `get_traveler_profile` | none (any field rejected)                                     | confirmed/manual fields only, **no email**                                                                    |
+| `list_calendar_events` | none                                                          | primary calendar, ≤20 events, next 14 days                                                                    |
+| `search_travel_mail`   | optional `query` (≤80 chars, `a-z0-9 ,.'@` only, lower-cased) | ≤10 messages, ≤10 metadata attempts, last 30 days, headers + snippet (≤300 chars) only; no bodies/attachments |
 
 Arguments can never select a user, endpoint, date window or mailbox. Unknown
 fields, non-object arguments, oversized or present-but-blank values fail.
@@ -119,10 +138,10 @@ an invented empty success.
 
 ### Consent matrix
 
-| Caller | `get_traveler_profile` | Google tools |
-| --- | --- | --- |
-| Direct (`/tools/call`, MCP) | allowed (own manual profile) | requires `ai_context_consent` **and** connected **and** provider scope |
-| Model (`/chat` tool loop) | requires `ai_context_consent` | same as direct |
+| Caller                      | `get_traveler_profile`        | Google tools                                                           |
+| --------------------------- | ----------------------------- | ---------------------------------------------------------------------- |
+| Direct (`/tools/call`, MCP) | allowed (own manual profile)  | requires `ai_context_consent` **and** connected **and** provider scope |
+| Model (`/chat` tool loop)   | requires `ai_context_consent` | same as direct                                                         |
 
 Without `ai_context_consent`, `/chat` offers the model **no tools at all** and
 no account context reaches DeepSeek.
@@ -160,7 +179,7 @@ no account context reaches DeepSeek.
 - **Upstream HTTP**: every token/code-bearing client (Supabase, Google
   token/revoke/userinfo/APIs, DeepSeek) aborts on redirects; bounded timeouts
   and response sizes.
-- **Logging**: access log prints method + URL *path* + status + duration only
+- **Logging**: access log prints method + URL _path_ + status + duration only
   (never query strings, so OAuth `code`/`state` never leak); recovery logs
   method + path only (no request dump); codes, tokens, mail text and prompt
   text are never logged. Provider/model errors are sanitized.

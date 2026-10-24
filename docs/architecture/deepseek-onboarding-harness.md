@@ -41,18 +41,18 @@ routes require the existing project's Supabase bearer token, verified using
 `GET /auth/v1/user`; anonymous or unverified-email identities are rejected. Never
 trust a client-supplied user ID or user-editable metadata for authorization.
 
-| Method / path | Contract |
-| --- | --- |
-| GET `/capabilities` | `{email_auth,google,deepseek,database}` booleans; no credentials |
-| GET `/profile` | `{user_id,email,display_name,home_city,interests,ai_context_consent,google:{connected,email,scopes}}` |
-| PUT `/profile` | Accept only `{display_name,home_city,interests,ai_context_consent}`; return profile. Email/ID come from verified auth. Full replacement of these editable fields. |
-| POST `/google/start` | `{calendar,mail}` booleans, at least one true → `{authorization_url,expires_at}`; 503 when unconfigured |
-| GET `/google/callback` | One-use expiring state and PKCE; encrypted tokens; redirect to `solocompass://google-connected?status=connected` or `status=error`, with no tokens or personal data in the URL |
-| DELETE `/google` | Erase local tokens/access immediately, attempt provider revocation; return `{disconnected,provider_revocation_confirmed}` honestly |
-| GET `/context` | Confirmed/manual context and provenance, no raw mail or tokens |
-| POST `/tools/call` | `{name,arguments}`; identical authenticated registry as MCP; Google data requires provider scopes and separate model-context consent |
-| POST `/chat` | `{message}` → `{reply,tool_calls:[{name,status}],sources:[]}`; max 4 model rounds / 6 calls; server-owned `deepseek-flash`, `thinking:{type:"disabled"}` |
-| POST `/mcp` | MCP stateless Streamable HTTP JSON: initialize, ping, tools/list, tools/call; accept notifications with HTTP 202. GET returns 405 if no SSE. Validate Origin against the configured origin. |
+| Method / path          | Contract                                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET `/capabilities`    | `{email_auth,google,deepseek,database}` booleans; no credentials                                                                                                                            |
+| GET `/profile`         | `{user_id,email,display_name,home_city,interests,ai_context_consent,google:{connected,email,scopes}}`                                                                                       |
+| PUT `/profile`         | Accept only `{display_name,home_city,interests,ai_context_consent}`; return profile. Email/ID come from verified auth. Full replacement of these editable fields.                           |
+| POST `/google/start`   | `{calendar,mail}` booleans, at least one true → `{authorization_url,expires_at}`; 503 when unconfigured                                                                                     |
+| GET `/google/callback` | One-use expiring state and PKCE; encrypted tokens; redirect to `solocompass://google-connected?status=connected` or `status=error`, with no tokens or personal data in the URL              |
+| DELETE `/google`       | Erase local tokens/access immediately, attempt provider revocation; return `{disconnected,provider_revocation_confirmed}` honestly                                                          |
+| GET `/context`         | Confirmed/manual context and provenance, no raw mail or tokens                                                                                                                              |
+| POST `/tools/call`     | `{name,arguments}`; identical authenticated registry as MCP; Google data requires provider scopes and separate model-context consent                                                        |
+| POST `/chat`           | `{message}` → `{reply,tool_calls:[{name,status}],sources:[]}`; max 4 model rounds / 6 calls; server-owned `deepseek-flash`, `thinking:{type:"disabled"}`                                    |
+| POST `/mcp`            | MCP stateless Streamable HTTP JSON: initialize, ping, tools/list, tools/call; accept notifications with HTTP 202. GET returns 405 if no SSE. Validate Origin against the configured origin. |
 
 Read tools: `get_traveler_profile` (only confirmed/manual fields, no email),
 `list_calendar_events` (primary calendar; at most 20 events over next 14 days),

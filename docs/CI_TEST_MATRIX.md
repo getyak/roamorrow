@@ -24,6 +24,13 @@ default under the SoloCompassTests target. This document freezes the
 critical subset that MUST stay green — CI blocks a merge if any of
 them regresses.
 
+`EmailAccountServiceTests.swift` is included in that full target and in the
+focused `AccountRegressionTests` target. Account onboarding UI tests live under
+`docs/qa/harness-ios-20261024/` and require the additional `AccountAcceptance`
+scheme; the regular `SoloCompass` CI job does not run those UI tests. Their local
+execution and real account/provider acceptance are recorded separately in the
+[Harness acceptance record](qa/harness-ios-20261024/README.md).
+
 ### Phase 1 baseline (must stay 70+/70+)
 
 - `V1_9SchemaRecordsTests` — SwiftData schema V1_9 CRUD + coord codec

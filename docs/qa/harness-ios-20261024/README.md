@@ -14,17 +14,17 @@
 
 ## 实测结果
 
-| 项目 | 结果与证据 |
-| --- | --- |
-| Go 全包 / vet / race | 通过；[包测试](go-test.log)、[race](go-race.log) |
-| 真实 PostgreSQL | 迁移及重入通过，4 张表；[数据库记录](database.json) |
-| 真实 SQL 隔离和竞态 | 4 项通过：账户隔离、断开和 state、旧宽权限刷新拒绝、真实锁等待后的撤销；[日志](postgres-live.log) |
-| 真实 DeepSeek provider | 两轮 HTTP 200，工具调用和结果消费通过；只用合成资料；[记录](deepseek-provider.json) |
-| 真实 Go Harness → DeepSeek | 通过，一次资料工具调用及最终回答；身份/资料为测试夹具，模型是实际服务；[日志](deepseek-harness-live.log) |
-| API 运行时 | `127.0.0.1:4437`，9 项探针通过，无 token MCP 401，真实 Supabase 拒绝无效 bearer 401；[汇总](acceptance.json) |
-| iOS 编译 | 真正 `build-for-testing` 通过，应用及受影响测试 bundle 已编译；[记录](native-receipt.json) |
-| iOS 执行 / 页面启动 | 未通过验收：XCTest 启动期间中断，直接 `bootstatus` 180 秒超时，App 尚未运行。未生成页面截图，不记为测试通过 |
-| 独立 review | 已修复并复核关闭确认的 P0/P1；[后端](review-backend.md)、[iOS](review-ios.md)。源码 review 与运行证据分别记录 |
+| 项目                       | 结果与证据                                                                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Go 全包 / vet / race       | 通过；[包测试](go-test.log)、[race](go-race.log)                                                                                                              |
+| 真实 PostgreSQL            | 迁移及重入通过，4 张表；[数据库记录](database.json)                                                                                                           |
+| 真实 SQL 隔离和竞态        | 4 项通过：账户隔离、断开和 state、旧宽权限刷新拒绝、真实锁等待后的撤销；[日志](postgres-live.log)                                                             |
+| 真实 DeepSeek provider     | 两轮 HTTP 200，工具调用和结果消费通过；只用合成资料；[记录](deepseek-provider.json)                                                                           |
+| 真实 Go Harness → DeepSeek | 通过，一次资料工具调用及最终回答；身份/资料为测试夹具，模型是实际服务；[日志](deepseek-harness-live.log)                                                      |
+| API 运行时                 | `127.0.0.1:4437`，9 项探针通过，无 token MCP 401，真实 Supabase 拒绝无效 bearer 401；[汇总](acceptance.json)                                                  |
+| iOS 编译                   | 真正 `build-for-testing` 通过，应用及受影响测试 bundle 已编译；[记录](native-receipt.json)                                                                    |
+| iOS 执行 / 页面启动        | 未通过验收：初次 XCTest 启动中断及 bootstatus 超时；后续已完成 boot/install，launch 返回 PID，但 4 秒截图仍为白屏。聚焦测试再次在启动阶段中断，不记为测试通过 |
+| 独立 review                | 已修复并复核关闭确认的 P0/P1；[后端](review-backend.md)、[iOS](review-ios.md)。源码 review 与运行证据分别记录                                                 |
 
 iOS 测试时观察到磁盘降至 12.32 GiB、swap 达 24.36 GiB；停止本任务测试后回落。启动超时的根因未确认，不把资源阈值当作已证明的根因。只使用 Primary iPhone，无新建、擦除或抢占其他设备。测试启动的设备已由共享会话关闭。
 
@@ -71,3 +71,11 @@ codex mcp add roamorrow-harness \
 ```
 
 `ROAMORROW_HARNESS_ACCESS_TOKEN` 由调用进程的私密环境提供，过期需通过真实登录刷新。MCP 没有加入产品外的写入、shell 或任意远程工具。
+
+## 合并跟进 — 2026-10-24 10:24 CST
+
+已创建本聊天的 `roamorrow-harness` heartbeat，每 15 分钟检查一次；状态不变时保持安静，满足必要验收、最新 head CI 和评审门禁后才合并。默认账户、精确 HTTPS 入口及原生 UI 验收仍缺证据，PR 应保持 Draft。
+
+本次复用原生编译产物，没有重新构建。Primary 设备 boot/install 成功，App launch 返回 PID `76321`，截图是白屏，尚不能证明邮箱页可用。随后 `test-without-building` 在启动阶段停滞；观察到可用磁盘 24.11 GiB、swap 17.85 GiB，只向核验过的本任务 xcodebuild PID `76607` 发送 SIGINT，退出码 73。共享会话关闭本次启动的设备。正式日志和白屏截图保存在上述 ops evidence 目录，不以启动 PID 代替页面验收。
+
+当前源码的 Go 全包、vet、race 已再次通过，新增 Markdown/JSON 已按仓库 pinned Prettier 复核。常规 CI 会覆盖邮箱单元测试，但不执行独立 AccountOnboarding UI suite。TestFlight 当前也未注入三个账户配置值，自动上传不能证明该流程可用。

@@ -20,7 +20,7 @@
   "runtime_probe_failures": 0,
   "normal_dockerfile_image_build": "not run; cached image + cross-compiled reviewed binary used",
   "api_binary_sha256": "41e88f25899af03c803a5da2c76ac7e628536f4face5f13ee3f087766610871f",
-  "native": "build passed; unit/UI execution and direct launch not accepted",
+  "native": "build passed; follow-up boot/install/launch returned PID but screenshot remained white; test execution interrupted, UI/account acceptance pending",
   "tailscale": "dry-run passed; explicit endpoint approval pending",
   "testflight_release": "not run",
   "physical_device": "not run",
@@ -31,5 +31,11 @@
   "docker_context_after_acceptance": "colima; unchanged",
   "tailscale_applied": false,
   "native_artifacts": "retained for incomplete native acceptance; no further build started under current resource pressure",
-  "lifecycle_checked_at": "2026-10-23T19:28:18Z"
+  "lifecycle_checked_at": "2026-10-23T19:28:18Z",
+  "monitoring": {
+    "automation_id": "roamorrow-harness",
+    "interval_minutes": 15,
+    "status": "ACTIVE",
+    "pr_state": "not yet created; draft planned until acceptance gates close"
+  }
 }

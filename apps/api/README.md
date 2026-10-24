@@ -32,15 +32,15 @@ migrations in `migrations/harness`) and verified Supabase bearer auth.
 
 ## Environment variables
 
-| Variable            | Default                       | Description                                                                                                            |
-| ------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`      | _(none)_                      | PostgreSQL DSN (`postgres://user:pass@host/db`). When absent, `/v1` endpoints return 503.                              |
-| `PORT`              | `8080`                        | TCP port the server listens on.                                                                                        |
-| `DEEPSEEK_API_KEY`  | _(none)_                      | DeepSeek key for review extraction. Without it, `Extract` returns an error and callers degrade gracefully.             |
-| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com/v1` | OpenAI-compatible base URL; the extractor appends `/chat/completions`.                                                 |
-| `DEEPSEEK_MODEL`    | `deepseek-flash`              | Model id. Legacy ids (`deepseek-chat`, `deepseek-reasoner`, `deepseek-v4-pro`, `deepseek-v4-flash`) normalize forward. |
-| `HARNESS_DATABASE_URL` | _(none)_                   | Private harness database DSN. When absent, harness DB endpoints return 503 (`database` capability false).             |
-| `HARNESS_TOKEN_KEY` | _(none)_                     | Base64 AES-256 key encrypting Google tokens at rest. Missing config disables the `google` capability.                 |
+| Variable               | Default                       | Description                                                                                                                              |
+| ---------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | _(none)_                      | Review PostgreSQL DSN (`postgres://user:pass@host/db`). When absent, the Solo Score route returns 503; Harness uses its independent DSN. |
+| `PORT`                 | `8080`                        | TCP port the server listens on.                                                                                                          |
+| `DEEPSEEK_API_KEY`     | _(none)_                      | DeepSeek key for review extraction. Without it, `Extract` returns an error and callers degrade gracefully.                               |
+| `DEEPSEEK_BASE_URL`    | `https://api.deepseek.com/v1` | OpenAI-compatible base URL; the extractor appends `/chat/completions`.                                                                   |
+| `DEEPSEEK_MODEL`       | `deepseek-flash`              | Model id. Legacy ids (`deepseek-chat`, `deepseek-reasoner`, `deepseek-v4-pro`, `deepseek-v4-flash`) normalize forward.                   |
+| `HARNESS_DATABASE_URL` | _(none)_                      | Private harness database DSN. When absent, harness DB endpoints return 503 (`database` capability false).                                |
+| `HARNESS_TOKEN_KEY`    | _(none)_                      | Base64 AES-256 key encrypting Google tokens at rest. Missing config disables the `google` capability.                                    |
 
 ## Running locally
 

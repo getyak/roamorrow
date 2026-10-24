@@ -17,5 +17,26 @@
   "full_build_log": "/Users/cubxxw/ops/evidence/roamorrow-harness-20261024/native-build.log",
   "interrupted_test_log": "/Users/cubxxw/ops/evidence/roamorrow-harness-20261024/native-test-interrupted.log",
   "terminated_test_pid": 21405,
-  "owned_simulator_shutdown": true
+  "owned_simulator_shutdown": true,
+  "followup": {
+    "at": "2026-10-24T02:24:24Z",
+    "build_reused": true,
+    "build_repeated": false,
+    "device": "Primary iPhone / iPhone 17 Pro",
+    "boot_and_install": "passed",
+    "launch_pid": 76321,
+    "launch_result": "process started; screenshot after 4 seconds was blank white; account page not accepted",
+    "test_execution": "interrupted during app/test startup; no completed test results",
+    "test_exit_code": 73,
+    "test_process_pid": 76607,
+    "stop_action": "SIGINT sent only after command and artifact ownership verified",
+    "resource_snapshot": {
+      "free_disk_gib": 24.11,
+      "swap_used_gib": 17.85
+    },
+    "native_ui_acceptance": "pending",
+    "owned_simulator_shutdown": true,
+    "permanent_logs": "/Users/cubxxw/ops/evidence/roamorrow-harness-20261024",
+    "white_screen_screenshot": "/Users/cubxxw/ops/evidence/roamorrow-harness-20261024/native-launch-white-screen.png"
+  }
 }

@@ -11,6 +11,9 @@ Read these first, in order:
 3. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — package boundaries
 4. [`packages/core/src/experience.ts`](packages/core/src/experience.ts) — the domain heart
 
+For account/backend work, also read the [Harness runtime guide](docs/development/harness-backend.md)
+and [account acceptance record](docs/qa/harness-ios-20261024/README.md).
+
 If a PR violates a principle in (1) or (2), it gets bounced regardless of code quality.
 
 ## Workflow
