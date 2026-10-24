@@ -6,10 +6,10 @@ import SwiftUI
 ///
 /// - `FriendCode.generate()` must emit `SOLO-XXXX-XXXX` from the unambiguous
 ///   alphabet (never `0/O/1/I`).
-/// - `AddFriendSheet` must render a real screen (QR + code) rather than a flat
-///   band — the "verify QR renders" acceptance step, captured as a /tmp PNG.
+/// - `FriendsHubView` must render a real screen (QR + code) rather than a flat
+///   band; screenshots are kept as XCTest attachments for visual inspection.
 @MainActor
-final class AddFriendSheetTests: XCTestCase {
+final class FriendsHubCodeTests: XCTestCase {
 
     private static let windowSize = CGSize(width: 402, height: 874)
 
@@ -60,37 +60,39 @@ final class AddFriendSheetTests: XCTestCase {
 
     // MARK: - Render
 
-    func testAddFriendSheetRendersCodeAndQR() throws {
+    func testFriendsHubExpandedCodeRendersCodeAndQR() throws {
         let service = FriendService()
         // Seed a cached code so the sheet's lazy load resolves instantly to a
         // deterministic value (no live backend in-process).
         service.myFriendCode = FriendCode(rawValue: "SOLO-7K2F-9XQR")
 
-        let image = try render(content: AddFriendSheet(service: service))
-        dump(image, to: "add_friend_sheet")
+        let image = try render(content: FriendsHubView(service: service, autoRefresh: false, initiallyShowsMyCode: true))
+        dump(image, to: "friends-hub-shared-code")
         XCTAssertFalse(
             isUniformColor(image),
-            "AddFriendSheet rendered as a flat band — the QR/code did not lay out."
+            "FriendsHubView rendered as a flat band — the QR/code did not lay out."
         )
     }
 
-    func testAddFriendTabRendersScanAndEntry() throws {
-        // The add-by-code tab must lay out its scan button + manual-entry field
+    func testFriendsHubRendersScanAndCodeEntry() throws {
+        // The friends hub must lay out its scan button + manual-entry field
         // (the "scan via pasted-code fallback" verify path) rather than a band.
         let service = FriendService()
-        let image = try render(content: AddFriendSheet(service: service, startInAddFriend: true))
-        dump(image, to: "add_friend_redeem_tab")
+        let image = try render(content: FriendsHubView(service: service, autoRefresh: false))
+        dump(image, to: "friends-hub-lookup")
         XCTAssertFalse(
             isUniformColor(image),
-            "Add-friend tab rendered flat — scan/entry controls did not lay out."
+            "Friends hub rendered flat — scan/entry controls did not lay out."
         )
     }
 
     // MARK: - Helpers
 
     private func dump(_ image: UIImage, to name: String) {
-        guard let data = image.pngData() else { return }
-        try? data.write(to: URL(fileURLWithPath: "/tmp/\(name).png"))
+        let attachment = XCTAttachment(image: image)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     private func render<Content: View>(content: Content) throws -> UIImage {
@@ -98,6 +100,7 @@ final class AddFriendSheetTests: XCTestCase {
         let window = UIWindow(frame: CGRect(origin: .zero, size: Self.windowSize))
         window.rootViewController = host
         window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(1.5))

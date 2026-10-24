@@ -25,7 +25,6 @@ public final class OmenComposeService {
     /// Enables or disables the optional LLM-backed omen composition path.
     public func setUseLLM(_ flag: Bool) { self.useLLM = flag }
 
-    private let log = OSLog(subsystem: "com.solocompass.app", category: "Omen")
 
     public init() {}
 

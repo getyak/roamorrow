@@ -355,36 +355,15 @@ struct AttachmentInputBar: View {
     /// We now decode + pre-render off the main actor and only hop back to append
     /// the finished, immutable draft — the UI stays live while the bytes land.
     private func ingest(photoItems: [PhotosPickerItem]) async {
-        var picked: [LocalAttachment] = []
-        for item in photoItems {
-            guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
-            let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
-            let mime = item.supportedContentTypes.first?.preferredMIMEType ?? "image/jpeg"
-            let draft = await ChatAttachmentDecoder.imageDraft(
-                data: data,
-                fileName: "image-\(UUID().uuidString.prefix(8)).\(ext)",
-                mimeType: mime
-            )
-            picked.append(draft)
-        }
-        if !picked.isEmpty {
-            attachments.append(contentsOf: picked)
-        }
+        attachments.append(contentsOf: await ChatAttachmentDecoder.photoDrafts(photoItems))
         photoSelections = []
     }
 
     /// Wrap a freshly captured camera photo as a JPEG image draft.
     private func appendCameraImage(_ image: UIImage) {
-        guard let data = image.jpegData(compressionQuality: 0.9) else { return }
-        attachments.append(
-            LocalAttachment(
-                kind: .image,
-                fileName: "camera-\(UUID().uuidString.prefix(8)).jpg",
-                mimeType: "image/jpeg",
-                data: data,
-                image: image
-            )
-        )
+        if let draft = ChatAttachmentDecoder.cameraDraft(image) {
+            attachments.append(draft)
+        }
     }
 
     /// Read security-scoped files chosen via the document picker into drafts.
@@ -396,15 +375,7 @@ struct AttachmentInputBar: View {
     /// per-URL read runs inside one detached task.
     private func ingest(fileResult: Result<[URL], Error>) async {
         guard case let .success(urls) = fileResult else { return }
-        var picked: [LocalAttachment] = []
-        for url in urls {
-            if let draft = await ChatAttachmentDecoder.fileDraft(url) {
-                picked.append(draft)
-            }
-        }
-        if !picked.isEmpty {
-            attachments.append(contentsOf: picked)
-        }
+        attachments.append(contentsOf: await ChatAttachmentDecoder.fileDrafts(urls))
     }
 }
 

@@ -641,16 +641,6 @@ public struct FilterBarView: View {
         .accessibilityHint(isSelected ? Text(NSLocalizedString("filter.pill.clear.hint", comment: "Clear filter")) : Text(""))
     }
 
-    @ViewBuilder
-    private func countBadge(count: Int, tint: Color) -> some View {
-        Text(Self.compactCount(count))
-            .font(.caption2.weight(.semibold).monospacedDigit())
-            .contentTransition(reduceMotion ? .identity : .numericText(value: Double(count)))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 5)
-            .frame(minWidth: 16, minHeight: 16)
-            .background(Capsule().fill(tint))
-    }
 }
 
 // MARK: - ShakeEffect

@@ -22,7 +22,6 @@ public final class BragCardComposer {
 
     public static let shared = BragCardComposer()
 
-    private let log = OSLog(subsystem: "com.solocompass.app", category: "Brag")
 
     public init() {}
 

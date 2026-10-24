@@ -21,10 +21,7 @@ struct ExploreHandoffCard: View {
     let onClear: () -> Void
     let onDismiss: () -> Void
 
-    /// Elapsed since presentation. Drives the 10-second auto-minimize.
-    @State private var presentedAt: Date = Date()
     @State private var autoMinimizeTask: Task<Void, Never>?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {

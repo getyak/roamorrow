@@ -9,7 +9,6 @@ import SwiftUI
 public struct DiscoverListView: View {
     let cityCode: String
 
-    @Environment(UserPreferences.self) private var preferences
     @State private var service: CompanionService
     @State private var selectedPost: DiscoverPost?
     @State private var requestActionIds: [String: String] = [:]
@@ -304,12 +303,6 @@ private struct DiscoverPostRow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
 
-    private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .none
-        return f
-    }()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

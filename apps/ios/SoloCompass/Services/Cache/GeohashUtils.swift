@@ -31,42 +31,7 @@ public enum GeohashUtils {
         precondition(latitude >= -90 && latitude <= 90, "latitude out of range")
         precondition(longitude >= -180 && longitude <= 180, "longitude out of range")
 
-        var latRange = (-90.0, 90.0)
-        var lonRange = (-180.0, 180.0)
-        var hash = ""
-        var bit = 0
-        var ch = 0
-        var even = true
-
-        while hash.count < precision {
-            if even {
-                let mid = (lonRange.0 + lonRange.1) / 2
-                if longitude >= mid {
-                    ch = (ch << 1) | 1
-                    lonRange.0 = mid
-                } else {
-                    ch = ch << 1
-                    lonRange.1 = mid
-                }
-            } else {
-                let mid = (latRange.0 + latRange.1) / 2
-                if latitude >= mid {
-                    ch = (ch << 1) | 1
-                    latRange.0 = mid
-                } else {
-                    ch = ch << 1
-                    latRange.1 = mid
-                }
-            }
-            even.toggle()
-            bit += 1
-            if bit == 5 {
-                hash.append(alphabet[ch])
-                bit = 0
-                ch = 0
-            }
-        }
-        return hash
+        return Geohash.encode(latitude: latitude, longitude: longitude, precision: precision)
     }
 
     /// Decode a geohash to its bounding box `(latMin, lonMin, latMax, lonMax)`.

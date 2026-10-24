@@ -23,6 +23,7 @@
 // Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { authenticateBearerRequest, json } from "../_shared/request-auth.ts";
 
 // Friend code shape: SOLO-XXXX-XXXX (case-insensitive on input; stored upper).
 const CODE_PATTERN = /^SOLO-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
@@ -49,24 +50,16 @@ Deno.serve(async (req: Request) => {
   }
 
   // 1. Verify JWT — caller must be signed in.
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const jwt = authHeader.replace(/^Bearer /i, "");
-  if (!jwt) return json({ error: "missing bearer token" }, 401);
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-  const userClient = createClient(supabaseUrl, jwt, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-    auth: { persistSession: false },
-  });
-  const {
-    data: { user },
-    error: authError,
-  } = await userClient.auth.getUser();
-  if (authError || !user) return json({ error: "unauthorized" }, 401);
-
-  const callerId = user.id;
+  const authentication = await authenticateBearerRequest(req, (jwt) =>
+    createClient(supabaseUrl, jwt, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+      auth: { persistSession: false },
+    }),
+  );
+  if (authentication instanceof Response) return authentication;
+  const callerId = authentication.userId;
 
   // 2. Parse + normalize the code.
   let body: { code?: unknown };
@@ -134,13 +127,3 @@ Deno.serve(async (req: Request) => {
   const result: RedeemResult = { userId: targetId, handle, avatarEmoji };
   return json(result, 200);
 });
-
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
-}

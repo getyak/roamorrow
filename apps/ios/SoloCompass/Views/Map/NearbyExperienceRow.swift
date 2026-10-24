@@ -33,7 +33,6 @@ struct NearbyExperienceRow: View {
     var onAskSolo: (() -> Void)? = nil
 
     @State private var pressed = false
-    @State private var pulsing = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @Environment(LocationService.self) private var locationService
@@ -281,18 +280,6 @@ struct NearbyExperienceRow: View {
         }
     }
 
-    private var categoryIcon: some View {
-        ZStack {
-            Circle()
-                .fill(experience.category.color)
-                .frame(width: 40, height: 40)
-            Image(systemName: experience.category.symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white)
-        }
-        .accessibilityHidden(true)
-    }
-
     @ViewBuilder
     private var titleStack: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -302,7 +289,6 @@ struct NearbyExperienceRow: View {
                 // Long names like "Savor Japanese small plates al…" were cut to
                 // one line; allow two and shrink slightly before truncating.
                 .lineLimit(3)
-
 
             let sub = subtitleText
             if !sub.isEmpty {
@@ -435,55 +421,6 @@ struct NearbyExperienceRow: View {
             return experience.location.addressHint ?? ""
         }
         return parts.joined(separator: " · ")
-    }
-
-    /// Trailing column: compass arrow over the formatted distance, right-aligned.
-    private var distanceColumn: some View {
-        let bearing = relativeBearing
-        let hasLiveBearing = bearing != nil
-        let arrowColor: AnyShapeStyle = isNearby
-            ? AnyShapeStyle(CT.sunGoldDeep)
-            : (hasLiveBearing ? AnyShapeStyle(CT.fgMuted) : AnyShapeStyle(CT.fgSubtle))
-        return VStack(alignment: .trailing, spacing: 4) {
-            if !isFarAway {
-                Image(systemName: "location.north.line.fill")
-                    .font(.caption2)
-                    .foregroundStyle(arrowColor)
-                    .rotationEffect(.degrees(bearing ?? 0))
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: bearing)
-                    .scaleEffect(pulsing ? 1.18 : 1.0)
-            }
-            if let meters = distanceMeters {
-                Text(formattedDistance(meters))
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(isFarAway ? AnyShapeStyle(CT.fgMuted) : (isNearby ? AnyShapeStyle(CT.sunGoldDeep) : AnyShapeStyle(CT.fgSubtle)))
-                    .lineLimit(1)
-                if isNearby {
-                    Text(NSLocalizedString("peek.card.almostThere", comment: "Almost there micro-label shown when < 150m"))
-                        .font(.caption2)
-                        .foregroundStyle(CT.sunGoldDeep)
-                }
-            }
-        }
-        .accessibilityHidden(true)
-        .onAppear { startNearbyPulseIfNeeded() }
-        .onChange(of: isNearby) { _, nearby in
-            if nearby {
-                startNearbyPulseIfNeeded()
-            } else {
-                withAnimation(.default) { pulsing = false }
-            }
-        }
-    }
-
-    private func startNearbyPulseIfNeeded() {
-        guard isNearby, !reduceMotion else {
-            pulsing = false
-            return
-        }
-        withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
-            pulsing = true
-        }
     }
 
     private var cardFill: Color {

@@ -29,6 +29,7 @@
 // app's AI stack (AIService / synthesize pipeline use DEEPSEEK_*).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { bearerToken, verifiedUserId } from "../_shared/request-auth.ts";
 import {
   buildDeepSeekChatBody,
   deepSeekBaseUrl,
@@ -57,8 +58,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // 1. Auth.
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const jwt = authHeader.replace(/^Bearer /i, "");
+  const jwt = bearerToken(req);
   if (!jwt) return json({ error: "missing bearer token" }, 401);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -70,9 +70,8 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false },
   });
 
-  const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
-  if (userErr || !userData.user) return json({ error: "invalid jwt" }, 401);
-  const userId = userData.user.id;
+  const userId = await verifiedUserId(admin, jwt);
+  if (userId === null) return json({ error: "invalid jwt" }, 401);
 
   // 2. Entitlement check.
   const { data: profile } = await admin

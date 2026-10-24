@@ -61,7 +61,6 @@ struct CompanionMapPanel<Summary: View, Header: View, Content: View>: View {
             }
         }
     }
-    private func toggle() { changeLevel(level == .collapsed ? .expanded : .collapsed) }
     private func changeLevel(_ value: CompanionPanelLevel) {
         withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.94)) { level = value }
     }

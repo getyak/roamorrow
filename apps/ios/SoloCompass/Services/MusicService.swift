@@ -53,7 +53,6 @@ public final class MusicService {
         case jazz, loFi = "lo-fi", ambient, classical
     }
 
-    private let log = OSLog(subsystem: "com.solocompass.app", category: "Music")
 
     public init() {}
 

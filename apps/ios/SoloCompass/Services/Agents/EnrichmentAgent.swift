@@ -617,13 +617,6 @@ public final class EnrichmentAgent {
         return accumulated
     }
 
-    /// Rounds lat/lon to 4 decimal places to form a deduplication cell key.
-    private func coordCell(lat: Double, lon: Double) -> String {
-        let roundedLat = (lat * 10_000).rounded() / 10_000
-        let roundedLon = (lon * 10_000).rounded() / 10_000
-        return "\(roundedLat),\(roundedLon)"
-    }
-
     // MARK: - Helpers
 
     /// Fold the transient Amap enrichment bag (rating / opentimeToday / phone /

@@ -11,76 +11,15 @@
  * logic.
  */
 
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import * as vm from "node:vm";
-import { webcrypto } from "node:crypto";
-import * as ts from "typescript";
 import { describe, it, expect } from "vitest";
-import * as deepseekShared from "../../../../infra/supabase/functions/_shared/deepseek";
+import { loadEdgeHandler } from "./helpers/edge-handler";
 
 // ─── Handler loader ──────────────────────────────────────────────────────────
 
 const REPO_ROOT = join(__dirname, "..", "..", "..", "..");
 const SYNTH_PATH = join(REPO_ROOT, "infra/supabase/functions/synthesize-experiences/index.ts");
 const CHAT_PATH = join(REPO_ROOT, "infra/supabase/functions/chat-proxy/index.ts");
-
-interface EdgeHandlerOptions {
-  env: Record<string, string>;
-  supabase: unknown;
-  fetchImpl: (input: string | URL, init?: RequestInit) => Promise<Response>;
-}
-
-/** Transpile + run one Edge Function, returning the captured Deno.serve handler. */
-function loadEdgeHandler(
-  absPath: string,
-  options: EdgeHandlerOptions,
-): (req: Request) => Promise<Response> {
-  const source = readFileSync(absPath, "utf8");
-  const { outputText } = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2022,
-      esModuleInterop: true,
-    },
-    fileName: absPath,
-  });
-
-  let handler: ((req: Request) => Promise<Response>) | undefined;
-  const sandbox: Record<string, unknown> = {
-    module: { exports: {} },
-    exports: {},
-    require: (id: string): unknown => {
-      if (id.includes("@supabase/supabase-js")) {
-        return { createClient: () => options.supabase };
-      }
-      if (id.includes("_shared/deepseek")) {
-        return deepseekShared;
-      }
-      throw new Error(`unexpected require: ${id}`);
-    },
-    Deno: {
-      env: { get: (key: string) => options.env[key] },
-      serve: (fn: (req: Request) => Promise<Response>) => {
-        handler = fn;
-      },
-    },
-    Request,
-    Response,
-    Headers,
-    URL,
-    URLSearchParams,
-    TextEncoder,
-    TextDecoder,
-    crypto: webcrypto,
-    console,
-    fetch: options.fetchImpl,
-  };
-  vm.createContext(sandbox);
-  vm.runInContext(outputText, sandbox, { filename: absPath });
-  if (!handler) throw new Error("Deno.serve handler was not registered");
-  return handler;
-}
 
 // ─── Fake Supabase ───────────────────────────────────────────────────────────
 
