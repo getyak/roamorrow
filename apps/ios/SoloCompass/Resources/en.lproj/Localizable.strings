@@ -2836,6 +2836,9 @@
 
 // Life Studio — local creative space
 "studio.brand" = "Xiaomu";
+// Preserve the existing artwork's English brand copy in both localizations.
+"studio.collection_stamp" = "XIAOMU / PRIVATE COLLECTION";
+"studio.collection_tagline" = "LIFE, COLLECTED.";
 "studio.headline" = "Make room for\nthe things you love.";
 "studio.subtitle" = "A coffee. A book. A view you happened upon.";
 "studio.account" = "Account and settings";

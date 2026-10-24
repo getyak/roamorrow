@@ -53,8 +53,16 @@ Local verification: frozen installation; all 21 audit findings cleared;
 simulator policy tests; typecheck, formatting, schema dry-run, parity and
 production build. A standalone production smoke test checks home, robots,
 sitemap and invalid API inputs. This does not replace remote CI or real
-database/provider acceptance. All 803 protected migration/native/schema
-files match the pre-remediation SHA-256 manifest.
+database/provider acceptance. Historical migrations and schemas remain unchanged.
+
+The full remote iOS suite exposed two existing source-audit failures on main:
+two Studio artwork labels lacked localization keys, and two public web-search
+types lacked doc comments. The CI follow-up changes five native source/resource
+files: both artwork strings retain their exact existing English brand copy in
+both locales, and the search types gain documentation. The four original source
+audit tests pass on the macOS host without a Simulator; the full iOS suite is
+verified separately on the latest PR commit. The original 803-file hash manifest
+is retained with these five explicit deltas, rather than rewriting its baseline.
 
 Primary records: [Sentry](https://github.com/advisories/GHSA-mchm-gjx6-7h55),
 [Next.js](https://github.com/advisories/GHSA-2464-fhr4-w9xw),

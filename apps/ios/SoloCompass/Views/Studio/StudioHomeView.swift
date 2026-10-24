@@ -92,7 +92,7 @@ struct StudioHomeView: View {
 
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("LIFE, COLLECTED.").font(.system(size: 10, weight: .medium, design: .monospaced))
+            Text("studio.collection_tagline").font(.system(size: 10, weight: .medium, design: .monospaced))
                 .tracking(2.5).foregroundStyle(StudioStyle.accent)
             Text("studio.headline").font(.system(size: 29, weight: .regular, design: .serif)).lineSpacing(5)
             Text("studio.subtitle").font(.system(size: 13)).foregroundStyle(StudioStyle.ink.opacity(0.65)).lineSpacing(4)

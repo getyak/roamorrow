@@ -2847,6 +2847,9 @@
 
 // Life Studio — local creative space
 "studio.brand" = "小木";
+// Preserve the existing artwork's English brand copy in both localizations.
+"studio.collection_stamp" = "XIAOMU / PRIVATE COLLECTION";
+"studio.collection_tagline" = "LIFE, COLLECTED.";
 "studio.headline" = "把喜欢的日常，\n慢慢住进来。";
 "studio.subtitle" = "一杯咖啡、一本书、一片偶然遇见的风景。";
 "studio.account" = "我的与设置";
