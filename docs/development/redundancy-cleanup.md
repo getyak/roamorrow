@@ -47,3 +47,5 @@
 `pnpm audit --audit-level=low` 返回 21 条依赖版本告警（3 critical、5 high、9 moderate、4 low），因此漏洞审计门禁仍失败。它们涉及保留的 @sentry/nextjs、next、dompurify、vite、@vitest/mocker、fast-uri、undici 和 zod。锁文件结构对照确认：保留的 packages/snapshots 没有新增或改动节点，53 个删除节点都属于被移除依赖的闭包。本次没有引入这些依赖版本，也没有扩大范围升级依赖。实际产品可利用性未在这次冗余清理中测试。
 
 安装的 release-age/供应链策略校验已通过 529 个锁定条目；上述漏洞审计结果单独记录，不能据此声称所有 CI 门禁通过。
+
+后续安全修复已按独立提交更新上述八类依赖；最新冻结安装和审计通过，21 条未豁免告警归零。Zod 4 兼容适配及安全回归范围见[依赖安全门禁](dependency-security.md#2026-10-24-remediation)。清理提交及所有历史迁移继续保留；本地验证与远端 CI 结果分别记录。
