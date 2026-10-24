@@ -53,5 +53,15 @@
     },
     "failures": "Pre-existing Studio hardcoded strings and WebSearchService public API comments; revised head rerun required",
     "account_ui": "not run by this old workflow head"
+  },
+  "ui_identifier_regression": {
+    "head": "6b847ca5d807f9291df0c216a952f21f14edc96b",
+    "run": "https://github.com/getyak/roamorrow/actions/runs/40056193439",
+    "full_unit_step": "passed",
+    "ui_executed": 3,
+    "ui_failures": 3,
+    "cause": "Parent ScrollView identifier account.setup overrides child button identifiers in the observed XCTest tree",
+    "candidate_fix": "Remove unused parent identifier; retain all control IDs and unchanged UI tests",
+    "verification": "Swift parse passed; next-head UI rerun pending"
   }
 }

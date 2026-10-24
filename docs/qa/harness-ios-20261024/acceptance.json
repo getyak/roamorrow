@@ -20,7 +20,7 @@
   "runtime_probe_failures": 0,
   "normal_dockerfile_image_build": "not run; cached image + cross-compiled reviewed binary used",
   "binary_sha256": "41e88f25899af03c803a5da2c76ac7e628536f4face5f13ee3f087766610871f",
-  "native": "build passed; first PR CI email account suite 12 passed; whole unit target has 2 source-policy failures, fixed pending rerun; usable account UI and real login pending",
+  "native": "6b847ca5 full unit step passed; 3 account UI tests failed because parent identifier overwrote child button IDs; minimal fix awaiting new-head CI",
   "tailscale": "dry-run passed; explicit endpoint approval pending",
   "testflight_release": "not run",
   "physical_device": "not run",

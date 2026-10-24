@@ -105,7 +105,6 @@ struct AccountSetupView: View {
         .foregroundStyle(CompanionHomeStyle.ink)
         .navigationTitle(isSettings ? accountText("account.settings.title") : "")
         .navigationBarTitleDisplayMode(.inline)
-        .accessibilityIdentifier("account.setup")
     }
 
     private var emailFields: some View {

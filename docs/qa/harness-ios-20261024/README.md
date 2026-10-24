@@ -95,3 +95,14 @@ codex mcp add roamorrow-harness \
 
 额外宿主 XCTest 检查入口未兼容 Darwin runner，未执行用例；不将其作为通过证据。
 本地原生全量测试仍不重跑。真实账户/profile/MCP、精确 HTTPS 和可用页面验收继续保持未完成。
+
+## 账户 UI 标识符回归 — 2026-10-24 11:12 CST
+
+head `6b847ca5` 的完整原生 unit 步骤已通过；新增 3 项账户 UI 测试全部失败。
+CI 树中发送验证码、游客继续等按钮都继承了父 ScrollView 的 `account.setup` 标识符，
+导致现有 `account.continue` / `account.guest` 查询失效。邮箱和密码输入控件可见，
+这次失败与真实账号、OAuth 或后端连接无关。
+
+候选修复只移除未被调用者使用的父容器标识符，保留所有子控件标识符及原来的 3 个
+UI 测试，不改用 label 绕过、不跳过检查。Swift 语法检查通过；必须等待新 head
+的同组真实 UI 测试重新验证后，才能关闭该回归。
