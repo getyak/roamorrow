@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/getyak/solo-compass/api/internal/harness"
 	"github.com/getyak/solo-compass/api/internal/reviews"
+	"github.com/getyak/solo-compass/api/migrate"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -15,7 +19,45 @@ func main() {
 		log.Printf("warn: database unavailable (%v) — /v1 endpoints will return 503", err)
 	}
 
-	r := gin.Default()
+	cfg, err := harness.LoadConfig()
+	if err != nil {
+		log.Fatalf("harness config: %v", err)
+	}
+
+	// Harness private database: separate from DATABASE_URL so this service
+	// never reuses another application's database. Migrations live in the
+	// runtime image (apps/api/migrations/harness) and are idempotent.
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		hdb, err := harness.OpenHarnessDB(cfg.DatabaseDSN)
+		if err != nil {
+			log.Fatalf("harness database: %v", err)
+		}
+		if err := migrate.Run(hdb, cfg.MigrationsDir); err != nil {
+			log.Fatalf("harness migrations failed: %v", err)
+		}
+		log.Printf("harness migrations applied")
+		return
+	}
+
+	var store harness.Store
+	if cfg.DatabaseDSN != "" {
+		hdb, err := harness.OpenHarnessDB(cfg.DatabaseDSN)
+		if err != nil {
+			log.Printf("warn: harness database unavailable (%v) — harness endpoints will return 503", err)
+		} else {
+			if err := migrate.Run(hdb, cfg.MigrationsDir); err != nil {
+				log.Fatalf("harness migrations failed: %v", err)
+			}
+			store = harness.NewPostgresStore(hdb)
+		}
+	}
+
+	srv := harness.NewServer(cfg, store)
+
+	r := gin.New()
+	// Query-free access log + request-dump-free recovery: OAuth callback codes
+	// and states must never reach logs (gin.Default() would leak them).
+	r.Use(harness.NewLogger(os.Stdout), harness.NewRecovery(os.Stdout))
 
 	// Health check — always available, no DB dependency.
 	r.GET("/healthz", func(c *gin.Context) {
@@ -34,11 +76,29 @@ func main() {
 		})
 	}
 
+	// DeepSeek onboarding harness (frozen wire contract):
+	// /v1/harness/* + /mcp.
+	srv.Register(r)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	if err := r.Run(":" + port); err != nil {
+	httpSrv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      180 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	log.Printf("listening on :%s", port)
+	if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server failed: %v", err)
 	}
+	// Graceful drain is best-effort; the harness compose runtime is a test
+	// runtime with restart=no and no release semantics.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = httpSrv.Shutdown(ctx)
 }

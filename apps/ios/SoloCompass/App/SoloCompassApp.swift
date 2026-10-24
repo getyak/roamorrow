@@ -234,7 +234,7 @@ struct SoloCompassApp: App {
                         )
                     case .onboarding:
                         if FeatureFlags.continuousCompanion {
-                            CompanionWelcomeView {
+                            AccountSetupView {
                                 preferences.completeOnboarding()
                                 firstLaunchCover = nil
                             }

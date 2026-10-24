@@ -382,8 +382,15 @@ public struct SettingsView: View {
 
     private var accountSection: some View {
         Section {
+            NavigationLink {
+                AccountSetupView(isSettings: true)
+            } label: {
+                settingsIconLabel(icon: "envelope", color: .green, label: accountText("account.settings.title"))
+            }
+            .accessibilityIdentifier("settings.emailAccount")
+
             // US-036: Save with Apple (anonymous only) / Linked to Apple ID
-            appleIDRow
+            if EmailAccountService.shared.identity == nil { appleIDRow }
 
             HStack {
                 settingsIconLabel(

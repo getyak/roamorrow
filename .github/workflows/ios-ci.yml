@@ -148,6 +148,27 @@ jobs:
 
           echo "✅ TESTS PASSED"
 
+      - name: Run account onboarding UI tests
+        shell: bash
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -euo pipefail
+          cd apps/ios
+          xcodebuild test \
+            -project SoloCompass.xcodeproj \
+            -scheme AccountAcceptance \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -only-testing:CompanionAcceptanceUITests/AccountOnboardingUITests \
+            -parallel-testing-enabled NO \
+            -maximum-concurrent-test-simulator-destinations 1 \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 60 \
+            -maximum-test-execution-time-allowance 120 \
+            -resultBundlePath "$RUNNER_TEMP/account-onboarding.xcresult" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee account-onboarding.log
+
       - name: Upload Build Log
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -160,7 +181,17 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-logs
-          path: apps/ios/test.log
+          path: |
+            apps/ios/test.log
+            apps/ios/account-onboarding.log
+
+      - name: Upload account UI results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: account-onboarding-results
+          path: ${{ runner.temp }}/account-onboarding.xcresult
+          retention-days: 7
 
   lint:
     name: SwiftLint

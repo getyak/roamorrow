@@ -22,11 +22,11 @@ A **map-first**, **experience-as-unit**, **AI-curated** companion for people tra
 
 **Three design pillars (non-negotiable):**
 
-| Layer      | Role | Principle                                                       |
-| ---------- | ---- | --------------------------------------------------------------- |
-| Map        | Root | Always the home screen. No tabs, no drawer, no onboarding flow. |
-| Experience | Unit | Not "places" — concrete, time-bound, story-rich things to do.   |
-| AI         | Soul | Filters candidates from 1000 to 5. Never decides for the user.  |
+| Layer      | Role | Principle                                                      |
+| ---------- | ---- | -------------------------------------------------------------- |
+| Map        | Root | Home after optional account setup. No tabs or drawer.          |
+| Experience | Unit | Not "places" — concrete, time-bound, story-rich things to do.  |
+| AI         | Soul | Filters candidates from 1000 to 5. Never decides for the user. |
 
 > AI doesn't travel for you. AI helps you travel better.
 
@@ -41,6 +41,7 @@ roamorrow/
 ├── apps/
 │   ├── web/              # Pre-MVP: Next.js + Mapbox (Phase 2)
 │   ├── ios/              # Native iOS app (Phase 3)
+│   ├── api/              # Go review API and authenticated DeepSeek Harness
 │   └── bot/              # Telegram bot for low-cost validation
 ├── packages/
 │   ├── core/             # Shared domain types: Experience, Place, User, etc.
@@ -85,6 +86,9 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow.
 - [`docs/development/ios-testing.md`](./docs/development/ios-testing.md): local simulator selection, shared session ownership and registered test artifacts.
 - [`docs/CI_TEST_MATRIX.md`](./docs/CI_TEST_MATRIX.md): native test suites and portable/macOS simulator policy gates.
 - [`docs/development/dependency-security.md`](./docs/development/dependency-security.md): dependency updates, the braces mitigation and its mandatory audit checks.
+- [`docs/development/harness-backend.md`](./docs/development/harness-backend.md): email account setup, optional Google sources, private database and authenticated MCP tools.
+- [`docs/architecture/deepseek-onboarding-harness.md`](./docs/architecture/deepseek-onboarding-harness.md): account/context boundaries and acceptance contract.
+- [`docs/qa/harness-ios-20261024/README.md`](./docs/qa/harness-ios-20261024/README.md): verified Harness results and remaining account, native and deployment acceptance.
 - [`docs/design/2026-10-08-core-flow-refinement.md`](./docs/design/2026-10-08-core-flow-refinement.md): core flow design evidence and remaining native validation.
 
 ---
