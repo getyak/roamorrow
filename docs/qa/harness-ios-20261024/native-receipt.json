@@ -38,5 +38,20 @@
     "owned_simulator_shutdown": true,
     "permanent_logs": "/Users/cubxxw/ops/evidence/roamorrow-harness-20261024",
     "white_screen_screenshot": "/Users/cubxxw/ops/evidence/roamorrow-harness-20261024/native-launch-white-screen.png"
+  },
+  "first_pr_ci": {
+    "head": "25997ac7d1d86d7102af140880ca046df5ac197f",
+    "run": "https://github.com/getyak/roamorrow/actions/runs/40054212400",
+    "email_account_tests": {
+      "executed": 12,
+      "failures": 0
+    },
+    "full_unit_target": {
+      "executed": 2013,
+      "skipped": 14,
+      "failures": 2
+    },
+    "failures": "Pre-existing Studio hardcoded strings and WebSearchService public API comments; revised head rerun required",
+    "account_ui": "not run by this old workflow head"
   }
 }

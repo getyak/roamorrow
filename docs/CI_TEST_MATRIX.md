@@ -27,8 +27,10 @@ them regresses.
 `EmailAccountServiceTests.swift` is included in that full target and in the
 focused `AccountRegressionTests` target. Account onboarding UI tests live under
 `docs/qa/harness-ios-20261024/` and require the additional `AccountAcceptance`
-scheme; the regular `SoloCompass` CI job does not run those UI tests. Their local
-execution and real account/provider acceptance are recorded separately in the
+scheme. After the full `SoloCompass` unit suite, iOS CI runs just the
+`AccountOnboardingUITests` class on the same selected device and uploads its
+result bundle. Real account/provider acceptance remains separate from these
+invalid-email, guest and password-entry UI checks and is recorded in the
 [Harness acceptance record](qa/harness-ios-20261024/README.md).
 
 ### Phase 1 baseline (must stay 70+/70+)

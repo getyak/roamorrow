@@ -76,3 +76,7 @@ efcb8fc523f59c8333b010c9bc710d8d5b2e4559:docs/design/interaction-quality/scoreca
 efcb8fc523f59c8333b010c9bc710d8d5b2e4559:docs/design/interaction-quality/scorecard.json:generic-api-key:30296
 efcb8fc523f59c8333b010c9bc710d8d5b2e4559:docs/design/interaction-quality/scorecard.json:generic-api-key:30433
 efcb8fc523f59c8333b010c9bc710d8d5b2e4559:docs/design/interaction-quality/scorecard.json:generic-api-key:30434
+
+# Verified Linux executable SHA-256, not an authentication value.
+# Recomputed from the retained acceptance binary before adding this fingerprint.
+492184de134b058b5055e1c3702129aef25e9185:docs/qa/harness-ios-20261024/acceptance.json:generic-api-key:22

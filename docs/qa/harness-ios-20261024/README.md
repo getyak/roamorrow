@@ -78,4 +78,20 @@ codex mcp add roamorrow-harness \
 
 本次复用原生编译产物，没有重新构建。Primary 设备 boot/install 成功，App launch 返回 PID `76321`，截图是白屏，尚不能证明邮箱页可用。随后 `test-without-building` 在启动阶段停滞；观察到可用磁盘 24.11 GiB、swap 17.85 GiB，只向核验过的本任务 xcodebuild PID `76607` 发送 SIGINT，退出码 73。共享会话关闭本次启动的设备。正式日志和白屏截图保存在上述 ops evidence 目录，不以启动 PID 代替页面验收。
 
-当前源码的 Go 全包、vet、race 已再次通过，新增 Markdown/JSON 已按仓库 pinned Prettier 复核。常规 CI 会覆盖邮箱单元测试，但不执行独立 AccountOnboarding UI suite。TestFlight 当前也未注入三个账户配置值，自动上传不能证明该流程可用。
+当前源码的 Go 全包、vet、race 已再次通过，新增 Markdown/JSON 已按仓库 pinned Prettier 复核。初始 head 的常规 CI 覆盖邮箱单元测试，但不执行独立 AccountOnboarding UI suite。TestFlight 当前也未注入三个账户配置值，自动上传不能证明该流程可用。
+
+## PR 与 CI 修复
+
+[Draft PR #674](https://github.com/getyak/roamorrow/pull/674) 已创建并加入本聊天监控。
+初始 head `25997ac7` 的云端邮箱单元测试 12 项通过；完整原生目标执行 2013 项，
+14 项跳过、2 项失败，因此不记为 CI 通过。两项失败是 main 原有的 Studio 文本本地化
+和 WebSearchService 公开符号文档守卫，已修正，仍需新 head 复跑。
+
+安全修复保留所有扫描门禁：可执行文件 SHA-256 误报仅添加历史精确指纹；Go 最低版本
+和 Docker builder 升到 1.27.3；Node 的 21 项新审计告警通过目标版本更新处理，
+`pnpm audit --audit-level=low` 与冻结 lockfile-only 校验通过，原 braces 缓解例外未扩大。
+新增同设备账户 UI CI 步骤及路由 JSON 校验回归，执行结果仍待新 head CI。
+详细界限和证据见 [CI security record](ci-security.md)。
+
+额外宿主 XCTest 检查入口未兼容 Darwin runner，未执行用例；不将其作为通过证据。
+本地原生全量测试仍不重跑。真实账户/profile/MCP、精确 HTTPS 和可用页面验收继续保持未完成。
