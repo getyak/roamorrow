@@ -71,9 +71,47 @@ The same delivery's `govulncheck` failed on nine reachable advisories in Go
 [official Go release](https://go.dev/doc/devel/release#go1.27.2) and
 [HTTP/2 vulnerability record](https://pkg.go.dev/vuln/GO-2026-6603).
 
-`apps/api/go.mod` now requires Go 1.27.2 and x/net 0.60.0, including the
+That delivery set `apps/api/go.mod` to Go 1.27.2 and x/net 0.60.0, including the
 crypto/sys/text versions required by that module. `go.sum` records the public
-Go checksum database entries. The Docker builder uses the official
+Go checksum database entries. The Docker builder then used the official
 `golang:1.27.2-alpine` image, pinned to its registry-verified OCI index digest.
 CI continues to verify module checksums, run `go test ./...`, and run
 `govulncheck`; no Go advisory exceptions are introduced.
+
+## 2026-10-24 CI remediation
+
+PR #674 exposed new advisories after the earlier remediation. The Go standard
+library check reports [GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809), fixed
+in Go 1.27.3. The module minimum and official Docker builder now use 1.27.3;
+the builder index digest was read from Docker Registry and independently
+recomputed before pinning it. No vulnerability suppression was added.
+
+The Node updates target these fixed versions from the registry advisories:
+
+| Dependency      | Selected version |
+| --------------- | ---------------- |
+| Next.js         | 15.5.28          |
+| Sentry Next.js  | 10.75.2          |
+| Vitest / mocker | 4.1.12           |
+| Vite            | 7.3.7            |
+| Zod             | 4.6.6            |
+| DOMPurify       | 3.4.17           |
+| undici          | 7.30.1           |
+| fast-uri        | 3.1.9            |
+
+Zod 3 is affected by [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+The six application consumers were checked for Zod 4 compatibility; the route
+compiler's recursive JSON record now supplies an explicit string key schema.
+A request-level regression covers nested JSON constraints and invalid operators
+before backend access. OpenAI 7.23.0 accepts Zod 4, so its SDK remains unchanged.
+
+The 1440-minute minimum release age, strict mode, build allowlist, frozen
+lockfile requirement and existing braces patch/exception remain in place.
+The current audit, tests and scanner status are recorded in the
+[Harness acceptance record](../qa/harness-ios-20261024/README.md); selecting a
+fixed version or reviewing the manifest does not substitute for those checks.
+
+The secret-scanning finding in the old acceptance JSON was an executable
+SHA-256, independently recomputed from the retained binary. Only its exact
+historical commit/file/rule/line fingerprint is ignored. Default scanning rules,
+workflow execution and redaction remain unchanged.
