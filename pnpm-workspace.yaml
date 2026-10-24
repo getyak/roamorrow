@@ -22,11 +22,13 @@ overrides:
   "@esbuild-kit/core-utils@3>esbuild": "0.25.12"
   "form-data@": "4.0.6"
   postcss: "8.5.26"
-  "fast-uri@3": "3.1.8"
+  "fast-uri@3": "3.1.9"
   postcss-selector-parser: "7.1.6"
   sharp: "0.35.5"
-  "undici@": "7.29.1"
+  "undici@": "7.30.1"
   "ws@": "8.21.0"
+  "dompurify@3": "3.4.17"
+  vite: "7.3.7"
 
 patchedDependencies:
   braces@3.0.3: patches/braces@3.0.3.patch

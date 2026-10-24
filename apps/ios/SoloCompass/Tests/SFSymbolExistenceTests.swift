@@ -23,7 +23,7 @@ final class SFSymbolExistenceTests: XCTestCase {
         "Views/Experience/ExperienceCardView.swift",
         "Views/Map/CompassMapView.swift",
         "Views/Map/BottomInfoSheet.swift",
-        "Views/Experience/LocationCard.swift",
+        "Views/Shared/SoloScoreBreakdownCard.swift",
         // City OS v2 surfaces — catch a ghost SF Symbol before it ships blank.
         "Views/CityOS/EventMarkerView.swift",
         "Views/CityOS/KitSheet.swift",

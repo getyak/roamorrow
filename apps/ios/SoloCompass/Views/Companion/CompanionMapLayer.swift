@@ -117,31 +117,11 @@ struct NearbyBlurAnnotation: View {
 
 /// Minimal geohash decoder that returns the centre coordinate of a cell.
 enum GeohashDecoder {
-    private static let base32 = "0123456789bcdefghjkmnpqrstuvwxyz"
-
     static func centre(of hash: String) -> CLLocationCoordinate2D? {
-        var minLat = -90.0, maxLat = 90.0
-        var minLon = -180.0, maxLon = 180.0
-        var isEven = true
-
-        for ch in hash.lowercased() {
-            guard let idx = base32.firstIndex(of: ch) else { return nil }
-            let n = base32.distance(from: base32.startIndex, to: idx)
-            for i in stride(from: 4, through: 0, by: -1) {
-                let bit = (n >> i) & 1
-                if isEven {
-                    let mid = (minLon + maxLon) / 2
-                    if bit == 1 { minLon = mid } else { maxLon = mid }
-                } else {
-                    let mid = (minLat + maxLat) / 2
-                    if bit == 1 { minLat = mid } else { maxLat = mid }
-                }
-                isEven.toggle()
-            }
-        }
+        guard let center = GeohashUtils.center(hash.lowercased()) else { return nil }
         return CLLocationCoordinate2D(
-            latitude: (minLat + maxLat) / 2,
-            longitude: (minLon + maxLon) / 2
+            latitude: center.lat,
+            longitude: center.lon
         )
     }
 }

@@ -23,7 +23,6 @@ public final class BookComposeService {
 
     public static let shared = BookComposeService()
 
-    private let log = OSLog(subsystem: "com.solocompass.app", category: "Book")
 
     public init() {}
 

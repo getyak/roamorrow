@@ -38,6 +38,12 @@ jobs:
       - name: dependency audit
         run: pnpm audit --audit-level=low
 
+      - name: install security test browser
+        run: pnpm --filter @solo-compass/web exec playwright install --with-deps chromium
+
+      - name: browser security regressions
+        run: pnpm --filter @solo-compass/web security:browser
+
       - name: typecheck
         run: pnpm typecheck
 

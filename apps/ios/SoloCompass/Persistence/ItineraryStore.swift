@@ -191,11 +191,6 @@ public final class ItineraryStore {
         return (try? context.fetch(descriptor))?.first
     }
 
-    private func deleteRecord(id: String) {
-        guard let existing = record(for: id) else { return }
-        context.delete(existing)
-    }
-
     /// Enqueue an upsert (or soft-delete tombstone) to the SyncService outbox.
     /// No-op when `FF_COMPANION` is off or when no authenticated session exists.
     private func enqueueSync(_ itinerary: Itinerary, isDeleted: Bool) {

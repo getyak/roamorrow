@@ -3,8 +3,8 @@ import SwiftUI
 import SwiftData
 @testable import SoloCompass
 
-/// US-010 render coverage: `FriendsListView` must lay out a real screen with
-/// (a) the top "pending requests" inbox section and (b) the friends list below,
+/// US-010 render coverage: `FriendsHubView` must lay out a real screen with
+/// (a) incoming requests and (b) the friends list below,
 /// and must show the dedicated empty-state copy when there is nothing to show.
 ///
 /// We can't drive a live backend in-process, so we seed `FriendService` with
@@ -13,7 +13,7 @@ import SwiftData
 /// failed to lay out / register). A separate case checks the empty state renders
 /// the breathing illustration + copy rather than collapsing to nothing.
 @MainActor
-final class FriendsListRenderTest: XCTestCase {
+final class FriendsHubRenderTests: XCTestCase {
 
     /// Logical size of an iPhone 17 Pro portrait window.
     private static let windowSize = CGSize(width: 402, height: 874)
@@ -26,7 +26,7 @@ final class FriendsListRenderTest: XCTestCase {
     /// This bypasses the on-appear `refresh()` (which, with the Phase-1
     /// `companion` flag off, clears state to empty) so the populated branch is
     /// genuinely exercised.
-    func testFriendsListRendersRequestsAndFriends() throws {
+    func testFriendsHubRendersRequestsAndFriends() throws {
         let service = FriendService()
         service.incomingRequests = [
             FriendRequest(
@@ -56,37 +56,39 @@ final class FriendsListRenderTest: XCTestCase {
 
         // `autoRefresh: false` skips the on-appear `refresh()` so the seeded
         // fixtures survive and the populated branch actually renders.
-        let image = try render(content: FriendsListView(service: service, autoRefresh: false))
-        dump(image, to: "friends_list_populated")
+        let image = try render(content: FriendsHubView(service: service, autoRefresh: false))
+        dump(image, to: "friends-hub-populated")
+        XCTAssertEqual(service.incomingRequests.map(\.requesterId), ["traveler_abc"])
+        XCTAssertEqual(service.friends.map(\.userHighId), ["maya"])
         XCTAssertFalse(
             isUniformColor(image),
-            "FriendsListView populated content rendered as a flat band — the "
+            "FriendsHubView populated content rendered as a flat band — the "
                 + "request inbox + friends list did not lay out."
         )
     }
 
     // MARK: - Empty state
 
-    func testFriendsListRendersEmptyState() throws {
+    func testFriendsHubRendersEmptyState() throws {
         let service = FriendService()
         service.incomingRequests = []
         service.friends = []
 
-        let image = try render(content: FriendsListView(service: service))
-        dump(image, to: "friends_list_empty")
+        let image = try render(content: FriendsHubView(service: service, autoRefresh: false))
+        dump(image, to: "friends-hub-empty")
         XCTAssertFalse(
             isUniformColor(image),
-            "Empty FriendsListView rendered as a flat band — the empty-state "
+            "Empty FriendsHubView rendered as a flat band — the empty-state "
                 + "illustration/copy is missing."
         )
     }
 
-    /// Writes a PNG to /tmp so the rendered screen can be visually inspected
-    /// (the "verify in Simulator" acceptance step). Best-effort; never fails.
+    /// Keep the real rendered surface in the result bundle for visual review.
     private func dump(_ image: UIImage, to name: String) {
-        guard let data = image.pngData() else { return }
-        let url = URL(fileURLWithPath: "/tmp/\(name).png")
-        try? data.write(to: url)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     // MARK: - Helpers
@@ -100,6 +102,7 @@ final class FriendsListRenderTest: XCTestCase {
         let window = UIWindow(frame: CGRect(origin: .zero, size: Self.windowSize))
         window.rootViewController = host
         window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
 

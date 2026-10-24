@@ -36,7 +36,6 @@ struct CompanionMapFilters: View {
     let selected: ExperienceCategory?
     let isFavoriteFilter: Bool
     var onSelect: (ExperienceCategory) -> Void
-    @Environment(\.dynamicTypeSize) private var typeSize
     var body: some View {
         HStack(spacing: 0) {
             category(.coffee, title: companionText("companion.nearby.coffee", "咖啡"), symbol: "cup.and.saucer")
