@@ -2856,6 +2856,8 @@
 "studio.paper.1" = "Sage paper";
 "studio.paper.2" = "Clay paper";
 "studio.collection" = "Little things collected";
+"studio.canvas.signature" = "XIAOMU / PRIVATE COLLECTION";
+"studio.eyebrow" = "LIFE, COLLECTED.";
 "studio.count" = "%d pieces";
 "studio.collection.empty" = "The next piece could come from your day.";
 "studio.explore" = "Step outside";

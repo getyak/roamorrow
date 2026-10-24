@@ -36,7 +36,7 @@ struct StudioCanvas: View {
                         .padding(18)
                     VStack {
                         HStack {
-                            Text("XIAOMU / PRIVATE COLLECTION").font(.system(size: 8, weight: .medium, design: .monospaced)).tracking(2)
+                            Text("studio.canvas.signature").font(.system(size: 8, weight: .medium, design: .monospaced)).tracking(2)
                             Spacer()
                         }
                         Spacer()

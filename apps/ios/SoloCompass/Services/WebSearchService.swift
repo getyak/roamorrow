@@ -61,7 +61,9 @@ public final class WebSearchService {
         case news
     }
 
+    /// Result of one bounded web search, including explicit source availability.
     public struct SearchOutcome: Equatable, Sendable {
+        /// Distinguishes usable results, a successful empty search, and unavailable sources.
         public enum Status: String, Sendable { case results, empty, unavailable }
         /// Safe categories only. Never carry a response body, exception text or token.
         public enum ErrorCategory: String, Sendable {
