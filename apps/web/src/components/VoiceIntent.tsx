@@ -201,22 +201,23 @@ export function VoiceIntent({
 
   return (
     <div
+      id="map-ask"
       hidden={hidden}
-      className="pointer-events-none absolute inset-x-0 bottom-[136px] z-20 flex flex-col items-center gap-2 px-4"
+      className="pointer-events-auto absolute left-3 right-3 top-20 z-20 flex max-h-[calc(52dvh-92px)] flex-col items-start gap-2 overflow-y-auto overscroll-contain md:left-auto md:right-3 md:max-h-[calc(100dvh-96px)] md:w-[min(380px,calc(100vw-428px))]"
       style={hidden ? { display: "none" } : undefined}
     >
       {intent && (
         <button
           type="button"
           onClick={() => onIntentChange(null)}
-          className="pointer-events-auto min-h-[44px] max-w-[90vw] rounded-full bg-deep-teal px-4 py-1.5 text-sm text-paper-cream shadow-md ring-1 ring-paper-cream/20 hover:bg-deep-teal/90"
+          className="pointer-events-auto min-h-[44px] max-w-[90vw] rounded-full bg-deep-teal px-4 py-1.5 text-sm text-on-accent shadow-md ring-1 ring-paper-cream/20 hover:bg-deep-teal/90"
           aria-label={`Clear intent: ${intent}`}
         >
           <span className="mr-2" aria-hidden="true">
             🎯
           </span>
           <span className="truncate align-middle">{intent}</span>
-          <span className="ml-2 text-paper-cream/70" aria-hidden="true">
+          <span className="ml-2 text-on-accent" aria-hidden="true">
             ×
           </span>
         </button>
@@ -240,14 +241,21 @@ export function VoiceIntent({
       )}
 
       {/* Text first: the stable entry. Voice sits beside it, never instead of it. */}
-      <form onSubmit={handleTextSubmit} className="pointer-events-auto flex w-full max-w-md gap-2">
+      <form
+        onSubmit={handleTextSubmit}
+        className="pointer-events-auto flex w-full max-w-md flex-wrap gap-2 rounded-xl bg-paper-cream p-3 shadow-md"
+      >
+        <label htmlFor="map-intent" className="w-full text-base font-medium text-ink-warm">
+          What would you like to do?
+        </label>
         <input
+          id="map-intent"
           type="text"
           value={textValue}
           onChange={(e) => setTextValue(e.target.value)}
           placeholder="What do you feel like?"
           aria-label="Type what you feel like doing"
-          className="min-h-[44px] min-w-0 flex-1 rounded-full border border-ink-warm/15 bg-paper-cream/95 px-4 py-2 text-sm text-ink-warm shadow focus:border-deep-teal focus:outline-none"
+          className="min-h-[44px] min-w-0 flex-1 rounded-full border border-ink-warm/30 bg-paper-cream/95 px-3 py-2 text-base text-ink-warm shadow focus:border-deep-teal focus:outline-none"
         />
         <button
           type="button"
@@ -258,7 +266,7 @@ export function VoiceIntent({
           className={[
             "flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full shadow-md ring-2 ring-paper-cream",
             recording ? "bg-warm-amber" : "bg-deep-teal",
-            "text-xl text-paper-cream focus:outline-none focus:ring-4 focus:ring-deep-teal/40",
+            "text-xl text-on-accent focus:outline-none focus:ring-4 focus:ring-deep-teal/40",
             micAvailable ? "" : "opacity-50",
           ].join(" ")}
         >
@@ -267,7 +275,7 @@ export function VoiceIntent({
         <button
           type="submit"
           disabled={textValue.trim().length === 0}
-          className="min-h-[44px] rounded-full bg-deep-teal px-4 py-2 text-sm font-medium text-paper-cream shadow hover:bg-deep-teal/90 disabled:opacity-60"
+          className="min-h-[44px] rounded-full bg-accent-interactive px-4 py-2 text-base font-medium text-on-accent shadow hover:bg-accent-interactive-hover disabled:opacity-60"
         >
           Send
         </button>
