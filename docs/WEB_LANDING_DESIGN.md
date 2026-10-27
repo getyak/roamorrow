@@ -8,6 +8,25 @@
 
 ---
 
+## Current Web override — GET-254 (2026-10-26)
+
+The shipped marketing pages and `/app` now share a teal interaction accent on
+cream/paper surfaces. This overrides the older brown CTA guidance below for Web;
+native iOS tokens are outside this change.
+
+- Light: accent `#2F6B6B`, hover `#255757`, on-accent `#FBF7F2` (5.73:1).
+- Dark: accent `#9ACCC4`, hover `#B7DED5`, on-accent `#1F1A14` (9.71:1).
+- Start with the map and up to five existing Experience cards. A card opens
+  evidence and a visible Google Maps walking-directions handoff; no AI prompt or
+  signup is required to browse. The map center is not the user's origin.
+- Ritual and iPhone concepts live in a closed secondary disclosure marked
+  `Preview`. Illustrations must not invent ratings, travel times, or verification
+  freshness. Live product screenshots and illustrations remain distinct.
+- Primary controls grow with wrapped labels. Preserve permission, loading,
+  empty/error/retry, source, unknown-data, and retained-draft states.
+
+Evidence and remaining acceptance limits: [GET-254 Web delivery](development/get-254-map-first-ui.md).
+
 ## 0. 设计哲学（一句话）
 
 > **官网是 App 内 DayPage 的自然延伸，不是"营销页"。用户从 Web 到 iOS，视觉体感一致——这是品牌壁垒。**

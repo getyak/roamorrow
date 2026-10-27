@@ -57,11 +57,11 @@ const config: Config = {
         "success-text": "var(--success-text)",
 
         // --- Legacy palette (do not use in new marketing pages) ---
-        "paper-cream": "#F5F1E8",
-        "ink-warm": "#2C2A26",
+        "paper-cream": "rgb(var(--app-paper, 245 241 232) / <alpha-value>)",
+        "ink-warm": "rgb(var(--app-ink, 44 42 38) / <alpha-value>)",
         "muted-road": "#D9D3C4",
         "soft-green": "#A8B89C",
-        "deep-teal": "#2F6B6B",
+        "deep-teal": "rgb(var(--app-teal, 47 107 107) / <alpha-value>)",
         "warm-amber": "#C68E3F",
       },
       fontFamily: {

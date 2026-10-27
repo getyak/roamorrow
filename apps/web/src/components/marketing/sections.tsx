@@ -111,7 +111,7 @@ export function MarketingNav({ copy, locale, homePath, altPath }: Props) {
    ============================================================ */
 
 export function Hero({ copy, locale }: Props) {
-  const ctaLabel = distributionCopy(dist.primaryKind, locale).action;
+  const ctaLabel = copy.hero.ctaPrimaryWeb;
   return (
     <Section className="relative overflow-hidden pt-10 md:pt-14">
       <HeroMotif />
@@ -139,7 +139,7 @@ export function Hero({ copy, locale }: Props) {
               className="ds-reveal mt-8 flex flex-wrap items-center gap-5"
               style={{ animationDelay: "760ms" }}
             >
-              <ButtonLink href={dist.primaryHref} variant="primary">
+              <ButtonLink href="/app" variant="primary">
                 {ctaLabel}
               </ButtonLink>
               <a
@@ -300,69 +300,93 @@ export function Capabilities({ copy, locale }: Props) {
           <Eyebrow dot="sun">{copy.capabilities.eyebrow}</Eyebrow>
           <h2 className="ds-display-xl mt-6 font-display">{copy.capabilities.title}</h2>
           <p className="ds-body-lg mt-6 text-fg-muted">{copy.capabilities.sub}</p>
-          <p className="ds-body-md mt-3 text-fg-muted">
+          <ol className="mt-8 space-y-4 text-body-lg text-fg-primary">
+            <li>
+              {locale === "zh"
+                ? "打开地图，查看当前区域的体验。"
+                : "Open the map and browse experiences in the area."}
+            </li>
+            <li>
+              {locale === "zh"
+                ? "点开一张卡，查看地点、建议时段和来源。"
+                : "Open a card for the place, suggested times, and sources."}
+            </li>
+            <li>
+              {locale === "zh"
+                ? "选择步行导航，在 Google 地图中确认出发点。"
+                : "Choose walking directions and confirm your starting point in Google Maps."}
+            </li>
+          </ol>
+          <ButtonLink href="/app" className="mt-8">
+            {copy.hero.ctaPrimaryWeb}
+          </ButtonLink>
+        </div>
+        <details className="mt-12 border-t border-border-default pt-4">
+          <summary className="min-h-12 cursor-pointer py-3 text-body-lg font-medium text-fg-primary">
             {locale === "zh"
-              ? "以下包含功能预览；部分仪式与归档页面当前仅供预览或只读，不承诺为已开放的订阅权益。"
-              : "These examples include previews. Some ritual and archive views are currently preview-only or read-only and are not promised as available subscription benefits."}
+              ? "旅行仪式与 iPhone 界面 · Preview"
+              : "Travel rituals and iPhone concepts · Preview"}
+          </summary>
+          <p className="ds-body-md mt-4 max-w-2xl text-fg-muted">
+            {copy.capabilities.intro}{" "}
+            {locale === "zh"
+              ? "以下是次级功能示意；部分仪式和归档页面仅供预览或只读，不是已开放订阅权益的承诺。"
+              : "These secondary examples include preview-only or read-only rituals and archives, not a promise of available subscription benefits."}
           </p>
-          <p className="ds-body-md mt-3 font-mono uppercase tracking-[0.14em] text-fg-subtle">
-            {copy.capabilities.intro}
-          </p>
-        </div>
-
-        <div className="mt-20 space-y-32">
-          {CAPABILITY_ORDER.map(({ kind }, i) => {
-            const block = copy[kind];
-            const flip = i % 2 === 1;
-            return (
-              <article
-                key={kind}
-                data-capability={kind}
-                className="grid grid-cols-1 items-center gap-12 md:grid-cols-2 md:gap-20"
-              >
-                <div className={flip ? "md:order-2" : ""}>
-                  <div className="flex justify-center">
-                    <IPhoneFrame tilt={i % 3 === 1} className="max-w-[280px]">
-                      <CapabilityMock kind={kind} copy={copy} />
-                    </IPhoneFrame>
+          <div className="mt-12 space-y-20">
+            {CAPABILITY_ORDER.map(({ kind }, i) => {
+              const block = copy[kind];
+              const flip = i % 2 === 1;
+              return (
+                <article
+                  key={kind}
+                  data-capability={kind}
+                  className="grid grid-cols-1 items-center gap-12 md:grid-cols-2 md:gap-20"
+                >
+                  <div className={flip ? "md:order-2" : ""}>
+                    <div className="flex justify-center">
+                      <IPhoneFrame tilt={i % 3 === 1} className="max-w-[280px]">
+                        <CapabilityMock kind={kind} copy={copy} />
+                      </IPhoneFrame>
+                    </div>
                   </div>
-                </div>
-                <div className={flip ? "md:order-1" : ""}>
-                  <Chip
-                    tone={
-                      kind === "askSolo"
-                        ? "accent"
-                        : kind === "blindbox"
-                          ? "warning"
-                          : kind === "capsule"
-                            ? "accent"
-                            : kind === "omen"
-                              ? "sun"
-                              : kind === "bestNow"
-                                ? "success"
-                                : "sun"
-                    }
-                  >
-                    {block.eyebrow}
-                  </Chip>
-                  <h3 className="ds-display-lg mt-6 font-display">{block.title}</h3>
-                  <p className="ds-body-lg mt-6 text-fg-muted">{block.body}</p>
-                  <ul className="mt-8 space-y-4">
-                    {block.bullets.map((b, bi) => (
-                      <li key={bi} className="flex gap-3">
-                        <span
-                          aria-hidden
-                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-                        />
-                        <span className="ds-body-md text-fg-primary">{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                  <div className={flip ? "md:order-1" : ""}>
+                    <Chip
+                      tone={
+                        kind === "askSolo"
+                          ? "accent"
+                          : kind === "blindbox"
+                            ? "warning"
+                            : kind === "capsule"
+                              ? "accent"
+                              : kind === "omen"
+                                ? "sun"
+                                : kind === "bestNow"
+                                  ? "success"
+                                  : "sun"
+                      }
+                    >
+                      {block.eyebrow} · Preview
+                    </Chip>
+                    <h3 className="ds-display-lg mt-6 font-display">{block.title}</h3>
+                    <p className="ds-body-lg mt-6 text-fg-muted">{block.body}</p>
+                    <ul className="mt-8 space-y-4">
+                      {block.bullets.map((b, bi) => (
+                        <li key={bi} className="flex gap-3">
+                          <span
+                            aria-hidden
+                            className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                          />
+                          <span className="ds-body-md text-fg-primary">{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </details>
       </Container>
     </Section>
   );
