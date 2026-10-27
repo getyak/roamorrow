@@ -14,11 +14,14 @@ test("Sentry retains diagnostics without automatically recording private request
   const sdk = pathToFileURL(require.resolve("@sentry/nextjs")).href;
   const openai = pathToFileURL(botRequire.resolve("openai")).href;
   const policy = new URL("./sentry.ts", import.meta.url).href;
-  const env = Object.fromEntries(
-    ["PATH", "LANG", "TZ", "SYSTEMROOT", "TMPDIR"].flatMap((key) =>
-      process.env[key] === undefined ? [] : [[key, process.env[key]!]],
+  const env: NodeJS.ProcessEnv = {
+    NODE_ENV: "test",
+    ...Object.fromEntries(
+      ["PATH", "LANG", "TZ", "SYSTEMROOT", "TMPDIR"].flatMap((key) =>
+        process.env[key] === undefined ? [] : [[key, process.env[key]!]],
+      ),
     ),
-  );
+  };
   const run = (mode: string) => {
     const output = execFileSync(
       process.execPath,
