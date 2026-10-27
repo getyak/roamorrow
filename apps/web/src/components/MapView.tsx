@@ -10,6 +10,7 @@ import { healthColor, healthLabel } from "@/lib/health";
 import { paperCreamStyle } from "@/lib/map-style";
 import { clientEnv } from "@/lib/env";
 import { isUsableMapboxToken } from "@/lib/map-token";
+import { knownSoloScore } from "@/lib/solo-score-label";
 
 const CHIANG_MAI_CENTER: [number, number] = [98.9853, 18.7883];
 const DEFAULT_ZOOM = 14;
@@ -160,7 +161,11 @@ export function MapView({
         setLocateState("idle");
         const map = mapRef.current;
         if (map) {
-          map.flyTo({ center, zoom: DEFAULT_ZOOM, duration: 1500 });
+          map.flyTo({
+            center,
+            zoom: DEFAULT_ZOOM,
+            duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1500,
+          });
         } else {
           reportCenter(center);
         }
@@ -184,12 +189,13 @@ export function MapView({
     for (const result of results) {
       const { experience: exp, health } = result;
       const isSelected = exp.id === selectedId;
+      const score = knownSoloScore(exp.soloScore);
 
       const el = document.createElement("button");
       el.type = "button";
       el.setAttribute(
         "aria-label",
-        `${exp.title}, solo score ${exp.soloScore.overall}, ${healthLabel[health]}`,
+        `${exp.title}, ${score !== null ? `solo score ${score}` : "solo score not rated"}, ${healthLabel[health]}`,
       );
       el.className = [
         "relative flex h-11 w-11 items-center justify-center rounded-full",
@@ -207,14 +213,14 @@ export function MapView({
 
       // Solo-score badge (top-right)
       const badge = document.createElement("span");
-      badge.textContent = String(exp.soloScore.overall);
+      badge.textContent = score;
       badge.setAttribute("aria-hidden", "true");
       badge.className = [
         "absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center",
-        "rounded-full bg-deep-teal px-1 text-[10px] font-semibold leading-none text-paper-cream",
+        "rounded-full bg-deep-teal px-1 text-[10px] font-semibold leading-none text-on-accent",
         "ring-1 ring-paper-cream",
       ].join(" ");
-      el.appendChild(badge);
+      if (score !== null) el.appendChild(badge);
 
       // Confidence dot (bottom-right)
       const dot = document.createElement("span");
@@ -261,7 +267,7 @@ export function MapView({
       {locateState === "denied" && (
         <p
           role="status"
-          className="absolute right-3 top-16 z-10 max-w-[220px] rounded-xl bg-paper-cream/95 p-2 text-xs text-ink-warm shadow-md"
+          className="absolute right-3 top-28 z-10 max-w-[260px] rounded-xl bg-paper-cream/95 p-3 text-base text-ink-warm shadow-md"
         >
           Location permission was declined. Move the map to explore another area.
         </p>
@@ -299,9 +305,9 @@ function MapUnavailableFallback({
   readonly onRetry?: () => void;
 }) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-paper-cream px-6 text-center">
+    <div className="absolute inset-x-0 top-[18dvh] flex flex-col items-center justify-center gap-3 bg-paper-cream px-6 text-center md:left-[404px] md:top-[30dvh]">
       {/* Quiet compass motif — decorative, hidden from assistive tech. */}
-      <svg width="96" height="96" viewBox="0 0 96 96" fill="none" aria-hidden="true">
+      <svg width="48" height="48" viewBox="0 0 96 96" fill="none" aria-hidden="true">
         <circle cx="48" cy="48" r="40" stroke="#C68E3F" strokeWidth="1.5" opacity="0.5" />
         <circle cx="48" cy="48" r="28" stroke="#C68E3F" strokeWidth="1" opacity="0.3" />
         <path d="M48 14 L54 48 L48 82 L42 48 Z" fill="#5D3000" opacity="0.6" />
@@ -310,14 +316,14 @@ function MapUnavailableFallback({
       <p className="max-w-sm text-sm text-ink-warm/70">
         {sampleMode
           ? `The map background is unavailable. You can still explore ${resultCount} sample experiences in the list below.`
-          : "The map background is unavailable. Open the experience list to keep exploring."}
+          : "The map background is unavailable. You can still use the experience cards."}
       </p>
 
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="min-h-[44px] rounded-full bg-deep-teal px-5 py-2 text-sm font-medium text-paper-cream shadow hover:bg-deep-teal/90"
+          className="min-h-[44px] rounded-full bg-accent-interactive px-5 py-2 text-base font-medium text-on-accent shadow hover:bg-accent-interactive-hover"
         >
           Try loading the map again
         </button>

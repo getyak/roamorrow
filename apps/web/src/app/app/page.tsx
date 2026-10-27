@@ -5,10 +5,10 @@ import { useSearchParams } from "next/navigation";
 import type { Experience } from "@solo-compass/core";
 import { MapView } from "@/components/MapView";
 import { MapLoading } from "@/components/MapLoading";
+import { RoamorrowMark } from "@/components/brand/RoamorrowMark";
 import { ExperienceSheet } from "@/components/ExperienceSheet";
 import { NearbySheet } from "@/components/NearbySheet";
 import { VoiceIntent } from "@/components/VoiceIntent";
-import { TodayBanner } from "@/components/TodayBanner";
 import { useNearby } from "@/lib/use-nearby";
 import { useCompletions } from "@/lib/use-completions";
 import { resolveDetail } from "@/lib/detail-resolution";
@@ -29,8 +29,10 @@ type Selection =
 function HomeInner() {
   const [center, setCenter] = useState<[number, number] | null>(null);
   const [nearbyExpanded, setNearbyExpanded] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
   const [intent, setIntent] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const askVisible = askOpen && !nearbyExpanded && selection === null;
   const [online, setOnline] = useState(true);
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -133,7 +135,7 @@ function HomeInner() {
   );
 
   return (
-    <main id="main" className="relative h-dvh w-full overflow-hidden bg-paper-cream">
+    <main id="main" className="map-workspace relative h-dvh w-full overflow-hidden bg-paper-cream">
       <MapView
         results={results}
         onSelect={handleSelect}
@@ -142,12 +144,38 @@ function HomeInner() {
         sampleMode={sampleMode}
       />
 
-      <TodayBanner results={results} onSelect={handleSelect} />
+      <nav
+        aria-label="Map controls"
+        className="absolute left-3 right-16 top-3 z-20 flex items-center justify-between gap-2 md:right-auto md:w-[380px]"
+      >
+        <a
+          href="/"
+          aria-label="Roamorrow home"
+          className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-paper-cream/95 px-3 text-base font-semibold text-ink-warm shadow-sm"
+        >
+          <span className="md:hidden">
+            <RoamorrowMark strokeColor="var(--accent)" />
+          </span>
+          <span className="hidden md:inline">Roamorrow</span>
+        </a>
+        <button
+          type="button"
+          aria-expanded={askVisible}
+          aria-controls="map-ask"
+          onClick={() => {
+            if (!askVisible) setNearbyExpanded(false);
+            setAskOpen(!askVisible);
+          }}
+          className="min-h-11 min-w-0 rounded-full bg-paper-cream/95 px-2 text-base font-medium text-deep-teal shadow-sm"
+        >
+          {askVisible ? "Close Ask" : "Ask (optional)"}
+        </button>
+      </nav>
 
       <VoiceIntent
         intent={intent}
         onIntentChange={handleIntentChange}
-        hidden={nearbyExpanded || selection !== null}
+        hidden={!askVisible}
         fallbackNotice={
           intent && data?.degraded
             ? sampleMode
@@ -158,6 +186,7 @@ function HomeInner() {
       />
 
       <ExperienceSheet
+        sampleMode={selection?.kind === "nearby" && sampleMode}
         key={
           selection?.kind === "snapshot"
             ? `snap-${selection.experience.id}`
@@ -197,8 +226,9 @@ function HomeInner() {
       )}
 
       <NearbySheet
-        cityName={sampleMode ? "Sample picks" : center ? "Here" : "Loading…"}
+        expanded={nearbyExpanded}
         results={results}
+        sampleMode={sampleMode}
         loading={isLoading || center === null}
         degraded={data?.degraded === true}
         offline={!online}

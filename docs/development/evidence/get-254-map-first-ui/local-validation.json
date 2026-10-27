@@ -1,0 +1,149 @@
+{
+  "baseline": "145b5ec6247a466d41d0816d365d5f530330264e",
+  "localBuildId": "wngVJIISWabGbvAMhEc4X",
+  "browserPackage": "optimized Next.js production build",
+  "stats": {
+    "startTime": "2026-10-26T09:09:53.483Z",
+    "duration": 11929.499,
+    "expected": 13,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "scenarios": [
+    {
+      "name": "1280 light: visible cards to directions, keyboard and focus return",
+      "status": "passed",
+      "durationMs": 1770
+    },
+    {
+      "name": "390 light: visible cards to directions, keyboard and focus return",
+      "status": "passed",
+      "durationMs": 881
+    },
+    {
+      "name": "390 dark: visible cards to directions, keyboard and focus return",
+      "status": "passed",
+      "durationMs": 729
+    },
+    {
+      "name": "320 light: visible cards to directions, keyboard and focus return",
+      "status": "passed",
+      "durationMs": 841
+    },
+    {
+      "name": "loading, error, retry, empty and reload remain usable without expanding",
+      "status": "passed",
+      "durationMs": 1917
+    },
+    {
+      "name": "location denial keeps browsing and optional Ask keeps its draft",
+      "status": "passed",
+      "durationMs": 420
+    },
+    {
+      "name": "200% text and long content keep the destination, unknowns and route action",
+      "status": "passed",
+      "durationMs": 427
+    },
+    {
+      "name": "desktop Ask stays clickable after submitting and showing fallback notices",
+      "status": "passed",
+      "durationMs": 622
+    },
+    {
+      "name": "Ask from footprint returns to experience choices after submission",
+      "status": "passed",
+      "durationMs": 336
+    },
+    {
+      "name": "200% narrow map header can open and close Ask without interception",
+      "status": "passed",
+      "durationMs": 403
+    },
+    {
+      "name": "touch hands off only the selected coordinates, without claiming a route result",
+      "status": "passed",
+      "durationMs": 1191
+    },
+    {
+      "name": "marketing uses the map accent and keeps ritual previews secondary in both languages",
+      "status": "passed",
+      "durationMs": 607
+    },
+    {
+      "name": "marketing text at 200% can still open the map in light and dark",
+      "status": "passed",
+      "durationMs": 848
+    }
+  ],
+  "automatedPaths": [
+    {
+      "width": 1280,
+      "scheme": "light",
+      "elapsedMs": 1024,
+      "path": ["/app", "first experience card (Enter)", "details with directions link"],
+      "humanUsabilityTest": false
+    },
+    {
+      "width": 390,
+      "scheme": "light",
+      "elapsedMs": 539,
+      "path": ["/app", "first experience card (Enter)", "details with directions link"],
+      "humanUsabilityTest": false
+    },
+    {
+      "width": 390,
+      "scheme": "dark",
+      "elapsedMs": 431,
+      "path": ["/app", "first experience card (Enter)", "details with directions link"],
+      "humanUsabilityTest": false
+    },
+    {
+      "width": 320,
+      "scheme": "light",
+      "elapsedMs": 537,
+      "path": ["/app", "first experience card (Enter)", "details with directions link"],
+      "humanUsabilityTest": false
+    }
+  ],
+  "unitTests": {
+    "files": 16,
+    "passed": 106
+  },
+  "contrast": [
+    {
+      "role": "light primary",
+      "foreground": "#2f6b6b",
+      "background": "#fbf7f2",
+      "ratio": 5.73
+    },
+    {
+      "role": "dark primary",
+      "foreground": "#9accc4",
+      "background": "#1f1a14",
+      "ratio": 9.71
+    },
+    {
+      "role": "light action text",
+      "foreground": "#2f6b6b",
+      "background": "#faf8f6",
+      "ratio": 5.77
+    },
+    {
+      "role": "dark action text",
+      "foreground": "#9accc4",
+      "background": "#171410",
+      "ratio": 10.32
+    }
+  ],
+  "dataBoundaries": {
+    "positiveFlow": "explicit local sample fixtures only",
+    "productionDefault1500m": 0,
+    "production10000m": 0,
+    "humanUsabilityTest": false,
+    "realMapTilesTested": false,
+    "externalNavigationResultTested": false,
+    "iosSimulatorStarted": false
+  }
+}
