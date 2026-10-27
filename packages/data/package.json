@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@solo-compass/core": "workspace:*",
-    "@supabase/supabase-js": "^2.112.4"
+    "@supabase/supabase-js": "^2.118.0"
   },
   "devDependencies": {
     "typescript": "^5.6.2",
-    "vitest": "4.1.12"
+    "vitest": "5.0.5"
   }
 }
