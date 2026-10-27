@@ -50,8 +50,8 @@ importers:
   apps/bot:
     dependencies:
       '@sentry/node':
-        specifier: 10.75.2
-        version: 10.75.2(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(supports-color@8.1.1)
+        specifier: 11.9.0
+        version: 11.9.0(rollup@4.63.0)(webpack@5.109.2(esbuild@0.28.2)(postcss@8.5.26))
       '@solo-compass/ai':
         specifier: workspace:*
         version: link:../../packages/ai

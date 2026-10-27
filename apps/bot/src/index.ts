@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { privateSentryDataCollection, scrubPII, scrubSentrySpan } from "./lib/sentry.js";
 
 // Instrument Sentry before any other import so all modules are patched.
 // If SENTRY_DSN is absent, skip silently — never throw.
@@ -7,6 +8,9 @@ if (process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 0.1,
     environment: process.env.NODE_ENV ?? "development",
+    dataCollection: privateSentryDataCollection,
+    beforeSend: scrubPII,
+    beforeSendSpan: scrubSentrySpan,
   });
 }
 
