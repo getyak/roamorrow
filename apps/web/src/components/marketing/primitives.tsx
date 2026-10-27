@@ -10,7 +10,7 @@ type Variant = "primary" | "secondary" | "ghost";
 const buttonBase =
   // h-12 (48px) clears the 44px touch minimum; labels wrap at 320px instead
   // of overflowing. Press feedback is a subtle scale — no hover lift.
-  "inline-flex items-center justify-center min-h-[44px] h-12 px-6 rounded-full font-body text-body-md font-medium text-center leading-snug whitespace-normal transition-colors duration-fast ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 aria-busy:opacity-80";
+  "inline-flex items-center justify-center min-h-[48px] px-6 py-3 rounded-full font-body text-body-md font-medium text-center leading-snug whitespace-normal transition-colors duration-fast ease-standard focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 aria-busy:opacity-80";
 
 const buttonVariant: Record<Variant, string> = {
   primary:

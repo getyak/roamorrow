@@ -27,7 +27,7 @@ export function TimelineList({ onSelect }: TimelineListProps) {
           onClick={() => {
             void refetch();
           }}
-          className="mx-auto block min-h-[44px] rounded-full bg-deep-teal px-5 py-2 text-sm text-paper-cream disabled:opacity-60"
+          className="mx-auto block min-h-[44px] rounded-full bg-deep-teal px-5 py-2 text-sm text-on-accent disabled:opacity-60"
         >
           {isFetching ? "Trying again…" : "Try again"}
         </button>
