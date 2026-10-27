@@ -15,7 +15,10 @@ final class StudioFlowTests: XCTestCase {
         // Geometry editing exercises a real state mutation without keyboard dependencies.
         let scale = app.sliders["Size"]
         XCTAssertTrue(scale.exists)
+        let originalScale = try XCTUnwrap(scale.value as? String)
         scale.adjust(toNormalizedSliderPosition: 0.7)
+        let editedScale = try XCTUnwrap(scale.value as? String)
+        XCTAssertNotEqual(editedScale, originalScale)
         saveScreenshot("02-editor")
         app.buttons["Done"].tap()
         XCTAssertTrue(app.buttons["Undo last change"].isEnabled)
@@ -24,7 +27,8 @@ final class StudioFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["Sample coffee"].firstMatch.waitForExistence(timeout: 8))
         app.buttons["Sample coffee"].firstMatch.tap()
         XCTAssertTrue(app.sliders["Size"].waitForExistence(timeout: 3))
-        XCTAssertNotEqual(app.sliders["Size"].value as? String, "56%")
+        let restoredScale = try XCTUnwrap(app.sliders["Size"].value as? String)
+        XCTAssertEqual(restoredScale, editedScale)
         app.swipeUp()
         let remove = app.buttons["Remove from this space"]
         if !remove.isHittable { app.swipeUp() }
