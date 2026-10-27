@@ -29,7 +29,8 @@ struct CompanionWelcomeView: View {
                     .font(.body.weight(.medium)).frame(maxWidth: .infinity, minHeight: 52)
                     .foregroundStyle(CompanionHomeStyle.paper)
                     .background(CompanionHomeStyle.ink, in: Capsule())
-            }.padding(24).frame(maxWidth: 560).frame(maxWidth: .infinity)
+            }.accessibilityIdentifier("account.welcome.continue")
+                .padding(24).frame(maxWidth: 560).frame(maxWidth: .infinity)
                 .background(CompanionHomeStyle.paper)
         }
         .foregroundStyle(CompanionHomeStyle.ink)
