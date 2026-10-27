@@ -1,0 +1,47 @@
+{
+  "go_test": "passed",
+  "go_vet": "passed",
+  "go_race": "passed",
+  "postgres_live_subtests": 4,
+  "deepseek_live_harness": "passed; real provider, synthetic verified identity/profile fixture",
+  "default_account_login": "HTTP 400 invalid_credentials; no fallback account; valid real account E2E pending",
+  "google_oauth": "unconfigured; no real calendar/mail accessed",
+  "api_health": "healthy",
+  "database_health": "healthy",
+  "capabilities": {
+    "email_auth": true,
+    "google": false,
+    "deepseek": true,
+    "database": true
+  },
+  "unauthorized_mcp_http": 401,
+  "invalid_bearer_http": 401,
+  "runtime_probe_passes": 9,
+  "runtime_probe_failures": 0,
+  "normal_dockerfile_image_build": "not run; cached image + cross-compiled reviewed binary used",
+  "binary_sha256": "41e88f25899af03c803a5da2c76ac7e628536f4face5f13ee3f087766610871f",
+  "native": "6b847ca5 full unit step passed; 3 account UI tests failed because parent identifier overwrote child button IDs; minimal fix awaiting new-head CI",
+  "tailscale": "dry-run passed; explicit endpoint approval pending",
+  "testflight_release": "not run",
+  "physical_device": "not run",
+  "go_source_tree_sha256": "da37b2984d81efcad152ab36e0e28cbbbd54817f425529f6d702d3d3f83b54f6",
+  "cached_runtime_recreate_and_restart": "passed; API alone recreated, database preserved",
+  "source_commit": "492184de134b058b5055e1c3702129aef25e9185",
+  "runtime_after_acceptance": "stopped; task API/DB containers, network and test volumes removed with down -v --remove-orphans",
+  "docker_context_after_acceptance": "colima; unchanged",
+  "tailscale_applied": false,
+  "native_artifacts": "retained for incomplete native acceptance; no further build started under current resource pressure",
+  "lifecycle_checked_at": "2026-10-23T19:28:18Z",
+  "monitoring": {
+    "automation_id": "roamorrow-harness",
+    "interval_minutes": 15,
+    "status": "ACTIVE",
+    "pr_state": "DRAFT; CI remediation under review",
+    "pr": "https://github.com/getyak/roamorrow/pull/674"
+  },
+  "node_security_remediation": {
+    "audit": "passed at low threshold with original braces exception",
+    "frozen_lockfile_only": "passed",
+    "workspace_tests_build": "pending latest-head CI"
+  }
+}

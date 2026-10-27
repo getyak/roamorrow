@@ -30,6 +30,9 @@ apps/web/e2e/report/
 .env.production
 !.env.example
 
+# Private local DeepSeek harness runtime credentials
+deploy/harness.runtime-env
+
 # Logs
 *.log
 npm-debug.log*

@@ -1,5 +1,12 @@
 # Architecture
 
+The Go service in `apps/api` also exposes the email/context Harness and its
+authenticated MCP tools. The native account page uses a separate verified
+Supabase session; Harness profiles and encrypted Google tokens live in a private
+PostgreSQL schema. See the [Harness architecture](architecture/deepseek-onboarding-harness.md),
+[runtime guide](development/harness-backend.md) and
+[acceptance record](qa/harness-ios-20261024/README.md) for the exact boundary and pending validation.
+
 ## Layered diagram
 
 ```
@@ -19,7 +26,7 @@
 │   │   ai/        │  │   data/      │  │   ui/        │           │
 │   │  prompts,    │  │  ingestion,  │  │  design      │           │
 │   │  ranking,    │  │  storage,    │  │  tokens      │           │
-│   │  Claude      │  │  queries     │  │  (web only)  │           │
+│   │  DeepSeek    │  │  queries     │  │  (web only)  │           │
 │   └──────┬───────┘  └──────┬───────┘  └──────────────┘           │
 │          │                  │                                     │
 │          └────────┬─────────┘                                     │
@@ -35,7 +42,7 @@
                    │                   │
 ┌──────────────────▼───────────────────▼────────────────────────────┐
 │                       External services                          │
-│   Anthropic API · Mapbox · Supabase · OSM · Wikivoyage · Reddit  │
+│   DeepSeek API · Mapbox · Supabase · OSM · Wikivoyage · Reddit   │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,10 +60,10 @@ The asymmetry is deliberate: `core` is the most-shared, slowest-to-change layer.
 
 ## Why the iOS app is outside the pnpm workspace
 
-iOS uses Swift Package Manager and Xcode project files. Mixing them into a Node monorepo is more pain than it's worth. The TypeScript `core` types are mirrored as Swift structs in `apps/ios/SoloCompassCore/`, kept in sync by:
+iOS uses Swift Package Manager and Xcode project files. Mixing them into a Node monorepo is more pain than it's worth. The TypeScript `core` types are mirrored as Swift models in `apps/ios/SoloCompass/Models/`, kept in sync by:
 
-- a `scripts/check-swift-parity.ts` script in CI (planned)
-- discipline (now)
+- `scripts/check-swift-parity.ts`, run by the schema parity CI gate
+- review of matching TypeScript and Swift changes
 
 When the schema changes, the PR title must mention "schema" so the iOS dev knows to mirror.
 
@@ -75,7 +82,7 @@ Browser geolocation: lng/lat
   ↓
 [API route]  rankCandidates(candidates, userIntent)        ← packages/ai
   ↓
-[Claude]     Reads candidate descriptions + user voice intent
+[DeepSeek]   Reads candidate descriptions + user voice intent
              Returns ranked list with reasons
   ↓
 [Web app]    Renders ranked experiences as map markers
