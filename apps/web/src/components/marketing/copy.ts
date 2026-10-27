@@ -154,9 +154,9 @@ export const copy: Record<Locale, Copy> = {
       getApp: "Get on App Store",
     },
     hero: {
-      eyebrow: "since 2026 · made for iOS 17+",
-      h1Lines: ["Find your way.", "Feel at home."],
-      sub: `${BRAND.name} is your companion for solo travel and life on the move. Find local experiences worth your afternoon, and make a new place feel like yours.`,
+      eyebrow: "Roamorrow · a map for solo travelers",
+      h1Lines: ["What can you", "do nearby?"],
+      sub: "Open the map, choose an experience, and see how to get there. Browse first. Ask for help when you want it. You decide where to go.",
       ctaPrimaryStore: "Get on App Store",
       ctaPrimaryWeb: "Open the web map",
       iosStatus: "The iPhone app is built but not publicly listed yet — the web map is open today.",
@@ -229,9 +229,9 @@ export const copy: Record<Locale, Copy> = {
       ],
     },
     capabilities: {
-      eyebrow: "What you actually get",
-      title: "From a map to a moment worth taking.",
-      sub: "Explore the current app flows and preview the travel rituals being developed.",
+      eyebrow: "Start on the map",
+      title: "Choose something. See how to get there.",
+      sub: "A few experiences to consider, with the details you need before leaving. No prompt or account required to browse. Opening hours and availability are not live.",
       intro: "Illustrations, not live results or product screenshots.",
     },
     askSolo: {
@@ -417,8 +417,8 @@ export const copy: Record<Locale, Copy> = {
     },
     hero: {
       eyebrow: "since 2026 · 面向 iOS 17+",
-      h1Lines: ["一个人出发，", "也能在远方", "过好日常。"],
-      sub: `${BRAND.name} 是你的独自旅行与旅居伙伴。发现值得花一个下午的本地体验，让陌生的地方也有熟悉的日常。`,
+      h1Lines: ["现在，", "去哪里走走？"],
+      sub: "打开地图，选一件想做的事，再看看怎么去。先浏览，需要时再提问。去哪里，由你决定。",
       ctaPrimaryStore: "App Store 下载",
       ctaPrimaryWeb: "打开网页地图",
       iosStatus: "iPhone 版已开发完成，尚未公开上架 —— 网页地图今天就能用。",
@@ -491,9 +491,9 @@ export const copy: Record<Locale, Copy> = {
       ],
     },
     capabilities: {
-      eyebrow: "你实际能拿到什么",
-      title: "从地图，走到值得停留的一刻。",
-      sub: "了解当前可用的体验流程，以及正在完善的旅行仪式。",
+      eyebrow: "从地图开始",
+      title: "选一件想做的事，看看怎么去。",
+      sub: "先看几张体验卡，出发前查看地点、时段和来源。浏览无需提问或注册；营业时间与可用情况并非实时信息。",
       intro: "以下均为示意，不是实时结果或产品截图。",
     },
     askSolo: {
