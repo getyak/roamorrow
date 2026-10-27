@@ -115,6 +115,7 @@ try {
   console.log(
     JSON.stringify({
       mode,
+      sdkVersion: Sentry.SDK_VERSION,
       errorCount,
       spanCount,
       present,
