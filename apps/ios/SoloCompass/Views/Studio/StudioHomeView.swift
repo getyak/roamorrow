@@ -14,11 +14,22 @@ struct StudioHomeView: View {
     @State private var showMap = false
     @State private var showReset = false
     @State private var importError: String?
-    @State private var exportImage: UIImage?
     @State private var pendingPhotoBackground: Bool?
     @State private var pendingPiece: StudioPiece?
 
-    private enum StudioSheet: String, Identifiable { case collect, account, share, title; var id: String { rawValue } }
+    private enum StudioSheet: Identifiable {
+        case collect, account, title
+        case share(UIImage)
+
+        var id: String {
+            switch self {
+            case .collect: return "collect"
+            case .account: return "account"
+            case .title: return "title"
+            case .share: return "share"
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -44,8 +55,7 @@ struct StudioHomeView: View {
             switch destination {
             case .collect: collectSheet
             case .account: MeSheet()
-            case .share:
-                if let exportImage { StudioShareSheet(image: exportImage) }
+            case .share(let image): StudioShareSheet(image: image)
             case .title: titleSheet
             }
         }
@@ -291,8 +301,9 @@ struct StudioHomeView: View {
         )
         renderer.scale = 2
         guard let image = renderer.uiImage else { importError = String(localized: "studio.error.export"); return }
-        exportImage = image
-        sheet = .share
+        // The presentation item owns its image. A separate, otherwise unread
+        // State value can still be nil in the first sheet content evaluation.
+        sheet = .share(image)
     }
 }
 
