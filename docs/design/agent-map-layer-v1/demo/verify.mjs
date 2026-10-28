@@ -176,6 +176,7 @@ try {
       stop_id: map.days[0].stops[0].stop_id,
       target_day_id: map.days[1].day_id,
       target_index: 3,
+      order_policy: "optimize",
     },
   };
   const preview = await call("update_day", { ...move, idempotency_key: "preview", dry_run: true });
@@ -454,6 +455,65 @@ try {
   );
   assert(editableFork.ok);
   pass("max-length title fork remains schema-valid and editable");
+  let autoMap = (
+    await call("create_map", {
+      title: "顺路重排",
+      city: "Tokyo, Japan",
+      day_count: 2,
+      timezone: "Asia/Tokyo",
+      idempotency_key: "auto-create",
+    })
+  ).data.snapshot;
+  autoMap = (
+    await call("plot_places", {
+      map_id: autoMap.map_id,
+      expected_version: autoMap.version,
+      idempotency_key: "auto-plot",
+      items: ["fixture:meiji", "fixture:shibuya", "fixture:harajuku", "fixture:tokyo-station"].map(
+        (place_ref, i) => ({
+          place_ref,
+          day_id: autoMap.days[i === 3 ? 1 : 0].day_id,
+          duration_minutes: 30,
+        }),
+      ),
+    })
+  ).data.snapshot;
+  autoMap = (
+    await call("build_route", {
+      map_id: autoMap.map_id,
+      expected_version: autoMap.version,
+      idempotency_key: "auto-build",
+      transport_mode: "transit",
+      allow_unknown_travel: true,
+      day_plans: autoMap.days.map((d) => ({
+        day_id: d.day_id,
+        stop_ids: d.stops.map((s) => s.stop_id),
+        start_minute: 540,
+        end_minute: 1080,
+        order_policy: "preserve",
+      })),
+    })
+  ).data.snapshot;
+  const optimized = await call("update_day", {
+    map_id: autoMap.map_id,
+    expected_version: autoMap.version,
+    idempotency_key: "auto-move",
+    dry_run: false,
+    operation: {
+      type: "move_stop",
+      stop_id: autoMap.days[1].stops[0].stop_id,
+      target_day_id: autoMap.days[0].day_id,
+      target_index: 3,
+      order_policy: "optimize",
+    },
+  });
+  assert(optimized.ok);
+  assert.deepEqual(
+    optimized.data.snapshot.days[0].stops.map((s) => s.place_ref),
+    ["fixture:meiji", "fixture:harajuku", "fixture:shibuya", "fixture:tokyo-station"],
+  );
+  assert.equal(optimized.data.snapshot.days[1].stops.length, 0);
+  pass("day drop automatically recomputes order while preserving the day start anchor");
   writeFileSync(
     join(dir, "receipt.json"),
     JSON.stringify(

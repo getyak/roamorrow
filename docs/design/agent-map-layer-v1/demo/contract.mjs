@@ -133,7 +133,16 @@ const dayPlan = obj({
   order_policy: en("preserve", "optimize"),
 });
 const operations = [
-  obj({ type: { const: "move_stop" }, stop_id: s(), target_day_id: s(), target_index: n(0, 12) }),
+  obj(
+    {
+      type: { const: "move_stop" },
+      stop_id: s(),
+      target_day_id: s(),
+      target_index: n(0, 12),
+      order_policy: en("preserve", "optimize"),
+    },
+    ["type", "stop_id", "target_day_id", "target_index"],
+  ),
   obj({
     type: { const: "reorder_stops" },
     day_id: s(),

@@ -107,7 +107,7 @@ MCP `structuredContent` 和文本 JSON 内容一致。成功 `{ok:true,data:...,
 
 ### 调度规则
 
-v1 并非全球最优 TSP。`build_route` 在用户给定的日分组内按固定时段/锁定点/距离成本求可行顺序；不擅自跨天。`update_day.move_stop` 按用户落点顺序保留相对关系；静态矩阵只需刷新两天相邻 legs，再传播全部到达时间；时变 transit 从最早受影响位置向后重新查询，直到出发时间与证据重新稳定，不能沿用旧班次。两种模式都在一个版本提交。自动重新优化顺序是显式 `reorder_stops` 或 build 的 `order_policy=optimize`，在 UI 中提供「优化这一天」；不能拖完突然把别的地点全换顺序。
+v1 并非全球最优 TSP。`build_route` 在用户给定的日分组内按固定时段/锁定点/距离成本求可行顺序；不擅自跨天。拖到日期带/某天卡片表示「帮我顺路安排」，`update_day.move_stop.order_policy=optimize` 自动在受影响两天内重排未锁定顺序；拖到时间轴的明确插入位置则传 preserve，保留用户指定的顺序。省略 order_policy 的底层调用默认 preserve，避免旧客户端意图不明确时偷偷重排；静态矩阵刷新两天中邻接关系有变化的 legs，再传播全部到达时间；时变 transit 从最早受影响位置向后重新查询，直到出发时间与证据重新稳定，不能沿用旧班次。两种模式都在一个版本提交。UI 在日期带上标明「换天并顺路重排」，结果预览返回顺序和交通差异；只影响涉及的两天，不重排第三天。固定预约不参与自由重排。时间轴手排用 `reorder_stops`；build 的 `order_policy=optimize` 可用于显式「优化这一天」。原型使用确定性近邻启发式并保留首站，生产应复用约束求解器，不承诺全局最优。
 
 每一天 `start_minute` 到 `end_minute` 是城市时区的本地计划墙钟分钟。跨午夜日程不支持，拒绝 `end<=start`；有日期时由 timezone 转成 UTC 瞬间用于存储，DST gap/重复时间必须显式选 offset 或拒绝，不能假设每天 1440 个真实分钟。东京 demo 使用无日期相对天，所有 minute 为计划值，不冒充准确到站。
 

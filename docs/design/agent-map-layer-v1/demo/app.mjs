@@ -295,6 +295,7 @@ function move(sid, targetDayId) {
     stop_id: sid,
     target_day_id: targetDayId,
     target_index: day.stops.length,
+    order_policy: "optimize",
   });
 }
 $("undo").onclick = async () => {

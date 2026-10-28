@@ -323,6 +323,24 @@ export function createDomain(dir, baseURL) {
           if (op.target_index > target.stops.length) fail("VALIDATION_ERROR", "插入位置超出目标天");
           target.stops.splice(op.target_index, 0, found.stop);
           affected = [...new Set([found.day.day_id, target.day_id])];
+          if (op.order_policy === "optimize") {
+            for (const day of m.snapshot.days.filter((d) => affected.includes(d.day_id))) {
+              // Fixture-only heuristic: retain start anchor and every fixed time slot.
+              if (day.stops.some((s) => s.fixed_start_minute !== null) || day.stops.length < 3)
+                continue;
+              const ordered = [day.stops[0]],
+                rest = day.stops.slice(1);
+              while (rest.length) {
+                rest.sort(
+                  (a, b) =>
+                    distance(ordered.at(-1).coordinates, a.coordinates) -
+                    distance(ordered.at(-1).coordinates, b.coordinates),
+                );
+                ordered.push(rest.shift());
+              }
+              day.stops = ordered;
+            }
+          }
         }
         if (op.type === "reorder_stops") {
           const day = m.snapshot.days.find((d) => d.day_id === op.day_id);
