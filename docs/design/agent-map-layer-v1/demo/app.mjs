@@ -467,10 +467,13 @@ $("trace-button").onclick = () => {
   renderTrace();
   $("trace-dialog").showModal();
 };
+let lastMapSize = [1050, 780];
 function mapSize() {
   const r = $("map-viewport").getBoundingClientRect();
+  if (r.width < 1 || r.height < 1) return lastMapSize;
   const width = Math.max(1050, (780 * r.width) / r.height);
-  return [width, (width * r.height) / r.width];
+  lastMapSize = [width, (width * r.height) / r.width];
+  return lastMapSize;
 }
 function project([lng, lat]) {
   const world = 256 * 2 ** 13;
