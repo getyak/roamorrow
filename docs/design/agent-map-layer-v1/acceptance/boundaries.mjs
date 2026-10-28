@@ -326,7 +326,9 @@ export async function collectBoundaries({ outDir, runtimeFile, dir, envFile, pla
       .nth(initial.days.indexOf(target))
       .boundingBox();
     const drag = async () => {
-      await page.mouse.move(chosen.x, chosen.y);
+      const pin = await page.locator(`.pin[data-pin="${chosen.sid}"]`).boundingBox();
+      assert(pin, "drag source must be visible");
+      await page.mouse.move(pin.x + pin.width / 2, pin.y + pin.height / 2);
       await page.mouse.down();
       await page.mouse.move(drop.x + drop.width / 2, drop.y + drop.height / 2, { steps: 14 });
       await page.mouse.up();
@@ -342,6 +344,9 @@ export async function collectBoundaries({ outDir, runtimeFile, dir, envFile, pla
     await page.screenshot({ path: join(outDir, screenshot), fullPage: true });
     shots.push(screenshot);
     await control("fault", null);
+    // A failed pointer gesture selects the pin; dismiss its overlapping detail card before retry.
+    if (await page.locator(".close-selection").isVisible())
+      await page.locator(".close-selection").click();
     await drag();
     await page.waitForFunction(
       (v) => document.querySelector("#version").textContent !== `版本 ${v}`,
