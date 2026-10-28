@@ -61,3 +61,36 @@ test("third day must remain unchanged", () => {
   wrong.days[2].stops.push({ stop_id: "bad", coordinates: [139, 35] });
   assert.throws(() => assertMoveResult(before, wrong, intent, finished), /duplicated|unrelated/);
 });
+test("truncated model output is not a normal successful finish", async () => {
+  const { assertCompletedJourney } = await import("./integrity.mjs");
+  assert.throws(
+    () =>
+      assertCompletedJourney({
+        beforeEdit: before,
+        lastSnapshot: after,
+        expectedEdit: intent,
+        normalFinish: true,
+        finalMessage: "已移动…",
+        finishReason: "length",
+      }),
+    /finish_reason/,
+  );
+});
+test("stale afterEdit cannot hide later mutation of third day", async () => {
+  const { assertCompletedJourney } = await import("./integrity.mjs");
+  const changed = structuredClone(after);
+  changed.days[2].start_minute = 600;
+  assert.throws(
+    () =>
+      assertCompletedJourney({
+        beforeEdit: before,
+        afterEdit: after,
+        lastSnapshot: changed,
+        expectedEdit: intent,
+        normalFinish: true,
+        finalMessage: "已移动",
+        finishReason: "stop",
+      }),
+    /unrelated/,
+  );
+});

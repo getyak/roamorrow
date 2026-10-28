@@ -5,7 +5,11 @@ import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { network } from "./providers.mjs";
 import { modelSchema } from "./model-schema.mjs";
-import { assertRuntimeIdentity, assertResponseIdentity, assertMoveResult } from "./integrity.mjs";
+import {
+  assertRuntimeIdentity,
+  assertResponseIdentity,
+  assertCompletedJourney,
+} from "./integrity.mjs";
 import { writeReceipt, fileEvidenceReader } from "./evidence.mjs";
 import { candidateDigest, rubricHash, scoreReceipts, markdown } from "./score.mjs";
 const compact = (value) =>
@@ -84,7 +88,8 @@ export async function runAgent({
     failure = null,
     expectedEdit = null,
     normalFinish = false,
-    finalMessage = null;
+    finalMessage = null,
+    finishReason = null;
   try {
     for (let round = 0; round < maxRounds; round++) {
       const response = await network(
@@ -105,6 +110,9 @@ export async function runAgent({
       const payload = response.payload,
         message = payload.choices?.[0]?.message;
       if (!message) throw Error("模型未返回 message");
+      finishReason = payload.choices[0].finish_reason;
+      if (!["stop", "tool_calls"].includes(finishReason))
+        throw Error(`model finish_reason is incomplete: ${finishReason}`);
       apiRounds.push({
         round,
         model: payload.model,
@@ -182,12 +190,31 @@ export async function runAgent({
     }
     if (!shareURL || !beforeEdit || !afterEdit || !editSeen)
       throw Error("真实模型未在轮数预算内完成两段旅程");
-    assertMoveResult(beforeEdit, afterEdit, expectedEdit, { normalFinish, finalMessage });
+    assertCompletedJourney({
+      beforeEdit,
+      lastSnapshot,
+      expectedEdit,
+      normalFinish,
+      finalMessage,
+      finishReason,
+    });
+    afterEdit = structuredClone(lastSnapshot);
     if (candidateDigest() !== digest) throw Error("candidate source changed during run");
-    const read = await fetch(runtime.url + "/api/maps/" + lastSnapshot.map_id, {
+    const response = await fetch(runtime.url + "/api/maps/" + lastSnapshot.map_id, {
       headers: { Authorization: `Bearer ${runtime.bearer}` },
-    }).then((r) => r.json());
-    if (read.snapshot?.version !== lastSnapshot.version) throw Error("写后读版本不一致");
+    });
+    assertResponseIdentity(response.headers, runtime);
+    const read = await response.json();
+    if (JSON.stringify(read.snapshot) !== JSON.stringify(lastSnapshot))
+      throw Error("写后读快照不一致");
+    assertCompletedJourney({
+      beforeEdit,
+      lastSnapshot: read.snapshot,
+      expectedEdit,
+      normalFinish,
+      finalMessage,
+      finishReason,
+    });
   } catch (error) {
     failure = error.message;
   }

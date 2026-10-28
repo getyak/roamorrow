@@ -56,6 +56,7 @@ export function writeReceipt(
   const file = `${prefix}.assertions.json`;
   const document = {
     ...base,
+    finished_at: new Date().toISOString(),
     kind,
     trace,
     assertions: Object.fromEntries(
@@ -66,6 +67,7 @@ export function writeReceipt(
   writeFileSync(join(dir, file), bytes, { mode: 0o600 });
   const receipt = {
     ...base,
+    finished_at: document.finished_at,
     kind,
     meta,
     artifacts: {

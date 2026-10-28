@@ -42,3 +42,14 @@ export function assertMoveResult(before, after, expected, { normalFinish, finalM
       throw Error("edit changed an unrelated day");
   return true;
 }
+export function assertCompletedJourney({
+  beforeEdit,
+  lastSnapshot,
+  expectedEdit,
+  normalFinish,
+  finalMessage,
+  finishReason,
+}) {
+  if (finishReason !== "stop") throw Error("model finish_reason must be stop");
+  return assertMoveResult(beforeEdit, lastSnapshot, expectedEdit, { normalFinish, finalMessage });
+}
