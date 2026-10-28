@@ -1213,3 +1213,16 @@ body.interaction .workspace {
     min-height: 44px;
   }
 }
+
+.actual-route {
+  stroke-dasharray: none;
+  stroke-width: 4;
+  opacity: 0.9;
+}
+
+.stop-info {
+  min-height: 44px;
+}
+.drag-handle {
+  min-height: 44px;
+}

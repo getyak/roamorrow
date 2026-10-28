@@ -12,6 +12,12 @@ export async function startServer({
   port = 0,
   dir = join(tmpdir(), "roamorrow-map-layer-get294"),
   bearer = randomBytes(24).toString("hex"),
+  domainFactory = createDomain,
+  prepareTool = null,
+  scoped = false,
+  publicBaseURL = null,
+  extraBearers = {},
+  runtimeMetadata = null,
 } = {}) {
   mkdirSync(dir, { recursive: true });
   const secretPath = join(dir, "session-secret");
@@ -23,10 +29,16 @@ export async function startServer({
     createHash("sha256")
       .update(secret + s)
       .digest("hex");
-  let domain, baseURL;
+  let domain, baseURL, listenURL;
+  const quotas = new Map();
   const trace = [];
   const server = http.createServer(async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
+    if (runtimeMetadata) {
+      res.setHeader("X-Map-Candidate", runtimeMetadata.candidate_digest);
+      res.setHeader("X-Map-Revision", runtimeMetadata.source_revision);
+      res.setHeader("X-Map-Runtime", runtimeMetadata.runtime_id);
+    }
     res.setHeader("Referrer-Policy", "no-referrer");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
@@ -35,7 +47,13 @@ export async function startServer({
       res.end(JSON.stringify(value));
     };
     const host = req.headers.host;
-    if (![new URL(baseURL).host, `localhost:${new URL(baseURL).port}`].includes(host)) {
+    if (
+      ![
+        new URL(baseURL).host,
+        new URL(listenURL).host,
+        `localhost:${new URL(listenURL).port}`,
+      ].includes(host)
+    ) {
       json(403, { error: "invalid host" });
       return;
     }
@@ -52,6 +70,8 @@ export async function startServer({
       if (sig === sign(sub)) subject = sub;
     }
     if (req.headers.authorization === `Bearer ${bearer}`) subject = "fixture-api-owner";
+    for (const [token, sub] of Object.entries(extraBearers))
+      if (req.headers.authorization === `Bearer ${token}`) subject = sub;
     const ensureSession = () => {
       if (!subject) {
         subject = randomBytes(12).toString("hex");
@@ -69,7 +89,19 @@ export async function startServer({
         return;
       }
       if (req.method === "GET" && u.pathname === "/healthz") {
-        json(200, { ok: true, demo: true, protocol: "2025-11-25" });
+        json(200, { ok: true, demo: !scoped, protocol: "2025-11-25" });
+        return;
+      }
+      if (req.method === "POST" && u.pathname === "/api/session") {
+        if (!subject) {
+          json(401, { error: "scoped token required" });
+          return;
+        }
+        res.setHeader(
+          "Set-Cookie",
+          `map_demo=${subject}.${sign(subject)}; HttpOnly; SameSite=Strict; Path=/${publicBaseURL ? "; Secure" : ""}`,
+        );
+        json(200, { ok: true });
         return;
       }
       if (req.method === "GET" && u.pathname === "/contract.json") {
@@ -91,6 +123,10 @@ export async function startServer({
         return;
       }
       if (req.method === "POST" && u.pathname.startsWith("/api/fork/")) {
+        if (scoped && !subject) {
+          json(401, { error: "login required to fork" });
+          return;
+        }
         const result = domain.fork(u.pathname.split("/").at(-1), ensureSession());
         json(200, { ...result, can_edit: true });
         return;
@@ -197,10 +233,27 @@ export async function startServer({
           });
           return;
         }
+        if (scoped) {
+          const count = quotas.get(subject) ?? 0;
+          if (count >= 150) {
+            json(429, { error: "acceptance tool budget exhausted" });
+            return;
+          }
+          quotas.set(subject, count + 1);
+        }
         let result;
         const started = Date.now();
         try {
-          result = domain.call(name, args, subject, { fault: req.headers["x-demo-fault"] });
+          try {
+            validate(tool.inputSchema, args);
+          } catch (e) {
+            throw new DomainError("VALIDATION_ERROR", e.message);
+          }
+          if (scoped && req.headers["x-demo-fault"])
+            throw new DomainError("VALIDATION_ERROR", "public fault injection disabled");
+          if (args.map_id) domain.get(args.map_id, subject);
+          if (prepareTool) await prepareTool(name, args, subject, domain);
+          result = await domain.call(name, args, subject, { fault: req.headers["x-demo-fault"] });
         } catch (e) {
           if (!(e instanceof DomainError)) throw e;
           result = {
@@ -233,7 +286,7 @@ export async function startServer({
           /^\/(s|m)\/[\w-]+$/.test(u.pathname))
       ) {
         filename = "index.html";
-        if (u.pathname === "/" || u.pathname === "/interaction") ensureSession();
+        if (!scoped && (u.pathname === "/" || u.pathname === "/interaction")) ensureSession();
       }
       if (req.method === "GET" && filename) {
         const ext = filename.slice(filename.lastIndexOf("."));
@@ -258,11 +311,13 @@ export async function startServer({
     server.once("error", reject);
     server.listen(port, "127.0.0.1", resolve);
   });
-  baseURL = `http://127.0.0.1:${server.address().port}`;
-  domain = createDomain(dir, baseURL);
+  listenURL = `http://127.0.0.1:${server.address().port}`;
+  baseURL = publicBaseURL ?? listenURL;
+  domain = domainFactory(dir, baseURL);
   return {
     server,
     baseURL,
+    listenURL,
     bearer,
     dir,
     close: () => new Promise((resolve) => server.close(resolve)),

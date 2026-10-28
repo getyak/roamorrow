@@ -175,6 +175,12 @@ async function makeLink() {
 $("run").onclick = run;
 $("reset").onclick = run;
 function render() {
+  if (snapshot && !snapshot.demo) {
+    document.querySelector("h1").textContent = snapshot.title;
+    $("evidence-label").textContent = "真实地点 / OSRM 步行路网 / 营业日待核查";
+    $("reset").hidden = true;
+    $("chat-tab").hidden = true;
+  }
   $("empty-map").hidden = !!snapshot;
   $("day-rail").hidden = !snapshot;
   $("version").textContent = snapshot ? `版本 ${snapshot.version}` : "等待生成";
@@ -195,7 +201,7 @@ function render() {
   $("days").innerHTML = snapshot.days
     .map(
       (d) =>
-        `<section class="day day-drop" data-day="${d.day_id}" style="--day:${d.color}"><button class="day-heading" data-day-select="${d.day_id}" aria-label="查看第 ${d.day_index} 天"><span class="day-badge">${d.day_index}</span><strong>${themes[d.day_index - 1] ?? d.label}</strong><small>${d.stops.length} 个地点</small></button><div class="day-sub">${clock(d.start_minute)} 出发　交通 ${d.total_travel_minutes ?? "待核查"} 分钟${d.total_travel_minutes === null ? "" : "（估算）"}</div>${d.stops.map((s, i) => `<div class="stop-row ${s.stop_id === selected ? "selected" : ""}" data-stop="${s.stop_id}" draggable="${canEdit}"><span class="time">${clock(s.start_minute)}</span><button class="stop-info" data-select="${s.stop_id}" aria-label="${esc(s.name)}，第 ${d.day_index} 天，第 ${i + 1} 站"><strong>${i + 1}. ${esc(s.name)}</strong><small>停留 ${s.duration_minutes} 分钟</small></button><button class="drag-handle" data-select="${s.stop_id}" aria-label="调整${esc(s.name)}">⠿</button></div>`).join("") || '<div class="empty-day">这一天空出来了。加入一个想去的地方。</div>'}</section>`,
+        `<section class="day day-drop" data-day="${d.day_id}" style="--day:${d.color}"><button class="day-heading" data-day-select="${d.day_id}" aria-label="查看第 ${d.day_index} 天"><span class="day-badge">${d.day_index}</span><strong>${snapshot.demo ? (themes[d.day_index - 1] ?? d.label) : d.label}</strong><small>${d.stops.length} 个地点</small></button><div class="day-sub">${clock(d.start_minute)} 出发　交通 ${d.total_travel_minutes ?? "待核查"} 分钟${d.total_travel_minutes === null ? "" : "（估算）"}</div>${d.stops.map((s, i) => `<div class="stop-row ${s.stop_id === selected ? "selected" : ""}" data-stop="${s.stop_id}" draggable="${canEdit}"><span class="time">${clock(s.start_minute)}</span><button class="stop-info" data-select="${s.stop_id}" aria-label="${esc(s.name)}，第 ${d.day_index} 天，第 ${i + 1} 站"><strong>${i + 1}. ${esc(s.name)}</strong><small>停留 ${s.duration_minutes} 分钟</small></button><button class="drag-handle" data-select="${s.stop_id}" aria-label="调整${esc(s.name)}">⠿</button></div>`).join("") || '<div class="empty-day">这一天空出来了。加入一个想去的地方。</div>'}</section>`,
     )
     .join("");
   $("day-rail").innerHTML = snapshot.days
@@ -214,11 +220,27 @@ function render() {
     )
     .join("");
   $("routes").innerHTML = snapshot.days
-    .map(
-      (d) =>
-        `<polyline class="route-line" stroke="${d.color}" points="${d.stops.map((s) => project(s.coordinates).join(",")).join(" ")}"><title>${d.label}，示意连线，非真实导航</title></polyline>`,
+    .map((d) =>
+      snapshot.demo
+        ? `<polyline class="route-line" stroke="${d.color}" points="${d.stops.map((s) => project(s.coordinates).join(",")).join(" ")}"><title>${d.label}，示意连线</title></polyline>`
+        : d.legs
+            .filter((l) => l.geometry)
+            .map(
+              (l) =>
+                `<polyline class="route-line actual-route" stroke="${d.color}" points="${l.geometry.coordinates.map((p) => project(p).join(",")).join(" ")}"><title>${d.label}，OSRM 步行路网</title></polyline>`,
+            )
+            .join(""),
     )
     .join("");
+  if (!snapshot.demo && !document.getElementById("route-attribution")) {
+    const credit = document.createElement("a");
+    credit.id = "route-attribution";
+    credit.href = "https://www.openstreetmap.org/fixthemap";
+    credit.target = "_blank";
+    credit.rel = "noreferrer";
+    credit.textContent = "© OpenStreetMap / 修正地图";
+    document.querySelector(".map-evidence").append(credit);
+  }
   renderSelection();
 }
 function renderSelection() {
