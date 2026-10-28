@@ -24,6 +24,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
+  authorizeBriefRequest,
+  BRIEF_COOLDOWN_MS,
+  validateBriefInput,
+  validateBriefResponse,
+} from "../_shared/city-brief-contract.ts";
+import {
   tavilyQueries,
   buildEventsPrompt,
   buildKitPrompt,
@@ -54,8 +60,6 @@ const MAX_CANDIDATES = 18;
 const MAX_CANDIDATE_CHARS = 15_000;
 const MAX_RAWTEXT_CHARS = 1_200;
 const DEEPSEEK_MAX_TOKENS = 3_000;
-const COOLDOWN_EVENTS_MS = 72 * 60 * 60 * 1000; // 72h
-const COOLDOWN_KIT_MS = 240 * 60 * 60 * 1000; // 240h (10 days)
 const KIT_STALE_YELLOW_MS = 45 * 24 * 60 * 60 * 1000; // 45 days
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -83,6 +87,16 @@ interface RunOutcome {
   outputTokens: number;
   itemsWritten: number;
   error?: string;
+  receipt?: RunReceipt;
+}
+interface RunReceipt {
+  id: string;
+  city_code: string;
+  target: CompileTarget;
+  status: "ok" | "partial" | "failed";
+  items_written: number;
+  started_at: string;
+  finished_at: string;
 }
 
 // ─── Entry ───────────────────────────────────────────────────────────────────
@@ -96,30 +110,21 @@ Deno.serve(async (req: Request) => {
   const tavilyKey = Deno.env.get("TAVILY_API_KEY");
   const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
 
-  // 1. Auth — service-role bearer OR cron secret header.
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const bearer = authHeader.replace(/^Bearer /i, "");
-  const headerCronSecret = req.headers.get("x-cron-secret") ?? "";
-  const authOk =
-    (bearer.length > 0 && bearer === serviceKey) ||
-    (cronSecret != null && cronSecret.length > 0 && headerCronSecret === cronSecret);
-  if (!authOk) return json({ error: "unauthorized" }, 401);
-
-  if (!tavilyKey || !deepseekKey) return json({ error: "server misconfigured" }, 500);
-
-  // 2. Parse + validate input.
+  // Fail closed before database or provider work; no header or key is logged.
+  if (!authorizeBriefRequest(req.headers, serviceKey, cronSecret)) {
+    return json({ error: "unauthorized" }, 401);
+  }
   let body: RequestBody;
   try {
-    body = (await req.json()) as RequestBody;
+    body = validateBriefInput(await req.json());
   } catch {
-    return json({ error: "invalid json" }, 400);
+    return json({ error: "invalid bounded city brief request" }, 400);
   }
-  const cityCode = (body.city_code ?? "").toLowerCase().trim();
-  if (!cityCode) return json({ error: "city_code required" }, 400);
+  if (!tavilyKey || !deepseekKey || !supabaseUrl || !serviceKey) {
+    return json({ error: "server misconfigured" }, 500);
+  }
+  const cityCode = body.city_code;
   const target = body.target;
-  if (target !== "kit" && target !== "events" && target !== "both") {
-    return json({ error: "target must be kit|events|both" }, 400);
-  }
   const force = body.force === true;
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
@@ -147,8 +152,8 @@ Deno.serve(async (req: Request) => {
   for (const t of targets) {
     // 3. Cooldown check (unless forced).
     if (!force) {
-      const cooled = await withinCooldown(admin, cityCode, t);
-      if (cooled) {
+      const recent = await recentSuccessfulRun(admin, cityCode, t);
+      if (recent) {
         outcomes.push({
           target: t,
           status: "ok",
@@ -157,6 +162,7 @@ Deno.serve(async (req: Request) => {
           outputTokens: 0,
           itemsWritten: 0,
           error: "cooldown",
+          receipt: recent,
         });
         continue;
       }
@@ -180,7 +186,11 @@ Deno.serve(async (req: Request) => {
         error: (err as Error).message,
       };
     }
-    await writeRun(admin, cityCode, outcome, startedAt);
+    try {
+      outcome.receipt = await writeRun(admin, cityCode, outcome, startedAt);
+    } catch {
+      return json({ error: "city brief accounting could not be persisted" }, 503);
+    }
     outcomes.push(outcome);
   }
 
@@ -189,25 +199,49 @@ Deno.serve(async (req: Request) => {
 
 // ─── Cooldown ────────────────────────────────────────────────────────────────
 
-async function withinCooldown(
+async function recentSuccessfulRun(
   admin: SupabaseAdmin,
   cityCode: string,
   target: CompileTarget,
-): Promise<boolean> {
-  const { data } = await admin
+): Promise<RunReceipt | null> {
+  const { data, error } = await admin
     .from("city_brief_runs")
-    .select("started_at, status")
+    .select("id, city_code, target, status, items_written, started_at, finished_at")
     .eq("city_code", cityCode)
     .eq("target", target)
-    .in("status", ["ok", "partial"])
-    .order("started_at", { ascending: false })
+    .eq("status", "ok")
+    .is("error", null)
+    .order("finished_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (!data?.started_at) return false;
-  const last = Date.parse(data.started_at as string);
-  if (Number.isNaN(last)) return false;
-  const cooldownMs = target === "events" ? COOLDOWN_EVENTS_MS : COOLDOWN_KIT_MS;
-  return Date.now() - last < cooldownMs;
+  if (error) throw new Error("City brief accounting unavailable");
+  if (!data) return null;
+  const last = Date.parse(String(data.finished_at));
+  if (!Number.isFinite(last) || Date.now() - last >= BRIEF_COOLDOWN_MS[target]) return null;
+  try {
+    validateBriefResponse(
+      {
+        city_code: cityCode,
+        outcomes: [
+          {
+            target,
+            status: "ok",
+            searchCalls: 0,
+            promptTokens: 0,
+            outputTokens: 0,
+            itemsWritten: 0,
+            error: "cooldown",
+            receipt: data,
+          },
+        ],
+      },
+      cityCode,
+      target,
+    );
+    return data as RunReceipt;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Tavily ──────────────────────────────────────────────────────────────────
@@ -393,16 +427,28 @@ async function compileEvents(
   const { accepted, rejected } = validateEvents(parsed["events"], candidateURLs, now);
 
   // Fetch existing active events for this city for ±2-day normalized-name dedup.
-  const { data: existingRows } = await admin
+  const { data: existingRows, error: existingReadError } = await admin
     .from("city_events")
     .select("id, name, ends_at")
     .eq("city_code", city.cityCode)
     .eq("status", "active");
+  if (existingReadError) {
+    return {
+      target: "events",
+      status: "failed",
+      searchCalls: calls,
+      promptTokens: usage.prompt_tokens,
+      outputTokens: usage.completion_tokens,
+      itemsWritten: 0,
+      error: "Existing event deduplication read failed",
+    };
+  }
   const existing = (existingRows ?? []) as Array<{ id: string; name: string; ends_at: string }>;
 
   const model = resolveModelName();
   const nowIso = now.toISOString();
   let written = 0;
+  let writeFailures = 0;
 
   for (const ev of accepted) {
     const anchor = ev.startsAt ?? ev.endsAt;
@@ -418,32 +464,43 @@ async function compileEvents(
     );
     if (twin) id = twin.id;
 
-    const { error } = await admin.from("city_events").upsert(
-      {
-        id,
-        city_code: city.cityCode,
-        name: ev.name,
-        category: ev.category,
-        when_label: ev.whenLabel,
-        starts_at: ev.startsAt,
-        ends_at: ev.endsAt,
-        solo_score: ev.soloScore,
-        solo_note: ev.soloNote,
-        health: ev.health,
-        seen_label: ev.seenLabel,
-        limited_label: ev.limitedLabel,
-        source_url: ev.sourceUrl,
-        verified_at: nowIso,
-        model_name: model,
-        status: "active",
-      },
-      { onConflict: "id" },
-    );
-    if (!error) written++;
+    try {
+      const { data: saved, error } = await admin
+        .from("city_events")
+        .upsert(
+          {
+            id,
+            city_code: city.cityCode,
+            name: ev.name,
+            category: ev.category,
+            when_label: ev.whenLabel,
+            starts_at: ev.startsAt,
+            ends_at: ev.endsAt,
+            solo_score: ev.soloScore,
+            solo_note: ev.soloNote,
+            health: ev.health,
+            seen_label: ev.seenLabel,
+            limited_label: ev.limitedLabel,
+            source_url: ev.sourceUrl,
+            verified_at: nowIso,
+            model_name: model,
+            status: "active",
+          },
+          { onConflict: "id" },
+        )
+        .select("id");
+      if (error || !Array.isArray(saved) || saved.length !== 1 || saved[0]?.id !== id) {
+        writeFailures++;
+      } else {
+        written++;
+      }
+    } catch {
+      writeFailures++;
+    }
   }
 
   const status: RunOutcome["status"] =
-    written === 0 && accepted.length === 0 && rejected.length > 0 ? "partial" : "ok";
+    writeFailures > 0 || rejected.length > 0 ? (written > 0 ? "partial" : "failed") : "ok";
 
   return {
     target: "events",
@@ -452,6 +509,7 @@ async function compileEvents(
     promptTokens: usage.prompt_tokens,
     outputTokens: usage.completion_tokens,
     itemsWritten: written,
+    ...(writeFailures > 0 ? { error: "One or more event writes were not confirmed" } : {}),
   };
 }
 
@@ -467,10 +525,11 @@ async function compileKit(
 
   // Existing kit rows are what we re-verify. If none exist, there is nothing to
   // confirm/update — kit content is seeded first, then re-verified here.
-  const { data: kitRows } = await admin
+  const { data: kitRows, error: kitReadError } = await admin
     .from("city_kits")
     .select("section, name, body, lens_line, last_verified_at")
     .eq("city_code", city.cityCode);
+  if (kitReadError) throw new Error("Existing kit read failed");
   const current = (kitRows ?? []) as Array<{
     section: KitSection;
     name: string;
@@ -499,14 +558,27 @@ async function compileKit(
   const { candidates, calls } = await runTavily(tavilyKey, queries);
   if (candidates.length === 0) {
     // Still run the 45-day downgrade sweep even without fresh candidates.
-    await downgradeStaleKit(admin, city.cityCode, now);
+    let downgraded = 0;
+    try {
+      downgraded = await downgradeStaleKit(admin, city.cityCode, now);
+    } catch {
+      return {
+        target: "kit",
+        status: "failed",
+        searchCalls: calls,
+        promptTokens: 0,
+        outputTokens: 0,
+        itemsWritten: 0,
+        error: "Stale kit downgrade was not confirmed",
+      };
+    }
     return {
       target: "kit",
       status: "partial",
       searchCalls: calls,
       promptTokens: 0,
       outputTokens: 0,
-      itemsWritten: 0,
+      itemsWritten: downgraded,
       error: "no search candidates",
     };
   }
@@ -535,65 +607,96 @@ async function compileKit(
   }
 
   const candidateURLs = candidates.map((c) => c.url);
-  const { decisions } = validateKit(parsed["decisions"], candidateURLs);
+  const { decisions, rejected } = validateKit(parsed["decisions"], candidateURLs);
   const model = resolveModelName();
   const nowIso = now.toISOString();
   let written = 0;
+  let writeFailures = 0;
 
   for (const d of decisions) {
-    if (d.action === "omit") continue; // leave the row untouched
-
-    if (d.action === "confirm") {
-      // Bump freshness + health green; never touch link_url / body.
-      const { error } = await admin
-        .from("city_kits")
-        .update({ last_verified_at: nowIso, health: "green", model_name: model })
-        .eq("city_code", city.cityCode)
-        .eq("section", d.section);
-      if (!error) written++;
-      continue;
+    if (d.action === "omit") continue;
+    // Confirm preserves copy and links. Update never changes link_url.
+    const patch: Record<string, unknown> =
+      d.action === "confirm"
+        ? { last_verified_at: nowIso, health: "green", model_name: model }
+        : {
+            name: d.name,
+            body: d.body,
+            lens_line: d.lensLine,
+            health: d.health,
+            last_verified_at: nowIso,
+            model_name: model,
+          };
+    if (d.action === "update") {
+      if (d.linkLabel != null) patch.link_label = d.linkLabel;
+      if (Array.isArray(d.sources) && d.sources.length > 0) patch.sources = d.sources;
     }
-
-    // update — refresh copy; link_url is intentionally NOT set here.
-    const patch: Record<string, unknown> = {
-      name: d.name,
-      body: d.body,
-      lens_line: d.lensLine,
-      health: d.health,
-      last_verified_at: nowIso,
-      model_name: model,
-    };
-    if (d.linkLabel != null) patch.link_label = d.linkLabel;
-    if (Array.isArray(d.sources) && d.sources.length > 0) patch.sources = d.sources;
-    const { error } = await admin
-      .from("city_kits")
-      .update(patch)
-      .eq("city_code", city.cityCode)
-      .eq("section", d.section);
-    if (!error) written++;
+    try {
+      const { data: saved, error } = await admin
+        .from("city_kits")
+        .update(patch)
+        .eq("city_code", city.cityCode)
+        .eq("section", d.section)
+        .select("city_code, section");
+      if (
+        error ||
+        !Array.isArray(saved) ||
+        saved.length !== 1 ||
+        saved[0]?.city_code !== city.cityCode ||
+        saved[0]?.section !== d.section
+      ) {
+        writeFailures++;
+      } else {
+        written++;
+      }
+    } catch {
+      writeFailures++;
+    }
   }
 
-  // Downgrade any kit row not re-verified in 45 days to yellow.
-  await downgradeStaleKit(admin, city.cityCode, now);
-
+  // A sweep failure must not erase counts from earlier confirmed updates.
+  try {
+    written += await downgradeStaleKit(admin, city.cityCode, now);
+  } catch {
+    writeFailures++;
+  }
+  const status: RunOutcome["status"] =
+    writeFailures > 0 || rejected.length > 0 ? (written > 0 ? "partial" : "failed") : "ok";
   return {
     target: "kit",
-    status: "ok",
+    status,
     searchCalls: calls,
     promptTokens: usage.prompt_tokens,
     outputTokens: usage.completion_tokens,
     itemsWritten: written,
+    ...(writeFailures > 0 ? { error: "One or more kit writes were not confirmed" } : {}),
   };
 }
 
-async function downgradeStaleKit(admin: SupabaseAdmin, cityCode: string, now: Date): Promise<void> {
+async function downgradeStaleKit(
+  admin: SupabaseAdmin,
+  cityCode: string,
+  now: Date,
+): Promise<number> {
   const cutoff = new Date(now.getTime() - KIT_STALE_YELLOW_MS).toISOString();
-  await admin
+  const { data, error } = await admin
     .from("city_kits")
     .update({ health: "yellow" })
     .eq("city_code", cityCode)
     .in("health", ["green"])
-    .lt("last_verified_at", cutoff);
+    .lt("last_verified_at", cutoff)
+    .select("city_code, section");
+  if (
+    error ||
+    !Array.isArray(data) ||
+    data.some(
+      (row) =>
+        row.city_code !== cityCode || !["net", "money", "visa", "safety"].includes(row.section),
+    )
+  ) {
+    throw new Error("Stale kit downgrade was not confirmed");
+  }
+  return data.length;
 }
 
 // ─── Run accounting ──────────────────────────────────────────────────────────
@@ -603,19 +706,25 @@ async function writeRun(
   cityCode: string,
   outcome: RunOutcome,
   startedAt: string,
-): Promise<void> {
-  await admin.from("city_brief_runs").insert({
-    city_code: cityCode,
-    target: outcome.target,
-    status: outcome.status,
-    search_calls: outcome.searchCalls,
-    prompt_tokens: outcome.promptTokens,
-    output_tokens: outcome.outputTokens,
-    items_written: outcome.itemsWritten,
-    error: outcome.error ?? null,
-    started_at: startedAt,
-    finished_at: new Date().toISOString(),
-  });
+): Promise<RunReceipt> {
+  const { data, error } = await admin
+    .from("city_brief_runs")
+    .insert({
+      city_code: cityCode,
+      target: outcome.target,
+      status: outcome.status,
+      search_calls: outcome.searchCalls,
+      prompt_tokens: outcome.promptTokens,
+      output_tokens: outcome.outputTokens,
+      items_written: outcome.itemsWritten,
+      error: outcome.error ?? null,
+      started_at: startedAt,
+      finished_at: new Date().toISOString(),
+    })
+    .select("id, city_code, target, status, items_written, started_at, finished_at")
+    .single();
+  if (error || !data) throw new Error("City brief accounting write failed");
+  return data as RunReceipt;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -31,7 +31,7 @@ Supabase runtime.
 ## Deploy
 
 ```bash
-supabase functions deploy compile-city-brief
+supabase functions deploy compile-city-brief --project-ref <verified-production-project-ref> --no-verify-jwt
 ```
 
 ## Contract
@@ -97,3 +97,83 @@ supabase functions serve compile-city-brief --env-file infra/supabase/.env.local
 ```
 
 See `test.sh` — it curls twice; the second call should hit the cooldown.
+
+## Recovery and verification
+
+Before any secret, function or schema change, bind the production domain's
+Vercel project and current deployment to a nonempty Supabase origin fingerprint
+from supported public runtime evidence or an existing protected operator record.
+A local `.env` or CLI linked project alone is not production identity. Sensitive
+Vercel variable metadata contains no readable value: absence must remain unknown,
+never be compared as an empty URL. Stop external writes if identity is unproved.
+
+The compiler now admits only the existing `vte` city, a `kit` / `events` / `both`
+target and a boolean `force`. It rejects unauthorized or invalid requests before
+provider work. Missing/wrong cron secrets fail closed; a valid service-role
+bearer remains the existing administrative authentication option. Never give the
+service-role key to the GitHub schedule.
+
+Recover the existing cron secret from an authorized protected source. If no
+credential exists, inventory the current function and consumers, obtain approval
+of the concrete provisioning/rollback plan, then create a dedicated random value
+only in memory and send it over standard input to the confirmed backend and
+GitHub secret stores. Never save plaintext credentials in a file, command log,
+source, evidence artifact or PR. Restore the existing value on rollback when one
+existed; do not rotate unrelated provider/service credentials.
+
+Check existing `sc_cities`, `city_kits`, `city_events` and `city_brief_runs`
+metadata, RLS and service-role grants before activating the function. Their
+source is migration `0013_city_brief.sql`; inspect any missing object and its
+forward-only dependency separately. Do not blindly push every pending migration.
+The nearby lookup's additive `0020_nearby_experiences.sql` is a separate change;
+apply it before the new Web repository call, after confirming that the existing PostGIS geography type is in `extensions` and its GiST index is present. Stop if that prerequisite differs; never relocate an extension or rebuild a populated geography column as part of this recovery.
+The function introduces no table write grants or definer privilege.
+
+Every compiled target returns its persisted `city_brief_runs` receipt. A missing
+accounting write fails the request. Cooldown responses reference a completed,
+error-free `ok` run within the target's 72-hour / 240-hour freshness window.
+Failed/partial runs never satisfy cooldown. An HTTP 200 alone proves neither a
+completed refresh nor a persisted result.
+
+The workflow validates the structured response without printing raw provider
+content. It rejects failed/partial outcomes, missing or mismatched targets,
+missing persistence receipts and stale cooldowns. It distinguishes `refreshed`
+from `cooldown` in its safe summary. The normal repository test command and
+workflow both run the contract tests:
+
+```bash
+node --experimental-strip-types --test scripts/tests/city-brief-contract.test.mjs
+node --experimental-strip-types scripts/city-brief-refresh.mjs request vte events false
+node --experimental-strip-types scripts/city-brief-refresh.mjs verify <response-file> vte events
+```
+
+After review and normal CI/merge, activate only the confirmed existing service
+and invoke one bounded `force=false` target. Read back the same shared run's
+status, completed timestamp and item count. Keep real refresh, fresh cooldown,
+provider failure and missing data separate. The nearby `experiences` list is a
+different data product from `city_kits` / `city_events`; successful city-brief
+refresh cannot establish Chiang Mai experience coverage.
+
+## Confirm content writes before accounting success
+
+A successful `city_brief_runs` insert alone does not establish content persistence.
+Event upserts and kit confirm/update operations now request returned rows and count
+only exactly matching row receipts. Errors or a zero-row kit update make the target
+failed/partial and preserve counts from earlier confirmed writes. Failed event
+identity/dedup reads and kit reads stop the target. Stale-kit sweeps also return and
+count changed rows; a failed sweep cannot erase prior successful counts or leave
+an `ok` target.
+
+`packages/data/src/city-brief-handler.test.ts` invokes the actual registered Deno
+handler with the real locked Supabase SDK and controlled HTTP responses. All model
+and search responses are local fixtures, and unexpected network requests are
+blocked. It covers content-write failures, zero rows, partial success, read/sweep
+errors, accounting failure, and authentication/input rejection before I/O.
+
+The compiler's existing custom authentication contract uses `x-cron-secret`, not
+a user JWT. After confirming the actual per-function gateway setting, deploy this
+function only with `verify_jwt=false` (the CLI flag above), while retaining the
+handler's strict service-role-bearer/cron-secret authentication. Do not change the
+JWT setting of another function. Before any valid provider invocation, confirm
+missing/wrong credentials return 401 and invalid city/target/force returns 400 with
+no provider work. Production identity and review gates still apply.
