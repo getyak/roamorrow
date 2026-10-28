@@ -105,3 +105,31 @@ jobs:
 
       - name: vulnerability scan
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+
+  nearby-postgis:
+    name: Nearby PostGIS and RLS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify geographic lookup in an isolated database
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name roamorrow-geo-test --network none --cpus 0.5 --memory 256m \
+            --memory-swap 256m --shm-size 32m \
+            -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=postgres \
+            postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5 postgres -c shared_buffers=16MB \
+            -c max_connections=10 -c maintenance_work_mem=16MB
+          for attempt in $(seq 1 60); do
+            if docker exec roamorrow-geo-test pg_isready -U postgres >/dev/null 2>&1; then break; fi
+            if [ "$attempt" -eq 60 ]; then exit 1; fi
+            sleep 1
+          done
+          docker exec roamorrow-geo-test createdb -U postgres --template template0 roamorrow_geo_test
+          docker exec -i roamorrow-geo-test psql -U postgres -d roamorrow_geo_test -v ON_ERROR_STOP=1 < scripts/tests/nearby-postgis-bootstrap.sql
+          docker exec -i roamorrow-geo-test psql -U postgres -d roamorrow_geo_test -v ON_ERROR_STOP=1 < infra/supabase/migrations/0020_nearby_experiences.sql
+          docker exec -i roamorrow-geo-test psql -U postgres -d roamorrow_geo_test -v ON_ERROR_STOP=1 < infra/supabase/test_nearby_experiences.sql
+      - name: Remove only the isolated test container
+        if: always()
+        run: docker rm -f -v roamorrow-geo-test >/dev/null 2>&1 || true

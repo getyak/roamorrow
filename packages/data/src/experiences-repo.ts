@@ -27,12 +27,35 @@ export interface FindNearbyParams {
 export class ExperiencesRepo {
   constructor(private readonly client: SupabaseClient<Database>) {}
 
-  /**
-   * Find active experiences within `radiusMeters` of `center`, ordered by
-   * distance ascending. Uses PostGIS `ST_DWithin` via an RPC if available,
-   * otherwise falls back to a bounding-box scan + in-memory haversine.
-   */
+  /** Filter and order in PostgreSQL before limiting; the invoker RPC keeps RLS. */
   async findNearby(params: FindNearbyParams): Promise<Experience[]> {
+    const { center, radiusMeters, limit = 50, category, cityCode } = params;
+    const { data, error, status } = await this.client.rpc("find_nearby_experiences", {
+      p_longitude: center[0],
+      p_latitude: center[1],
+      p_radius_meters: radiusMeters,
+      p_limit: limit,
+      p_category: category ?? null,
+      p_city_code: cityCode ?? null,
+    });
+    // Main may deploy before this additive RPC reaches a self-hosted database.
+    // Only its explicit missing-signature response keeps the old bounded read.
+    if (
+      error?.code === "PGRST202" &&
+      status === 404 &&
+      /^Could not find (?:the function )?public\.find_nearby_experiences(?:\(|\s)/.test(
+        error.message,
+      )
+    ) {
+      return this.findNearbyLegacy(params);
+    }
+    if (error) throw new Error(`findNearby failed: ${error.message}`);
+    return ((data ?? []) as ExperienceRow[]).map(rowToExperience);
+  }
+
+  /** Compatibility until migration 0020 is applied; the original global cap
+   * can still omit nearby rows. This path does not claim the spatial fix. */
+  private async findNearbyLegacy(params: FindNearbyParams): Promise<Experience[]> {
     const { center, radiusMeters, limit = 50, category, cityCode } = params;
 
     // Bounding box around center — cheap pre-filter that narrows candidates

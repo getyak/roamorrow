@@ -70,3 +70,9 @@ pnpm tsx scripts/ai-structure-experiences.ts --city cmi --target 50
 # 6. Push to Supabase
 pnpm tsx scripts/seed-supabase.ts --city cmi
 ```
+
+## Nearby lookup rollout
+
+Web can merge before the additive `0020_nearby_experiences.sql` reaches an existing database. A successful new RPC always owns spatial filtering and ordering before the limit. Only HTTP 404 with PostgREST `PGRST202` explicitly naming `public.find_nearby_experiences` uses the previous bounded, RLS-protected table lookup. Permission failures, database errors, network failures and other missing functions still fail. [PostgREST documents PGRST202](https://docs.postgrest.org/en/v16/references/errors.html) as a missing or stale function signature.
+
+The compatibility path retains the old global-row cap and can still omit nearby rows; merging alone does not activate the spatial correction. Confirm the actual production database, review and apply only migration 0020, and verify the RPC there before claiming the nearby journey repaired. This change does not activate cron credentials, deploy the compiler or seed production data.

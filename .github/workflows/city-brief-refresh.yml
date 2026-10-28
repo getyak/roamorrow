@@ -47,6 +47,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Verify refresh response contracts
+        run: node --experimental-strip-types --test scripts/tests/city-brief-contract.test.mjs
       - name: Guard — required secrets present
         env:
           PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -103,16 +109,16 @@ jobs:
         run: |
           set -euo pipefail
           URL="https://${PROJECT_REF}.functions.supabase.co/compile-city-brief"
-          echo "→ POST $URL  (city=$CITY target=$TARGET force=$FORCE)"
-          HTTP_CODE=$(curl -sS -o /tmp/city-brief-resp.json -w "%{http_code}" \
+          node --experimental-strip-types scripts/city-brief-refresh.mjs request "$CITY" "$TARGET" "$FORCE" > /tmp/city-brief-request.json
+          echo "Invoking bounded city brief: city=$CITY target=$TARGET force=$FORCE"
+          HTTP_CODE=$(curl --connect-timeout 15 --max-time 300 -sS -o /tmp/city-brief-resp.json -w "%{http_code}" \
             -X POST "$URL" \
             -H "x-cron-secret: ${CRON_SECRET}" \
             -H "Content-Type: application/json" \
-            --data "{\"city_code\":\"${CITY}\",\"target\":\"${TARGET}\",\"force\":${FORCE}}")
+            --data-binary @/tmp/city-brief-request.json)
           echo "HTTP $HTTP_CODE"
-          cat /tmp/city-brief-resp.json
-          echo
           if [ "$HTTP_CODE" -ge 400 ]; then
             echo "::error::compile-city-brief returned HTTP $HTTP_CODE"
             exit 1
           fi
+          node --experimental-strip-types scripts/city-brief-refresh.mjs verify /tmp/city-brief-resp.json "$CITY" "$TARGET"
