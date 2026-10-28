@@ -402,6 +402,17 @@ export interface Database {
     // Required by @supabase/postgrest-js GenericSchema — keep empty if unused.
     Views: Record<string, never>;
     Functions: {
+      find_nearby_experiences: {
+        Args: {
+          p_longitude: number;
+          p_latitude: number;
+          p_radius_meters: number;
+          p_limit?: number;
+          p_category?: string | null;
+          p_city_code?: string | null;
+        };
+        Returns: ExperienceRow[];
+      };
       upsert_place_identity: {
         Args: {
           p_provider: string;
