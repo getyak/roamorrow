@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Coordinates, Experience, ExperienceCategory } from "@solo-compass/core";
+import { distanceMeters } from "@solo-compass/core";
 import { rowToExperience, type Database, type ExperienceRow } from "./db";
 
 export interface FindNearbyParams {
@@ -29,7 +30,7 @@ export class ExperiencesRepo {
   /** Filter and order in PostgreSQL before limiting; the invoker RPC keeps RLS. */
   async findNearby(params: FindNearbyParams): Promise<Experience[]> {
     const { center, radiusMeters, limit = 50, category, cityCode } = params;
-    const { data, error } = await this.client.rpc("find_nearby_experiences", {
+    const { data, error, status } = await this.client.rpc("find_nearby_experiences", {
       p_longitude: center[0],
       p_latitude: center[1],
       p_radius_meters: radiusMeters,
@@ -37,8 +38,66 @@ export class ExperiencesRepo {
       p_category: category ?? null,
       p_city_code: cityCode ?? null,
     });
+    // Main may deploy before this additive RPC reaches a self-hosted database.
+    // Only its explicit missing-signature response keeps the old bounded read.
+    if (
+      error?.code === "PGRST202" &&
+      status === 404 &&
+      /^Could not find (?:the function )?public\.find_nearby_experiences(?:\(|\s)/.test(
+        error.message,
+      )
+    ) {
+      return this.findNearbyLegacy(params);
+    }
     if (error) throw new Error(`findNearby failed: ${error.message}`);
     return ((data ?? []) as ExperienceRow[]).map(rowToExperience);
+  }
+
+  /** Compatibility until migration 0020 is applied; the original global cap
+   * can still omit nearby rows. This path does not claim the spatial fix. */
+  private async findNearbyLegacy(params: FindNearbyParams): Promise<Experience[]> {
+    const { center, radiusMeters, limit = 50, category, cityCode } = params;
+
+    // Bounding box around center — cheap pre-filter that narrows candidates
+    // without needing PostGIS RPC. Refined in-memory by haversine afterwards.
+    const [lng, lat] = center;
+    const latDelta = radiusMeters / 111_000; // ~111km per degree lat
+    const lngDelta = radiusMeters / (111_000 * Math.cos((lat * Math.PI) / 180));
+    const minLng = lng - lngDelta;
+    const maxLng = lng + lngDelta;
+    const minLat = lat - latDelta;
+    const maxLat = lat + latDelta;
+
+    let query = this.client
+      .from("experiences")
+      .select("*")
+      .eq("status", "active")
+      // ST_Intersects via geography ↔ envelope is cumbersome through PostgREST.
+      // Instead we cast the geography to GeoJSON and filter in-memory below.
+      .limit(Math.max(limit * 4, 100));
+
+    if (category) query = query.eq("category", category);
+    if (cityCode) query = query.eq("city_code", cityCode);
+
+    const { data, error } = await query;
+    if (error) throw new Error(`findNearby failed: ${error.message}`);
+    if (!data) return [];
+
+    const candidates: Array<{ exp: Experience; meters: number }> = [];
+    for (const row of data as ExperienceRow[]) {
+      const coords = row.location?.coordinates;
+      if (!coords) continue;
+      const [rowLng, rowLat] = coords;
+      // Bounding-box pre-filter
+      if (rowLng < minLng || rowLng > maxLng || rowLat < minLat || rowLat > maxLat) continue;
+      const exp = rowToExperience(row);
+      const meters = distanceMeters(center, exp.location.coordinates);
+      if (meters > radiusMeters) continue;
+      candidates.push({ exp, meters });
+    }
+
+    candidates.sort((a, b) => a.meters - b.meters);
+    return candidates.slice(0, limit).map((c) => c.exp);
   }
 
   /** Single experience by id. Returns null when missing. */
