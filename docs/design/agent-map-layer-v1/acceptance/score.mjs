@@ -141,8 +141,9 @@ export function scoreReceipts({
         }
       }
       const previous = verdicts.get(check.case_id);
-      // A failed replay in the same cohort cannot be hidden by another pass.
-      if (!previous || previous.status !== "fail")
+      // Fail is sticky; verified pass outranks missing coverage. Directory order is irrelevant.
+      const rank = { unverified: 0, pass: 1, fail: 2 };
+      if (!previous || rank[status] > rank[previous.status])
         verdicts.set(check.case_id, {
           status,
           detail,

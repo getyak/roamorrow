@@ -164,3 +164,9 @@ test("failed replay cannot hide under previous pass", () => {
   r.push({ ...r[0], checks: [{ ...r[0].checks[0], status: "fail" }] });
   assert.equal(run(r).accepted, false);
 });
+test("verified evidence supersedes missing coverage regardless of receipt enumeration order", () => {
+  const r = receipts();
+  const missing = { ...r[0], checks: [{ ...r[0].checks[0], status: "unverified" }] };
+  assert.equal(run([...r, missing]).verified_points, 100);
+  assert.equal(run([missing, ...r]).verified_points, 100);
+});
