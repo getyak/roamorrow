@@ -1,0 +1,1448 @@
+{
+  "scope": "Actual local HTTP fixture outputs. Host and generated IDs are illustrative; not Grok live evidence.",
+  "flow": [
+    "user: 规划东京 3 天",
+    "create_map",
+    "search_places",
+    "plot_places",
+    "build_route",
+    "get_map_link",
+    "user: 把浅草寺拖到第 2 天",
+    "update_day"
+  ],
+  "examples": [
+    {
+      "name": "create_map",
+      "input": {
+        "title": "东京 3 天",
+        "city": "Tokyo, Japan",
+        "day_count": 3,
+        "timezone": "Asia/Tokyo",
+        "idempotency_key": "create-once"
+      },
+      "output": {
+        "ok": true,
+        "data": {
+          "snapshot": {
+            "map_id": "map_c0ab5132-3ab",
+            "title": "东京 3 天",
+            "city": "Tokyo, Japan",
+            "timezone": "Asia/Tokyo",
+            "start_date": null,
+            "version": 1,
+            "status": "draft",
+            "demo": true,
+            "days": [
+              {
+                "day_id": "day_49900a0e-dd8",
+                "day_index": 1,
+                "label": "第 1 天",
+                "color": "#C4512D",
+                "transport_mode": "transit",
+                "allow_unknown_travel": false,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [],
+                "legs": [],
+                "total_travel_minutes": 0,
+                "ends_at_minute": 540,
+                "feasibility_status": "unknown"
+              },
+              {
+                "day_id": "day_7ca05ab7-27c",
+                "day_index": 2,
+                "label": "第 2 天",
+                "color": "#246D94",
+                "transport_mode": "transit",
+                "allow_unknown_travel": false,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [],
+                "legs": [],
+                "total_travel_minutes": 0,
+                "ends_at_minute": 540,
+                "feasibility_status": "unknown"
+              },
+              {
+                "day_id": "day_af88fcaf-a24",
+                "day_index": 3,
+                "label": "第 3 天",
+                "color": "#6E6C32",
+                "transport_mode": "transit",
+                "allow_unknown_travel": false,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [],
+                "legs": [],
+                "total_travel_minutes": 0,
+                "ends_at_minute": 540,
+                "feasibility_status": "unknown"
+              }
+            ]
+          },
+          "edit_url": "http://127.0.0.1:58895/m/map_c0ab5132-3ab",
+          "assumptions": [
+            "无出行日期时使用相对天",
+            "09:00–18:00 是计划值",
+            "地点为演示资料，交通为演示估算"
+          ]
+        },
+        "warnings": [
+          {
+            "code": "demo_fixture",
+            "message": "演示资料与估算；未核查营业日、实时交通或实际可达性"
+          }
+        ]
+      }
+    },
+    {
+      "name": "search_places",
+      "input": {
+        "map_id": "map_c0ab5132-3ab",
+        "queries": [
+          "浅草寺",
+          "隅田公园",
+          "上野公园",
+          "明治神宫",
+          "原宿",
+          "涩谷十字路口",
+          "筑地场外市场",
+          "银座",
+          "东京站"
+        ]
+      },
+      "output": {
+        "ok": true,
+        "data": {
+          "queries": [
+            {
+              "query": "浅草寺",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:sensoji",
+                  "name": "浅草寺",
+                  "coordinates": [139.7966, 35.7148],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.senso-ji.jp/english/",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 75
+                }
+              ]
+            },
+            {
+              "query": "隅田公园",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:sumida",
+                  "name": "隅田公园",
+                  "coordinates": [139.803, 35.7135],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.gotokyo.org/en/spot/1/index.html",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 45
+                }
+              ]
+            },
+            {
+              "query": "上野公园",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:ueno",
+                  "name": "上野公园",
+                  "coordinates": [139.7741, 35.7154],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.kensetsu.metro.tokyo.lg.jp/jimusho/toubuk/ueno/index_top.html",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 90
+                }
+              ]
+            },
+            {
+              "query": "明治神宫",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:meiji",
+                  "name": "明治神宫",
+                  "coordinates": [139.6993, 35.6764],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.meijijingu.or.jp/en/",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 75
+                }
+              ]
+            },
+            {
+              "query": "原宿",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:harajuku",
+                  "name": "原宿",
+                  "coordinates": [139.7027, 35.6702],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/harajuku/index.html",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 60
+                }
+              ]
+            },
+            {
+              "query": "涩谷十字路口",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:shibuya",
+                  "name": "涩谷十字路口",
+                  "coordinates": [139.7005, 35.6595],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/shibuya/index.html",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 45
+                }
+              ]
+            },
+            {
+              "query": "筑地场外市场",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:tsukiji",
+                  "name": "筑地场外市场",
+                  "coordinates": [139.7707, 35.6655],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.tsukiji.or.jp/english/",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 75
+                }
+              ]
+            },
+            {
+              "query": "银座",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:ginza",
+                  "name": "银座",
+                  "coordinates": [139.7649, 35.6717],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.gotokyo.org/en/destinations/central-tokyo/ginza/index.html",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 75
+                }
+              ]
+            },
+            {
+              "query": "东京站",
+              "status": "resolved",
+              "candidates": [
+                {
+                  "place_ref": "fixture:tokyo-station",
+                  "name": "东京站",
+                  "coordinates": [139.7671, 35.6812],
+                  "provider": "demo-fixture",
+                  "source_url": "https://www.tokyostationcity.com/en/",
+                  "evidence_status": "demo_fixture",
+                  "duration_minutes": 45
+                }
+              ]
+            }
+          ]
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "plot_places",
+      "input": {
+        "map_id": "map_c0ab5132-3ab",
+        "expected_version": 1,
+        "idempotency_key": "plot-once",
+        "items": [
+          {
+            "place_ref": "fixture:sensoji",
+            "day_id": "day_49900a0e-dd8",
+            "duration_minutes": 75
+          },
+          {
+            "place_ref": "fixture:sumida",
+            "day_id": "day_49900a0e-dd8",
+            "duration_minutes": 45
+          },
+          {
+            "place_ref": "fixture:ueno",
+            "day_id": "day_49900a0e-dd8",
+            "duration_minutes": 90
+          },
+          {
+            "place_ref": "fixture:meiji",
+            "day_id": "day_7ca05ab7-27c",
+            "duration_minutes": 75
+          },
+          {
+            "place_ref": "fixture:harajuku",
+            "day_id": "day_7ca05ab7-27c",
+            "duration_minutes": 60
+          },
+          {
+            "place_ref": "fixture:shibuya",
+            "day_id": "day_7ca05ab7-27c",
+            "duration_minutes": 45
+          },
+          {
+            "place_ref": "fixture:tsukiji",
+            "day_id": "day_af88fcaf-a24",
+            "duration_minutes": 75
+          },
+          {
+            "place_ref": "fixture:ginza",
+            "day_id": "day_af88fcaf-a24",
+            "duration_minutes": 75
+          },
+          {
+            "place_ref": "fixture:tokyo-station",
+            "day_id": "day_af88fcaf-a24",
+            "duration_minutes": 45
+          }
+        ]
+      },
+      "output": {
+        "ok": true,
+        "data": {
+          "snapshot": {
+            "map_id": "map_c0ab5132-3ab",
+            "title": "东京 3 天",
+            "city": "Tokyo, Japan",
+            "timezone": "Asia/Tokyo",
+            "start_date": null,
+            "version": 2,
+            "status": "draft",
+            "demo": true,
+            "days": [
+              {
+                "day_id": "day_49900a0e-dd8",
+                "day_index": 1,
+                "label": "第 1 天",
+                "color": "#C4512D",
+                "transport_mode": "transit",
+                "allow_unknown_travel": false,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_6e12345f-1ac",
+                    "place_ref": "fixture:sensoji",
+                    "name": "浅草寺",
+                    "coordinates": [139.7966, 35.7148],
+                    "source_url": "https://www.senso-ji.jp/english/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  },
+                  {
+                    "stop_id": "stop_712cb2f2-fd1",
+                    "place_ref": "fixture:sumida",
+                    "name": "隅田公园",
+                    "coordinates": [139.803, 35.7135],
+                    "source_url": "https://www.gotokyo.org/en/spot/1/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  },
+                  {
+                    "stop_id": "stop_2263b4ad-ebc",
+                    "place_ref": "fixture:ueno",
+                    "name": "上野公园",
+                    "coordinates": [139.7741, 35.7154],
+                    "source_url": "https://www.kensetsu.metro.tokyo.lg.jp/jimusho/toubuk/ueno/index_top.html",
+                    "experience_id": null,
+                    "duration_minutes": 90,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  }
+                ],
+                "legs": [],
+                "total_travel_minutes": 0,
+                "ends_at_minute": 540,
+                "feasibility_status": "unknown"
+              },
+              {
+                "day_id": "day_7ca05ab7-27c",
+                "day_index": 2,
+                "label": "第 2 天",
+                "color": "#246D94",
+                "transport_mode": "transit",
+                "allow_unknown_travel": false,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_5a2a8481-221",
+                    "place_ref": "fixture:meiji",
+                    "name": "明治神宫",
+                    "coordinates": [139.6993, 35.6764],
+                    "source_url": "https://www.meijijingu.or.jp/en/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  },
+                  {
+                    "stop_id": "stop_71a1e05b-df1",
+                    "place_ref": "fixture:harajuku",
+                    "name": "原宿",
+                    "coordinates": [139.7027, 35.6702],
+                    "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/harajuku/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 60,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  },
+                  {
+                    "stop_id": "stop_08702a9e-0ee",
+                    "place_ref": "fixture:shibuya",
+                    "name": "涩谷十字路口",
+                    "coordinates": [139.7005, 35.6595],
+                    "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/shibuya/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  }
+                ],
+                "legs": [],
+                "total_travel_minutes": 0,
+                "ends_at_minute": 540,
+                "feasibility_status": "unknown"
+              },
+              {
+                "day_id": "day_af88fcaf-a24",
+                "day_index": 3,
+                "label": "第 3 天",
+                "color": "#6E6C32",
+                "transport_mode": "transit",
+                "allow_unknown_travel": false,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_3c874b7c-fb8",
+                    "place_ref": "fixture:tsukiji",
+                    "name": "筑地场外市场",
+                    "coordinates": [139.7707, 35.6655],
+                    "source_url": "https://www.tsukiji.or.jp/english/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  },
+                  {
+                    "stop_id": "stop_bd2496f8-151",
+                    "place_ref": "fixture:ginza",
+                    "name": "银座",
+                    "coordinates": [139.7649, 35.6717],
+                    "source_url": "https://www.gotokyo.org/en/destinations/central-tokyo/ginza/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  },
+                  {
+                    "stop_id": "stop_4ae326ec-a4c",
+                    "place_ref": "fixture:tokyo-station",
+                    "name": "东京站",
+                    "coordinates": [139.7671, 35.6812],
+                    "source_url": "https://www.tokyostationcity.com/en/",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": null,
+                    "feasibility_status": "unknown",
+                    "start_minute": null,
+                    "end_minute": null
+                  }
+                ],
+                "legs": [],
+                "total_travel_minutes": 0,
+                "ends_at_minute": 540,
+                "feasibility_status": "unknown"
+              }
+            ]
+          },
+          "stop_ids": [
+            "stop_6e12345f-1ac",
+            "stop_712cb2f2-fd1",
+            "stop_2263b4ad-ebc",
+            "stop_5a2a8481-221",
+            "stop_71a1e05b-df1",
+            "stop_08702a9e-0ee",
+            "stop_3c874b7c-fb8",
+            "stop_bd2496f8-151",
+            "stop_4ae326ec-a4c"
+          ]
+        },
+        "warnings": [
+          {
+            "code": "demo_fixture",
+            "message": "演示资料与估算；未核查营业日、实时交通或实际可达性"
+          }
+        ]
+      }
+    },
+    {
+      "name": "build_route",
+      "input": {
+        "map_id": "map_c0ab5132-3ab",
+        "expected_version": 2,
+        "idempotency_key": "build-once",
+        "transport_mode": "transit",
+        "allow_unknown_travel": true,
+        "day_plans": [
+          {
+            "day_id": "day_49900a0e-dd8",
+            "stop_ids": ["stop_6e12345f-1ac", "stop_712cb2f2-fd1", "stop_2263b4ad-ebc"],
+            "start_minute": 540,
+            "end_minute": 1080,
+            "order_policy": "preserve"
+          },
+          {
+            "day_id": "day_7ca05ab7-27c",
+            "stop_ids": ["stop_5a2a8481-221", "stop_71a1e05b-df1", "stop_08702a9e-0ee"],
+            "start_minute": 540,
+            "end_minute": 1080,
+            "order_policy": "preserve"
+          },
+          {
+            "day_id": "day_af88fcaf-a24",
+            "stop_ids": ["stop_3c874b7c-fb8", "stop_bd2496f8-151", "stop_4ae326ec-a4c"],
+            "start_minute": 540,
+            "end_minute": 1080,
+            "order_policy": "preserve"
+          }
+        ]
+      },
+      "output": {
+        "ok": true,
+        "data": {
+          "snapshot": {
+            "map_id": "map_c0ab5132-3ab",
+            "title": "东京 3 天",
+            "city": "Tokyo, Japan",
+            "timezone": "Asia/Tokyo",
+            "start_date": null,
+            "version": 3,
+            "status": "ready_with_warnings",
+            "demo": true,
+            "days": [
+              {
+                "day_id": "day_49900a0e-dd8",
+                "day_index": 1,
+                "label": "第 1 天",
+                "color": "#C4512D",
+                "transport_mode": "transit",
+                "allow_unknown_travel": true,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_6e12345f-1ac",
+                    "place_ref": "fixture:sensoji",
+                    "name": "浅草寺",
+                    "coordinates": [139.7966, 35.7148],
+                    "source_url": "https://www.senso-ji.jp/english/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 540,
+                    "feasibility_status": "unknown",
+                    "start_minute": 540,
+                    "end_minute": 615
+                  },
+                  {
+                    "stop_id": "stop_712cb2f2-fd1",
+                    "place_ref": "fixture:sumida",
+                    "name": "隅田公园",
+                    "coordinates": [139.803, 35.7135],
+                    "source_url": "https://www.gotokyo.org/en/spot/1/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 626,
+                    "feasibility_status": "unknown",
+                    "start_minute": 626,
+                    "end_minute": 671
+                  },
+                  {
+                    "stop_id": "stop_2263b4ad-ebc",
+                    "place_ref": "fixture:ueno",
+                    "name": "上野公园",
+                    "coordinates": [139.7741, 35.7154],
+                    "source_url": "https://www.kensetsu.metro.tokyo.lg.jp/jimusho/toubuk/ueno/index_top.html",
+                    "experience_id": null,
+                    "duration_minutes": 90,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 691,
+                    "feasibility_status": "unknown",
+                    "start_minute": 691,
+                    "end_minute": 781
+                  }
+                ],
+                "legs": [
+                  {
+                    "from_stop_id": "stop_6e12345f-1ac",
+                    "to_stop_id": "stop_712cb2f2-fd1",
+                    "mode": "transit",
+                    "duration_minutes": 11,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  },
+                  {
+                    "from_stop_id": "stop_712cb2f2-fd1",
+                    "to_stop_id": "stop_2263b4ad-ebc",
+                    "mode": "transit",
+                    "duration_minutes": 20,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  }
+                ],
+                "total_travel_minutes": 31,
+                "ends_at_minute": 781,
+                "feasibility_status": "unknown"
+              },
+              {
+                "day_id": "day_7ca05ab7-27c",
+                "day_index": 2,
+                "label": "第 2 天",
+                "color": "#246D94",
+                "transport_mode": "transit",
+                "allow_unknown_travel": true,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_5a2a8481-221",
+                    "place_ref": "fixture:meiji",
+                    "name": "明治神宫",
+                    "coordinates": [139.6993, 35.6764],
+                    "source_url": "https://www.meijijingu.or.jp/en/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 540,
+                    "feasibility_status": "unknown",
+                    "start_minute": 540,
+                    "end_minute": 615
+                  },
+                  {
+                    "stop_id": "stop_71a1e05b-df1",
+                    "place_ref": "fixture:harajuku",
+                    "name": "原宿",
+                    "coordinates": [139.7027, 35.6702],
+                    "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/harajuku/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 60,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 627,
+                    "feasibility_status": "unknown",
+                    "start_minute": 627,
+                    "end_minute": 687
+                  },
+                  {
+                    "stop_id": "stop_08702a9e-0ee",
+                    "place_ref": "fixture:shibuya",
+                    "name": "涩谷十字路口",
+                    "coordinates": [139.7005, 35.6595],
+                    "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/shibuya/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 701,
+                    "feasibility_status": "unknown",
+                    "start_minute": 701,
+                    "end_minute": 746
+                  }
+                ],
+                "legs": [
+                  {
+                    "from_stop_id": "stop_5a2a8481-221",
+                    "to_stop_id": "stop_71a1e05b-df1",
+                    "mode": "transit",
+                    "duration_minutes": 12,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  },
+                  {
+                    "from_stop_id": "stop_71a1e05b-df1",
+                    "to_stop_id": "stop_08702a9e-0ee",
+                    "mode": "transit",
+                    "duration_minutes": 14,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  }
+                ],
+                "total_travel_minutes": 26,
+                "ends_at_minute": 746,
+                "feasibility_status": "unknown"
+              },
+              {
+                "day_id": "day_af88fcaf-a24",
+                "day_index": 3,
+                "label": "第 3 天",
+                "color": "#6E6C32",
+                "transport_mode": "transit",
+                "allow_unknown_travel": true,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_3c874b7c-fb8",
+                    "place_ref": "fixture:tsukiji",
+                    "name": "筑地场外市场",
+                    "coordinates": [139.7707, 35.6655],
+                    "source_url": "https://www.tsukiji.or.jp/english/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 540,
+                    "feasibility_status": "unknown",
+                    "start_minute": 540,
+                    "end_minute": 615
+                  },
+                  {
+                    "stop_id": "stop_bd2496f8-151",
+                    "place_ref": "fixture:ginza",
+                    "name": "银座",
+                    "coordinates": [139.7649, 35.6717],
+                    "source_url": "https://www.gotokyo.org/en/destinations/central-tokyo/ginza/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 627,
+                    "feasibility_status": "unknown",
+                    "start_minute": 627,
+                    "end_minute": 702
+                  },
+                  {
+                    "stop_id": "stop_4ae326ec-a4c",
+                    "place_ref": "fixture:tokyo-station",
+                    "name": "东京站",
+                    "coordinates": [139.7671, 35.6812],
+                    "source_url": "https://www.tokyostationcity.com/en/",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 715,
+                    "feasibility_status": "unknown",
+                    "start_minute": 715,
+                    "end_minute": 760
+                  }
+                ],
+                "legs": [
+                  {
+                    "from_stop_id": "stop_3c874b7c-fb8",
+                    "to_stop_id": "stop_bd2496f8-151",
+                    "mode": "transit",
+                    "duration_minutes": 12,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  },
+                  {
+                    "from_stop_id": "stop_bd2496f8-151",
+                    "to_stop_id": "stop_4ae326ec-a4c",
+                    "mode": "transit",
+                    "duration_minutes": 13,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  }
+                ],
+                "total_travel_minutes": 25,
+                "ends_at_minute": 760,
+                "feasibility_status": "unknown"
+              }
+            ]
+          },
+          "affected_day_ids": ["day_49900a0e-dd8", "day_7ca05ab7-27c", "day_af88fcaf-a24"]
+        },
+        "warnings": [
+          {
+            "code": "demo_fixture",
+            "message": "演示资料与估算；未核查营业日、实时交通或实际可达性"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get_map_link",
+      "input": {
+        "map_id": "map_c0ab5132-3ab",
+        "expected_version": 3,
+        "idempotency_key": "share-once",
+        "expires_in_days": 7,
+        "visible_stop_ids": [
+          "stop_6e12345f-1ac",
+          "stop_712cb2f2-fd1",
+          "stop_2263b4ad-ebc",
+          "stop_5a2a8481-221",
+          "stop_71a1e05b-df1",
+          "stop_08702a9e-0ee",
+          "stop_3c874b7c-fb8",
+          "stop_bd2496f8-151",
+          "stop_4ae326ec-a4c"
+        ]
+      },
+      "output": {
+        "ok": true,
+        "data": {
+          "share_url": "http://127.0.0.1:58895/s/JHpuwQD7ws4iagFiYtP5Cz_I",
+          "edit_url": "http://127.0.0.1:58895/m/map_c0ab5132-3ab",
+          "expires_at": "2026-11-04T16:50:14.434Z",
+          "map_version": 3,
+          "access": "view"
+        },
+        "warnings": []
+      }
+    },
+    {
+      "name": "update_day",
+      "input": {
+        "map_id": "map_c0ab5132-3ab",
+        "expected_version": 3,
+        "idempotency_key": "move-once",
+        "dry_run": false,
+        "operation": {
+          "type": "move_stop",
+          "stop_id": "stop_6e12345f-1ac",
+          "target_day_id": "day_7ca05ab7-27c",
+          "target_index": 3
+        }
+      },
+      "output": {
+        "ok": true,
+        "data": {
+          "snapshot": {
+            "map_id": "map_c0ab5132-3ab",
+            "title": "东京 3 天",
+            "city": "Tokyo, Japan",
+            "timezone": "Asia/Tokyo",
+            "start_date": null,
+            "version": 4,
+            "status": "ready_with_warnings",
+            "demo": true,
+            "days": [
+              {
+                "day_id": "day_49900a0e-dd8",
+                "day_index": 1,
+                "label": "第 1 天",
+                "color": "#C4512D",
+                "transport_mode": "transit",
+                "allow_unknown_travel": true,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_712cb2f2-fd1",
+                    "place_ref": "fixture:sumida",
+                    "name": "隅田公园",
+                    "coordinates": [139.803, 35.7135],
+                    "source_url": "https://www.gotokyo.org/en/spot/1/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 540,
+                    "feasibility_status": "unknown",
+                    "start_minute": 540,
+                    "end_minute": 585
+                  },
+                  {
+                    "stop_id": "stop_2263b4ad-ebc",
+                    "place_ref": "fixture:ueno",
+                    "name": "上野公园",
+                    "coordinates": [139.7741, 35.7154],
+                    "source_url": "https://www.kensetsu.metro.tokyo.lg.jp/jimusho/toubuk/ueno/index_top.html",
+                    "experience_id": null,
+                    "duration_minutes": 90,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 605,
+                    "feasibility_status": "unknown",
+                    "start_minute": 605,
+                    "end_minute": 695
+                  }
+                ],
+                "legs": [
+                  {
+                    "from_stop_id": "stop_712cb2f2-fd1",
+                    "to_stop_id": "stop_2263b4ad-ebc",
+                    "mode": "transit",
+                    "duration_minutes": 20,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  }
+                ],
+                "total_travel_minutes": 20,
+                "ends_at_minute": 695,
+                "feasibility_status": "unknown"
+              },
+              {
+                "day_id": "day_7ca05ab7-27c",
+                "day_index": 2,
+                "label": "第 2 天",
+                "color": "#246D94",
+                "transport_mode": "transit",
+                "allow_unknown_travel": true,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_5a2a8481-221",
+                    "place_ref": "fixture:meiji",
+                    "name": "明治神宫",
+                    "coordinates": [139.6993, 35.6764],
+                    "source_url": "https://www.meijijingu.or.jp/en/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 540,
+                    "feasibility_status": "unknown",
+                    "start_minute": 540,
+                    "end_minute": 615
+                  },
+                  {
+                    "stop_id": "stop_71a1e05b-df1",
+                    "place_ref": "fixture:harajuku",
+                    "name": "原宿",
+                    "coordinates": [139.7027, 35.6702],
+                    "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/harajuku/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 60,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 627,
+                    "feasibility_status": "unknown",
+                    "start_minute": 627,
+                    "end_minute": 687
+                  },
+                  {
+                    "stop_id": "stop_08702a9e-0ee",
+                    "place_ref": "fixture:shibuya",
+                    "name": "涩谷十字路口",
+                    "coordinates": [139.7005, 35.6595],
+                    "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/shibuya/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 701,
+                    "feasibility_status": "unknown",
+                    "start_minute": 701,
+                    "end_minute": 746
+                  },
+                  {
+                    "stop_id": "stop_6e12345f-1ac",
+                    "place_ref": "fixture:sensoji",
+                    "name": "浅草寺",
+                    "coordinates": [139.7966, 35.7148],
+                    "source_url": "https://www.senso-ji.jp/english/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 801,
+                    "feasibility_status": "unknown",
+                    "start_minute": 801,
+                    "end_minute": 876
+                  }
+                ],
+                "legs": [
+                  {
+                    "from_stop_id": "stop_5a2a8481-221",
+                    "to_stop_id": "stop_71a1e05b-df1",
+                    "mode": "transit",
+                    "duration_minutes": 12,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  },
+                  {
+                    "from_stop_id": "stop_71a1e05b-df1",
+                    "to_stop_id": "stop_08702a9e-0ee",
+                    "mode": "transit",
+                    "duration_minutes": 14,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  },
+                  {
+                    "from_stop_id": "stop_08702a9e-0ee",
+                    "to_stop_id": "stop_6e12345f-1ac",
+                    "mode": "transit",
+                    "duration_minutes": 55,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  }
+                ],
+                "total_travel_minutes": 81,
+                "ends_at_minute": 876,
+                "feasibility_status": "unknown"
+              },
+              {
+                "day_id": "day_af88fcaf-a24",
+                "day_index": 3,
+                "label": "第 3 天",
+                "color": "#6E6C32",
+                "transport_mode": "transit",
+                "allow_unknown_travel": true,
+                "start_minute": 540,
+                "end_minute": 1080,
+                "stops": [
+                  {
+                    "stop_id": "stop_3c874b7c-fb8",
+                    "place_ref": "fixture:tsukiji",
+                    "name": "筑地场外市场",
+                    "coordinates": [139.7707, 35.6655],
+                    "source_url": "https://www.tsukiji.or.jp/english/",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 540,
+                    "feasibility_status": "unknown",
+                    "start_minute": 540,
+                    "end_minute": 615
+                  },
+                  {
+                    "stop_id": "stop_bd2496f8-151",
+                    "place_ref": "fixture:ginza",
+                    "name": "银座",
+                    "coordinates": [139.7649, 35.6717],
+                    "source_url": "https://www.gotokyo.org/en/destinations/central-tokyo/ginza/index.html",
+                    "experience_id": null,
+                    "duration_minutes": 75,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 627,
+                    "feasibility_status": "unknown",
+                    "start_minute": 627,
+                    "end_minute": 702
+                  },
+                  {
+                    "stop_id": "stop_4ae326ec-a4c",
+                    "place_ref": "fixture:tokyo-station",
+                    "name": "东京站",
+                    "coordinates": [139.7671, 35.6812],
+                    "source_url": "https://www.tokyostationcity.com/en/",
+                    "experience_id": null,
+                    "duration_minutes": 45,
+                    "locked_day_id": null,
+                    "fixed_start_minute": null,
+                    "arrival_minute": 715,
+                    "feasibility_status": "unknown",
+                    "start_minute": 715,
+                    "end_minute": 760
+                  }
+                ],
+                "legs": [
+                  {
+                    "from_stop_id": "stop_3c874b7c-fb8",
+                    "to_stop_id": "stop_bd2496f8-151",
+                    "mode": "transit",
+                    "duration_minutes": 12,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  },
+                  {
+                    "from_stop_id": "stop_bd2496f8-151",
+                    "to_stop_id": "stop_4ae326ec-a4c",
+                    "mode": "transit",
+                    "duration_minutes": 13,
+                    "evidence_status": "demo_estimate",
+                    "geometry_status": "schematic"
+                  }
+                ],
+                "total_travel_minutes": 25,
+                "ends_at_minute": 760,
+                "feasibility_status": "unknown"
+              }
+            ]
+          },
+          "affected_day_ids": ["day_49900a0e-dd8", "day_7ca05ab7-27c"],
+          "before": [
+            {
+              "day_id": "day_49900a0e-dd8",
+              "day_index": 1,
+              "label": "第 1 天",
+              "color": "#C4512D",
+              "transport_mode": "transit",
+              "allow_unknown_travel": true,
+              "start_minute": 540,
+              "end_minute": 1080,
+              "stops": [
+                {
+                  "stop_id": "stop_6e12345f-1ac",
+                  "place_ref": "fixture:sensoji",
+                  "name": "浅草寺",
+                  "coordinates": [139.7966, 35.7148],
+                  "source_url": "https://www.senso-ji.jp/english/",
+                  "experience_id": null,
+                  "duration_minutes": 75,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 540,
+                  "feasibility_status": "unknown",
+                  "start_minute": 540,
+                  "end_minute": 615
+                },
+                {
+                  "stop_id": "stop_712cb2f2-fd1",
+                  "place_ref": "fixture:sumida",
+                  "name": "隅田公园",
+                  "coordinates": [139.803, 35.7135],
+                  "source_url": "https://www.gotokyo.org/en/spot/1/index.html",
+                  "experience_id": null,
+                  "duration_minutes": 45,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 626,
+                  "feasibility_status": "unknown",
+                  "start_minute": 626,
+                  "end_minute": 671
+                },
+                {
+                  "stop_id": "stop_2263b4ad-ebc",
+                  "place_ref": "fixture:ueno",
+                  "name": "上野公园",
+                  "coordinates": [139.7741, 35.7154],
+                  "source_url": "https://www.kensetsu.metro.tokyo.lg.jp/jimusho/toubuk/ueno/index_top.html",
+                  "experience_id": null,
+                  "duration_minutes": 90,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 691,
+                  "feasibility_status": "unknown",
+                  "start_minute": 691,
+                  "end_minute": 781
+                }
+              ],
+              "legs": [
+                {
+                  "from_stop_id": "stop_6e12345f-1ac",
+                  "to_stop_id": "stop_712cb2f2-fd1",
+                  "mode": "transit",
+                  "duration_minutes": 11,
+                  "evidence_status": "demo_estimate",
+                  "geometry_status": "schematic"
+                },
+                {
+                  "from_stop_id": "stop_712cb2f2-fd1",
+                  "to_stop_id": "stop_2263b4ad-ebc",
+                  "mode": "transit",
+                  "duration_minutes": 20,
+                  "evidence_status": "demo_estimate",
+                  "geometry_status": "schematic"
+                }
+              ],
+              "total_travel_minutes": 31,
+              "ends_at_minute": 781,
+              "feasibility_status": "unknown"
+            },
+            {
+              "day_id": "day_7ca05ab7-27c",
+              "day_index": 2,
+              "label": "第 2 天",
+              "color": "#246D94",
+              "transport_mode": "transit",
+              "allow_unknown_travel": true,
+              "start_minute": 540,
+              "end_minute": 1080,
+              "stops": [
+                {
+                  "stop_id": "stop_5a2a8481-221",
+                  "place_ref": "fixture:meiji",
+                  "name": "明治神宫",
+                  "coordinates": [139.6993, 35.6764],
+                  "source_url": "https://www.meijijingu.or.jp/en/",
+                  "experience_id": null,
+                  "duration_minutes": 75,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 540,
+                  "feasibility_status": "unknown",
+                  "start_minute": 540,
+                  "end_minute": 615
+                },
+                {
+                  "stop_id": "stop_71a1e05b-df1",
+                  "place_ref": "fixture:harajuku",
+                  "name": "原宿",
+                  "coordinates": [139.7027, 35.6702],
+                  "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/harajuku/index.html",
+                  "experience_id": null,
+                  "duration_minutes": 60,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 627,
+                  "feasibility_status": "unknown",
+                  "start_minute": 627,
+                  "end_minute": 687
+                },
+                {
+                  "stop_id": "stop_08702a9e-0ee",
+                  "place_ref": "fixture:shibuya",
+                  "name": "涩谷十字路口",
+                  "coordinates": [139.7005, 35.6595],
+                  "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/shibuya/index.html",
+                  "experience_id": null,
+                  "duration_minutes": 45,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 701,
+                  "feasibility_status": "unknown",
+                  "start_minute": 701,
+                  "end_minute": 746
+                }
+              ],
+              "legs": [
+                {
+                  "from_stop_id": "stop_5a2a8481-221",
+                  "to_stop_id": "stop_71a1e05b-df1",
+                  "mode": "transit",
+                  "duration_minutes": 12,
+                  "evidence_status": "demo_estimate",
+                  "geometry_status": "schematic"
+                },
+                {
+                  "from_stop_id": "stop_71a1e05b-df1",
+                  "to_stop_id": "stop_08702a9e-0ee",
+                  "mode": "transit",
+                  "duration_minutes": 14,
+                  "evidence_status": "demo_estimate",
+                  "geometry_status": "schematic"
+                }
+              ],
+              "total_travel_minutes": 26,
+              "ends_at_minute": 746,
+              "feasibility_status": "unknown"
+            }
+          ],
+          "after": [
+            {
+              "day_id": "day_49900a0e-dd8",
+              "day_index": 1,
+              "label": "第 1 天",
+              "color": "#C4512D",
+              "transport_mode": "transit",
+              "allow_unknown_travel": true,
+              "start_minute": 540,
+              "end_minute": 1080,
+              "stops": [
+                {
+                  "stop_id": "stop_712cb2f2-fd1",
+                  "place_ref": "fixture:sumida",
+                  "name": "隅田公园",
+                  "coordinates": [139.803, 35.7135],
+                  "source_url": "https://www.gotokyo.org/en/spot/1/index.html",
+                  "experience_id": null,
+                  "duration_minutes": 45,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 540,
+                  "feasibility_status": "unknown",
+                  "start_minute": 540,
+                  "end_minute": 585
+                },
+                {
+                  "stop_id": "stop_2263b4ad-ebc",
+                  "place_ref": "fixture:ueno",
+                  "name": "上野公园",
+                  "coordinates": [139.7741, 35.7154],
+                  "source_url": "https://www.kensetsu.metro.tokyo.lg.jp/jimusho/toubuk/ueno/index_top.html",
+                  "experience_id": null,
+                  "duration_minutes": 90,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 605,
+                  "feasibility_status": "unknown",
+                  "start_minute": 605,
+                  "end_minute": 695
+                }
+              ],
+              "legs": [
+                {
+                  "from_stop_id": "stop_712cb2f2-fd1",
+                  "to_stop_id": "stop_2263b4ad-ebc",
+                  "mode": "transit",
+                  "duration_minutes": 20,
+                  "evidence_status": "demo_estimate",
+                  "geometry_status": "schematic"
+                }
+              ],
+              "total_travel_minutes": 20,
+              "ends_at_minute": 695,
+              "feasibility_status": "unknown"
+            },
+            {
+              "day_id": "day_7ca05ab7-27c",
+              "day_index": 2,
+              "label": "第 2 天",
+              "color": "#246D94",
+              "transport_mode": "transit",
+              "allow_unknown_travel": true,
+              "start_minute": 540,
+              "end_minute": 1080,
+              "stops": [
+                {
+                  "stop_id": "stop_5a2a8481-221",
+                  "place_ref": "fixture:meiji",
+                  "name": "明治神宫",
+                  "coordinates": [139.6993, 35.6764],
+                  "source_url": "https://www.meijijingu.or.jp/en/",
+                  "experience_id": null,
+                  "duration_minutes": 75,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 540,
+                  "feasibility_status": "unknown",
+                  "start_minute": 540,
+                  "end_minute": 615
+                },
+                {
+                  "stop_id": "stop_71a1e05b-df1",
+                  "place_ref": "fixture:harajuku",
+                  "name": "原宿",
+                  "coordinates": [139.7027, 35.6702],
+                  "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/harajuku/index.html",
+                  "experience_id": null,
+                  "duration_minutes": 60,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 627,
+                  "feasibility_status": "unknown",
+                  "start_minute": 627,
+                  "end_minute": 687
+                },
+                {
+                  "stop_id": "stop_08702a9e-0ee",
+                  "place_ref": "fixture:shibuya",
+                  "name": "涩谷十字路口",
+                  "coordinates": [139.7005, 35.6595],
+                  "source_url": "https://www.gotokyo.org/en/destinations/western-tokyo/shibuya/index.html",
+                  "experience_id": null,
+                  "duration_minutes": 45,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 701,
+                  "feasibility_status": "unknown",
+                  "start_minute": 701,
+                  "end_minute": 746
+                },
+                {
+                  "stop_id": "stop_6e12345f-1ac",
+                  "place_ref": "fixture:sensoji",
+                  "name": "浅草寺",
+                  "coordinates": [139.7966, 35.7148],
+                  "source_url": "https://www.senso-ji.jp/english/",
+                  "experience_id": null,
+                  "duration_minutes": 75,
+                  "locked_day_id": null,
+                  "fixed_start_minute": null,
+                  "arrival_minute": 801,
+                  "feasibility_status": "unknown",
+                  "start_minute": 801,
+                  "end_minute": 876
+                }
+              ],
+              "legs": [
+                {
+                  "from_stop_id": "stop_5a2a8481-221",
+                  "to_stop_id": "stop_71a1e05b-df1",
+                  "mode": "transit",
+                  "duration_minutes": 12,
+                  "evidence_status": "demo_estimate",
+                  "geometry_status": "schematic"
+                },
+                {
+                  "from_stop_id": "stop_71a1e05b-df1",
+                  "to_stop_id": "stop_08702a9e-0ee",
+                  "mode": "transit",
+                  "duration_minutes": 14,
+                  "evidence_status": "demo_estimate",
+                  "geometry_status": "schematic"
+                },
+                {
+                  "from_stop_id": "stop_08702a9e-0ee",
+                  "to_stop_id": "stop_6e12345f-1ac",
+                  "mode": "transit",
+                  "duration_minutes": 55,
+                  "evidence_status": "demo_estimate",
+                  "geometry_status": "schematic"
+                }
+              ],
+              "total_travel_minutes": 81,
+              "ends_at_minute": 876,
+              "feasibility_status": "unknown"
+            }
+          ],
+          "edit_id": "edit_8eec121d-09f",
+          "diff": [
+            "第 1 天：3 → 2 个地点；交通 20 分钟（演示估算）",
+            "第 2 天：3 → 4 个地点；交通 81 分钟（演示估算）"
+          ],
+          "preview": false
+        },
+        "warnings": [
+          {
+            "code": "demo_fixture",
+            "message": "演示资料与估算；未核查营业日、实时交通或实际可达性"
+          }
+        ]
+      }
+    }
+  ]
+}
