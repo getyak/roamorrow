@@ -1,4 +1,7 @@
+import { fitCamera, mercator } from "./camera.mjs";
 const $ = (id) => document.getElementById(id);
+let camera = fitCamera([], 1050, 780, 1050, 780),
+  cameraKey = "";
 const esc = (x) =>
   String(x).replace(
     /[&<>"']/g,
@@ -210,6 +213,18 @@ function render() {
         `<button class="day-drop" data-day="${d.day_id}" style="--day:${d.color}" aria-label="放到第 ${d.day_index} 天">第 ${d.day_index} 天<span>${d.stops.length}</span></button>`,
     )
     .join("");
+  if (!snapshot.demo) {
+    const coordinates = snapshot.days.flatMap((d) => d.stops.map((s) => s.coordinates));
+    const [w, h] = mapSize(),
+      viewport = $("map-viewport").getBoundingClientRect();
+    const next = JSON.stringify([coordinates.map((p) => p.join(",")).sort(), w, h]);
+    if (next !== cameraKey) {
+      camera = fitCamera(coordinates, w, h, viewport.width, viewport.height);
+      cameraKey = next;
+      setZoom(1);
+      tiles();
+    }
+  }
   const points = snapshot.days.flatMap((d) =>
     d.stops.map((s, i) => ({ s, d, i, p: project(s.coordinates) })),
   );
@@ -499,20 +514,15 @@ function mapSize() {
   return lastMapSize;
 }
 function project([lng, lat]) {
-  const world = 256 * 2 ** 13;
-  const merc = ([lon, la]) => [
-    ((lon + 180) / 360) * world,
-    ((1 - Math.asinh(Math.tan((la * Math.PI) / 180)) / Math.PI) / 2) * world,
-  ];
-  const [cx, cy] = merc([139.751, 35.6895]),
-    [x, y] = merc([lng, lat]);
+  const world = 256 * 2 ** camera.zoom;
+  const [cx, cy] = camera.center.map((v) => v * world),
+    [x, y] = mercator([lng, lat]).map((v) => v * world);
   const [w, h] = mapSize();
   return [x - cx + w / 2, y - cy + h / 2];
 }
 function tiles() {
-  const world = 256 * 2 ** 13;
-  const cx = ((139.751 + 180) / 360) * world,
-    cy = ((1 - Math.asinh(Math.tan((35.6895 * Math.PI) / 180)) / Math.PI) / 2) * world;
+  const world = 256 * 2 ** camera.zoom;
+  const [cx, cy] = camera.center.map((v) => v * world);
   const [w, h] = mapSize();
   $("map-svg").setAttribute("viewBox", `0 0 ${w} ${h}`);
   const x0 = cx - w / 2,
@@ -520,7 +530,7 @@ function tiles() {
   let html = "";
   for (let x = Math.floor(x0 / 256); x <= Math.floor((x0 + w) / 256); x++)
     for (let y = Math.floor(y0 / 256); y <= Math.floor((y0 + h) / 256); y++)
-      html += `<image href="https://cyberjapandata.gsi.go.jp/xyz/pale/13/${x}/${y}.png" x="${x * 256 - x0}" y="${y * 256 - y0}" width="256" height="256" preserveAspectRatio="none"/>`;
+      html += `<image href="https://cyberjapandata.gsi.go.jp/xyz/pale/${camera.zoom}/${x}/${y}.png" x="${x * 256 - x0}" y="${y * 256 - y0}" width="256" height="256" preserveAspectRatio="none"/>`;
   $("tiles").innerHTML = html;
 }
 function setZoom(value) {
@@ -529,7 +539,11 @@ function setZoom(value) {
 }
 $("zoom-in").onclick = () => setZoom(zoom + 0.15);
 $("zoom-out").onclick = () => setZoom(zoom - 0.15);
-$("fit").onclick = () => setZoom(1);
+$("fit").onclick = () => {
+  cameraKey = "";
+  setZoom(1);
+  render();
+};
 async function init() {
   tiles();
   const interaction = location.pathname === "/interaction";

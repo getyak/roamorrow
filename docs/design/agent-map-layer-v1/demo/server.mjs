@@ -284,7 +284,11 @@ export async function startServer({
         });
         return;
       }
-      const staticFiles = { "/app.mjs": "app.mjs", "/style.css": "style.css" };
+      const staticFiles = {
+        "/app.mjs": "app.mjs",
+        "/camera.mjs": "camera.mjs",
+        "/style.css": "style.css",
+      };
       let filename = staticFiles[u.pathname];
       if (
         req.method === "GET" &&

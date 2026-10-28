@@ -53,6 +53,19 @@ export async function runBrowser({ outDir, runtimeFile, playwrightModule } = {})
     await page.screenshot({ path: join(outDir, filename), fullPage: true });
     shots.push(filename);
   };
+  const pinsInside = () =>
+    page.locator(".pin").evaluateAll((pins) => {
+      const view = document.querySelector("#map-viewport").getBoundingClientRect();
+      return pins.every((pin) => {
+        const r = pin.getBoundingClientRect();
+        return (
+          r.left >= view.left &&
+          r.right <= view.right &&
+          r.top >= view.top &&
+          r.bottom <= view.bottom
+        );
+      });
+    });
   try {
     const session = await context.request.post(runtime.url + "/api/session", {
       headers: { Authorization: `Bearer ${runtime.bearer}` },
@@ -71,8 +84,9 @@ export async function runBrowser({ outDir, runtimeFile, playwrightModule } = {})
       "C5",
       !before.demo &&
         label.includes("OSRM") &&
-        routes === before.days.flatMap((d) => d.legs).length,
-      "真实 leg geometry 绘制到 SVG，未画成 stop 直线",
+        routes === before.days.flatMap((d) => d.legs).length &&
+        (await pinsInside()),
+      "真实 leg geometry 绘制到 SVG，所有地点自动适配地图视野",
     );
     const row = page.locator(".stop-info").first();
     await row.click();
@@ -193,7 +207,7 @@ export async function runBrowser({ outDir, runtimeFile, playwrightModule } = {})
     const keyboardMenu = await page.locator("#selection").isVisible();
     check(
       "E4",
-      !overflow && touch && keyboardMenu,
+      !overflow && touch && keyboardMenu && (await pinsInside()),
       "390px 无横向溢出，主要操作目标≥44px，键盘 Enter 打开替代操作菜单；非真机结论",
     );
     await shot("real-mobile");
