@@ -78,6 +78,7 @@ export async function runBrowser({ outDir, runtimeFile, playwrightModule } = {})
     await row.click();
     const fromRow = await page.locator(".pin.selected").getAttribute("data-pin");
     const selectedRow = await page.locator(".stop-row.selected").getAttribute("data-stop");
+    await page.locator(".close-selection").click();
     await page.locator(".pin").last().click();
     const fromPin = await page.locator(".pin.selected").getAttribute("data-pin");
     check(
