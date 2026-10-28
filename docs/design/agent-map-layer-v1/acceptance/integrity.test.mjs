@@ -94,3 +94,10 @@ test("stale afterEdit cannot hide later mutation of third day", async () => {
     /unrelated/,
   );
 });
+test("moving a stop cannot silently shorten its stay", () => {
+  const b = structuredClone(before),
+    a = structuredClone(after);
+  b.days[0].stops[0].duration_minutes = 90;
+  a.days[1].stops[0].duration_minutes = 60;
+  assert.throws(() => assertMoveResult(b, a, intent, finished), /duration|immutable/);
+});

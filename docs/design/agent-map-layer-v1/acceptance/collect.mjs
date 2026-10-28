@@ -199,7 +199,12 @@ export async function collectLive({ outDir, runtimeFile } = {}) {
   const before = journey.beforeEdit,
     after = journey.afterEdit,
     move = journey.trace.find(
-      (t) => t.stage === "editing" && t.name === "update_day" && t.output.ok && !t.input.dry_run,
+      (t) =>
+        t.stage === "editing" &&
+        t.name === "update_day" &&
+        t.input.operation.type === "move_stop" &&
+        t.output.ok &&
+        !t.input.dry_run,
     )?.input.operation;
   let moveOK = false;
   try {

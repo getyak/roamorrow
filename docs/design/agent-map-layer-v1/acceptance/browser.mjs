@@ -203,6 +203,26 @@ export async function runBrowser({ outDir, runtimeFile, playwrightModule } = {})
       detail:
         "公网 scoped 模式禁用故障注入，本 cohort 尚未完成安全的 provider 故障与重试注入，不计分",
     });
+  } catch (error) {
+    checks.push({
+      case_id: "E1",
+      status: "fail",
+      detail: `浏览器旅程未完成：${error.message.slice(0, 240)}`,
+    });
+    checks.push({
+      case_id: "G3",
+      status: "fail",
+      detail: "页面未完成主要交互，不能用缺少 console error 代替正常渲染",
+    });
+    events.push({
+      type: "browser_failure",
+      message: error.message,
+      notice: await page
+        .locator("#notice")
+        .textContent()
+        .catch(() => null),
+    });
+    await shot("failure").catch(() => {});
   } finally {
     await browser.close();
   }
@@ -228,6 +248,7 @@ export async function runBrowser({ outDir, runtimeFile, playwrightModule } = {})
   });
   writeFileSync(join(outDir, "score.json"), JSON.stringify(report, null, 2));
   writeFileSync(join(outDir, "score.md"), markdown(report));
+  if (checks.some((c) => c.status === "fail")) process.exitCode = 1;
   console.log(
     JSON.stringify(
       {

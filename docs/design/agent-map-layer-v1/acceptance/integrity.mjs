@@ -35,6 +35,28 @@ export function assertMoveResult(before, after, expected, { normalFinish, finalM
     all.filter((s) => s.stop_id === expected.stopId).length !== 1
   )
     throw Error("move duplicated or lost stops");
+  const originalStops = before.days.flatMap((d) => d.stops);
+  for (const item of originalStops) {
+    const current = all.find((s) => s.stop_id === item.stop_id);
+    if (!current) throw Error("move replaced an original stop");
+    for (const field of [
+      "place_ref",
+      "name",
+      "coordinates",
+      "source_url",
+      "experience_id",
+      "duration_minutes",
+      "locked_day_id",
+      "fixed_start_minute",
+      "provider",
+      "source_revision",
+      "fetched_at",
+      "canonical_name",
+    ]) {
+      if (JSON.stringify(item[field]) !== JSON.stringify(current[field]))
+        throw Error(`move changed immutable ${field}`);
+    }
+  }
   for (const day of before.days.filter(
     (d) => ![expected.fromDayId, expected.toDayId].includes(d.day_id),
   ))

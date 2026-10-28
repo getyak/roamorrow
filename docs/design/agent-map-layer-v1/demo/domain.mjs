@@ -130,7 +130,8 @@ export function createDomain(
       clock = stop.end_minute;
       if (lowerBound > day.end_minute)
         fail("INFEASIBLE", "这一天超过结束时间，已保留原行程", {
-          reason: "缩短停留、提前出发或换到其他天",
+          reason:
+            "本次修改未保存。可以建议缩短停留、提前出发或改天，但只有用户另行明确同意后才能改变已有时间约束。",
         });
     }
     day.total_travel_minutes = total;
