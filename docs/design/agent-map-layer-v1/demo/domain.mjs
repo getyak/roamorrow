@@ -28,7 +28,7 @@ const fail = (c, m, d = {}, r = false) => {
 export function createDomain(
   dir,
   baseURL,
-  { catalog = places, routeLookup = null, mode: runtimeMode = "fixture" } = {},
+  { catalog = places, routeLookup = null, mode: runtimeMode = "fixture", now = Date.now } = {},
 ) {
   const isLive = runtimeMode === "live";
   const routeCost = (a, b) =>
@@ -439,7 +439,7 @@ export function createDomain(
         )
           fail("VALIDATION_ERROR", "公开停靠点不属于地图");
         const token = randomBytes(18).toString("base64url"),
-          expires = new Date(Date.now() + args.expires_in_days * 86400000).toISOString();
+          expires = new Date(now() + args.expires_in_days * 86400000).toISOString();
         db.shares[hash(token)] = {
           map_id: m.snapshot.map_id,
           expires_at: expires,
@@ -489,9 +489,17 @@ export function createDomain(
     get(mid, subject) {
       return snapshot(owned(mid, subject));
     },
+    revoke(token, subject) {
+      const grant = db.shares[hash(token)];
+      if (!grant) fail("NOT_FOUND", "分享链接不存在或已过期");
+      owned(grant.map_id, subject);
+      grant.revoked = true;
+      save();
+      return { ok: true };
+    },
     share(token, subject) {
       const grant = db.shares[hash(token)];
-      if (!grant || grant.revoked || Date.parse(grant.expires_at) < Date.now())
+      if (!grant || grant.revoked || Date.parse(grant.expires_at) <= now())
         fail("NOT_FOUND", "分享链接不存在或已过期");
       const m = db.maps[grant.map_id];
       const publicSnap = snapshot(m);

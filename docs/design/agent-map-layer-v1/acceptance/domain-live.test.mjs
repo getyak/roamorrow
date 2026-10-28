@@ -150,3 +150,79 @@ test("internal preparation preview leaves neither map nor idempotency result on 
     rmSync(s.dir, { recursive: true, force: true });
   }
 });
+test("share revocation is owner-only and expiry rejects the exact deadline after reload", () => {
+  const s = setup(() => null);
+  let clock = Date.now();
+  try {
+    let domain = createDomain(s.dir, "http://127.0.0.1:1", {
+      now: () => clock,
+      catalog: s.catalog,
+    });
+    const plotted = domain.call(
+      "plot_places",
+      {
+        map_id: s.map.map_id,
+        expected_version: 1,
+        idempotency_key: "p-share",
+        items: [
+          { place_ref: s.catalog[0].place_ref, day_id: s.map.days[0].day_id, duration_minutes: 30 },
+        ],
+      },
+      "unit",
+    ).data.snapshot;
+    const built = domain.call(
+      "build_route",
+      {
+        map_id: s.map.map_id,
+        expected_version: plotted.version,
+        idempotency_key: "ready",
+        transport_mode: "walking",
+        allow_unknown_travel: false,
+        day_plans: [
+          {
+            day_id: s.map.days[0].day_id,
+            stop_ids: [plotted.days[0].stops[0].stop_id],
+            start_minute: 540,
+            end_minute: 1080,
+            order_policy: "preserve",
+          },
+        ],
+      },
+      "unit",
+    ).data.snapshot;
+    const link = (key) =>
+      domain.call(
+        "get_map_link",
+        {
+          map_id: built.map_id,
+          expected_version: built.version,
+          idempotency_key: key,
+          visible_stop_ids: [plotted.days[0].stops[0].stop_id],
+          expires_in_days: 1,
+        },
+        "unit",
+      ).data;
+    const a = link("share-a"),
+      b = link("share-b");
+    const token = (l) => new URL(l.share_url).pathname.split("/").at(-1);
+    assert.throws(
+      () => domain.revoke(token(a), "other"),
+      (e) => e.code === "NOT_FOUND",
+    );
+    assert.equal(domain.share(token(a)).snapshot.map_id, built.map_id);
+    domain.revoke(token(a), "unit");
+    domain = createDomain(s.dir, "http://127.0.0.1:1", { now: () => clock });
+    assert.throws(
+      () => domain.share(token(a)),
+      (e) => e.code === "NOT_FOUND",
+    );
+    assert.equal(domain.share(token(b)).snapshot.map_id, built.map_id);
+    clock = Date.parse(b.expires_at);
+    assert.throws(
+      () => domain.share(token(b)),
+      (e) => e.code === "NOT_FOUND",
+    );
+  } finally {
+    rmSync(s.dir, { recursive: true, force: true });
+  }
+});

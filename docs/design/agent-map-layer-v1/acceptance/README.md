@@ -36,6 +36,14 @@ node docs/design/agent-map-layer-v1/acceptance/security.mjs \
   --runtime /path/to/registered-artifact/runtime/runtime.private.json \
   --out /path/to/registered-artifact/run-001 --env-file /path/to/private.env
 
+# 在新隔离目录复制实际地图，启动独立进程验证故障、时钟边界和重启：
+MAP_CHAIN_PLAYWRIGHT=/absolute/path/to/playwright/index.mjs \
+node docs/design/agent-map-layer-v1/acceptance/boundaries.mjs \
+  --runtime /path/to/registered-artifact/runtime/runtime.private.json \
+  --out /path/to/registered-artifact/run-001 \
+  --dir /path/to/registered-artifact/boundary-runtime \
+  --env-file /path/to/private.env
+
 node docs/design/agent-map-layer-v1/acceptance/score.mjs \
   --profile deepseek-local --receipts /path/to/registered-artifact/run-001
 ```
@@ -57,3 +65,7 @@ node docs/design/agent-map-layer-v1/demo/verify.mjs
 ```
 
 真实 Grok、完整十场景、实际性能样本、链接撤销/过期和重启验证，缺任何关键证据都继续显示未验证。每轮先修失败项，再选未验证的最低分段推进；不因为本地一次正常路径通过就给 98+。
+
+边界 runner 通过私有父子进程 IPC 注入 provider 不可用/交通缺失以及服务时钟偏移，不改变系统时间，不增加 HTTP 调试接口。它验证的是故障时的产品行为和过期判定，不能声称观察到了公共服务的真实故障或等待过一天。进程退出后从原目录重新启动，重新读回地图、分享授权、cookie 和幂等记录；保留 PID/runtime ID、HTTP 响应、浏览器断言与截图。带故障/时钟注入的 runtime 禁止配置公网 URL。
+
+分享撤销使用所有者会话 `POST /api/share/:token/revoke`。撤销持久化，匿名/其他身份返回404；期限到达的瞬间即拒绝访问。六个 MCP 工具数量不变。

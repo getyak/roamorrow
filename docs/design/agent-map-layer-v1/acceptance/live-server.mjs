@@ -14,8 +14,12 @@ export async function startLiveServer({
   publicBaseURL = null,
   envFile,
   cacheDir,
+  faultMode = null,
+  now = Date.now,
 } = {}) {
   if (!dir) throw Error("isolated data directory is required");
+  if (publicBaseURL && (faultMode || now !== Date.now))
+    throw Error("controlled fault/clock testing must remain private");
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const metadata = {
     candidate_digest: candidateDigest(),
@@ -23,6 +27,7 @@ export async function startLiveServer({
     source_revision: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
     runtime_id: randomUUID(),
     started_at: new Date().toISOString(),
+    pid: process.pid,
   };
   const providers = createProviders(cacheDir ?? join(dir, "provider-cache"), { envFile });
   const bearer = randomBytes(24).toString("hex"),
@@ -33,6 +38,7 @@ export async function startLiveServer({
     bearer,
     runtimeMetadata: metadata,
     scoped: true,
+    executionOptions: faultMode ? () => ({ fault: faultMode() }) : null,
     publicBaseURL,
     extraBearers: { [guestBearer]: "acceptance-other-user" },
     domainFactory: (storage, base) =>
@@ -40,6 +46,7 @@ export async function startLiveServer({
         catalog: providers.catalog,
         routeLookup: providers.routeLookup,
         mode: "live",
+        now,
       }),
     prepareTool: providers.prepareTool,
   });

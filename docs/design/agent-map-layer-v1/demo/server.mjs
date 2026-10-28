@@ -18,7 +18,9 @@ export async function startServer({
   publicBaseURL = null,
   extraBearers = {},
   runtimeMetadata = null,
+  executionOptions = null,
 } = {}) {
+  if (publicBaseURL && executionOptions) throw Error("private test seams cannot be public");
   mkdirSync(dir, { recursive: true });
   const secretPath = join(dir, "session-secret");
   const secret = existsSync(secretPath)
@@ -120,6 +122,10 @@ export async function startServer({
       }
       if (req.method === "GET" && u.pathname.startsWith("/api/share/")) {
         json(200, domain.share(u.pathname.split("/").at(-1), subject));
+        return;
+      }
+      if (req.method === "POST" && /^\/api\/share\/[\w-]+\/revoke$/.test(u.pathname)) {
+        json(200, domain.revoke(u.pathname.split("/")[3], subject));
         return;
       }
       if (req.method === "POST" && u.pathname.startsWith("/api/fork/")) {
@@ -252,8 +258,9 @@ export async function startServer({
           if (scoped && req.headers["x-demo-fault"])
             throw new DomainError("VALIDATION_ERROR", "public fault injection disabled");
           if (args.map_id) domain.get(args.map_id, subject);
-          if (prepareTool) await prepareTool(name, args, subject, domain);
-          result = await domain.call(name, args, subject, { fault: req.headers["x-demo-fault"] });
+          const options = executionOptions?.() ?? { fault: req.headers["x-demo-fault"] };
+          if (prepareTool) await prepareTool(name, args, subject, domain, options);
+          result = await domain.call(name, args, subject, options);
         } catch (e) {
           if (!(e instanceof DomainError)) throw e;
           result = {

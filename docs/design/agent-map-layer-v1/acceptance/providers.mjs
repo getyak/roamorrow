@@ -197,19 +197,21 @@ export function createProviders(dir, { envFile, maxRequests = 45 } = {}) {
     if (mode !== "walking") return null;
     return cells.get(cellKey(a, b)) ?? null;
   }
-  async function prepareTool(name, args, subject, domain) {
+  async function prepareTool(name, args, subject, domain, options = {}) {
     if (name === "search_places") {
       if (!/tokyo|东京|東京/i.test(domain.get(args.map_id, subject).city)) return;
       for (const q of args.queries) await resolvePlace(q);
     }
     if (name === "build_route" || name === "update_day") {
+      // Only the private in-process acceptance controller can supply these options.
+      if (options.fault === "provider") throw problem("受控测试：交通提供商不可用，原行程保留");
       const map = domain.get(args.map_id, subject);
       if (args.expected_version !== map.version) return;
       const mode = name === "build_route" ? args.transport_mode : null;
       if (mode && mode !== "walking")
         throw problem("此真实验收配置只接入步行；公交/驾驶未验证，不能用步行结果代替");
       await prepareMap(map);
-      const preview = domain.call(name, args, subject, { previewOnly: true });
+      const preview = domain.call(name, args, subject, { ...options, previewOnly: true });
       await geometryFor(
         preview.data.snapshot.days.filter((d) => preview.data.affected_day_ids.includes(d.day_id)),
       );
