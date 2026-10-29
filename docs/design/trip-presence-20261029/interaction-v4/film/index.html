@@ -1,0 +1,224 @@
+<!doctype html>
+<html
+  lang="zh-CN"
+  data-composition-variables='[{"id": "conversationTitle", "type": "string", "label": "对话标题", "default": "先聊清楚，\n再看位置。"}, {"id": "mapTitle", "type": "string", "label": "地图标题", "default": "两个选择，\n放到地图上看。"}, {"id": "scopeTitle", "type": "string", "label": "范围标题", "default": "带着选点，\n接着聊。"}, {"id": "savedTitle", "type": "string", "label": "收藏标题", "default": "想去的地方，\n留在地图里。"}]'
+>
+  <head>
+    <meta charset="utf-8" />
+    <title>Roamorrow · 对话与地图 V4 UI 演示</title>
+    <script src="assets/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/style.css" />
+    <style>
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        margin: 0;
+        overflow: hidden;
+        background: #f2f3ef;
+      }
+      #root {
+        width: 1920px;
+        height: 1080px;
+        position: relative;
+      }
+      .clip,
+      .scene-content {
+        position: absolute;
+        inset: 0;
+      }
+      .scene-content {
+        opacity: 0;
+      }
+      #conversation .scene-content {
+        opacity: 1;
+      }
+      .film-copy {
+        position: absolute;
+        left: 192px;
+        top: 284px;
+        width: 650px;
+      }
+      .film-copy h1 {
+        white-space: pre-line;
+        font-size: 72px;
+        font-weight: 500;
+        letter-spacing: -3px;
+        line-height: 1.28;
+        margin: 22px 0 26px;
+        max-width: 610px;
+      }
+      .film-copy p {
+        font-size: 24px;
+        line-height: 1.8;
+        color: #626c57;
+      }
+      .film-copy .kicker {
+        font-size: 14px;
+        letter-spacing: 2px;
+      }
+      .film-phone {
+        position: absolute;
+        left: 1200px;
+        top: 114px;
+      }
+      .film-foot {
+        position: absolute;
+        left: 192px;
+        bottom: 102px;
+        max-width: 800px;
+        font-size: 15px;
+        line-height: 1.7;
+        color: #626c57;
+      }
+      .film-tag {
+        display: inline-block;
+        border: 1px solid #d1d9c8;
+        border-radius: 24px;
+        padding: 10px 18px;
+        margin-top: 26px;
+        font-size: 16px;
+      }
+      .phone {
+        box-shadow: 0 20px 50px #31432212;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      data-hf-id="hf-6tc0"
+      id="root"
+      data-composition-id="conversation-map-film-v4"
+      data-duration="14"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section
+        data-hf-id="hf-r94w"
+        id="conversation"
+        class="clip"
+        data-start="0"
+        data-duration="3.5"
+        data-track-index="0"
+        data-track-kind="graphics"
+      >
+        <div data-hf-id="hf-cn5c" class="scene-content">
+          <div data-hf-id="hf-a10g" class="film-copy">
+            <span data-hf-id="hf-vzta" class="kicker">01 · START WITH A CONVERSATION</span>
+            <h1 data-hf-id="hf-qlql" data-var-text="conversationTitle">先聊清楚， 再看位置。</h1>
+            <p data-hf-id="hf-9k65">
+              回答给出两个有差别的选择。<br data-hf-id="hf-x5px" />需要看位置时，进入同一张地图。
+            </p>
+            <span data-hf-id="hf-fw7j" class="film-tag">对话 / 地图 / 行程 / 我的</span>
+          </div>
+          <div data-hf-id="hf-76ch" class="film-phone">
+            <div data-hf-id="hf-dko5" class="phone" data-fixture="chat"></div>
+          </div>
+        </div>
+      </section>
+      <section
+        data-hf-id="hf-urfp"
+        id="candidate-map"
+        class="clip"
+        data-start="3.5"
+        data-duration="3.5"
+        data-track-index="0"
+        data-track-kind="graphics"
+      >
+        <div data-hf-id="hf-o0eg" class="scene-content">
+          <div data-hf-id="hf-k1i0" class="film-copy">
+            <span data-hf-id="hf-fqd0" class="kicker">02 · FIND THE PLACE ON THE MAP</span>
+            <h1 data-hf-id="hf-9c32" data-var-text="mapTitle">两个选择， 放到地图上看。</h1>
+            <p data-hf-id="hf-sejq">
+              高亮这条回答的候选，点开一处。<br
+                data-hf-id="hf-rsrt"
+              />推荐理由、来源和待核实项仍然可见。
+            </p>
+            <span data-hf-id="hf-y5c0" class="film-tag">附近 / 收藏 · 不改历史回答</span>
+          </div>
+          <div data-hf-id="hf-e0ol" class="film-phone">
+            <div data-hf-id="hf-4zd3" class="phone" data-fixture="map"></div>
+          </div>
+        </div>
+      </section>
+      <section
+        data-hf-id="hf-vtl2"
+        id="scoped-conversation"
+        class="clip"
+        data-start="7"
+        data-duration="3.5"
+        data-track-index="0"
+        data-track-kind="graphics"
+      >
+        <div data-hf-id="hf-mthd" class="scene-content">
+          <div data-hf-id="hf-iukx" class="film-copy">
+            <span data-hf-id="hf-pc31" class="kicker"
+              >03 · CONTINUE IN THE SOURCE CONVERSATION</span
+            >
+            <h1 data-hf-id="hf-4a4k" data-var-text="scopeTitle">带着选点， 接着聊。</h1>
+            <p data-hf-id="hf-d632">
+              「聊聊这里」带上地点范围。<br
+                data-hf-id="hf-szow"
+              />原对话和草稿保留，下一问由你发送。
+            </p>
+            <span data-hf-id="hf-2vnb" class="film-tag">关于 Parkside Café · 范围可移除</span>
+          </div>
+          <div data-hf-id="hf-f7lo" class="film-phone">
+            <div data-hf-id="hf-7uwn" class="phone" data-fixture="typing-scoped"></div>
+          </div>
+        </div>
+      </section>
+      <section
+        data-hf-id="hf-o6kr"
+        id="saved-map"
+        class="clip"
+        data-start="10.5"
+        data-duration="3.5"
+        data-track-index="0"
+        data-track-kind="graphics"
+      >
+        <div data-hf-id="hf-n7se" class="scene-content">
+          <div data-hf-id="hf-j8vy" class="film-copy">
+            <span data-hf-id="hf-5zd0" class="kicker">04 · KEEP IDEAS ON THE MAP</span>
+            <h1 data-hf-id="hf-lz05" data-var-text="savedTitle">想去的地方， 留在地图里。</h1>
+            <p data-hf-id="hf-4ixl">
+              收藏收进地图，独立浏览。<br
+                data-hf-id="hf-sldv"
+              />可以看当前城市，也能找回全部城市收藏。
+            </p>
+            <span data-hf-id="hf-rgoq" class="film-tag">收藏 ≠ 加入行程 · 安排仍需确认</span>
+          </div>
+          <div data-hf-id="hf-etan" class="film-phone">
+            <div data-hf-id="hf-3jo5" class="phone" data-fixture="saved-map"></div>
+          </div>
+        </div>
+      </section>
+      <p data-hf-id="hf-gc0n" class="film-foot">
+        UI 状态演示 · 虚构地点与演示数据 · 不是原生录屏或真实服务<br data-hf-id="hf-qluq" />
+        无音轨 · 键盘为位置示意 · © OpenStreetMap contributors · 2026.10.30
+      </p>
+    </div>
+    <script src="assets/data.js"></script>
+    <script src="assets/map-flow.js"></script>
+    <script src="assets/app.js"></script>
+    <script>
+      // Four explicit cuts. Each frame depends only on the paused timeline time.
+      // Animate a child of each clip; HyperFrames owns the clip's timed window.
+      const timeline = gsap.timeline({ paused: true });
+      const scenes = [
+        ["#conversation .scene-content", 0, 3.5],
+        ["#candidate-map .scene-content", 3.5, 7],
+        ["#scoped-conversation .scene-content", 7, 10.5],
+        ["#saved-map .scene-content", 10.5, 14],
+      ];
+      scenes.forEach(([selector, start, end]) => {
+        timeline.set(selector, { opacity: 1 }, start);
+        timeline.set(selector, { opacity: 0 }, end);
+      });
+      timeline.to({}, { duration: 14 }, 0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["conversation-map-film-v4"] = timeline;
+    </script>
+  </body>
+</html>

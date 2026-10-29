@@ -1,0 +1,7 @@
+test_cross_origin_never_gets_authorization (network_test.RedirectTests.test_cross_origin_never_gets_authorization) ... ok
+test_https_downgrade_rejected (network_test.RedirectTests.test_https_downgrade_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK

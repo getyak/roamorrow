@@ -1,0 +1,101 @@
+TAP version 13
+# prototype_state_sha256=e2e07d371feebd14a125052d092eb0e785300e4226ad0403f36c5b327c9ead62
+# Subtest: PF01: recommendation map carries exactly that answer and a copied return anchor
+ok 1 - PF01: recommendation map carries exactly that answer and a copied return anchor
+  ---
+  duration_ms: 1.467875
+  type: 'test'
+  ...
+# Subtest: PF02: looking at another pin does not silently change an existing question scope
+ok 2 - PF02: looking at another pin does not silently change an existing question scope
+  ---
+  duration_ms: 0.257041
+  type: 'test'
+  ...
+# Subtest: PF03: panning preserves the original answer result until explicit search-this-area
+ok 3 - PF03: panning preserves the original answer result until explicit search-this-area
+  ---
+  duration_ms: 1.200083
+  type: 'test'
+  ...
+# Subtest: PF04: saved places can be scoped to this city without deleting another city collection
+ok 4 - PF04: saved places can be scoped to this city without deleting another city collection
+  ---
+  duration_ms: 0.233417
+  type: 'test'
+  ...
+# Subtest: PF05: an empty saved map has no invented selected place
+ok 5 - PF05: an empty saved map has no invented selected place
+  ---
+  duration_ms: 0.144042
+  type: 'test'
+  ...
+# Subtest: PF06: filtering a selected coffee result to culture moves selection to a visible item
+ok 6 - PF06: filtering a selected coffee result to culture moves selection to a visible item
+  ---
+  duration_ms: 0.168583
+  type: 'test'
+  ...
+# Subtest: PF07: an area question freezes its viewport and category at the time of asking
+ok 7 - PF07: an area question freezes its viewport and category at the time of asking
+  ---
+  duration_ms: 0.215
+  type: 'test'
+  ...
+# Subtest: PF08: independent map revisits preserve the camera rather than recentring on every tab
+ok 8 - PF08: independent map revisits preserve the camera rather than recentring on every tab
+  ---
+  duration_ms: 0.072125
+  type: 'test'
+  ...
+# Subtest: PF09: denied GPS can remain manual; the state contract does not invent a current location
+ok 9 - PF09: denied GPS can remain manual; the state contract does not invent a current location
+  ---
+  duration_ms: 0.634
+  type: 'test'
+  ...
+# Subtest: PF10: opening a recommendation clears a previous unmatched map query and fits its candidates
+ok 10 - PF10: opening a recommendation clears a previous unmatched map query and fits its candidates
+  ---
+  duration_ms: 1.884417
+  type: 'test'
+  ...
+# Subtest: PF11: a query with no matching fixture stays empty rather than recycling an unrelated result
+ok 11 - PF11: a query with no matching fixture stays empty rather than recycling an unrelated result
+  ---
+  duration_ms: 0.478333
+  type: 'test'
+  ...
+# Subtest: PF12: cafe and bookstore aliases constrain the visible fixture types
+ok 12 - PF12: cafe and bookstore aliases constrain the visible fixture types
+  ---
+  duration_ms: 0.083583
+  type: 'test'
+  ...
+# Subtest: PF13: area question keeps query/viewport/category after further panning and edits
+ok 13 - PF13: area question keeps query/viewport/category after further panning and edits
+  ---
+  duration_ms: 0.076666
+  type: 'test'
+  ...
+# Subtest: PF14: two short map pans accumulate into a new search area
+ok 14 - PF14: two short map pans accumulate into a new search area
+  ---
+  duration_ms: 0.087375
+  type: 'test'
+  ...
+# Subtest: PF15: an area question freezes saved scope and the visible Experience IDs
+ok 15 - PF15: an area question freezes saved scope and the visible Experience IDs
+  ---
+  duration_ms: 0.263209
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 115.59575

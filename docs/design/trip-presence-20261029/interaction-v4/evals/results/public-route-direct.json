@@ -1,0 +1,12 @@
+{
+  "url": "https://routing.openstreetmap.de/routed-foot/route/v1/driving/139.771111,35.712222;139.79663888889,35.714555555556?overview=full&geometries=geojson&steps=false",
+  "requestNumberOverall": 6,
+  "scope": "public provider only; explicit known Tokyo landmark coordinates; not model orchestration",
+  "status": 200,
+  "ok": true,
+  "elapsedMs": 3504,
+  "recordedResponse": "public-route-direct.response.json.gz",
+  "recordedResponseSha256": "98d48f0d879909c84c4ad51a521cb4cae0331035cbfce44813f87f157f48cb79",
+  "recordedAt": "2026-10-29T17:47:30.051491+00:00",
+  "recordedAtBasis": "local response record creation time; not refreshed by domain replay"
+}
