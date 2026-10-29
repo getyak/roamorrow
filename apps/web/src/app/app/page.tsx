@@ -146,14 +146,14 @@ function HomeInner() {
 
       <nav
         aria-label="Map controls"
-        className="absolute left-3 right-16 top-3 z-20 flex items-center justify-between gap-2 md:right-auto md:w-[380px]"
+        className="absolute left-3 right-16 top-3 z-20 flex items-center justify-between gap-2 md:right-auto"
       >
         <a
           href="/"
           aria-label="Roamorrow home"
-          className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-paper-cream/95 px-3 text-base font-semibold text-ink-warm shadow-sm"
+          className="map-brand inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap px-3 font-serif text-xl font-medium text-ink-warm"
         >
-          <span className="md:hidden">
+          <span className="shrink-0">
             <RoamorrowMark strokeColor="var(--accent)" />
           </span>
           <span className="hidden md:inline">Roamorrow</span>
@@ -166,7 +166,7 @@ function HomeInner() {
             if (!askVisible) setNearbyExpanded(false);
             setAskOpen(!askVisible);
           }}
-          className="min-h-11 min-w-0 rounded-full bg-paper-cream/95 px-2 text-base font-medium text-deep-teal shadow-sm"
+          className="map-ask-toggle min-h-11 min-w-0 rounded-full bg-paper-cream px-3 text-base font-medium text-deep-teal"
         >
           {askVisible ? "Close Ask" : "Ask (optional)"}
         </button>

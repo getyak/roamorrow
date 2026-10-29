@@ -321,8 +321,8 @@ export function Capabilities({ copy, locale }: Props) {
             {copy.hero.ctaPrimaryWeb}
           </ButtonLink>
         </div>
-        <details className="mt-12 border-t border-border-default pt-4">
-          <summary className="min-h-12 cursor-pointer py-3 text-body-lg font-medium text-fg-primary">
+        <details className="ritual-preview mt-12 border-y border-border-default">
+          <summary className="min-h-12 cursor-pointer py-5 pr-12 font-serif text-2xl font-medium text-fg-primary">
             {locale === "zh"
               ? "旅行仪式与 iPhone 界面 · Preview"
               : "Travel rituals and iPhone concepts · Preview"}
@@ -333,7 +333,7 @@ export function Capabilities({ copy, locale }: Props) {
               ? "以下是次级功能示意；部分仪式和归档页面仅供预览或只读，不是已开放订阅权益的承诺。"
               : "These secondary examples include preview-only or read-only rituals and archives, not a promise of available subscription benefits."}
           </p>
-          <div className="mt-12 space-y-20">
+          <div className="ritual-preview-pages mt-12 space-y-20">
             {CAPABILITY_ORDER.map(({ kind }, i) => {
               const block = copy[kind];
               const flip = i % 2 === 1;

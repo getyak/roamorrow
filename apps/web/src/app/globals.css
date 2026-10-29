@@ -12,7 +12,7 @@
    the teal interaction accent; native CT is outside this Web change.
    ============================================================ */
 
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Karla:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Literata:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap");
 
 :root {
   /* ---------- Warm-amber base (CT.bg* / CT.surface*) ---------- */
@@ -94,10 +94,10 @@
   --accent-amber: #c98628;
 
   /* ---------- Typography ---------- */
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
+  --font-display: "Karla", system-ui, sans-serif;
+  --font-body: "Karla", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --font-serif: "Fraunces", Georgia, serif;
+  --font-serif: "Literata", Georgia, serif;
   --font-cn: "PingFang SC", "Hiragino Sans GB", "Source Han Sans CN", system-ui, sans-serif;
 
   /* ---------- Radius ---------- */
@@ -182,7 +182,7 @@
 }
 .map-workspace .mapboxgl-ctrl-bottom-right,
 .map-workspace .mapboxgl-ctrl-bottom-left {
-  bottom: calc(48dvh + 8px);
+  bottom: calc(36dvh + 8px);
 }
 @media (min-width: 768px) {
   .map-workspace .mapboxgl-ctrl-bottom-right,
@@ -197,8 +197,8 @@
   z-index: 20;
   display: flex;
   flex-direction: column;
-  max-height: 48dvh;
-  border-radius: 20px 20px 0 0;
+  max-height: 36dvh;
+  border-radius: 12px 12px 0 0;
   background: var(--bg-warm);
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-default);
@@ -212,12 +212,140 @@
 @media (min-width: 768px) {
   .nearby-panel {
     inset: auto auto 16px 12px;
-    width: 380px;
-    max-height: calc(100dvh - 172px);
-    border-radius: 20px;
+    width: min(880px, calc(100vw - 32px));
+    max-height: 36dvh;
+    border-radius: 12px;
   }
   .nearby-panel-expanded {
-    max-height: calc(100dvh - 76px);
+    width: 380px;
+    max-height: calc(100dvh - 88px);
+  }
+}
+
+/* The collapsed field notes leave the map in charge. Expansion restores a full list. */
+.nearby-panel {
+  --note-width: 296px;
+}
+.nearby-heading {
+  border-bottom: 1px solid var(--border-default);
+}
+.nearby-content {
+  scrollbar-color: var(--border-default) transparent;
+  scrollbar-width: thin;
+}
+.nearby-choices {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding: 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+.nearby-choices > li {
+  flex: 0 0 min(var(--note-width), 80vw);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+.nearby-choices > li + li {
+  border-left: 1px solid var(--border-default);
+  padding-left: 24px;
+}
+.nearby-card {
+  padding: 4px;
+  color: var(--fg-primary);
+}
+.nearby-card-title {
+  text-wrap: pretty;
+}
+.nearby-card:hover .nearby-card-title,
+.nearby-card:focus-visible .nearby-card-title {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 5px;
+}
+.nearby-card-action svg {
+  transition: transform var(--dur-fast) var(--ease-decel);
+}
+.nearby-card:hover .nearby-card-action svg {
+  transform: translateX(4px);
+}
+.nearby-card-selected {
+  background: var(--accent-soft);
+}
+.nearby-panel:not(.nearby-panel-expanded) .nearby-description,
+.nearby-panel:not(.nearby-panel-expanded) .nearby-footnote {
+  display: none;
+}
+.nearby-panel-expanded .nearby-choices {
+  display: block;
+  overflow: visible;
+}
+.nearby-panel-expanded .nearby-choices > li {
+  padding: 16px 0;
+  border-left: 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.map-brand {
+  background: var(--bg-warm);
+  border-radius: 6px;
+}
+.map-ask-toggle {
+  border: 1px solid var(--border-default);
+  overflow-wrap: normal;
+}
+.map-workspace :is(h1, h2, label, .map-ask-toggle) {
+  line-height: 1.25;
+}
+.map-workspace p {
+  line-height: 1.5;
+}
+.map-workspace ::selection,
+.ritual-preview ::selection {
+  background: var(--accent-soft);
+  color: var(--fg-primary);
+}
+.map-workspace input {
+  caret-color: var(--accent);
+}
+.ritual-preview summary {
+  position: relative;
+  list-style: none;
+}
+.ritual-preview summary::-webkit-details-marker {
+  display: none;
+}
+.ritual-preview summary::after {
+  content: "+";
+  position: absolute;
+  right: 8px;
+  top: 18px;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 28px;
+}
+.ritual-preview[open] summary::after {
+  content: "−";
+}
+@keyframes note-unfold {
+  from {
+    clip-path: inset(0 0 12% 0);
+    opacity: 0.7;
+  }
+  to {
+    clip-path: inset(0);
+    opacity: 1;
+  }
+}
+.ritual-preview[open] .ritual-preview-pages {
+  animation: note-unfold var(--dur-slow) var(--ease-decel);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nearby-card-action svg {
+    transition: none;
+  }
+  .ritual-preview[open] .ritual-preview-pages {
+    animation: none;
   }
 }
 
