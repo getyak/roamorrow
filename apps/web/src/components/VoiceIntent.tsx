@@ -203,7 +203,7 @@ export function VoiceIntent({
     <div
       id="map-ask"
       hidden={hidden}
-      className="pointer-events-auto absolute left-3 right-3 top-20 z-20 flex max-h-[calc(52dvh-92px)] flex-col items-start gap-2 overflow-y-auto overscroll-contain md:left-auto md:right-3 md:max-h-[calc(100dvh-96px)] md:w-[min(380px,calc(100vw-428px))]"
+      className="pointer-events-auto absolute left-3 right-3 top-20 z-20 flex max-h-[calc(52dvh-92px)] flex-col items-start gap-2 overflow-y-auto overscroll-contain md:left-auto md:right-3 md:max-h-[calc(64dvh-96px)] md:w-[min(380px,calc(100vw-428px))]"
       style={hidden ? { display: "none" } : undefined}
     >
       {intent && (

@@ -29,3 +29,9 @@ docs/design/interaction-quality/inventory.md
 docs/design/interaction-quality/scorecard*.json
 docs/design/interaction-quality/implementation-contract.json
 docs/design/interaction-quality/evidence/
+
+# Vendored upstream skill; preserve its verified bytes.
+.cursor/skills/impeccable/
+
+# Local Symphony control snapshots are not project sources.
+.symphony/

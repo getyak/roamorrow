@@ -57,6 +57,14 @@ test.describe("Map-first experience handoff", () => {
       const cards = page.locator("[data-experience-card]");
       await expect(cards).toHaveCount(5);
       await expect(cards.first()).toBeInViewport();
+      const panel = page.getByRole("region", { name: "Nearby experiences and footprint" });
+      const bounds = await panel.boundingBox();
+      expect(bounds!.height).toBeLessThanOrEqual(844 * 0.37);
+      // A horizontal rail yields attention to the map; keyboard focus can
+      // still reach a card beyond the first visible page.
+      await cards.last().focus();
+      await expect(cards.last()).toBeInViewport();
+      await cards.first().focus();
       await expect(page.getByText("Preview sample · not live data")).toBeVisible();
       await expect(page.getByRole("textbox")).toBeHidden();
       await screenshot(page, `app-${width}-${scheme}`);
@@ -142,6 +150,17 @@ test.describe("Map-first experience handoff", () => {
     await page.context().setOffline(false);
   });
 
+  test("non-live availability stays visible in the collapsed rail", async ({ page }) => {
+    await setup(page, { results, degraded: false });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(origin + "/app");
+    await expect(page.getByText("Availability is not live.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "See list", exact: true })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
   test("location denial keeps browsing and optional Ask keeps its draft", async ({ page }) => {
     await setup(page);
     await page.addInitScript(() => {
@@ -199,6 +218,10 @@ test.describe("Map-first experience handoff", () => {
     for (const width of [1280, 768]) {
       await page.setViewportSize({ width, height: 844 });
       await page.goto(origin + "/app");
+      if (width === 768) {
+        await expect(page.locator("[data-experience-card]")).toHaveCount(5);
+        await doubleText(page);
+      }
       await page.getByRole("button", { name: "Ask (optional)", exact: true }).click();
       const input = page.getByRole("textbox", { name: "Type what you feel like doing" });
       const send = page.getByRole("button", { name: "Send", exact: true });

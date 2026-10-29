@@ -1,0 +1,21 @@
+$ vitest run
+
+ RUN  v5.0.5 /Users/cubxxw/ops/symphony/runtime/workspaces/GET-284/apps/web
+
+(node:42503) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/cubxxw/ops/symphony/runtime/workspaces/GET-284/apps/web/src/lib/sentry.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/cubxxw/ops/symphony/runtime/workspaces/GET-284/apps/web/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42554) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/cubxxw/ops/symphony/runtime/workspaces/GET-284/apps/web/src/lib/sentry.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/cubxxw/ops/symphony/runtime/workspaces/GET-284/apps/web/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  19 passed (19)
+      Tests  111 passed (111)
+   Start at  09:16:39
+   Duration  2.72s (tests 49%, import 31%, transform 18%, worker 1%)
+
+    Isolate  19 workers spawned · ~228ms startup each (spawn + environment, per file)
+             at least ~253ms faster with isolate: false — reuses workers across files instead of one per file
+

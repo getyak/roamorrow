@@ -48,10 +48,17 @@ export function NearbySheet({
       aria-label="Nearby experiences and footprint"
       className={`nearby-panel ${expanded ? "nearby-panel-expanded" : ""}`}
     >
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 border-b border-ink-warm/10 px-4 py-2">
-        <h1 className="text-lg font-semibold text-ink-warm">
-          {footprint ? "My footprint" : sampleMode ? "Sample experiences" : "Things to do here"}
-        </h1>
+      <header className="nearby-heading flex shrink-0 flex-wrap items-center justify-between gap-x-2 px-4 py-2">
+        <div>
+          <h1 className="font-serif text-xl font-medium text-ink-warm">
+            {footprint ? "My footprint" : sampleMode ? "Sample experiences" : "Things to do here"}
+          </h1>
+          {!footprint && results.length > 0 && (
+            <p className="text-sm text-ink-warm/80">
+              {sampleMode ? "Preview sample · not live data" : "Availability is not live."}
+            </p>
+          )}
+        </div>
         <button
           type="button"
           aria-expanded={expanded}
@@ -64,9 +71,9 @@ export function NearbySheet({
       </header>
       <div
         id="nearby-panel-content"
-        className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-4"
+        className="nearby-content min-h-0 overflow-y-auto overscroll-contain px-4 pb-4"
       >
-        <div className="flex flex-wrap items-center justify-between gap-x-3 py-2 text-sm text-ink-warm/80">
+        <div className="nearby-description flex flex-wrap items-center justify-between gap-x-3 py-2 text-sm text-ink-warm/80">
           <p>{footprint ? "Your saved visits" : "Choose a card for details and directions."}</p>
           <button
             type="button"
@@ -83,9 +90,6 @@ export function NearbySheet({
         </div>
         {!footprint && (
           <>
-            {sampleMode && (
-              <p className="mb-3 text-sm text-ink-warm/80">Preview sample · not live data</p>
-            )}
             {offline && (
               <p role="status" className="mb-3 text-base text-ink-warm">
                 You are offline. Showing what already loaded; reconnect to refresh.
@@ -118,7 +122,7 @@ export function NearbySheet({
               </p>
             )}
             {visible.length > 0 && (
-              <ul className="space-y-3" aria-label="Experience choices">
+              <ul className="nearby-choices" aria-label="Experience choices">
                 {visible.map((result) => (
                   <li key={result.experience.id}>
                     <NearbyCard
@@ -131,12 +135,12 @@ export function NearbySheet({
               </ul>
             )}
             {!expanded && results.length > 5 && (
-              <p className="pt-3 text-sm text-ink-warm/80">
+              <p className="nearby-footnote pt-3 text-sm text-ink-warm/80">
                 Showing 5 of {results.length} experiences. Open the list for more.
               </p>
             )}
             {results.length > 0 && (
-              <p className="pt-3 text-sm text-ink-warm/80">
+              <p className="nearby-footnote pt-3 text-sm text-ink-warm/80">
                 Check the best times and sources before you go. Availability is not live.
               </p>
             )}
@@ -182,12 +186,13 @@ function NearbyCard({
       type="button"
       data-experience-card={exp.id}
       onClick={() => onSelect(exp.id)}
-      className={`w-full rounded-xl border p-4 text-left ${selected ? "border-deep-teal bg-accent-soft" : "border-ink-warm/15 bg-surface-white hover:border-deep-teal"}`}
+      aria-pressed={selected}
+      className={`nearby-card w-full text-left ${selected ? "nearby-card-selected" : ""}`}
     >
       <span className="block text-sm text-ink-warm/80">
         {categoryLabel[exp.category]} · {place}
       </span>
-      <span className="mt-1 block text-lg font-semibold leading-snug text-ink-warm">
+      <span className="nearby-card-title mt-1 block font-serif text-2xl font-medium leading-snug text-ink-warm">
         {exp.title}
       </span>
       <span className="mt-3 block text-sm text-ink-warm/80">
@@ -204,7 +209,20 @@ function NearbyCard({
           {healthLabel[result.health]}
         </span>
       </span>
-      <span className="mt-3 block text-base font-medium text-deep-teal">Details & directions</span>
+      <span className="nearby-card-action mt-3 flex items-center gap-2 text-base font-medium text-deep-teal">
+        Details &amp; directions
+        <svg
+          aria-hidden="true"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <path d="M4 12h16m-6-6 6 6-6 6" />
+        </svg>
+      </span>
     </button>
   );
 }

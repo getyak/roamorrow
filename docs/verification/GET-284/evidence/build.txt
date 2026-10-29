@@ -1,0 +1,61 @@
+$ next build
+   ▲ Next.js 15.5.28
+   - Experiments (use with caution):
+     · clientTraceMetadata
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 16.1s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/23) ...
+   Generating static pages (5/23) 
+   Generating static pages (11/23) 
+   Generating static pages (17/23) 
+ ✓ Generating static pages (23/23)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      402 B         178 kB
+├ ○ /_not-found                          1.15 kB         171 kB
+├ ƒ /[city]                              6.45 kB         194 kB
+├ ƒ /api/experiences/[id]/checkin          361 B         170 kB
+├ ƒ /api/experiences/nearby                363 B         171 kB
+├ ƒ /api/me/completions                    361 B         170 kB
+├ ƒ /api/routes/compile                    363 B         171 kB
+├ ƒ /api/traffic                           363 B         171 kB
+├ ƒ /api/work-sessions                     362 B         171 kB
+├ ○ /app                                  553 kB         856 kB
+├ ○ /apple-icon                            360 B         170 kB
+├ ○ /download                              401 B         178 kB
+├ ƒ /experience/[id]                       350 B         174 kB
+├ ƒ /experience/[id]/opengraph-image       364 B         171 kB
+├ ○ /icon                                  363 B         171 kB
+├ ○ /manifesto                             401 B         178 kB
+├ ○ /mobile-preview                      4.79 kB         192 kB
+├ ○ /opengraph-image                       363 B         171 kB
+├ ○ /pricing                               401 B         178 kB
+├ ○ /privacy                               401 B         178 kB
+├ ○ /privacy/policy                        401 B         178 kB
+├ ○ /robots.txt                            363 B         171 kB
+├ ○ /sitemap.xml                           363 B         171 kB
+├ ○ /support                               365 B         178 kB
+├ ○ /terms                                 400 B         178 kB
+├ ƒ /trip/[slug]                           855 B         175 kB
+├ ƒ /trip/[slug]/opengraph-image           363 B         171 kB
+├ ○ /zh                                    402 B         178 kB
+├ ○ /zh/manifesto                          401 B         178 kB
+├ ○ /zh/opengraph-image                    361 B         170 kB
+├ ○ /zh/pricing                            401 B         178 kB
+└ ○ /zh/privacy                            401 B         178 kB
++ First Load JS shared by all             170 kB
+  ├ chunks/6413-5b769953453c3b5b.js       112 kB
+  ├ chunks/a285b74b-340db24fe00e4dfe.js  54.4 kB
+  └ other shared chunks (total)          4.15 kB
+
+
+ƒ Middleware                             36.9 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -65,11 +65,11 @@ const config: Config = {
         "warm-amber": "#C68E3F",
       },
       fontFamily: {
-        display: ["Space Grotesk", "system-ui", "sans-serif"],
-        body: ["Inter", "system-ui", "sans-serif"],
+        display: ["Karla", "system-ui", "sans-serif"],
+        body: ["Karla", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
-        serif: ["Fraunces", "Georgia", "serif"],
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        serif: ["Literata", "Georgia", "serif"],
+        sans: ["Karla", "system-ui", "-apple-system", "sans-serif"],
       },
       fontSize: {
         "display-2xl": ["clamp(56px, 8vw, 96px)", { lineHeight: "1.02", letterSpacing: "-0.02em" }],
