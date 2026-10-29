@@ -4,16 +4,16 @@
 
 **Goal:** Implement the approved conversation-first iOS V4 with Conversation / Map / Itinerary / Me, map-owned favorites, reliable draft/reading recovery, and grounded faster AI tools.
 
-**Architecture:** Retain the existing root-owned MapViewModel, ConversationWorkspaceState and VoiceAgentOrchestrator. Map stays mounted while native content surfaces switch. Separate immutable message result IDs, map browsing, next-turn scope and confirmed itineraries; use the existing preferences/history stores as authorities.
+**Architecture:** Implement the default CompanionHomeView with its existing CompanionHomeStore and CompanionHomeAgent. Reuse its root-owned MapViewModel; instantiate the native map on first visit and keep it mounted thereafter. Separate message candidate IDs, map browsing, one-question scope and confirmed itineraries. Preserve the existing atomic v1 conversation snapshot and UserPreferences favorite authority.
 
-**Tech Stack:** iOS17+, SwiftUI, Observation, MapKit, SwiftData, existing SPM dependencies.
+**Tech Stack:** iOS17+, SwiftUI, Observation, MapKit, existing atomic JSON snapshots and SwiftData-backed services, existing SPM dependencies.
 
 **Spec:** docs/design/trip-presence-20261029/interaction-v4.md (explicitly approved by the user for implementation).
 
 ## Global Constraints
 
 - Bottom destinations are 对话 / 地图 / 行程 / 我的; 对话 is the default; 收藏 belongs to 地图.
-- Keep one map, one active orchestrator and existing persisted Experience/favorites identities.
+- Keep one map, one active HomeAgent and existing persisted Experience/favorites identities.
 - A map visit or place scope must not create a conversation, rewrite a past response, or edit an itinerary.
 - Search uses known map/location provenance, visible pending quality, cancellable network and explicit errors. No guessed physical location or invented provider facts.
 - Only user-confirmed itinerary adoption writes plans; navigation opens Maps without payment or ride execution.
@@ -23,7 +23,7 @@
 ## Review Focus
 
 - An incoming reply while reading history must not jump to bottom after tab return.
-- Conversation A/B drafts, attachments, next-turn scope and stable message anchors must not leak.
+- Drafts, attachments, one-question scope and reading anchors must remain attached to the current conversation identity; clear-local-data invalidates stale source links.
 - Map camera settling must not replace the originating message candidate set; empty results stay empty.
 - Removing the final favorite must clear stale selection; global favorites must not be restricted to the current viewport.
 - Cancellation, slow requests, city changes and partial streamed output must not trigger stale writes or duplicate fallback requests.
@@ -34,18 +34,18 @@ SoloCompassApp defaults continuousCompanion=true, so the active product uses Com
 
 ## Task 1: Conversation state and next-turn scope
 
-Owner: session worker. Modify Models/ConversationWorkspaceState.swift, Services/VoiceAgentOrchestrator.swift and focused Tests. Produce setNextTurnExperience(_:), clearNextTurnExperience(), nextTurnExperience; savePresentation(conversationId:), restorePresentation(conversationId:preferredAnchor:). Preserve IDs/history, consume scope only on accepted input. Record a typed ConversationMapSource using stable conversation/message IDs and reading anchor. Fix prompt origin/radius statements and include planner in total turn budget.
+Owner: session worker. Modify Services/CompanionHomeStore.swift, Views/CompanionHome/CompanionHomeModels.swift and focused tests. Provide setNextTurnExperience, setNextTurnArea, clearNextTurnScope, noteReadingPosition, savePresentation, restorePresentation and capture/restoreMapSource. Preserve stable conversation/message IDs and consume scope only after an accepted atomic send. Keep snapshot additions optional for v1 compatibility.
 
-- [ ] Add regressions for accepted/rejected sends, scope set/clear, A/B presentation and reading recovery.
-- [ ] Implement state/session changes using existing history authority; keep legacy scope APIs compatible for intentional new context flows.
-- [ ] Verify cancellation/generation guards and provide exact root integration interfaces.
+- [x] Add regressions for accepted/rejected sends, scope set/clear, source identity and persisted reading/unread recovery.
+- [x] Implement state/session changes using the existing HomeStore snapshot authority.
+- [x] Verify cancellation/generation guards and provide exact root integration interfaces.
 
 ## Task 2: Native shell and chat integration
 
-Owner: root. Modify Views/Map/CompassMapView.swift, WorkspaceDock.swift and Views/Chat/ChatSheet.swift; add focused native UI acceptance. Use full conversation surface and four-item dock; keep dock outside composer and hide it for software keyboard. Reuse ItineraryListView and personal hub. Pass source message and candidate IDs from chat to the same map. Scope display/clear uses next-turn APIs; history transitions stash/restore presentation, ordinary map return does not reseed.
+Owner: root. Modify CompanionHomeView/Conversation/Composer/MessageRow/NearbyView, add CompanionNavigationBar and focused native UI acceptance. Use the full retained conversation and four-item dock outside the composer, hidden for the software keyboard. Reuse ItineraryListView and MeSheet. Pass the exact source entry and candidate IDs to the same map. Restore reading/source while preserving any newer draft; scope display/clear uses one-question APIs.
 
 - [ ] Pin the four navigation destinations/default and source round-trip behavior in tests.
-- [ ] Wire map/source return and preserve draft/anchor without changing confirmed itinerary.
+- [x] Wire map/source return and preserve draft/anchor without changing confirmed itinerary.
 - [ ] Localize visible labels and accessibility identifiers; visually verify keyboard and safe-area behavior.
 
 ## Task 3: Map browsing and favorites
@@ -54,7 +54,7 @@ Owner: map worker. Modify ViewModels/MapViewModel.swift, add focused Models/View
 
 - [ ] Add tests for camera refresh preserving message candidates, final unsave empty state, cross-city saved collection and no-fit tab revisits.
 - [ ] Implement one authoritative favorites state and deterministic selection reconciliation.
-- [ ] Provide a reusable nearby/saved/return-source control component; do not edit CompassMapView or localization files shared with root.
+- [ ] Provide a reusable nearby/saved/return-source control component; do not edit CompanionHome UI or localization files shared with root.
 
 ## Task 4: Faster AI transport and real scenario evaluation
 
@@ -68,10 +68,14 @@ Owners: AI transport worker (AIService.swift + new transport tests), independent
 
 Owner: build worker for caches/build/test; root for integration and delivery. Recover official pinned Sentry artifacts with original checksum; never change manifests to fake a build. Run xcodegen when required; one primary simulator through helper. Run relevant XCTest/UI acceptance, host regressions, localization and parity checks; independent whole-diff review fixes confirmed P0/P1. Update PR685/GET324 around final implementation, push and verify current-head CI before eligible merge. Save screenshots/video, test results and recovery refs, clean only task-owned reconstructable artifacts.
 
-- [ ] Resolve pinned binary artifacts and build the integrated source.
+- [x] Resolve pinned binary artifacts and compile implementation4278 with the native SDK. Final repair revision still requires its own gate.
 - [ ] Run native state/tool/UI scenarios and independent review, fix failures and repeat affected checks.
 - [ ] Verify current-head CI, then deliver implementation/evidence and keep any unaccepted platform boundary explicit.
 
 ## Authorization and execution
 
 The user explicitly approved V4 and requested direct native implementation with multiple subagents. Execute this plan without another design approval round. Workers share the checkout, own only the files/regions assigned, and must accommodate others without reverting their changes.
+
+## Acceptance source
+
+Implementation4278 passed App SDK compilation and132 focused native tests. Full unit execution found only the new-public-doc-comment ratchet failure; those comments now pass the original detector on host. Account UI and V4 UI run separately, using an explicitly marked CI-only public-data snapshot for deterministic source/map/favorite/scope/reading coverage. Native screenshots/video and actual model/provider/Auth receipts remain separate. GET-335 tracks the invalid existing backend test credentials; no signup or bypass is authorized by this plan.

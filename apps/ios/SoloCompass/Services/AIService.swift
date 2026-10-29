@@ -488,6 +488,7 @@ public final class AIService {
         }
     }
 
+    /// Latency and completion metrics for one agent streaming request.
     public struct AgentStreamMetrics: Equatable, Sendable {
         /// First text or tool-call delta, not just the response headers.
         public let firstOutputLatencyMs: Int?
@@ -495,6 +496,8 @@ public final class AIService {
         public let completed: Bool
     }
 
+    /// Permits a nonstreaming retry only for an explicit streaming incompatibility.
+    /// Transport and incomplete-response errors remain failures.
     public static func shouldFallbackFromAgentStreaming(after error: Error) -> Bool {
         (error as? AgentStreamingError) == .unsupportedStreaming
     }

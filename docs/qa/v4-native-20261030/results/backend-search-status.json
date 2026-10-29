@@ -1,8 +1,8 @@
 {
-  "recorded_at": "2026-10-29T19:23:19.524109+00:00",
-  "head": "d237600ebff01e58cca49d6abe83754bb4e64754",
-  "scope": "Read-only backend readiness and bounded Auth -> tavily-search Edge acceptance preflight; no iOS SDK acceptance",
-  "status": "blocked_before_credentials",
+  "recorded_at": "2026-10-29T19:33:43.988683+00:00",
+  "head": "4278f74a3757a67c942b22ecb2960ef60d56ecf7",
+  "scope": "Runtime REST Auth -> deployed tavily-search Edge; not native iOS SDK or model orchestration acceptance",
+  "status": "runtime_auth_failed",
   "configured_project": {
     "host": "oknhlhpeuoqaaodalxyl.supabase.co",
     "ref": "oknhlhpeuoqaaodalxyl",
@@ -30,35 +30,36 @@
     "deployed_function_presence_verified": false
   },
   "execution": {
-    "authentication_attempts": 0,
+    "authentication_attempts": 1,
     "authentication_budget": 1,
     "edge_query_attempts": 0,
     "edge_query_budget": 1,
     "planned_public_query": "神保町书店官网来源",
     "session_created": false,
     "signout_required": false,
-    "credentials_transmitted": false,
+    "credentials_transmitted": true,
     "credential_values_logged_or_persisted": false,
     "tokens_loaded_or_persisted": false,
     "production_flags_changed": false,
     "permissions_changed": false,
     "resources_created": false,
-    "direct_tavily_bypass_used": false
+    "direct_tavily_bypass_used": false,
+    "credential_transport": "Single HTTPS password-grant request to the existing configured official Supabase runtime endpoint; no redirect followed."
   },
-  "reason": "The configured URL and anonymous key are internally consistent, but the connected Supabase account cannot inspect the target project and no independent repository link/deployment binding was found. The delegated task explicitly required stopping before credential transmission when ownership is unclear.",
+  "reason": "The single authorized existing-account password-grant attempt returned HTTP 400 invalid_credentials in 4365 ms. No session or token was returned, so no Edge query or signout was performed. No retry, alternate account, signup, or direct provider bypass was attempted.",
   "not_claimed": [
     "Project is wrong or unowned",
-    "Authentication failure",
+    "Which credential or account condition caused invalid_credentials",
     "Deployed Edge Function is missing",
     "Provider failure",
     "Successful search",
-    "iOS SDK/session validation"
+    "iOS SDK/session validation",
+    "Native model orchestration validation"
   ],
   "source_sha256": {
     "apps/ios/SoloCompass/Services/WebSearchService.swift": "ec2282f70ea1f501656b75c189bc5d1195c47b0ac2df19bb04410f1f0c79168b",
     "apps/ios/SoloCompass/Services/SupabaseClient.swift": "cf3cea4612436f003564d38888b7acb390c414021e49760a81a3cb6e3312484c",
     "apps/ios/SoloCompass/Services/EmailAccountService.swift": "ba331bb662f0498785ed39bd82ad8e839a855402a2b94a7b702cf62d9938bc01",
-    "apps/ios/SoloCompass/Services/FeatureFlags.swift": "0a563ddc14deb6a1c5fc66a630a6762c5783a18f07b0dd21c0a957680d789e83",
     "apps/ios/SoloCompass/Resources/FeatureFlags.plist": "7984873ee0ab198003b8ea49c4e77e6c23f69b23c9ca4c6de4a365a6fb6d9245",
     "infra/supabase/functions/tavily-search/index.ts": "965730f9e154e6c6efe5e068cbc0ab34c924d7a64c1c869c06e9edd891fafaf0"
   },
@@ -66,5 +67,20 @@
     "https://supabase.com/changelog.md",
     "https://supabase.com/changelog/cbc-tls-ciphers-deprecated",
     "https://supabase.com/docs/guides/auth/signout"
-  ]
+  ],
+  "prior_preflight": {
+    "recorded_at": "2026-10-29T19:23:19.524109+00:00",
+    "status": "blocked_before_credentials",
+    "authentication_attempts": 0,
+    "edge_query_attempts": 0,
+    "reason": "Initially stopped before credentials under the delegated ownership stop condition. Follow-up explicitly authorized the existing configured runtime login without management-account switching."
+  },
+  "runtime_receipt": "backend-search-runtime.json",
+  "auth": {
+    "http_status": 400,
+    "elapsed_ms": 4365,
+    "response_parse": "json",
+    "error_code_or_label": "invalid_credentials",
+    "sanitized_reason": "invalid_login_credentials"
+  }
 }

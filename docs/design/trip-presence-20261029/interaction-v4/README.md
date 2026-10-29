@@ -3,6 +3,7 @@
 GET-324 · 2026-10-30。沿用 V3 的灰绿、现有旅行伙伴、悬浮输入框与胶囊导航，按用户已确认的方向调整为「对话、地图、行程、我的」。对话默认首页，收藏进入地图的「收藏」模式。
 
 - [完整交互规范](../interaction-v4.md)
+- [当前原生实施与验收](../../../qa/v4-native-20261030/README.md)
 - [可点击原型](prototype.html)
 - [1800 × 1240 三屏设计板](renders/conversation-map-v4.png)
 - [14 秒 UI 视频](renders/conversation-map-v4.mp4)

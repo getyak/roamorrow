@@ -90,6 +90,35 @@ final class MapWorkspaceBrowsingTests: XCTestCase {
         XCTAssertEqual(vm.visibleExperiences.map(\.id), ["nearby"])
     }
 
+    func testExplicitAreaKeepsCachedPlacesFromAnotherCityAndRestoresByMode() {
+        let (vm, _) = makeViewModel([
+            fixture("home"), fixture("tokyo", city: "tokyo", coordinate: tokyo)
+        ])
+        vm.openMessageResults(["tokyo"])
+        vm.searchThisArea()
+        XCTAssertEqual(vm.selectedCity, "cmi")
+        XCTAssertEqual(vm.visibleExperiences.map(\.id), ["tokyo"])
+        vm.setMapBrowseMode(.saved)
+        vm.setMapBrowseMode(.nearby)
+        XCTAssertEqual(vm.visibleExperiences.map(\.id), ["tokyo"])
+        vm.selectCity("cmi")
+        XCTAssertEqual(vm.visibleExperiences.map(\.id), ["home"])
+    }
+
+    func testCurrentAreaSavedFollowsDistantAnswerWithoutChangingTripCity() {
+        let (vm, preferences) = makeViewModel([
+            fixture("home"), fixture("tokyo", city: "tokyo", coordinate: tokyo)
+        ])
+        preferences.toggleFavorite("home")
+        preferences.toggleFavorite("tokyo")
+        vm.openMessageResults(["tokyo"])
+        vm.setMapBrowseMode(.saved)
+        XCTAssertEqual(vm.selectedCity, "cmi")
+        XCTAssertEqual(vm.visibleExperiences.map(\.id), ["tokyo"])
+        vm.setMapFavoriteScope(.allSaved)
+        XCTAssertEqual(Set(vm.visibleExperiences.map(\.id)), ["home", "tokyo"])
+    }
+
     func testCurrentCitySavedPlacesIgnoreViewportDistanceAndAllSavedIncludesOtherCities() {
         let farInCity = CLLocationCoordinate2D(latitude: 18.90, longitude: 99.10)
         let (vm, preferences) = makeViewModel([

@@ -81,3 +81,9 @@ python3 scripts/qa/v4-real-tools-eval.py --out /path/to/artifact/model \
 ```
 
 默认模型探测使用 shipping HomeAgent 当前的非流式请求方式，只记完整响应耗时。显式 `--streaming-probe` 才记录 SSE 首事件/首文本/首工具 delta；它是 transport 采样，不能当作默认 UI 首 token。
+
+## 后续有界诊断
+
+初始快照之后又追加2次Apple SDK查询：独立背景.app、明确Bundle ID、运行中的AppKit主循环、主线程、禁止激活；同一公开东京站查询分别使用required/default，仍为MKErrorDomain4/GEO-8。另1次既有Overpass endpoint的明确神保町shop=books请求为25.1秒读超时，没有HTTP状态或body，不是已验证空集。总显式provider诊断为Apple9次＋Overpass1次，模型仍4次。未因这些结果放宽来源、伪造地点或更换生产语义。
+
+本机唯一诊断证据分别保存在`v4-map-sdk-bundle-probe/`与`v4-native-map-evidence/overpass-diagnostic-20261030/`正式证据目录；它们不覆盖iOS Simulator。模型旧快照的guard尚未包含后来补的冻结坐标执行修复，该修复另有真实Store/journal红→绿回归与最终SDK验收。

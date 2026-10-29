@@ -2,7 +2,7 @@
 
 2026-10-30 · GET-324 · 设计评审稿，接续 V3。
 
-用户已明确选择：**对话默认首页，底部为「对话、地图、行程、我的」，收藏进入地图。** 这是本轮产品决定，优先于仓库旧的地图首页约束；本轮不调整原生导航。视觉保留 V3 的灰绿、现有旅行伙伴、悬浮输入框和胶囊导航。
+用户已明确选择：**对话默认首页，底部为「对话、地图、行程、我的」，收藏进入地图。** 这是已确认的产品决定，优先于仓库旧的地图首页约束。原生已按当前默认CompanionHome入口实施，构建与交互证据见[原生落地记录](../../qa/v4-native-20261030/README.md)。视觉保留 V3 的灰绿、现有旅行伙伴、悬浮输入框和胶囊导航。
 
 - [可点击原型](interaction-v4/prototype.html)
 - [三屏设计板源](interaction-v4/index.html)
@@ -81,7 +81,7 @@
 
 消息、地图浏览状态与已确认 Trip 分属各自的版本边界。收藏、筛选、返回、切 Tab 和删除范围都不能调用行程变更；加入/替换/调整仍经过预览、确认与可核对的执行结果。
 
-## 原生迁移的关键差异
+## 早期原生迁移分析（legacy入口）
 
 以下结论来自本轮读取的现有 Swift 源码，不是已经完成的迁移：
 
@@ -94,7 +94,7 @@
 
 源码依据：[VoiceAgentOrchestrator](../../../apps/ios/SoloCompass/Services/VoiceAgentOrchestrator.swift)、[ChatSheet](../../../apps/ios/SoloCompass/Views/Chat/ChatSheet.swift)、[ConversationWorkspaceState](../../../apps/ios/SoloCompass/Models/ConversationWorkspaceState.swift)。正式实现还要处理异步恢复期间立即发送、旧轮次晚到结果、来源被删除及位置权限变化。
 
-本轮不改这些原生入口，不把 HTML 状态还原写成 SwiftUI 已通过验收。实际 tools 修复与评测由独立工作项处理；收到最新提交对应的结果之前，不宣称全部工具链或边界已修好。
+这部分是早期Compass/VoiceOrchestrator入口核对。当前实际默认入口为CompanionHomeView；正式实现复用其HomeStore、HomeAgent、媒体与本地快照，不把用户退回legacy根。实施与分层验证见[原生落地记录](../../qa/v4-native-20261030/README.md)。HTML本身仍不证明SwiftUI或真实工具验收。
 
 ## 设计源与验证范围
 
