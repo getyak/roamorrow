@@ -479,6 +479,7 @@
 "location.banner.openSettings" = "打开设置";
 "explore.skeleton.oneLiner" = "一处来自 OpenStreetMap 的真实地点。";
 "explore.skeleton.oneLiner.amap" = "一处来自高德地图的真实地点。";
+"explore.skeleton.oneLiner.mapkit" = "来自 Apple 地图的真实地点，尚未评估。";
 "explore.skeleton.why" = "我们还没有这个地方的精选故事。去看看，然后告诉我们你发现了什么。";
 "explore.skeleton.why.amap" = "我们还没有这个地方的精选故事。去看看，然后告诉我们你发现了什么。";
 "explore.quota.dailyLimit" = "今日 AI 调用次数已达上限。明天恢复前会展示真实地点但不再增强。";

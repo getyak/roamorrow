@@ -2060,6 +2060,7 @@ public final class AIService {
         let category = OverpassService.category(for: poi.tags)
         let displayName = poi.nameEn ?? poi.name
         let isAmapPOI = poi.tags["source"] == "amap"
+        let isMapKitPOI = poi.tags["source"] == "mapkit"
         let breakdown = SoloScore.Breakdown(
             seatingFriendly: 0, soloPatronRatio: 0, staffPressure: 0,
             soloPortioning: 0, ambianceFit: 0, safety: 0
@@ -2067,13 +2068,11 @@ public final class AIService {
         return Experience(
             id: "exp_osm_\(poi.osmId)",
             title: displayName,
-            // Provenance-honest tagline: mainland-CN POIs come from AutoNavi/Amap,
-            // not OpenStreetMap. The attribution + TrustBadge branches on the
-            // same signal (poi.tags["source"] == "amap"); the tagline had been
-            // hard-coded to the OSM copy, so Amap cards read "一处来自
-            // OpenStreetMap 的真实地点" while their badge said AutoNavi.
+            // The canonical POI container also carries Amap/MapKit results;
+            // its synthetic osmId does not establish OpenStreetMap provenance.
             oneLiner: NSLocalizedString(
-                isAmapPOI ? "explore.skeleton.oneLiner.amap" : "explore.skeleton.oneLiner",
+                isAmapPOI ? "explore.skeleton.oneLiner.amap"
+                    : isMapKitPOI ? "explore.skeleton.oneLiner.mapkit" : "explore.skeleton.oneLiner",
                 comment: "Generic POI tagline"
             ),
             whyItMatters: NSLocalizedString(
@@ -2092,12 +2091,12 @@ public final class AIService {
                 // skeleton fallback used to also mislabel Amap POIs as .user.
                 InformationSource(
                     type: isAmapPOI ? .amap : .user,
-                    url: isAmapPOI
+                    url: isAmapPOI || isMapKitPOI
                         ? nil
                         : URL(string: "https://www.openstreetmap.org/node/\(poi.osmId)"),
                     attribution: isAmapPOI
                         ? "© AutoNavi (Amap)"
-                        : "© OpenStreetMap contributors",
+                        : isMapKitPOI ? "Apple Maps" : "© OpenStreetMap contributors",
                     verifiedAt: now
                 )
             ],
@@ -2106,7 +2105,7 @@ public final class AIService {
                 lastVerifiedAt: now,
                 reason: isAmapPOI
                     ? "Amap entry, no AI enrichment"
-                    : "OpenStreetMap entry, no AI enrichment",
+                    : isMapKitPOI ? "Apple Maps entry, no AI enrichment" : "OpenStreetMap entry, no AI enrichment",
                 signals: .init(aiScrapeAgeDays: 0, passiveGpsHits30d: 0, activeReports30d: 0, trustedVerifications: 0)
             ),
             nearbyExperienceIds: [],

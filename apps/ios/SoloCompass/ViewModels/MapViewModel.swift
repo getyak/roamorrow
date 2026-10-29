@@ -3441,6 +3441,29 @@ public final class MapViewModel {
         nearbyQueryOrigin
     }
 
+    /// Agent searches must name their actual scope and never promote the
+    /// startup placeholder city into the traveler's current location.
+    var agentSearchOrigin: (coordinate: CLLocationCoordinate2D, source: String)? {
+        func valid(_ coordinate: CLLocationCoordinate2D) -> Bool {
+            coordinate.latitude.isFinite && coordinate.longitude.isFinite && CLLocationCoordinate2DIsValid(coordinate)
+        }
+        if let center = lastVisibleMapCenter, valid(center) { return (center, "map_viewport") }
+        if let coordinate = customCoordinates, valid(coordinate) { return (coordinate, "map_selection") }
+        if cityPickedExplicitlyThisSession, let city = selectedCity {
+            let center = Self.knownCityCenters[city]
+                ?? Self.cityCodeAliases[city.lowercased()].flatMap { Self.knownCityCenters[$0] }
+                ?? Self.knownCityCenters[city.uppercased()]
+                ?? Self.knownCityCenters[city.lowercased()]
+                ?? availableCities.first(where: { Self.cityCodeMatches($0.code, selected: city) })?.center
+            if let center, valid(center) { return (center, "selected_city") }
+        }
+        if locationService.authorizationStatus == .authorizedWhenInUse || locationService.authorizationStatus == .authorizedAlways,
+           let coordinate = locationService.currentLocation?.coordinate, valid(coordinate) {
+            return (coordinate, "authorized_location")
+        }
+        return nil
+    }
+
     // MARK: - US-011 auto-explore on empty category
 
     /// Debounce window (ms) before an empty-category selection fires
