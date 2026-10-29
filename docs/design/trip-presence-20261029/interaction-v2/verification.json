@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-30",
+  "sourceBase": "475ab1cb",
+  "scope": "fixture-only HTML interaction design; no production SwiftUI changes or native acceptance",
+  "ok": true,
+  "browserSkipped": false,
+  "audits": {
+    "lint": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 1
+    },
+    "runtime": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "layout": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 2
+    },
+    "contrast": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0
+    }
+  },
+  "warningContext": [
+    "Static board disables the interactive CSS height transition.",
+    "Task-body overflow is intentionally scrollable; primary controls were visually inspected."
+  ],
+  "browserWalkthrough": [
+    "request → compare → preview → time adjustment → confirm",
+    "conflicting time blocks confirmation",
+    "candidate browsing does not rewrite committed plan",
+    "explicit replacement points to old plan item",
+    "undo restores prior item once and removes undo entry",
+    "question scope and draft survive browsing another candidate; send returns to the scoped experience"
+  ],
+  "independentReview": "Three P1 findings fixed and re-reviewed; no remaining P0/P1 in scoped review.",
+  "notVerified": [
+    "SwiftUI build",
+    "Simulator",
+    "physical iPhone",
+    "native Dynamic Type/VoiceOver",
+    "real model/provider/payment/location/microphone",
+    "native persistent Trip/time segments"
+  ]
+}

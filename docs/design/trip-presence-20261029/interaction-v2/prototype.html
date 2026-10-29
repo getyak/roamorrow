@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Roamorrow · 一张地图，一条连续的任务</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+  <body>
+    <div class="page-layout">
+      <section class="intro">
+        <div class="wordmark">Roamorrow / 交互 V2</div>
+        <h1>从一句想法，<br />自然走到下一步。</h1>
+        <p>
+          保留地图，收起模式切换。<br />看附近、问一句、加入今天，在同一张地图上完成。
+        </p>
+        <nav class="demo-switcher" aria-label="交互稿状态">
+          <button data-demo-phase="home">从首页开始</button
+          ><button data-demo-phase="results">比较三个选择</button
+          ><button data-demo-phase="preview">调整预览</button
+          ><button data-demo-phase="today">看今天的行动</button>
+        </nav>
+        <p class="legal">
+          交互概念 · 所有条目、时间与距离都是演示。<br />可以点图钉、编辑输入、比较、预览、确认与撤销。<br />麦克风、定位、模型、预订与付款均未接入。<br />默认状态只保留到刷新，未写入原生
+          App。
+        </p>
+      </section>
+      <main class="phone" id="interactive-phone" aria-label="iPhone 交互设计">
+        <div class="home-line"></div>
+      </main>
+    </div>
+    <script src="assets/data.js"></script>
+    <script src="assets/app.js"></script>
+  </body>
+</html>

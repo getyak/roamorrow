@@ -1,0 +1,10 @@
+{
+  "provider": "OpenStreetMap standard",
+  "data": "OpenStreetMap contributors",
+  "zoom": 15,
+  "center": [139.7755, 35.7128],
+  "originTile": [29105, 12898],
+  "attribution": "\u00a9 OpenStreetMap contributors",
+  "note": "Real basemap; route, events and flight examples are fictional design fixtures.",
+  "tileSource": "https://tile.openstreetmap.org"
+}

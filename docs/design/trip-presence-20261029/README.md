@@ -14,6 +14,14 @@
 - [验证摘要](verification.json)
 - [素材署名](CREDITS.md)
 
+## 2026-10-30 交互深化 V2
+
+本轮围绕现有 iOS 进一步明确“地图 + 当前任务面板 + 低频资料侧栏”。AI 作为输入与解释方式，候选查看、调整预览、确认写入和实际执行分别表达。V2 为当前建议采用的交互方向，V1 作为方向与视频资料保留。
+
+- [完整交互规范 V2](interaction-v2.md)
+- [V2 三状态设计板](interaction-v2/renders/interaction-overview.png)
+- [V2 可点击稿及使用说明](interaction-v2/README.md)
+
 ## 查看与编辑
 
 在本目录执行 `python3 -m http.server 8341 --bind 127.0.0.1`，然后用浏览器打开 `http://127.0.0.1:8341/prototype.html`。如端口正在被使用，选择空闲端口，不要关闭其他任务的服务。
