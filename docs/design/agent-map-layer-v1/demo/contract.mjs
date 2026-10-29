@@ -23,39 +23,82 @@ const coordinate = {
   maxItems: 2,
 };
 const defs = {};
+const lineGeometry = obj({ type: { const: "LineString" }, coordinates: arr(coordinate, 10000, 2) });
 defs.Warning = obj({ code: s(80), message: s(400) });
-defs.Place = obj({
-  place_ref: s(),
-  name: s(),
-  coordinates: coordinate,
-  provider: s(40),
-  source_url: s(500),
-  evidence_status: en("resolved", "stale", "unknown", "demo_fixture"),
-  duration_minutes: n(5, 480),
-});
-defs.Stop = obj({
-  stop_id: s(),
-  place_ref: s(),
-  name: s(),
-  coordinates: coordinate,
-  source_url: s(500),
-  experience_id: nullable(s()),
-  duration_minutes: n(5, 480),
-  locked_day_id: nullable(s()),
-  fixed_start_minute: nullable(n()),
-  arrival_minute: nullable(n(0, 2880)),
-  feasibility_status: en("feasible", "unknown"),
-  start_minute: nullable(n(0, 2880)),
-  end_minute: nullable(n(0, 2880)),
-});
-defs.Leg = obj({
-  from_stop_id: s(),
-  to_stop_id: s(),
-  mode: en("walking", "cycling", "driving", "transit"),
-  duration_minutes: nullable(n(0, 1440)),
-  evidence_status: en("resolved", "unknown", "demo_estimate"),
-  geometry_status: en("routed", "schematic", "unknown"),
-});
+defs.Place = obj(
+  {
+    place_ref: s(),
+    name: s(),
+    coordinates: coordinate,
+    provider: s(40),
+    source_url: s(500),
+    evidence_status: en("resolved", "stale", "unknown", "demo_fixture"),
+    duration_minutes: n(5, 480),
+    source_revision: s(80),
+    fetched_at: s(50),
+    canonical_name: s(300),
+  },
+  [
+    "place_ref",
+    "name",
+    "coordinates",
+    "provider",
+    "source_url",
+    "evidence_status",
+    "duration_minutes",
+  ],
+);
+defs.Stop = obj(
+  {
+    stop_id: s(),
+    place_ref: s(),
+    name: s(),
+    coordinates: coordinate,
+    source_url: s(500),
+    experience_id: nullable(s()),
+    duration_minutes: n(5, 480),
+    locked_day_id: nullable(s()),
+    fixed_start_minute: nullable(n()),
+    arrival_minute: nullable(n(0, 2880)),
+    feasibility_status: en("feasible", "unknown"),
+    start_minute: nullable(n(0, 2880)),
+    end_minute: nullable(n(0, 2880)),
+    provider: s(40),
+    source_revision: s(80),
+    fetched_at: s(50),
+    canonical_name: s(300),
+  },
+  [
+    "stop_id",
+    "place_ref",
+    "name",
+    "coordinates",
+    "source_url",
+    "experience_id",
+    "duration_minutes",
+    "locked_day_id",
+    "fixed_start_minute",
+    "arrival_minute",
+    "feasibility_status",
+    "start_minute",
+    "end_minute",
+  ],
+);
+defs.Leg = obj(
+  {
+    from_stop_id: s(),
+    to_stop_id: s(),
+    mode: en("walking", "cycling", "driving", "transit"),
+    duration_minutes: nullable(n(0, 1440)),
+    evidence_status: en("resolved", "unknown", "demo_estimate"),
+    geometry_status: en("routed", "schematic", "unknown"),
+    geometry: lineGeometry,
+    distance_meters: { type: "number", minimum: 0 },
+    source_url: s(500),
+    fetched_at: s(50),
+  },
+  ["from_stop_id", "to_stop_id", "mode", "duration_minutes", "evidence_status", "geometry_status"],
+);
 defs.Day = obj({
   day_id: s(),
   day_index: n(1, 7),

@@ -25,7 +25,16 @@ export class DomainError extends Error {
 const fail = (c, m, d = {}, r = false) => {
   throw new DomainError(c, m, d, r);
 };
-export function createDomain(dir, baseURL) {
+export function createDomain(
+  dir,
+  baseURL,
+  { catalog = places, routeLookup = null, mode: runtimeMode = "fixture", now = Date.now } = {},
+) {
+  const isLive = runtimeMode === "live";
+  const routeCost = (a, b) =>
+    isLive
+      ? (routeLookup?.(a, b, "walking")?.duration_seconds ?? Infinity)
+      : distance(a.coordinates, b.coordinates);
   mkdirSync(dir, { recursive: true });
   const file = join(dir, "state.json");
   let db;
@@ -68,14 +77,20 @@ export function createDomain(dir, baseURL) {
         const unknown = fault === "unknown";
         const km = distance(prev.coordinates, stop.coordinates);
         const speed = { walking: 4.5, cycling: 13, driving: 24, transit: 18 }[mode];
+        const liveCell = isLive && !unknown ? routeLookup?.(prev, stop, mode) : null;
+        if (isLive && !unknown && !liveCell)
+          fail("PROVIDER_UNAVAILABLE", "真实路网数据缺失，未生成估算替代", {}, true);
         const minutes = unknown
           ? null
-          : Math.max(
-              3,
-              Math.ceil(
-                (km / speed) * 60 * (mode === "transit" ? 1.3 : 1.2) + (mode === "transit" ? 8 : 0),
-              ),
-            );
+          : isLive
+            ? Math.ceil(liveCell.duration_seconds / 60)
+            : Math.max(
+                3,
+                Math.ceil(
+                  (km / speed) * 60 * (mode === "transit" ? 1.3 : 1.2) +
+                    (mode === "transit" ? 8 : 0),
+                ),
+              );
         if (unknown && !allowUnknown)
           fail("PROVIDER_UNAVAILABLE", "缺少可验证的交通时间，原图已保留", {}, true);
         day.legs.push({
@@ -83,8 +98,16 @@ export function createDomain(dir, baseURL) {
           to_stop_id: stop.stop_id,
           mode,
           duration_minutes: minutes,
-          evidence_status: unknown ? "unknown" : "demo_estimate",
-          geometry_status: "schematic",
+          evidence_status: unknown ? "unknown" : isLive ? "resolved" : "demo_estimate",
+          geometry_status: liveCell?.geometry ? "routed" : isLive ? "unknown" : "schematic",
+          ...(liveCell?.geometry
+            ? {
+                geometry: liveCell.geometry,
+                distance_meters: liveCell.distance_meters,
+                source_url: liveCell.source_url,
+                fetched_at: liveCell.fetched_at,
+              }
+            : {}),
         });
         if (minutes === null) {
           clock = null;
@@ -107,14 +130,15 @@ export function createDomain(dir, baseURL) {
       clock = stop.end_minute;
       if (lowerBound > day.end_minute)
         fail("INFEASIBLE", "这一天超过结束时间，已保留原行程", {
-          reason: "缩短停留、提前出发或换到其他天",
+          reason:
+            "本次修改未保存。可以建议缩短停留、提前出发或改天，但只有用户另行明确同意后才能改变已有时间约束。",
         });
     }
     day.total_travel_minutes = total;
     day.ends_at_minute = clock;
     day.feasibility_status = "unknown";
   }
-  function call(name, args, subject, { fault } = {}) {
+  function call(name, args, subject, { fault, previewOnly = false } = {}) {
     const tool = tools.find((t) => t.name === name);
     if (!tool) fail("VALIDATION_ERROR", "未知工具");
     try {
@@ -164,7 +188,7 @@ export function createDomain(dir, baseURL) {
           start_date: args.start_date ?? null,
           version: 1,
           status: "draft",
-          demo: true,
+          demo: !isLive,
           days: Array.from({ length: args.day_count }, (_, i) => ({
             day_id: id("day"),
             day_index: i + 1,
@@ -186,11 +210,9 @@ export function createDomain(dir, baseURL) {
         data = {
           snapshot: snapshot(m),
           edit_url: `${baseURL}/m/${mid}`,
-          assumptions: [
-            "无出行日期时使用相对天",
-            "09:00–18:00 是计划值",
-            "地点为演示资料，交通为演示估算",
-          ],
+          assumptions: isLive
+            ? ["无日期时使用相对天", "Wikidata 地点与 OSRM 步行路网；营业日待核查"]
+            : ["无出行日期时使用相对天", "09:00–18:00 是计划值", "地点为演示资料，交通为演示估算"],
         };
       } else if (name === "search_places") {
         if (args.area) {
@@ -216,7 +238,7 @@ export function createDomain(dir, baseURL) {
         data = {
           queries: args.queries.map((query) => {
             const matched = cityOK
-              ? places.filter(
+              ? catalog.filter(
                   (p) =>
                     p.name === query &&
                     (!args.area || contains(p.coordinates, args.area.coordinates[0])),
@@ -224,7 +246,7 @@ export function createDomain(dir, baseURL) {
               : [];
             return {
               query,
-              status: matched.length ? "resolved" : "not_found",
+              status: matched.length > 1 ? "ambiguous" : matched.length ? "resolved" : "not_found",
               candidates: clone(matched),
             };
           }),
@@ -236,7 +258,7 @@ export function createDomain(dir, baseURL) {
         for (const item of args.items) {
           if (item.lock_to_day && item.fixed_start_minute === undefined)
             fail("VALIDATION_ERROR", "锁定日期需要明确固定时刻");
-          const p = places.find((p) => p.place_ref === item.place_ref);
+          const p = catalog.find((p) => p.place_ref === item.place_ref);
           if (!p || !/tokyo|东京|東京/i.test(m.snapshot.city))
             fail("PLACE_UNRESOLVED", "请先解析并确认地点");
           const day = m.snapshot.days.find((d) => d.day_id === item.day_id);
@@ -249,9 +271,13 @@ export function createDomain(dir, baseURL) {
           day.stops.push({
             stop_id: sid,
             place_ref: p.place_ref,
-            name: p.name,
+            name: p.canonical_name ?? p.name,
             coordinates: clone(p.coordinates),
             source_url: p.source_url,
+            provider: p.provider,
+            ...(p.source_revision ? { source_revision: p.source_revision } : {}),
+            ...(p.fetched_at ? { fetched_at: p.fetched_at } : {}),
+            ...(p.canonical_name ? { canonical_name: p.canonical_name } : {}),
             experience_id: item.experience_id ?? null,
             duration_minutes: item.duration_minutes,
             locked_day_id: item.lock_to_day ? item.day_id : null,
@@ -282,11 +308,7 @@ export function createDomain(dir, baseURL) {
             const rest = day.stops.slice(1),
               ordered = [day.stops[0]];
             while (rest.length) {
-              rest.sort(
-                (a, b) =>
-                  distance(ordered.at(-1).coordinates, a.coordinates) -
-                  distance(ordered.at(-1).coordinates, b.coordinates),
-              );
+              rest.sort((a, b) => routeCost(ordered.at(-1), a) - routeCost(ordered.at(-1), b));
               ordered.push(rest.shift());
             }
             day.stops = ordered;
@@ -331,11 +353,7 @@ export function createDomain(dir, baseURL) {
               const ordered = [day.stops[0]],
                 rest = day.stops.slice(1);
               while (rest.length) {
-                rest.sort(
-                  (a, b) =>
-                    distance(ordered.at(-1).coordinates, a.coordinates) -
-                    distance(ordered.at(-1).coordinates, b.coordinates),
-                );
+                rest.sort((a, b) => routeCost(ordered.at(-1), a) - routeCost(ordered.at(-1), b));
                 ordered.push(rest.shift());
               }
               day.stops = ordered;
@@ -421,7 +439,7 @@ export function createDomain(dir, baseURL) {
         )
           fail("VALIDATION_ERROR", "公开停靠点不属于地图");
         const token = randomBytes(18).toString("base64url"),
-          expires = new Date(Date.now() + args.expires_in_days * 86400000).toISOString();
+          expires = new Date(now() + args.expires_in_days * 86400000).toISOString();
         db.shares[hash(token)] = {
           map_id: m.snapshot.map_id,
           expires_at: expires,
@@ -437,11 +455,25 @@ export function createDomain(dir, baseURL) {
         };
       }
       if (["create_map", "plot_places", "build_route", "update_day"].includes(name))
-        warnings = [
-          { code: "demo_fixture", message: "演示资料与估算；未核查营业日、实时交通或实际可达性" },
-        ];
+        warnings = isLive
+          ? [
+              {
+                code: "opening_hours_unknown",
+                message: "真实地点与步行路网；日期、营业时间与预约仍需核查",
+              },
+            ]
+          : [
+              {
+                code: "demo_fixture",
+                message: "演示资料与估算；未核查营业日、实时交通或实际可达性",
+              },
+            ];
       const result = { ok: true, data, warnings };
       validate(tool.outputSchema, result);
+      if (previewOnly) {
+        db = oldDB;
+        return result;
+      }
       if (key && !args.dry_run) {
         db.keys[key] = { payload, result: clone(result) };
         save();
@@ -457,9 +489,17 @@ export function createDomain(dir, baseURL) {
     get(mid, subject) {
       return snapshot(owned(mid, subject));
     },
+    revoke(token, subject) {
+      const grant = db.shares[hash(token)];
+      if (!grant) fail("NOT_FOUND", "分享链接不存在或已过期");
+      owned(grant.map_id, subject);
+      grant.revoked = true;
+      save();
+      return { ok: true };
+    },
     share(token, subject) {
       const grant = db.shares[hash(token)];
-      if (!grant || grant.revoked || Date.parse(grant.expires_at) < Date.now())
+      if (!grant || grant.revoked || Date.parse(grant.expires_at) <= now())
         fail("NOT_FOUND", "分享链接不存在或已过期");
       const m = db.maps[grant.map_id];
       const publicSnap = snapshot(m);

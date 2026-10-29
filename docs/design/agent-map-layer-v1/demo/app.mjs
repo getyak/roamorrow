@@ -1,4 +1,7 @@
+import { fitCamera, mercator } from "./camera.mjs";
 const $ = (id) => document.getElementById(id);
+let camera = fitCamera([], 1050, 780, 1050, 780),
+  cameraKey = "";
 const esc = (x) =>
   String(x).replace(
     /[&<>"']/g,
@@ -175,6 +178,12 @@ async function makeLink() {
 $("run").onclick = run;
 $("reset").onclick = run;
 function render() {
+  if (snapshot && !snapshot.demo) {
+    document.querySelector("h1").textContent = snapshot.title;
+    $("evidence-label").textContent = "真实地点 / OSRM 步行路网 / 营业日待核查";
+    $("reset").hidden = true;
+    $("chat-tab").hidden = true;
+  }
   $("empty-map").hidden = !!snapshot;
   $("day-rail").hidden = !snapshot;
   $("version").textContent = snapshot ? `版本 ${snapshot.version}` : "等待生成";
@@ -195,7 +204,7 @@ function render() {
   $("days").innerHTML = snapshot.days
     .map(
       (d) =>
-        `<section class="day day-drop" data-day="${d.day_id}" style="--day:${d.color}"><button class="day-heading" data-day-select="${d.day_id}" aria-label="查看第 ${d.day_index} 天"><span class="day-badge">${d.day_index}</span><strong>${themes[d.day_index - 1] ?? d.label}</strong><small>${d.stops.length} 个地点</small></button><div class="day-sub">${clock(d.start_minute)} 出发　交通 ${d.total_travel_minutes ?? "待核查"} 分钟${d.total_travel_minutes === null ? "" : "（估算）"}</div>${d.stops.map((s, i) => `<div class="stop-row ${s.stop_id === selected ? "selected" : ""}" data-stop="${s.stop_id}" draggable="${canEdit}"><span class="time">${clock(s.start_minute)}</span><button class="stop-info" data-select="${s.stop_id}" aria-label="${esc(s.name)}，第 ${d.day_index} 天，第 ${i + 1} 站"><strong>${i + 1}. ${esc(s.name)}</strong><small>停留 ${s.duration_minutes} 分钟</small></button><button class="drag-handle" data-select="${s.stop_id}" aria-label="调整${esc(s.name)}">⠿</button></div>`).join("") || '<div class="empty-day">这一天空出来了。加入一个想去的地方。</div>'}</section>`,
+        `<section class="day day-drop" data-day="${d.day_id}" style="--day:${d.color}"><button class="day-heading" data-day-select="${d.day_id}" aria-label="查看第 ${d.day_index} 天"><span class="day-badge">${d.day_index}</span><strong>${snapshot.demo ? (themes[d.day_index - 1] ?? d.label) : d.label}</strong><small>${d.stops.length} 个地点</small></button><div class="day-sub">${clock(d.start_minute)} 出发　交通 ${d.total_travel_minutes ?? "待核查"} 分钟${d.total_travel_minutes === null ? "" : "（估算）"}</div>${d.stops.map((s, i) => `<div class="stop-row ${s.stop_id === selected ? "selected" : ""}" data-stop="${s.stop_id}" draggable="${canEdit}"><span class="time">${clock(s.start_minute)}</span><button class="stop-info" data-select="${s.stop_id}" aria-label="${esc(s.name)}，第 ${d.day_index} 天，第 ${i + 1} 站"><strong>${i + 1}. ${esc(s.name)}</strong><small>停留 ${s.duration_minutes} 分钟</small></button><button class="drag-handle" data-select="${s.stop_id}" aria-label="调整${esc(s.name)}">⠿</button></div>`).join("") || '<div class="empty-day">这一天空出来了。加入一个想去的地方。</div>'}</section>`,
     )
     .join("");
   $("day-rail").innerHTML = snapshot.days
@@ -204,6 +213,18 @@ function render() {
         `<button class="day-drop" data-day="${d.day_id}" style="--day:${d.color}" aria-label="放到第 ${d.day_index} 天">第 ${d.day_index} 天<span>${d.stops.length}</span></button>`,
     )
     .join("");
+  if (!snapshot.demo) {
+    const coordinates = snapshot.days.flatMap((d) => d.stops.map((s) => s.coordinates));
+    const [w, h] = mapSize(),
+      viewport = $("map-viewport").getBoundingClientRect();
+    const next = JSON.stringify([coordinates.map((p) => p.join(",")).sort(), w, h]);
+    if (next !== cameraKey) {
+      camera = fitCamera(coordinates, w, h, viewport.width, viewport.height);
+      cameraKey = next;
+      setZoom(1);
+      tiles();
+    }
+  }
   const points = snapshot.days.flatMap((d) =>
     d.stops.map((s, i) => ({ s, d, i, p: project(s.coordinates) })),
   );
@@ -214,11 +235,27 @@ function render() {
     )
     .join("");
   $("routes").innerHTML = snapshot.days
-    .map(
-      (d) =>
-        `<polyline class="route-line" stroke="${d.color}" points="${d.stops.map((s) => project(s.coordinates).join(",")).join(" ")}"><title>${d.label}，示意连线，非真实导航</title></polyline>`,
+    .map((d) =>
+      snapshot.demo
+        ? `<polyline class="route-line" stroke="${d.color}" points="${d.stops.map((s) => project(s.coordinates).join(",")).join(" ")}"><title>${d.label}，示意连线</title></polyline>`
+        : d.legs
+            .filter((l) => l.geometry)
+            .map(
+              (l) =>
+                `<polyline class="route-line actual-route" stroke="${d.color}" points="${l.geometry.coordinates.map((p) => project(p).join(",")).join(" ")}"><title>${d.label}，OSRM 步行路网</title></polyline>`,
+            )
+            .join(""),
     )
     .join("");
+  if (!snapshot.demo && !document.getElementById("route-attribution")) {
+    const credit = document.createElement("a");
+    credit.id = "route-attribution";
+    credit.href = "https://www.openstreetmap.org/fixthemap";
+    credit.target = "_blank";
+    credit.rel = "noreferrer";
+    credit.textContent = "© OpenStreetMap / 修正地图";
+    document.querySelector(".map-evidence").append(credit);
+  }
   renderSelection();
 }
 function renderSelection() {
@@ -477,20 +514,15 @@ function mapSize() {
   return lastMapSize;
 }
 function project([lng, lat]) {
-  const world = 256 * 2 ** 13;
-  const merc = ([lon, la]) => [
-    ((lon + 180) / 360) * world,
-    ((1 - Math.asinh(Math.tan((la * Math.PI) / 180)) / Math.PI) / 2) * world,
-  ];
-  const [cx, cy] = merc([139.751, 35.6895]),
-    [x, y] = merc([lng, lat]);
+  const world = 256 * 2 ** camera.zoom;
+  const [cx, cy] = camera.center.map((v) => v * world),
+    [x, y] = mercator([lng, lat]).map((v) => v * world);
   const [w, h] = mapSize();
   return [x - cx + w / 2, y - cy + h / 2];
 }
 function tiles() {
-  const world = 256 * 2 ** 13;
-  const cx = ((139.751 + 180) / 360) * world,
-    cy = ((1 - Math.asinh(Math.tan((35.6895 * Math.PI) / 180)) / Math.PI) / 2) * world;
+  const world = 256 * 2 ** camera.zoom;
+  const [cx, cy] = camera.center.map((v) => v * world);
   const [w, h] = mapSize();
   $("map-svg").setAttribute("viewBox", `0 0 ${w} ${h}`);
   const x0 = cx - w / 2,
@@ -498,7 +530,7 @@ function tiles() {
   let html = "";
   for (let x = Math.floor(x0 / 256); x <= Math.floor((x0 + w) / 256); x++)
     for (let y = Math.floor(y0 / 256); y <= Math.floor((y0 + h) / 256); y++)
-      html += `<image href="https://cyberjapandata.gsi.go.jp/xyz/pale/13/${x}/${y}.png" x="${x * 256 - x0}" y="${y * 256 - y0}" width="256" height="256" preserveAspectRatio="none"/>`;
+      html += `<image href="https://cyberjapandata.gsi.go.jp/xyz/pale/${camera.zoom}/${x}/${y}.png" x="${x * 256 - x0}" y="${y * 256 - y0}" width="256" height="256" preserveAspectRatio="none"/>`;
   $("tiles").innerHTML = html;
 }
 function setZoom(value) {
@@ -507,7 +539,11 @@ function setZoom(value) {
 }
 $("zoom-in").onclick = () => setZoom(zoom + 0.15);
 $("zoom-out").onclick = () => setZoom(zoom - 0.15);
-$("fit").onclick = () => setZoom(1);
+$("fit").onclick = () => {
+  cameraKey = "";
+  setZoom(1);
+  render();
+};
 async function init() {
   tiles();
   const interaction = location.pathname === "/interaction";
