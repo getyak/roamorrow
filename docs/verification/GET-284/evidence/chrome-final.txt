@@ -1,0 +1,20 @@
+
+Running 13 tests using 1 worker
+
+(node:29121) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 e2e/map-first.spec.ts:49:9 › Map-first experience handoff › 1280 light: visible cards to directions, keyboard and focus return (44.0s)
+  ✓   2 e2e/map-first.spec.ts:49:9 › Map-first experience handoff › 390 light: visible cards to directions, keyboard and focus return (15.0s)
+  ✓   3 e2e/map-first.spec.ts:49:9 › Map-first experience handoff › 390 dark: visible cards to directions, keyboard and focus return (2.7s)
+  ✓   4 e2e/map-first.spec.ts:49:9 › Map-first experience handoff › 320 light: visible cards to directions, keyboard and focus return (4.2s)
+  ✓   5 e2e/map-first.spec.ts:110:7 › Map-first experience handoff › loading, error, retry, empty and reload remain usable without expanding (5.3s)
+  ✓   6 e2e/map-first.spec.ts:153:7 › Map-first experience handoff › location denial keeps browsing and optional Ask keeps its draft (1.9s)
+  ✓   7 e2e/map-first.spec.ts:175:7 › Map-first experience handoff › 200% text and long content keep the destination, unknowns and route action (2.0s)
+  ✓   8 e2e/map-first.spec.ts:203:7 › Map-first experience handoff › desktop Ask stays clickable after submitting and showing fallback notices (3.5s)
+  ✓   9 e2e/map-first.spec.ts:226:7 › Map-first experience handoff › Ask from footprint returns to experience choices after submission (1.5s)
+  ✓  10 e2e/map-first.spec.ts:238:7 › Map-first experience handoff › 200% narrow map header can open and close Ask without interception (3.1s)
+  ✓  11 e2e/map-first.spec.ts:253:7 › Map-first experience handoff › touch hands off only the selected coordinates, without claiming a route result (2.7s)
+  ✓  12 e2e/map-first.spec.ts:279:7 › Map-first experience handoff › marketing uses the map accent and keeps ritual previews secondary in both languages (9.0s)
+  ✓  13 e2e/map-first.spec.ts:305:7 › Map-first experience handoff › marketing text at 200% can still open the map in light and dark (7.2s)
+
+  13 passed (1.8m)

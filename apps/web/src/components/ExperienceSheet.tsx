@@ -3,7 +3,7 @@
 import { useReducer, useRef } from "react";
 import { Drawer } from "vaul";
 import type { Experience, HealthStatus, TimeWindow } from "@solo-compass/core";
-import { categoryEmoji, categoryLabel } from "@/lib/category";
+import { categoryLabel } from "@/lib/category";
 import { healthColor, healthLabel } from "@/lib/health";
 import { checkinReducer, initialCheckinState, ratingForSubmit } from "@/lib/checkin-state";
 import { directionsUrl, walkEstimate } from "@/lib/directions";
@@ -136,9 +136,6 @@ function SheetBody({
         </p>
       )}
       <div className="mb-2 flex flex-wrap items-center gap-2 pr-10 text-sm font-medium text-deep-teal">
-        <span className="text-base leading-none" aria-hidden="true">
-          {categoryEmoji[exp.category]}
-        </span>
         <span>{categoryLabel[exp.category]}</span>
         <span className="text-ink-warm/40">·</span>
         <span className="text-ink-warm/70">{formatDuration(exp.durationMinutes)}</span>
@@ -150,7 +147,9 @@ function SheetBody({
         )}
       </div>
 
-      <h2 className="mb-2 pr-10 text-xl font-semibold leading-snug text-ink-warm">{exp.title}</h2>
+      <h2 className="mb-3 pr-10 font-serif text-3xl font-medium leading-tight text-ink-warm">
+        {exp.title}
+      </h2>
       <p className="mb-2 text-base text-ink-warm">
         {exp.location.placeNameRomanized ||
           exp.location.placeNameLocal ||
@@ -161,7 +160,7 @@ function SheetBody({
       <p className="mb-4 text-base leading-relaxed text-ink-warm/80">{exp.oneLiner}</p>
 
       {result.reason && (
-        <div className="mb-5 rounded-xl bg-paper-cream/60 p-3 ring-1 ring-ink-warm/10">
+        <div className="mb-6 border-y border-ink-warm/15 py-4">
           <p className="text-sm italic leading-relaxed text-ink-warm/90">
             &ldquo;{result.reason}&rdquo;
           </p>
