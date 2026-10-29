@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Roamorrow · 对话优先设计板</title>
+    <link rel="stylesheet" href="assets/style.css" />
+    <style>
+      html,
+      body {
+        width: 1800px;
+        height: 1240px;
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="conversation-v3"
+      data-width="1800"
+      data-height="1240"
+      data-duration="1"
+      data-no-timeline
+    >
+      <main class="board-page">
+        <header class="board-heading">
+          <p class="kicker">ROAMORROW · CONVERSATION FIRST</p>
+          <h1>先聊聊，再出发。</h1>
+          <p>对话成为首页。输入框与四项导航轻轻浮起，地图在需要时展开。</p>
+        </header>
+        <section class="board-column" style="left: 130px">
+          <h2>打开就是对话</h2>
+          <p>熟悉的聊天结构，结果直接连到体验和行程。</p>
+          <div class="phone" data-fixture="chat"></div>
+        </section>
+        <section class="board-column" style="left: 704px">
+          <h2>输入时，给想法让位</h2>
+          <p>输入框跟随键盘；导航收起，草稿和上下文保留。</p>
+          <div class="phone" data-fixture="typing"></div>
+        </section>
+        <section class="board-column" style="left: 1278px">
+          <h2>确认之后，看今天怎么走</h2>
+          <p>行程独立可查；切回对话，继续原来的话题。</p>
+          <div class="phone" data-fixture="trip"></div>
+        </section>
+        <footer class="board-footer">
+          2026.10.30 · 393 × 852 pt 交互概念 · 使用现有旅行伙伴形象 ·
+          所有地点、来源、路线与时间为演示数据
+        </footer>
+      </main>
+    </div>
+    <script src="assets/data.js"></script>
+    <script src="assets/app.js"></script>
+  </body>
+</html>

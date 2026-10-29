@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Roamorrow · 对话优先 UI 演示</title>
+    <script src="assets/gsap.min.js"></script>
+    <link rel="stylesheet" href="assets/style.css" />
+    <style>
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        margin: 0;
+        overflow: hidden;
+        background: #f2f3ef;
+      }
+      #root {
+        width: 1920px;
+        height: 1080px;
+        position: relative;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+      .film-copy {
+        position: absolute;
+        left: 192px;
+        top: 300px;
+        width: 650px;
+      }
+      .film-copy h1 {
+        font-size: 76px;
+        font-weight: 500;
+        letter-spacing: -3px;
+        line-height: 1.25;
+        margin: 20px 0 26px;
+      }
+      .film-copy p {
+        font-size: 24px;
+        line-height: 1.8;
+        color: #626c57;
+      }
+      .film-copy .kicker {
+        font-size: 14px;
+        letter-spacing: 2px;
+      }
+      .film-phone {
+        position: absolute;
+        left: 1200px;
+        top: 114px;
+      }
+      .film-foot {
+        position: absolute;
+        left: 192px;
+        bottom: 104px;
+        font-size: 14px;
+        color: #626c57;
+      }
+      .film-tag {
+        display: inline-block;
+        border: 1px solid #d1d9c8;
+        border-radius: 24px;
+        padding: 10px 18px;
+        margin-top: 30px;
+        font-size: 15px;
+      }
+      .phone {
+        box-shadow: 0 20px 50px #31432212;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      data-hf-id="hf-wwwb"
+      id="root"
+      data-composition-id="chat-first-v3"
+      data-duration="12"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section
+        data-hf-id="hf-od8s"
+        id="conversation"
+        class="clip"
+        data-start="0"
+        data-duration="4"
+        data-track-index="0"
+        data-track-kind="graphics"
+      >
+        <div data-hf-id="hf-a10g" class="film-copy">
+          <span data-hf-id="hf-uf88" class="kicker">ROAMORROW · CONVERSATION FIRST</span>
+          <h1 data-hf-id="hf-sznm">先聊聊，<br data-hf-id="hf-x5px" />再出发。</h1>
+          <p data-hf-id="hf-tbjc">
+            打开就是熟悉的对话。<br data-hf-id="hf-rsrt" />地图留在回答里，需要时再展开。
+          </p>
+          <span data-hf-id="hf-x5l2" class="film-tag">对话 / 行程 / 收藏 / 我的</span>
+        </div>
+        <div data-hf-id="hf-76ch" class="film-phone">
+          <div data-hf-id="hf-dko5" class="phone" data-fixture="chat"></div>
+        </div>
+      </section>
+      <section
+        data-hf-id="hf-wzpk"
+        id="typing"
+        class="clip"
+        data-start="4"
+        data-duration="4"
+        data-track-index="0"
+        data-track-kind="graphics"
+      >
+        <div data-hf-id="hf-k1i0" class="film-copy">
+          <span data-hf-id="hf-aq67" class="kicker">FOCUS ON THE CONVERSATION</span>
+          <h1 data-hf-id="hf-pram">有想法，<br data-hf-id="hf-szow" />直接说。</h1>
+          <p data-hf-id="hf-gcmc">
+            键盘出现，导航让位。<br data-hf-id="hf-sldv" />输入框跟随键盘，前面的对话还在。
+          </p>
+          <span data-hf-id="hf-dw1h" class="film-tag">草稿保留 · 范围清楚 · 转写可编辑</span>
+        </div>
+        <div data-hf-id="hf-e0ol" class="film-phone">
+          <div data-hf-id="hf-dqym" class="phone" data-fixture="typing"></div>
+        </div>
+      </section>
+      <section
+        data-hf-id="hf-nqd8"
+        id="today"
+        class="clip"
+        data-start="8"
+        data-duration="4"
+        data-track-index="0"
+        data-track-kind="graphics"
+      >
+        <div data-hf-id="hf-iukx" class="film-copy">
+          <span data-hf-id="hf-xlsy" class="kicker">FROM WORDS TO THE NEXT STEP</span>
+          <h1 data-hf-id="hf-ndej">聊清楚了，<br data-hf-id="hf-qluq" />再安排。</h1>
+          <p data-hf-id="hf-s6sy">
+            确认后的安排，进入同一份行程。<br data-hf-id="hf-q7jp" />随时切回对话，继续刚才的话题。
+          </p>
+          <span data-hf-id="hf-49pu" class="film-tag">先预览 · 再确认 · 看下一步</span>
+        </div>
+        <div data-hf-id="hf-f7lo" class="film-phone">
+          <div data-hf-id="hf-x72q" class="phone" data-fixture="trip"></div>
+        </div>
+      </section>
+      <p data-hf-id="hf-2yt9" class="film-foot">
+        UI 交互概念 · 演示数据 · 未接入原生键盘、定位、模型、预订或支付 · 2026.10.30
+      </p>
+    </div>
+    <script src="assets/data.js"></script>
+    <script src="assets/app.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["chat-first-v3"] = gsap
+        .timeline({ paused: true })
+        .to({}, { duration: 12 });
+    </script>
+  </body>
+</html>
