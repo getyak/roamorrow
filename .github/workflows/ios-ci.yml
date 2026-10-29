@@ -43,7 +43,9 @@ jobs:
   build-and-test:
     name: Build iOS app (placeholder secrets)
     runs-on: macos-latest
-    timeout-minutes: 30
+    # Baseline SDK build + 2015 unit tests + native UI startup exceeded 30m.
+    # Keep all acceptance steps and their individual test timeouts enabled.
+    timeout-minutes: 45
     needs: [schema-parity]
 
     steps:
@@ -148,7 +150,7 @@ jobs:
 
           echo "✅ TESTS PASSED"
 
-      - name: Run account onboarding UI tests
+      - name: Run account onboarding and V4 navigation UI tests
         shell: bash
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
@@ -160,6 +162,7 @@ jobs:
             -scheme AccountAcceptance \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             -only-testing:CompanionAcceptanceUITests/AccountOnboardingUITests \
+            -only-testing:CompanionAcceptanceUITests/V4NavigationUITests \
             -parallel-testing-enabled NO \
             -maximum-concurrent-test-simulator-destinations 1 \
             -test-timeouts-enabled YES \

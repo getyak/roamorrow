@@ -475,98 +475,193 @@ public final class AIService {
         case done
     }
 
-    /// Stream one agent turn via SSE (`stream: true`). Emits `.toolCall`
-    /// events as function-call chunks arrive, then `.contentDelta` events
-    /// for plain-text tokens. Ends with `.done`. Falls back to the
-    /// non-streaming path on servers that don't support SSE.
+    /// A compatibility retry is allowed only when the server explicitly rejects
+    /// streaming before producing output. Ordinary network/API failures must not
+    /// start another paid request or replace a partially displayed answer.
+    public enum AgentStreamingError: Error, Equatable, Sendable, LocalizedError {
+        case unsupportedStreaming
+        case invalidResponse
+        case incompleteResponse
+
+        public var errorDescription: String? {
+            NSLocalizedString("ai.error.request", comment: "AI request failed")
+        }
+    }
+
+    public struct AgentStreamMetrics: Equatable, Sendable {
+        /// First text or tool-call delta, not just the response headers.
+        public let firstOutputLatencyMs: Int?
+        public let totalLatencyMs: Int
+        public let completed: Bool
+    }
+
+    public static func shouldFallbackFromAgentStreaming(after error: Error) -> Bool {
+        (error as? AgentStreamingError) == .unsupportedStreaming
+    }
+
+    /// Stream one agent turn. A valid JSON completion from a compatible server
+    /// is consumed directly, without issuing a second request. The caller may
+    /// retry once without streaming only for `unsupportedStreaming`.
+    @MainActor
     public func sendAgentMessageStreaming(
         messages: [VoiceAgentSession.Message],
-        tools: [AgentTool]
+        tools: [AgentTool],
+        onMetrics: (@Sendable (AgentStreamMetrics) -> Void)? = nil
+    ) -> AsyncThrowingStream<StreamEvent, Error> {
+        streamAgentMessage(requestBuilder: {
+            let body: [String: Any] = [
+                "model": Self.modelName(for: .voice),
+                "messages": Self.serializeAgentMessages(messages),
+                "tools": Self.serializeAgentTools(tools),
+                "tool_choice": "auto",
+                "stream": true,
+                "max_tokens": 512,
+                "temperature": 0.3,
+            ]
+            return try await self.buildChatRequest(
+                stream: true, kind: .voice, bodyDict: body, timeout: 30
+            )
+        }, onMetrics: onMetrics)
+    }
+
+    /// Shared production transport. Request construction stays separate so
+    /// isolated URLProtocol tests never need credentials or shared preferences.
+    @MainActor
+    func streamAgentMessage(
+        requestBuilder: @escaping @MainActor () async throws -> URLRequest,
+        onMetrics: (@Sendable (AgentStreamMetrics) -> Void)? = nil
     ) -> AsyncThrowingStream<StreamEvent, Error> {
         AsyncThrowingStream { continuation in
-            Task {
+            let producer = Task {
+                let started = ProcessInfo.processInfo.systemUptime
+                var firstOutputMs: Int?
+                var completed = false
                 await MainActor.run { self.isProcessing = true }
                 do {
-                    let body: [String: Any] = [
-                        "model": Self.modelName(for: .voice),
-                        "messages": Self.serializeAgentMessages(messages),
-                        "tools": Self.serializeAgentTools(tools),
-                        "tool_choice": "auto",
-                        "stream": true,
-                        "max_tokens": 512,
-                        "temperature": 0.3,
-                    ]
-                    let request = try await buildChatRequest(
-                        stream: true,
-                        kind: .voice,
-                        bodyDict: body,
-                        timeout: 60
-                    )
-
-                    // Accumulate tool-call deltas keyed by index.
-                    var toolCallAccum: [Int: (id: String, name: String, args: String)] = [:]
-                    var contentAccum = ""
-
-                    let (bytes, response) = try await session.bytes(for: request)
+                    let request = try await requestBuilder()
+                    try Task.checkCancellation()
+                    let (bytes, response) = try await self.session.bytes(for: request)
+                    // Also stop a response body rejected at its headers, or one
+                    // held open after [DONE]. Do not leave its data task alive.
+                    defer { bytes.task.cancel() }
                     guard let http = response as? HTTPURLResponse else {
-                        throw AIError.requestFailed(status: 0, body: "no response")
+                        throw AgentStreamingError.invalidResponse
                     }
                     guard (200..<300).contains(http.statusCode) else {
+                        if http.statusCode == 406 { throw AgentStreamingError.unsupportedStreaming }
+                        if http.statusCode == 400 || http.statusCode == 422 {
+                            let body = try await Self.readAgentBody(bytes, limit: 16_384)
+                            if Self.explicitlyRejectsStreaming(body) { throw AgentStreamingError.unsupportedStreaming }
+                        }
                         throw AIError.requestFailed(status: http.statusCode, body: "streaming error")
                     }
 
-                    for try await line in bytes.lines {
-                        guard line.hasPrefix("data: ") else { continue }
-                        let payload = String(line.dropFirst(6))
-                        if payload == "[DONE]" { break }
-                        guard
-                            let data = payload.data(using: .utf8),
-                            let chunk = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                            let choices = chunk["choices"] as? [[String: Any]],
-                            let delta = choices.first?["delta"] as? [String: Any]
-                        else { continue }
-
-                        // Text content delta
-                        if let text = delta["content"] as? String, !text.isEmpty {
-                            contentAccum += text
-                            continuation.yield(.contentDelta(text))
+                    let mimeType = http.value(forHTTPHeaderField: "Content-Type")?
+                        .split(separator: ";", maxSplits: 1).first?
+                        .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    if mimeType == "application/json" {
+                        let body = try await Self.readAgentBody(bytes, limit: 1_048_576)
+                        guard let json = try JSONSerialization.jsonObject(with: body) as? [String: Any],
+                              let choices = json["choices"] as? [[String: Any]],
+                              let finish = choices.first?["finish_reason"] as? String,
+                              finish == "stop" || finish == "tool_calls" else {
+                            throw AgentStreamingError.incompleteResponse
                         }
-
-                        // Tool call deltas
-                        if let rawCalls = delta["tool_calls"] as? [[String: Any]] {
-                            for rawCall in rawCalls {
-                                guard let idx = rawCall["index"] as? Int else { continue }
-                                let id = rawCall["id"] as? String ?? ""
-                                let fn = rawCall["function"] as? [String: Any]
-                                let name = fn?["name"] as? String ?? ""
-                                let argChunk = fn?["arguments"] as? String ?? ""
-                                if var existing = toolCallAccum[idx] {
-                                    existing.args += argChunk
-                                    if !id.isEmpty { existing.id = id }
-                                    if !name.isEmpty { existing.name = name }
-                                    toolCallAccum[idx] = existing
-                                } else {
-                                    toolCallAccum[idx] = (id: id, name: name, args: argChunk)
+                        let reply = try Self.parseAgentResponse(body)
+                        guard reply.content?.isEmpty == false || !reply.toolCalls.isEmpty else {
+                            throw AgentStreamingError.invalidResponse
+                        }
+                        firstOutputMs = Int((ProcessInfo.processInfo.systemUptime - started) * 1000)
+                        if let text = reply.content, !text.isEmpty { continuation.yield(.contentDelta(text)) }
+                        for call in reply.toolCalls {
+                            continuation.yield(.toolCall(id: call.id, name: call.name, args: call.argumentsJSON))
+                        }
+                    } else {
+                        // Some compatible SSE servers omit Content-Type; keep
+                        // accepting actual data frames, without treating HTML or
+                        // an empty successful response as an assistant message.
+                        guard mimeType == nil || mimeType == "text/event-stream" else {
+                            throw AgentStreamingError.invalidResponse
+                        }
+                        var toolCalls: [Int: (id: String, name: String, args: String)] = [:]
+                        var hasText = false
+                        var sawDone = false
+                        var finishReason: String?
+                        for try await line in bytes.lines {
+                            try Task.checkCancellation()
+                            guard line.hasPrefix("data:") else { continue }
+                            let payload = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                            if payload == "[DONE]" { sawDone = true; break }
+                            guard let data = payload.data(using: .utf8),
+                                  let chunk = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                                  let choices = chunk["choices"] as? [[String: Any]] else {
+                                throw AgentStreamingError.invalidResponse
+                            }
+                            // Usage-only terminal chunks legitimately have no choices.
+                            guard let choice = choices.first else { continue }
+                            if let reason = choice["finish_reason"] as? String { finishReason = reason }
+                            guard let delta = choice["delta"] as? [String: Any] else { continue }
+                            if let text = delta["content"] as? String, !text.isEmpty {
+                                if firstOutputMs == nil { firstOutputMs = Int((ProcessInfo.processInfo.systemUptime - started) * 1000) }
+                                hasText = true
+                                continuation.yield(.contentDelta(text))
+                            }
+                            if let fragments = delta["tool_calls"] as? [[String: Any]], !fragments.isEmpty {
+                                if firstOutputMs == nil { firstOutputMs = Int((ProcessInfo.processInfo.systemUptime - started) * 1000) }
+                                for fragment in fragments {
+                                    guard let index = fragment["index"] as? Int else { throw AgentStreamingError.invalidResponse }
+                                    var call = toolCalls[index] ?? (id: "", name: "", args: "")
+                                    if let id = fragment["id"] as? String, !id.isEmpty { call.id = id }
+                                    let function = fragment["function"] as? [String: Any]
+                                    if let name = function?["name"] as? String, !name.isEmpty { call.name = name }
+                                    call.args += function?["arguments"] as? String ?? ""
+                                    toolCalls[index] = call
                                 }
                             }
                         }
+                        try Task.checkCancellation()
+                        guard (sawDone || finishReason != nil),
+                              finishReason == nil || finishReason == "stop" || finishReason == "tool_calls",
+                              hasText || !toolCalls.isEmpty else { throw AgentStreamingError.incompleteResponse }
+                        for index in toolCalls.keys.sorted() {
+                            guard let call = toolCalls[index], !call.id.isEmpty, !call.name.isEmpty else {
+                                throw AgentStreamingError.incompleteResponse
+                            }
+                            continuation.yield(.toolCall(id: call.id, name: call.name, args: call.args))
+                        }
                     }
-
-                    // Emit accumulated tool calls in index order
-                    for idx in toolCallAccum.keys.sorted() {
-                        guard let call = toolCallAccum[idx] else { continue }
-                        continuation.yield(.toolCall(id: call.id, name: call.name, args: call.args))
-                    }
-
+                    try Task.checkCancellation()
+                    completed = true
                     continuation.yield(.done)
                     continuation.finish()
-                    await MainActor.run { self.isProcessing = false }
                 } catch {
-                    await MainActor.run { self.isProcessing = false }
                     continuation.finish(throwing: error)
                 }
+                await MainActor.run { self.isProcessing = false }
+                onMetrics?(.init(firstOutputLatencyMs: firstOutputMs,
+                                 totalLatencyMs: Int((ProcessInfo.processInfo.systemUptime - started) * 1000),
+                                 completed: completed))
             }
+            continuation.onTermination = { @Sendable _ in producer.cancel() }
         }
+    }
+
+    private static func explicitlyRejectsStreaming(_ data: Data) -> Bool {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = json["error"] as? [String: Any], let code = error["code"] as? String else { return false }
+        if ["unsupported_stream", "unsupported_streaming", "streaming_not_supported"].contains(code) { return true }
+        return error["param"] as? String == "stream"
+            && ["unsupported_parameter", "unsupported_value"].contains(code)
+    }
+
+    private static func readAgentBody(_ bytes: URLSession.AsyncBytes, limit: Int) async throws -> Data {
+        var data = Data()
+        for try await byte in bytes {
+            try Task.checkCancellation()
+            guard data.count < limit else { throw AgentStreamingError.invalidResponse }
+            data.append(byte)
+        }
+        return data
     }
 
 

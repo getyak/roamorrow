@@ -3219,3 +3219,65 @@
 "harness.error.network" = "Cannot reach your account backend. Check that your device is connected to the authorized Tailscale network.";
 "account.changeEmail" = "Change email";
 "account.resendCode" = "Resend code";
+
+"companion.tab.conversation" = "Conversation";
+
+"companion.tab.map" = "Map";
+
+"companion.tab.itinerary" = "Itinerary";
+
+"companion.tab.me" = "Me";
+
+"companion.scope.next" = "For this question: %@";
+
+"companion.scope.clear" = "Clear this question’s scope";
+
+"companion.map.sourceUnavailable" = "The original message is no longer on this device. Your current conversation and draft are kept.";
+
+"companion.map.sourceKept" = "Original conversation and draft kept";
+
+"companion.map.area" = "This map area";
+
+"companion.map.askArea" = "Ask about this area";
+
+"companion.map.showResult" = "View on the map";
+
+"companion.map.search" = "Search places";
+
+"companion.map.searchPlaceholder" = "Place, café, bookstore…";
+
+"map.workspace.nearby" = "Nearby";
+
+"map.workspace.saved" = "Saved";
+
+"map.workspace.saved.currentCity" = "This area";
+
+"map.workspace.saved.all" = "All saved";
+
+"map.workspace.saved.list" = "Open saved places list";
+
+"map.workspace.source.return" = "Return to conversation";
+
+"map.workspace.searchArea" = "Update this area";
+
+"map.workspace.askSelected" = "Talk about this place";
+
+"map.workspace.empty.saved" = "No saved places in this area yet. Browse nearby to choose a place.";
+
+"map.workspace.empty.results" = "No matching places in the current view.";
+
+"companion.progress.thinking" = "Preparing your reply…";
+
+"companion.progress.search" = "Searching for places…";
+
+"companion.progress.sources" = "Checking sources…";
+
+"companion.progress.followup" = "Saving your follow-up…";
+
+"companion.map.retrySearch" = "Retry this search";
+
+"companion.map.editSearch" = "Edit the search";
+
+"companion.map.browseNearby" = "Browse nearby";
+
+"companion.map.sourceMissing" = "The places from this reply are unavailable on this device. Return to the conversation to check.";

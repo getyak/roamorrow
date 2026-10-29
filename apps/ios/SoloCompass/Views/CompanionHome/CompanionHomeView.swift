@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One conversation, with the map beside it. Neither surface owns the session.
+/// One persistent conversation and one map, with four independently reachable surfaces.
 @MainActor
 struct CompanionHomeView: View {
     @Environment(AIService.self) private var aiService
@@ -8,45 +8,63 @@ struct CompanionHomeView: View {
     @Environment(UserPreferences.self) private var preferences
     @Environment(LiveActivityService.self) private var liveActivities
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @State private var store = CompanionHomeStore()
-    @State private var surface: Surface = .now
+    @State private var surface: CompanionPrimaryTab = .now
+    @State private var visitedTabs: Set<CompanionPrimaryTab> = [.now]
     @State private var sheet: CompanionHomePresentation?
     @State private var didConfigure = false
     @State private var toolRouter: VoiceAgentToolRouter?
+    @State private var mapModel: MapViewModel?
+    @State private var mapRevealToken = 0
     @State private var composerID = UUID()
+    @State private var focusComposer = false
+    @State private var keyboardVisible = false
     @State private var mediaAudio = CompanionAudioSession()
     @State private var recordAfterDismiss = false
     @State private var routeSession = CompanionRouteSession()
-    @Environment(\.scenePhase) private var scenePhase
+    @State private var returnNotice: String?
 
-    private enum Surface: String, CaseIterable { case now, nearby }
     var body: some View {
-        @Bindable var store = store
-        ZStack {
-            CompanionHomeStyle.paper.ignoresSafeArea()
-            // A stable view identity keeps the map's camera, filters and results.
-            CompanionNearbyView(sheet: $sheet, store: store, routeSession: routeSession,
-                isActive: surface == .nearby, onModelReady: configureTools,
-                onConversation: { surface = .now })
-                .allowsHitTesting(surface == .nearby)
-                .accessibilityHidden(surface != .nearby)
-            VStack(spacing: 0) {
-                header
-                CompanionConversation(store: store, isActive: surface == .now, onSources: { sheet = .sources($0) },
-                    onPlace: showPlace, onCommitments: { sheet = .journey },
-                    onMedia: openMedia)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 0) {
+            ZStack {
+                CompanionHomeStyle.paper.ignoresSafeArea()
+                // The same view/model stay mounted through every tab switch.
+                CompanionNearbyView(sheet: $sheet, store: store, routeSession: routeSession,
+                    isActive: surface == .nearby, onModelReady: configureTools,
+                    onConversation: { selectTab(.now) }, onReturnToSource: returnToSource,
+                    onAskPlace: askAboutPlace, onAskArea: askAboutArea, messageRevealToken: mapRevealToken)
+                    .allowsHitTesting(surface == .nearby)
+                    .accessibilityHidden(surface != .nearby)
+                conversationSurface
+                    .opacity(surface == .now ? 1 : 0)
                     .allowsHitTesting(surface == .now)
                     .accessibilityHidden(surface != .now)
-                if surface == .now {
-                    CompanionComposer(text: $store.composerDraft, isWorking: store.isWorking, isActive: sheet == nil,
-                        onSend: { Task { await store.send() } }, onCancel: { store.cancel() }, store: store,
-                        onAddMedia: { sheet = .addMedia }, onOpenMedia: openMedia)
-                        .id(composerID) // Clearing invalidates pending capture/OCR callbacks.
-                        .background(CompanionHomeStyle.paper)
+                if visitedTabs.contains(.itinerary) {
+                    ItineraryListView(sourceCityCode: mapModel?.selectedCity)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button(companionText("companion.journey.open", "行程与约定")) { sheet = .journey }
+                            }
+                        }
+                        .opacity(surface == .itinerary ? 1 : 0)
+                        .allowsHitTesting(surface == .itinerary)
+                        .accessibilityHidden(surface != .itinerary)
+                }
+                if visitedTabs.contains(.me) {
+                    MeSheet(embedded: true, onOpenSettings: { sheet = .settings })
+                        .opacity(surface == .me ? 1 : 0)
+                        .allowsHitTesting(surface == .me)
+                        .accessibilityHidden(surface != .me)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if !keyboardVisible {
+                CompanionNavigationBar(selection: surface, onSelect: selectTab)
+                    .background(surface == .nearby ? Color.clear : CompanionHomeStyle.paper)
+            }
         }
+        .background(CompanionHomeStyle.paper.ignoresSafeArea(edges: .bottom))
         .tint(CompanionHomeStyle.accent)
         .environment(mediaAudio)
         .sheet(item: $sheet, onDismiss: {
@@ -64,7 +82,11 @@ struct CompanionHomeView: View {
                 SettingsView(onClose: { sheet = nil },
                     onClearAdditionalData: {
                         let cleared = store.clearLocalData()
-                        if cleared { mediaAudio.stopPlayback(); mediaAudio.cancelPendingPermission(); recordAfterDismiss = false; composerID = UUID() }
+                        if cleared {
+                            mediaAudio.stopPlayback(); mediaAudio.cancelPendingPermission()
+                            recordAfterDismiss = false; composerID = UUID()
+                            mapModel?.searchThisArea()
+                        }
                         return cleared
                     },
                     additionalExportFiles: {
@@ -74,7 +96,7 @@ struct CompanionHomeView: View {
             case .sources(let entry): CompanionSourcesSheet(entry: entry)
             case .place(let experience, let origin, let usesGPS):
                 CompanionPlaceSheet(experience: experience, store: store,
-                    onInviteSaved: { surface = .now }, distanceOrigin: origin, distanceUsesGPS: usesGPS)
+                    onInviteSaved: { selectTab(.now) }, distanceOrigin: origin, distanceUsesGPS: usesGPS)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             case .cities(let model, let onSelect):
@@ -90,18 +112,20 @@ struct CompanionHomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: RouteStore.didChange)) { _ in
             Task { await routeSession.refresh(experiences: experiences.allExperiences) }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
         .onChange(of: mediaAudio.completedRecording?.id) { _, id in
             if id != nil, let recording = mediaAudio.takeCompletedRecording() { _ = store.stageAttachment(recording) }
         }
         .onDisappear {
+            _ = store.savePresentation()
             recordAfterDismiss = false
             mediaAudio.cancelPendingPermission()
             mediaAudio.stopPlayback()
             if mediaAudio.isRecording, let recording = mediaAudio.finishRecording() { _ = store.stageAttachment(recording) }
         }
-        .onChange(of: surface) { _, _ in mediaAudio.stopPlayback() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { mediaAudio.stopPlayback() }
+            if phase == .background { _ = store.savePresentation(); mediaAudio.stopPlayback() }
             if phase == .active { Task { await routeSession.refresh(experiences: experiences.allExperiences) } }
         }
         .onChange(of: liveActivities.current?.id) { _, _ in
@@ -109,80 +133,88 @@ struct CompanionHomeView: View {
         }
         .onOpenURL { url in
             guard url.scheme == "solocompass", url.host == "companion", url.path == "/route" else { return }
-            surface = .nearby
+            selectTab(.nearby)
             sheet = nil
             routeSession.reveal()
         }
     }
 
-    private var header: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 4) {
-                surfacePicker
-                Spacer(minLength: 4)
-                headerActions
+    private var conversationSurface: some View {
+        @Bindable var store = store
+        return VStack(spacing: 0) {
+            header
+            if let returnNotice {
+                HStack {
+                    Text(returnNotice).font(.footnote)
+                    Spacer()
+                    CompanionIconButton(symbol: "xmark", label: companionText("companion.dismiss_notice", "关闭提示")) { self.returnNotice = nil }
+                }.padding(.leading, 16).background(CompanionHomeStyle.incoming)
             }
-            expandedHeader
+            CompanionConversation(store: store, isActive: surface == .now, onSources: { sheet = .sources($0) },
+                onPlace: showMessageOnMap, onCommitments: { sheet = .journey }, onMedia: openMedia)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            CompanionComposer(text: $store.composerDraft, isWorking: store.isWorking, isActive: surface == .now && sheet == nil,
+                onSend: { Task { await store.send() } }, onCancel: { store.cancel() }, store: store,
+                onAddMedia: { sheet = .addMedia }, onOpenMedia: openMedia,
+                focusOnAppear: focusComposer, onFocusChange: { focused in if focused { focusComposer = false } })
+                .id(composerID)
         }
-        .foregroundStyle(CompanionHomeStyle.ink)
-        .padding(.horizontal, 16).padding(.vertical, 6)
-        .background(surface == .now ? CompanionHomeStyle.paper : Color.clear)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("companion.header")
+        .background(CompanionHomeStyle.paper.ignoresSafeArea(edges: .top))
     }
 
-    private var expandedHeader: some View {
-        VStack(spacing: 4) {
-            surfacePicker.frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 4)
-            headerActions.frame(maxWidth: .infinity, alignment: .trailing)
+    private var header: some View {
+        HStack(spacing: 8) {
+            headerActions
+            Spacer(minLength: 0)
+            Button { dismissKeyboard() } label: {
+                HStack(spacing: 8) {
+                    CompanionCharacter(size: 42)
+                    Text("Roamorrow").font(.subheadline.weight(.semibold))
+                }.frame(minHeight: 48)
+            }
+            .buttonStyle(.plain).accessibilityIdentifier("companion.keyboard.dismiss")
+            Spacer(minLength: 0)
+            Button {
+                if let model = mapModel { sheet = .cities(model, onSelect: {}) }
+            } label: {
+                Text(mapModel?.currentDisplayCityName ?? companionText("companion.city.choose", "选择城市"))
+                    .font(.caption.weight(.medium)).lineLimit(1).frame(maxWidth: 82, minHeight: 44)
+                    .padding(.horizontal, 9).companionGlass(in: Capsule())
+            }.buttonStyle(.plain).disabled(mapModel == nil)
         }
+        .foregroundStyle(CompanionHomeStyle.ink)
+        .padding(.horizontal, 16).padding(.vertical, 4)
+        .accessibilityElement(children: .contain).accessibilityIdentifier("companion.header")
     }
 
     private var headerActions: some View {
-        HStack(spacing: 0) {
-            Menu {
-                Button(companionText("companion.people.open", "选择这次的同行人"), systemImage: "person.2") { sheet = .people }
-                if let active = routeSession.active {
-                    Button(active.placeName, systemImage: "figure.walk") {
-                        surface = .nearby; routeSession.reveal()
-                    }
-                }
-                Button(companionText("companion.journey.open", "行程与约定"), systemImage: "calendar") { sheet = .journey }
-                Button(companionText("companion.settings.open", "偏好与设置"), systemImage: "slider.horizontal.3") { sheet = .settings }
-            } label: {
-                Image(systemName: "ellipsis").font(.system(size: 20, weight: .medium))
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-                    .companionGlass(in: Circle())
+        Menu {
+            Button(companionText("companion.people.open", "选择这次的同行人"), systemImage: "person.2") { sheet = .people }
+            if let active = routeSession.active {
+                Button(active.placeName, systemImage: "figure.walk") { selectTab(.nearby); routeSession.reveal() }
             }
-            .accessibilityLabel(companionText("companion.more", "更多"))
-            .accessibilityIdentifier("companion.more")
-        }
-    }
-
-    private var surfacePicker: some View {
-        HStack(spacing: 2) {
-            surfaceButton(.now, title: companionText("companion.now", "此刻"))
-            surfaceButton(.nearby, title: companionText("companion.nearby", "附近"))
-        }
-        .padding(3)
-        .companionGlass(in: Capsule())
-    }
-
-    private func surfaceButton(_ value: Surface, title: String) -> some View {
-        Button {
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { surface = value }
+            Button(companionText("companion.journey.open", "行程与约定"), systemImage: "calendar") { sheet = .journey }
+            Button(companionText("companion.settings.open", "偏好与设置"), systemImage: "slider.horizontal.3") { sheet = .settings }
         } label: {
-            Text(title).font(.subheadline.weight(.medium))
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 16).frame(minHeight: 44)
-                .foregroundStyle(CompanionHomeStyle.ink)
-                .background(Capsule().fill(surface == value ? CompanionHomeStyle.paper.opacity(0.9) : Color.clear))
-                .contentShape(Rectangle())
+            Image(systemName: "line.3.horizontal").font(.system(size: 20, weight: .medium))
+                .frame(width: 44, height: 44).contentShape(Rectangle()).companionGlass(in: Circle())
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(surface == value ? .isSelected : [])
-        .accessibilityIdentifier("companion.surface.\(value.rawValue)")
+        .accessibilityLabel(companionText("companion.more", "更多")).accessibilityIdentifier("companion.more")
+    }
+
+    private func selectTab(_ value: CompanionPrimaryTab) {
+        guard value != surface else { return }
+        _ = store.savePresentation()
+        dismissKeyboard()
+        focusComposer = false
+        mediaAudio.stopPlayback()
+        visitedTabs.insert(value)
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { surface = value }
+        if value == .now { store.restorePresentation() }
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     private func openMedia(_ attachment: CompanionMediaAttachment) {
@@ -195,11 +227,46 @@ struct CompanionHomeView: View {
         sheet = .place(experience, distanceOrigin: nil, usesGPS: false)
     }
 
+    private func showMessageOnMap(_ entry: CompanionHomeEntry, _ selectedID: String?) {
+        let ids = entry.mapPlaceIDs
+        guard store.captureMapSource(messageID: entry.id, experienceIDs: ids) else { return }
+        mapModel?.openMessageResults(ids, selectedID: selectedID)
+        mapRevealToken &+= 1
+        selectTab(.nearby)
+    }
+
+    private func returnToSource() {
+        guard store.restoreMapSource() else {
+            returnNotice = companionText("companion.map.sourceUnavailable", "原消息已不在本机，已保留当前对话和草稿。")
+            selectTab(.now)
+            return
+        }
+        selectTab(.now)
+    }
+
+    private func askAboutPlace(_ experience: Experience) {
+        if store.mapSource != nil { returnToSource() } else { selectTab(.now) }
+        guard store.setNextTurnExperience(experience) else { return }
+        focusComposer = true
+    }
+
+    private func askAboutArea(_ scope: CompanionHomeAreaScope) {
+        guard store.setNextTurnArea(scope.area, query: scope.query, category: scope.category,
+            experienceIDs: scope.experienceIDs, latitudeDelta: scope.latitudeDelta,
+            longitudeDelta: scope.longitudeDelta) else { return }
+        if store.mapSource != nil { returnToSource() } else { selectTab(.now) }
+        focusComposer = true
+    }
+
     private func configureTools(_ model: MapViewModel) {
+        mapModel = model
         if !didConfigure {
             store.configure(aiService: aiService, experienceService: experiences)
             didConfigure = true
         }
+        // Ordinary messages receive only an explicitly selected public city
+        // center. Precise map/GPS positions enter a model turn only through the
+        // user's explicit one-question place/area action.
         store.configure(searchArea: { [weak model] in
             guard let model, let code = model.selectedCity, !code.hasPrefix("custom_"),
                   let city = model.availableCities.first(where: { $0.code == code }) else { return nil }
@@ -207,6 +274,7 @@ struct CompanionHomeView: View {
                 name: CompanionPlacePresentation.cityName(code: city.code, fallback: city.name),
                 latitude: city.center.latitude, longitude: city.center.longitude, cityCode: city.code)
         })
+        if let source = store.mapSource { model.openMessageResults(source.experienceIDs) }
         guard toolRouter == nil else { return }
         let router = VoiceAgentToolRouter(mapViewModel: model, preferences: preferences, aiService: aiService)
         toolRouter = router

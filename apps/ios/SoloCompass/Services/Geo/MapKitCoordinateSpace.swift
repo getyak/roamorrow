@@ -126,6 +126,7 @@ final class MapKitCoordinateSpace {
     /// Shared producer owns publication/backoff. Cancelling one caller cannot
     /// cancel another caller's calibration or erase a successfully loaded profile.
     func prepare(near c: CLLocationCoordinate2D, countryCode: String? = nil) async throws {
+        try Task.checkCancellation()
         guard Self.valid(c) else { throw CalibrationError.unavailable }
         var target = area(for: c, countryCode: countryCode)
         if target == .unresolved {
@@ -173,7 +174,18 @@ final class MapKitCoordinateSpace {
             }
             inFlight[region] = task
         }
-        let result = try await task.value
+        let waiter = MapKitCalibrationWaiter()
+        let result = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                waiter.install(continuation)
+                // An unstructured observer forwards the shared producer's result.
+                // The canceled caller never awaits this observer, and must not
+                // cancel the producer that other callers still need.
+                Task { waiter.resolve(await task.result) }
+            }
+        } onCancel: {
+            waiter.resolve(.failure(CancellationError()))
+        }
         try Task.checkCancellation()
         guard result.searchOutput != .unknown else { throw CalibrationError.unavailable }
     }
@@ -313,5 +325,38 @@ final class MapKitCoordinateSpace {
                       latitude: 22 + 11.0/60 + 35.9/3600, longitude: 113 + 32.0/60 + 24.7/3600, reference: "https://www.wikidata.org/wiki/Q909429")
             ]
         }
+    }
+}
+
+/// A caller-owned, single-resume bridge. Cancellation may precede continuation
+/// installation or race the shared producer; the lock chooses one result and
+/// resumes outside the critical section. No shared producer is canceled here.
+private final class MapKitCalibrationWaiter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<MapKitCoordinateSpace.Profile, Error>?
+    private var completion: Result<MapKitCoordinateSpace.Profile, Error>?
+
+    func install(_ continuation: CheckedContinuation<MapKitCoordinateSpace.Profile, Error>) {
+        lock.lock()
+        if let completion {
+            lock.unlock()
+            continuation.resume(with: completion)
+            return
+        }
+        self.continuation = continuation
+        lock.unlock()
+    }
+
+    func resolve(_ result: Result<MapKitCoordinateSpace.Profile, Error>) {
+        lock.lock()
+        if case .some = completion {
+            lock.unlock()
+            return
+        }
+        completion = result
+        let pending = continuation
+        continuation = nil
+        lock.unlock()
+        pending?.resume(with: result)
     }
 }

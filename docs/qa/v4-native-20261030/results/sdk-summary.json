@@ -1,0 +1,17 @@
+{
+  "known_explicit_provider_search_calls": 5,
+  "model_requests_so_far": 0,
+  "sdk_platform": "macOS real Apple Maps SDK",
+  "native_ios_platform_verified": false,
+  "bookstore_nonempty_result": "not_observed",
+  "quality_filter_positive_evidence": "inconclusive; provider returned no candidates",
+  "stale_city_result_discarded": true,
+  "raw_station_lookup": {
+    "response_map_items_obtained": false,
+    "error_domain": "MKErrorDomain",
+    "error_code": 4,
+    "underlying_geo_error": -8
+  },
+  "durable_favorites_and_itinerary": "awaiting main task native/UI acceptance",
+  "overall_product_accepted": false
+}

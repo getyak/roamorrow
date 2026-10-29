@@ -1,0 +1,48 @@
+{
+  "model_requests": 4,
+  "model_http200": 4,
+  "output_token_limit_each": 512,
+  "actual_completion_tokens": 347,
+  "explicit_public_provider_searches": 7,
+  "sdk_internal_http_count": "opaque; not claimed",
+  "autonomous_model_tools": [
+    {
+      "name": "search_places",
+      "arguments": {
+        "query": "书店",
+        "latitude": 35.6958,
+        "longitude": 139.7585,
+        "radius_meters": 2000,
+        "progressive": false
+      },
+      "result_count": 0
+    },
+    {
+      "name": "search_places",
+      "arguments": {
+        "latitude": 35.6958,
+        "longitude": 139.7585,
+        "progressive": false,
+        "query": "bookstore",
+        "radius_meters": 2000
+      },
+      "result_count": 0
+    }
+  ],
+  "nonstream_response_ms": [1219, 859, 1332],
+  "sdk_handler_ms": [550, 149],
+  "tool_cli_ms": [998, 166],
+  "model_and_tool_phase_ms_sum": 4574,
+  "sse_transport_sample_ms": {
+    "first_event_ms": 363,
+    "first_content_ms": 729,
+    "total_ms": 903
+  },
+  "source_changed_during_model_run": ["ViewModels/MapViewModel.swift"],
+  "scope_coordinate_assertion": true,
+  "observed_final_behavior": "Explicitly said empty search does not prove no bookstores; rating/quietness/hours unknown; no itinerary added. Fourth reply refused to confirm >=8 quiet bookstore.",
+  "nonempty_bookstore_success": "not observed",
+  "full_native_homeagent_or_ios_acceptance": false,
+  "general_latency_or_speedup_claim": false,
+  "web_search_production_route": "Supabase Edge tavily-search; backend flag currently false; no direct Tavily bypass, no private auth/session used"
+}

@@ -273,6 +273,7 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: ../../docs/qa/harness-ios-20261024/AccountOnboardingUITests.swift
+      - path: ../../docs/qa/v4-native-20261030/V4NavigationUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round2/CompanionAcceptanceUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round3/CompanionMapPanelUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round4/CompanionTravelIMUITests.swift

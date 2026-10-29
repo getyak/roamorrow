@@ -6,7 +6,7 @@ struct CompanionMessageRow: View {
     var replyContext: String? = nil
     let onRetry: () -> Void
     let onSources: () -> Void
-    let onPlace: () -> Void
+    let onPlace: (String) -> Void
     let onMedia: (CompanionMediaAttachment) -> Void
     let onQuote: (CompanionQuotedMessage) -> Void
     let onReaction: () -> Void
@@ -57,21 +57,24 @@ struct CompanionMessageRow: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier(parts.count == 1 ? bodyIdentifier : "companion.message.part.\(entry.id).\(parts.count - 1)")
                 }
-                if let id = entry.placeID, let experience = experiences.getExperience(id: id) {
-                    Button(action: onPlace) {
+                ForEach(entry.mapPlaceIDs.prefix(3), id: \.self) { id in
+                    if let experience = experiences.getExperience(id: id) {
+                    Button { onPlace(id) } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "mappin.and.ellipse").accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(experience.shortName).font(.body.weight(.medium))
-                                Text(companionText("companion.media.selectedPlace", "地图地点 · 查看详情"))
+                                Text(companionText("companion.map.showResult", "在地图上看"))
                                     .font(.footnote).foregroundStyle(CompanionHomeStyle.secondaryInk)
                             }
                             Spacer(minLength: 0)
                             Image(systemName: "chevron.right").font(.footnote).accessibilityHidden(true)
                         }.frame(minHeight: 44).contentShape(Rectangle())
                     }.buttonStyle(.plain)
+                        .accessibilityIdentifier("companion.message.map.\(entry.id).\(id)")
+                    }
                 }
-                if entry.placeID != nil || entry.sourceTitles.contains(where: { $0.hasPrefix("本轮网页检索") || $0.hasPrefix("工具返回资料") }) {
+                if !entry.mapPlaceIDs.isEmpty || entry.sourceTitles.contains(where: { $0.hasPrefix("本轮网页检索") || $0.hasPrefix("工具返回资料") }) {
                     Button(action: onSources) {
                         Label(companionText("companion.sources.open", "查看依据"), systemImage: "text.quote")
                             .font(.footnote).frame(minHeight: 44).contentShape(Rectangle())

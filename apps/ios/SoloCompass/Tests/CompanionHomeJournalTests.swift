@@ -135,7 +135,7 @@ final class CompanionHomeJournalTests: XCTestCase {
     func testSearchReturnsActualBoundedRecordsAndDoesNotClaimGPS() throws {
         let experience = try XCTUnwrap(ExperienceService.hardcodedSeed.first)
         let planned = CompanionHomeToolCheckpoint(id: "search", name: "search_places", argumentsJSON: #"{"query":"coffee"}"#)
-        let result = try CompanionHomeAgent.groundedResult(for: planned, raw: #"{"added_count":6}"#,
+        let result = try CompanionHomeAgent.groundedResult(for: planned, raw: #"{"ok":true,"added_count":6,"origin_source":"map_viewport"}"#,
                                                          effect: .experiences(Array(repeating: experience, count: 6)))
         let data = Data(try XCTUnwrap(result.resultJSON).utf8)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -143,7 +143,7 @@ final class CompanionHomeJournalTests: XCTestCase {
         XCTAssertEqual(records.count, 5)
         XCTAssertTrue((records[0]["record"] as? String)?.contains(experience.shortName) == true)
         XCTAssertNotNil(records[0]["sources"])
-        XCTAssertEqual(json["search_area_basis"] as? String, "app_default_center_not_device_location")
+        XCTAssertEqual(json["search_area_basis"] as? String, "map_viewport")
         XCTAssertLessThanOrEqual(data.count, 64_000)
     }
 }
