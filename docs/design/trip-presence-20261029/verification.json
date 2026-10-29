@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "browserSkipped": false,
+  "audit": {
+    "lint": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 0
+    },
+    "runtime": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 0
+    },
+    "layout": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 13
+    },
+    "motion": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 0
+    },
+    "contrast": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 7,
+      "infoCount": 0
+    },
+    "craft": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 10,
+      "infoCount": 0
+    },
+    "audio": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0,
+      "infoCount": 0
+    }
+  },
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "seconds": 46,
+    "sha256": "5479ec89775b5a268b3d281ae953b5c74032d74d2954bb64caea570d26e41710",
+    "bytes": 3861279
+  },
+  "scope": "HTML concept and UI film only; no native app, live provider, real payment, location or persistent memory validation.",
+  "audio": {
+    "seconds": 46,
+    "channels": 2,
+    "sampleRate": 48000,
+    "lufsIntegrated": -24.5,
+    "truePeakDb": -8.3,
+    "clippingCount": 0,
+    "listened": false
+  },
+  "renderMissingAsset404s": 0,
+  "independentReview": "Two P1 findings fixed and re-reviewed; no remaining P0/P1 in scoped design review."
+}
