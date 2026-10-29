@@ -572,7 +572,7 @@ private struct CompanionNearbyMap: View {
                 VStack(alignment: .leading, spacing: 8) { detailButton(experience); saveButton(experience) }
             }
             Button {
-                Task { if await routeSession.start(experience: experience, cityCode: model.selectedCity ?? experience.location.cityCode) { page = .route; expand() } }
+                Task { if await routeSession.start(experience: experience, cityCode: experience.location.cityCode) { page = .route; expand() } }
             } label: {
                 Label(companionText("companion.route.start", "开始前往这里"), systemImage: "figure.walk")
                     .font(.subheadline).frame(minHeight: 44).contentShape(Rectangle())

@@ -52,6 +52,26 @@ def seed(container: Path, receipt: Path) -> None:
             raise ValueError("Refusing to replace a nonempty conversation snapshot")
         receipt.parent.mkdir(parents=True, exist_ok=True)
         (receipt.parent / "pre-fixture-empty-snapshot.json").write_bytes(original)
+    # Natural travel notes keep the native preview readable. Every message is
+    # visibly marked as a demo; the source also identifies the CI fixture.
+    messages = [
+        "这几天，你想每天安排一个重点，还是多留一点空白？",
+        "下午想随便走走，不想把时间排满。",
+        "那就先选一个地方，其他的留到当时决定。",
+        "想去一家书店，能慢慢翻书就好。",
+        "这家书店来自 App 保存的公开资料。可以先在地图看位置；营业时间和座位情况还没核实。",
+        "我先看看它在哪，暂时不用改今天的安排。",
+        "可以。浏览地图和收藏地点会保留这段对话。",
+        "傍晚想回河边，走累了就休息。",
+        "把节奏留松一点。确认目的地以后，再看怎么过去。",
+        "如果下雨，书店也可以留到明天。",
+        "等你决定时再调整。还没确认的想法会留在这里。",
+        "今天暂时不增加新的预订。",
+        "需要付款、改签或取消时，会先把具体内容交给你确认。",
+        "这趟旅行，我想多留一点时间给自己。",
+        "慢慢来。想继续时，可以从前面那家书店开始。",
+        "我还在想，先把这句话留在草稿里。",
+    ]
     entries = []
     for index in range(16):
         source = index == 4
@@ -60,8 +80,7 @@ def seed(container: Path, receipt: Path) -> None:
             "role": "companion" if index % 2 == 0 else "user",
             "status": "delivered",
             "createdAt": 815000000 + index * 300,
-            "text": ("[UI fixture] 这家书店来自 App 公开种子资料。可以在地图查看，营业时间和安静程度仍需核实。"
-                     if source else f"[UI fixture {index + 1:02d}] 保留这条旅行笔记。切换地图后，仍回到正在阅读的这一处。\n这是一段明确标记的本地界面验收资料，不是模型搜索回复。"),
+            "text": "[界面演示] " + messages[index],
             "sourceTitles": ["CI UI fixture — public bundled data"],
             "placeIDs": [PLACE_ID] if source else [],
         })
