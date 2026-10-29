@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>东京 3 天 · Roamorrow Map Layer</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="/" aria-label="Roamorrow 首页"
+        ><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+          <path d="M15 2 27 24 15 20 3 24Z" fill="none" stroke="currentColor" stroke-width="2" />
+          <path d="M15 8v12" stroke="currentColor" stroke-width="2" /></svg
+        >roamorrow<span>把旅程放到地图上</span></a
+      >
+      <nav>
+        <a href="/" id="experience-nav">地图演示</a
+        ><a href="/interaction" id="interaction-nav">拖动交互稿</a
+        ><button id="trace-button">查看工具调用 <span id="trace-count">0</span></button>
+      </nav>
+    </header>
+    <main>
+      <div id="interaction-note" hidden>
+        <strong>把浅草寺移到第 2 天</strong
+        ><span>拿起地图上的 pin，放入底部日期带。或选中地点，使用「移到」菜单。</span>
+        <div class="state-legend">
+          <span>拿起</span><span>目标高亮</span><span>两天重算</span><span>一次保存</span
+          ><span>可撤销</span>
+        </div>
+      </div>
+      <div class="workspace">
+        <aside class="sidebar">
+          <div class="sidebar-top">
+            <div class="location-caption">日本 / 东京</div>
+            <div class="title-line">
+              <h1>东京，三天。</h1>
+              <span class="stamp">城市漫游</span>
+            </div>
+            <p class="subtitle">浅草的清晨，涩谷的街口，再把一天留给银座。</p>
+            <div class="tabs">
+              <button id="chat-tab" class="active">从对话开始</button
+              ><button id="plan-tab">分日行程</button>
+            </div>
+          </div>
+          <section id="chat-panel">
+            <div class="agent-identity">
+              <span class="agent-mark">G</span>
+              <div>
+                <strong>Grok 对话回放</strong><small>对话为脚本 · 工具走真实本地 HTTP</small>
+              </div>
+            </div>
+            <div class="user-message">规划东京 3 天</div>
+            <p class="chat-copy">先按三个区域排成草案。没提供出行日期，营业日和交通仍需核查。</p>
+            <label for="prompt" class="sr-only">旅行需求</label
+            ><textarea id="prompt" rows="2" readonly>规划东京 3 天</textarea
+            ><button class="primary run-button" id="run">规划东京 3 天 <span>↗</span></button>
+            <p class="quiet-note">九个地点，三天，一张可以接着改的地图。</p>
+            <ol id="flow-steps"></ol>
+            <div id="agent-answer" hidden></div>
+          </section>
+          <section id="plan-panel" hidden>
+            <div class="plan-meta">
+              <span id="plan-status">行程还没生成</span><button id="reset">重新规划</button>
+            </div>
+            <div id="days"></div>
+            <div id="guest-actions" hidden>
+              <p>这是一份只读分享。保留原图，做一份自己的行程。</p>
+              <button id="fork" class="primary">复制并编辑</button>
+            </div>
+          </section>
+          <div class="sidebar-bottom">
+            <span class="small-compass">↟</span><span>你的顺序，你说了算。</span
+            ><button id="share" disabled>分享地图 ↗</button>
+          </div>
+        </aside>
+        <section class="map-panel" aria-label="东京分日地图">
+          <div class="map-title"><span>Tokyo</span><small>35°41′ N　139°45′ E</small></div>
+          <div class="map-tools">
+            <button id="zoom-in" aria-label="放大地图">＋</button
+            ><button id="zoom-out" aria-label="缩小地图">−</button
+            ><button id="fit" aria-label="显示完整行程">⌖</button>
+          </div>
+          <div id="map-viewport">
+            <div id="map-world">
+              <svg
+                id="map-svg"
+                viewBox="0 0 1050 780"
+                preserveAspectRatio="none"
+                role="img"
+                aria-label="东京地理底图与分日示意路线"
+              >
+                <rect width="1050" height="780" fill="#E9EEE6" />
+                <g id="tiles"></g>
+                <g id="routes"></g>
+              </svg>
+              <div id="pins"></div>
+            </div>
+          </div>
+          <div id="empty-map">
+            <span class="map-star">✳</span>
+            <h2>先想去哪里，<br />再慢慢走。</h2>
+            <p>生成后，三天会以不同颜色在这里展开。</p>
+          </div>
+          <div class="map-evidence">
+            <span class="evidence-dot"></span
+            ><span id="evidence-label">演示资料 / 交通估算 / 示意连线</span
+            ><a href="https://maps.gsi.go.jp/development/" target="_blank" rel="noreferrer"
+              >地理院タイル（国土地理院）</a
+            >
+          </div>
+          <div id="day-rail" aria-label="拖动地点到某一天" hidden></div>
+          <div id="selection" hidden></div>
+          <div class="map-caption">
+            有些路，走着走着就想换个方向。<span>换天后自动顺路重排。</span>
+          </div>
+        </section>
+      </div>
+      <div class="operation-bar">
+        <div id="notice" aria-live="polite">独立交互原型。没有调用真实 Grok 或交通提供商。</div>
+        <button id="undo" disabled>撤销上一步</button
+        ><label class="scenario-label"
+          >计算情景<select id="scenario" aria-label="计算情景">
+            <option value="">正常重算</option>
+            <option value="provider">提供商失败</option>
+            <option value="unknown">交通未知</option>
+          </select></label
+        ><span class="version" id="version">等待生成</span>
+      </div>
+      <details class="implementation-note">
+        <summary>这次演示实际验证了什么</summary>
+        <p>
+          真实：本地 MCP HTTP 调用、磁盘状态、可重开链接、拖动跨天事务、版本冲突和撤销。演示：Grok
+          对话、地点 fixture、估算交通与示意路线。未验证：xAI 实际调用、公网部署、生产
+          OAuth、真实营业日与地铁、原生 App 和真机触屏。
+        </p>
+        <a href="/contract.json" target="_blank">下载六个工具完整契约</a>
+      </details>
+    </main>
+    <dialog id="trace-dialog">
+      <div class="dialog-head">
+        <h2>MCP 调用记录</h2>
+        <button data-close="trace-dialog" aria-label="关闭工具调用记录">×</button>
+      </div>
+      <p>本机实际请求与返回。Grok 对话是可重复的脚本。</p>
+      <div id="trace-list"></div>
+    </dialog>
+    <dialog id="share-dialog">
+      <div class="dialog-head">
+        <h2>让地图带路</h2>
+        <button data-close="share-dialog" aria-label="关闭分享窗口">×</button>
+      </div>
+      <p>链接只读；当前所有者可继续编辑，其他人可复制自己的版本。</p>
+      <input id="share-url" aria-label="地图分享链接" readonly />
+      <div class="share-actions">
+        <button id="copy-link" class="primary">复制链接</button
+        ><a id="open-share" target="_blank" rel="noreferrer">打开地图 ↗</a>
+      </div>
+      <small>本地演示链接，仅在本机服务运行期间可访问。7 天有效。</small>
+    </dialog>
+    <div id="drag-ghost" hidden></div>
+    <script type="module" src="/app.mjs"></script>
+  </body>
+</html>
