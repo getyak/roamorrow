@@ -239,6 +239,9 @@ final class CompanionChatPerformanceTests: XCTestCase {
     func testIncomingDuringInteractionAndHistoryDoesNotForceFollowing() {
         var intent = CompanionScrollIntent(reading: .init())
         intent.interactionChanged(active: true)
+        XCTAssertFalse(intent.permitsScroll(.restoration))
+        XCTAssertTrue(intent.permitsScroll(.explicit))
+        XCTAssertFalse(intent.permitsScroll(.following))
         XCTAssertFalse(intent.contentArrived(isUserAction: false))
         intent.visibilityChanged(nearLatest: true)
         XCTAssertFalse(intent.followsLatest)
@@ -252,6 +255,33 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertFalse(intent.contentArrived(isUserAction: false))
         XCTAssertTrue(intent.contentArrived(isUserAction: true))
         XCTAssertTrue(intent.followsLatest)
+    }
+
+    func testLayoutCannotReplaceHistoryAnchorButUserScrollingCan() {
+        var intent = CompanionScrollIntent(reading: .init(anchorID: "source", followsLatest: false))
+        XCTAssertEqual(intent.anchorForSaving(visible: "later-layout-row", saved: "source"), "source")
+        intent.interactionChanged(active: true)
+        XCTAssertFalse(intent.permitsScroll(.restoration))
+        XCTAssertEqual(intent.anchorForSaving(visible: "user-chosen-row", saved: "source"), "user-chosen-row")
+        intent.interactionChanged(active: false)
+        XCTAssertTrue(intent.permitsScroll(.restoration))
+        XCTAssertEqual(intent.anchorForSaving(visible: "keyboard-layout-row", saved: "user-chosen-row"), "user-chosen-row")
+    }
+
+    func testMapReturnPinsTheSourceInsteadOfANeighboringVisibleRow() async throws {
+        let store = CompanionHomeStore(url: location())
+        let agent = Agent()
+        store.configure(agent: agent)
+        await store.send(text: "First question")
+        await store.send(text: "A later question")
+        let source = try XCTUnwrap(store.entries.first(where: { $0.role == .companion }))
+        let last = try XCTUnwrap(store.entries.last)
+        store.noteReadingPosition(anchorID: "message:\(last.id)", followsLatest: false, hasUnread: false)
+        XCTAssertTrue(store.captureMapSource(messageID: source.id, experienceIDs: []))
+        XCTAssertEqual(store.mapSource?.readingAnchorID, "message:\(source.id)")
+        XCTAssertTrue(store.restoreMapSource())
+        XCTAssertEqual(store.readingState.anchorID, "message:\(source.id)")
+        XCTAssertFalse(store.readingState.followsLatest)
     }
 
     func testCoalescedStatusUpdatesRetainTheUnseenUserSend() {

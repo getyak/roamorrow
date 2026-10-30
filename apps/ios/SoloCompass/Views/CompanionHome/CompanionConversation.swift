@@ -15,8 +15,9 @@ struct CompanionConversation: View {
     @State private var viewport = CGRect.zero
     private struct ScrollRequest {
         var revision = 0
+        var target: String? = "stream-bottom"
         var animated = false
-        var force = false
+        var kind: CompanionScrollIntent.ScrollRequestKind = .following
     }
 
     init(store: CompanionHomeStore, isActive: Bool,
@@ -156,14 +157,16 @@ struct CompanionConversation: View {
                 if intent.followsLatest && !intent.isInteracting { requestLatest() }
             }
             .onChange(of: isActive) { _, active in if active { restoreReading() } }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in restoreHistoryAfterLayout() }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in restoreHistoryAfterLayout() }
             .task(id: scrollRequest.revision) {
                 let request = scrollRequest
                 guard request.revision > 0 else { return }
                 await Task.yield()
-                guard !Task.isCancelled, isActive,
-                      request.force || (intent.followsLatest && !intent.isInteracting) else { return }
+                guard !Task.isCancelled, isActive, let target = request.target,
+                      intent.permitsScroll(request.kind) else { return }
                 withAnimation(request.animated && !reduceMotion ? .easeOut(duration: 0.2) : nil) {
-                    scrollProxy.scrollTo("stream-bottom", anchor: .bottom)
+                    scrollProxy.scrollTo(target, anchor: .bottom)
                 }
             }
             .overlay(alignment: .bottom) {
@@ -198,24 +201,40 @@ struct CompanionConversation: View {
 
     private func saveReading() {
         // Scroll observation updates memory; tab/background transitions flush once.
-        guard isActive, intent.followsLatest || scrollTarget != "stream-bottom" else { return }
-        store.noteReadingPosition(anchorID: scrollTarget, followsLatest: intent.followsLatest, hasUnread: intent.hasUnread)
+        guard isActive else { return }
+        let anchor = intent.anchorForSaving(visible: scrollTarget, saved: store.readingState.anchorID)
+        guard intent.followsLatest || anchor != "stream-bottom" else { return }
+        store.noteReadingPosition(anchorID: anchor, followsLatest: intent.followsLatest, hasUnread: intent.hasUnread)
     }
 
     private func restoreReading() {
         scrollTarget = store.readingState.anchorID
         intent = CompanionScrollIntent(reading: store.readingState)
-        if intent.followsLatest { requestLatest() }
+        if let target = store.readingState.anchorID {
+            // An unchanged binding ID does not re-position an existing native
+            // scroll view after tab/keyboard layout. Replay the stable target.
+            scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, target: target, kind: .restoration)
+        }
+    }
+
+    private func restoreHistoryAfterLayout() {
+        guard isActive, !intent.followsLatest, !intent.isInteracting else { return }
+        restoreReading()
     }
 
     private func requestLatest(force: Bool = false) {
         guard isActive else { return }
-        scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, animated: false, force: force)
+        scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, kind: force ? .explicit : .following)
     }
 
     private func observeInteraction(_ active: Bool) {
         guard isActive, intent.isInteracting != active else { return }
         intent.interactionChanged(active: active)
+        if active, scrollRequest.kind == .restoration, scrollRequest.target != nil {
+            // Invalidate a queued restoration even if the gesture also finishes
+            // before its task resumes. Explicit send/latest actions still win.
+            scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, target: nil, kind: .restoration)
+        }
         saveReading()
     }
 

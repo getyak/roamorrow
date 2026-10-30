@@ -2,6 +2,7 @@ import Foundation
 
 /// User intent is independent of changing content height and layout estimates.
 struct CompanionScrollIntent: Equatable {
+    enum ScrollRequestKind: Sendable { case following, explicit, restoration }
     private(set) var followsLatest: Bool
     private(set) var hasUnread: Bool
     private(set) var isInteracting = false
@@ -36,5 +37,20 @@ struct CompanionScrollIntent: Equatable {
     mutating func revealLatest() {
         followsLatest = true
         hasUnread = false
+    }
+
+    /// Keyboard/layout-driven binding updates are observations, not a new
+    /// reading intention. Only native user scrolling may move a history anchor.
+    func anchorForSaving(visible: String?, saved: String?) -> String? {
+        if followsLatest { return "stream-bottom" }
+        return isInteracting ? visible : saved
+    }
+
+    func permitsScroll(_ kind: ScrollRequestKind) -> Bool {
+        switch kind {
+        case .explicit: return true
+        case .restoration: return !isInteracting
+        case .following: return followsLatest && !isInteracting
+        }
     }
 }

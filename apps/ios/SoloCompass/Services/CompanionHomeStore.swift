@@ -263,11 +263,9 @@ final class CompanionHomeStore: AgentExecutionJournal {
         let requested = experienceIDs.isEmpty ? entry.mapPlaceIDs : experienceIDs
         let ids = requested.filter { actualIDs.contains($0) && seen.insert($0).inserted }
         let previous = mapSource
-        let anchor = readingState.anchorID == "stream-bottom" || readingState.anchorID == nil
-            ? "message:\(messageID)" : readingState.anchorID
         mapSource = CompanionConversationMapSource(
             conversationID: conversationID, messageID: messageID,
-            experienceIDs: ids, readingAnchorID: anchor
+            experienceIDs: ids, readingAnchorID: "message:\(messageID)"
         )
         guard persist() else { mapSource = previous; return false }
         return true
@@ -277,9 +275,9 @@ final class CompanionHomeStore: AgentExecutionJournal {
     func restoreMapSource() -> Bool {
         guard let source = mapSource, source.conversationID == conversationID,
               entries.contains(where: { $0.id == source.messageID }) else { return false }
-        let anchor = validReadingAnchor(source.readingAnchorID)
-            ? source.readingAnchorID : "message:\(source.messageID)"
-        restorePresentation(preferredAnchorID: anchor)
+        // Return to the actual source, even if a legacy record captured a
+        // neighboring visible row. Viewport/keyboard sizes can differ now.
+        restorePresentation(preferredAnchorID: "message:\(source.messageID)")
         return true
     }
 

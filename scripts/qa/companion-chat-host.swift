@@ -199,6 +199,18 @@ import Foundation
         intent.interactionChanged(active: false)
         require(!intent.contentArrived(isUserAction: false), "reading history retains anchor on incoming")
         require(intent.contentArrived(isUserAction: true) && intent.followsLatest, "explicit user send returns to latest immediately")
+        var restored = CompanionScrollIntent(reading: .init(anchorID: "source", followsLatest: false))
+        require(restored.anchorForSaving(visible: "layout-row", saved: "source") == "source",
+            "layout binding changes cannot replace a restored history anchor")
+        restored.interactionChanged(active: true)
+        require(!restored.permitsScroll(.restoration), "queued history restoration respects a newly started gesture")
+        require(restored.permitsScroll(.explicit), "explicit send/latest action can still override history interaction")
+        require(restored.anchorForSaving(visible: "user-row", saved: "source") == "user-row",
+            "native user scrolling can move the reading anchor")
+        restored.interactionChanged(active: false)
+        require(restored.permitsScroll(.restoration), "idle history restoration may replay its stable target")
+        require(restored.anchorForSaving(visible: "keyboard-row", saved: "user-row") == "user-row",
+            "keyboard geometry after deceleration preserves the chosen history anchor")
     }
 
     @MainActor static func main() async throws {
@@ -268,6 +280,12 @@ import Foundation
         let restoredTurn = recovered.entries.last(where: { $0.role == .user })!
         require(recovered.toolJournal(for: restoredTurn.id).flatMap(\.calls).allSatisfy { $0.state == .completed },
             "cached snapshots round-trip every durable observed result")
+        let sourceID = entries[1].id
+        store.noteReadingPosition(anchorID: "message:\(restoredTurn.id)", followsLatest: false, hasUnread: false)
+        require(store.captureMapSource(messageID: sourceID, experienceIDs: []), "source capture accepts an existing historical message")
+        require(store.mapSource?.readingAnchorID == "message:\(sourceID)", "map source pins its own ID instead of a neighboring visible row")
+        require(store.restoreMapSource() && store.readingState.anchorID == "message:\(sourceID)",
+            "map return restores the actual source while keeping history intention")
         try await persistenceChecks(root: root)
         scrollChecks(entries: entries)
         print("Companion chat host: \(checks) checks, \(failures) failures")
