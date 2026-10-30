@@ -12,7 +12,9 @@ struct CompanionConversation: View {
     let onCommitments: () -> Void
     let onMedia: (CompanionMediaAttachment) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var observedAnchorID: String?
+    // Only the iOS 17 binding publishes this value. Modern visible-ID readback
+    // records an ignored checkpoint without invalidating the whole lazy list.
+    @State private var legacyAnchorID: String?
     @State private var intent: CompanionScrollIntent
     @State private var scrollRequest = ScrollRequest()
     @State private var viewport = CGRect.zero
@@ -24,7 +26,7 @@ struct CompanionConversation: View {
          onCommitments: @escaping () -> Void, onMedia: @escaping (CompanionMediaAttachment) -> Void) {
         self.store = store; self.isActive = isActive; self.onSources = onSources
         self.onPlace = onPlace; self.onCommitments = onCommitments; self.onMedia = onMedia
-        _observedAnchorID = State(initialValue: store.readingState.anchorID)
+        _legacyAnchorID = State(initialValue: store.readingState.anchorID)
         _intent = State(initialValue: CompanionScrollIntent(reading: store.readingState))
         _scrollRequest = State(initialValue: ScrollRequest.initial(reading: store.readingState))
     }
@@ -132,7 +134,7 @@ struct CompanionConversation: View {
             .contentMargins(.horizontal, CompanionHomeStyle.inset, for: .scrollContent)
             .scrollDismissesKeyboard(.interactively)
             .modifier(CompanionInitialScrollAnchor())
-            .modifier(CompanionReadingPositionObserver(legacyID: $observedAnchorID, isActive: isActive,
+            .modifier(CompanionReadingPositionObserver(legacyID: $legacyAnchorID, isActive: isActive,
                 onVisibleIDs: observeVisibleIDs))
             .modifier(CompanionScrollInteractionObserver(isActive: isActive,
                 onVisibility: observeNearLatest, action: observeInteraction))
@@ -143,8 +145,8 @@ struct CompanionConversation: View {
                 observeNearLatest(near)
             }
             .onChange(of: store.presentationRestoreToken) { _, _ in restoreReading() }
-            .onChange(of: observedAnchorID) { _, _ in
-                saveReading()
+            .onChange(of: legacyAnchorID) { _, _ in
+                if #unavailable(iOS 18.0) { saveReading() }
             }
             .onChange(of: projection.change) { old, new in
                 if new.reset { restoreReading(); return }
@@ -206,16 +208,19 @@ struct CompanionConversation: View {
         }
     }
 
-    private func saveReading() {
+    private func saveReading(visibleAnchor: String? = nil) {
         // Scroll observation updates memory; tab/background transitions flush once.
         guard isActive else { return }
-        let anchor = intent.anchorForSaving(visible: observedAnchorID, saved: store.readingState.anchorID)
+        let visible: String?
+        if #available(iOS 18.0, *) { visible = visibleAnchor ?? store.readingState.anchorID }
+        else { visible = legacyAnchorID }
+        let anchor = intent.anchorForSaving(visible: visible, saved: store.readingState.anchorID)
         guard intent.followsLatest || anchor != "stream-bottom" else { return }
         store.noteReadingPosition(anchorID: anchor, followsLatest: intent.followsLatest, hasUnread: intent.hasUnread)
     }
 
     private func restoreReading() {
-        observedAnchorID = store.readingState.anchorID
+        legacyAnchorID = store.readingState.anchorID
         intent = CompanionScrollIntent(reading: store.readingState)
         if let target = store.readingState.anchorID {
             // Observing an ID does not position modern native scroll views.
@@ -260,9 +265,9 @@ struct CompanionConversation: View {
 
     private func observeVisibleIDs(_ ids: [String]) {
         guard isActive else { return }
-        let anchor = store.timelineProjection.readingAnchor(visibleIDs: ids, retaining: observedAnchorID)
-        guard anchor != observedAnchorID else { return }
-        observedAnchorID = anchor
+        let anchor = store.timelineProjection.readingAnchor(visibleIDs: ids, retaining: store.readingState.anchorID)
+        guard anchor != store.readingState.anchorID else { return }
+        saveReading(visibleAnchor: anchor)
         traceScroll("visible-anchor-observed")
     }
 
@@ -270,7 +275,7 @@ struct CompanionConversation: View {
     // identities, travel data or the scroll anchor itself.
     private func traceScroll(_ event: String) {
         #if DEBUG
-        Self.scrollLog.debug("event=\(event, privacy: .public) follows=\(intent.followsLatest) interacting=\(intent.isInteracting) near=\(intent.nearLatest) unread=\(intent.hasUnread) kind=\(String(describing: scrollRequest.kind), privacy: .public) revision=\(scrollRequest.revision) targetNil=\(scrollRequest.target == nil) visibleNil=\(observedAnchorID == nil) savedBottom=\(store.readingState.anchorID == "stream-bottom")")
+        Self.scrollLog.debug("event=\(event, privacy: .public) follows=\(intent.followsLatest) interacting=\(intent.isInteracting) near=\(intent.nearLatest) unread=\(intent.hasUnread) kind=\(String(describing: scrollRequest.kind), privacy: .public) revision=\(scrollRequest.revision) targetNil=\(scrollRequest.target == nil) checkpointNil=\(store.readingState.anchorID == nil) savedBottom=\(store.readingState.anchorID == "stream-bottom")")
         #endif
     }
     #if DEBUG

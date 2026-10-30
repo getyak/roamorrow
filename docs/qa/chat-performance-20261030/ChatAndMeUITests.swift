@@ -87,6 +87,13 @@ final class ChatAndMeUITests: XCTestCase {
         stream.swipeDown(velocity: .fast)
         XCTAssertFalse(last.isHittable)
         capture("cold-scroll-without-keyboard")
+        // The observed history position must survive a presentation flush and
+        // explicit restore, even though modern readback does not publish UI state.
+        tab("me").tap()
+        tab("now").tap()
+        XCTAssertTrue(stream.isHittable)
+        XCTAssertFalse(last.isHittable)
+        capture("history-after-tab-return")
         let latest = app.buttons["companion.stream.latest"].firstMatch
         XCTAssertTrue(latest.isHittable)
         latest.tap()
