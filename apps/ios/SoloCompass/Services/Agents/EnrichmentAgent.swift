@@ -504,8 +504,10 @@ public final class EnrichmentAgent {
         locale: Locale = .current,
         countryCode: String? = nil,
         onProgress: @MainActor @Sendable (MapViewModel.ExploreProgress) async -> Void = { _ in },
-        onBatch: @MainActor @Sendable ([Experience]) async -> Void = { _ in }
+        onBatch: @MainActor @Sendable ([Experience]) async -> Void = { _ in },
+        isCurrent: @escaping @MainActor () -> Bool = { true }
     ) async -> [Experience] {
+        guard !Task.isCancelled, isCurrent() else { return [] }
         lastRunWasPartial = false
         var accumulated: [Experience] = []
         // Coordinate-cell key: round lat/lon to 4 decimal places (~11 m precision).
@@ -517,6 +519,7 @@ public final class EnrichmentAgent {
         var prevRadius = 0
 
         for radius in Self.progressiveRadii {
+            guard !Task.isCancelled, isCurrent() else { return accumulated }
             // Short-circuit: already enough novel POIs from inner rings.
             if novelPoiCount >= Self.enoughThreshold { break }
 
@@ -528,6 +531,7 @@ public final class EnrichmentAgent {
             // Emit scanning state at the start of each stage.
             await onProgress(.scanning(radiusKm: radiusKm))
 
+            guard !Task.isCancelled, isCurrent() else { return accumulated }
             // Fetch the full disk at this radius; then keep only the new annulus.
             // `basePOIs` routes Amap (mainland China) vs Overpass (overseas).
             let category = categories.first  // single category per source call
@@ -542,6 +546,7 @@ public final class EnrichmentAgent {
                 continue
             }
 
+            guard !Task.isCancelled, isCurrent() else { return accumulated }
             // Keep only the new ring introduced by this radius step.
             let stageInner = Double(prevRadius)
             let ringPois = Self.ringFilter(
@@ -573,6 +578,7 @@ public final class EnrichmentAgent {
                 }
             }
 
+            guard !Task.isCancelled, isCurrent() else { return accumulated }
             // Dedupe: skip any POI whose osmId or coord cell we've already seen.
             let novel = stagePois.filter { poi in
                 guard !seenOsmIds.contains(poi.osmId) && !seenPlaces.contains(where: { POIMerger.sameVenue($0, poi) }) else {
@@ -600,6 +606,7 @@ public final class EnrichmentAgent {
             )
             let enriched = await backfillAddresses(ranked)
 
+            guard !Task.isCancelled, isCurrent() else { return accumulated }
             let batch: [Experience]
             do {
                 batch = try await aiService.synthesizeExperiences(
@@ -610,6 +617,7 @@ public final class EnrichmentAgent {
                 continue
             }
 
+            guard !Task.isCancelled, isCurrent() else { return accumulated }
             accumulated.append(contentsOf: batch)
             await onBatch(batch)
         }

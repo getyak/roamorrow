@@ -49,8 +49,19 @@ public final class MemoryDigestService {
     /// `AgentMemorySnapshot.recentChatDigest` docstring (≤300).
     public static let recentDigestCharCap: Int = 300
 
+    // One device deletion boundary invalidates every service instance, including
+    // a delayed digest scheduled before ForgetMeService removed SwiftData rows.
+    private static var deletionGeneration = 0
+    var generation: Int { Self.deletionGeneration }
+
+    static func invalidatePendingDigests() {
+        deletionGeneration &+= 1
+    }
+
     private let aiService: AIService
     private var modelContainer: ModelContainer?
+    /// Internal seam keeps in-memory SwiftData tests from touching app memory.
+    var memoryProvider: any AgentMemoryProviding = DeviceAgentMemoryStore.shared
 
     private let log = OSLog(subsystem: "com.solocompass.app", category: "MemoryDigest")
 
@@ -93,8 +104,11 @@ public final class MemoryDigestService {
     /// user's current trip city; if nil we leave `lastTripCity` untouched.
     public func digestConversation(
         _ messages: [VoiceAgentSession.Message],
-        cityCode: String? = nil
+        cityCode: String? = nil,
+        expectedGeneration: Int? = nil
     ) async {
+        let admittedGeneration = expectedGeneration ?? generation
+        guard admittedGeneration == generation else { return }
         guard let container = modelContainer else {
             os_log("MemoryDigest: no modelContainer attached — skipping", log: log, type: .error)
             return
@@ -116,8 +130,10 @@ public final class MemoryDigestService {
             newSummary = Self.deterministicSummary(prior: priorSummary, recent: recentDigest)
         }
 
+        guard admittedGeneration == generation else { return }
         await persist(
             in: container,
+            expectedGeneration: admittedGeneration,
             summary: newSummary,
             lastTripCity: cityCode ?? prior?.lastTripCity,
             recentChatDigest: recentDigest
@@ -128,9 +144,11 @@ public final class MemoryDigestService {
     /// the "Forget me" Settings button. Returns whether the wipe succeeded.
     @discardableResult
     public func forgetMe() -> Bool {
+        Self.invalidatePendingDigests()
+        let deviceMemoryCleared = memoryProvider.forgetAll()
         guard let container = modelContainer else { return false }
         let context = ModelContext(container)
-        var ok = true
+        var ok = deviceMemoryCleared
         do {
             let mem = try context.fetch(FetchDescriptor<AgentMemorySnapshot>())
             mem.forEach { context.delete($0) }
@@ -207,10 +225,12 @@ public final class MemoryDigestService {
     /// present, insert otherwise.
     private func persist(
         in container: ModelContainer,
+        expectedGeneration: Int,
         summary: String,
         lastTripCity: String?,
         recentChatDigest: String
     ) async {
+        guard expectedGeneration == generation else { return }
         let context = ModelContext(container)
         do {
             let existing = try context.fetch(FetchDescriptor<AgentMemorySnapshot>())

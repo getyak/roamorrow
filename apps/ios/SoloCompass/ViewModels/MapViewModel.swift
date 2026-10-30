@@ -2713,7 +2713,8 @@ public final class MapViewModel {
     /// launched, or a human-readable no-op reason string when already at the
     /// max radius (100 km).
     @discardableResult
-    public func expandOneStage() async -> String? {
+    public func expandOneStage(isCurrent: @escaping @MainActor () -> Bool = { true }) async -> String? {
+        guard !Task.isCancelled, isCurrent() else { return "cancelled" }
         let radii = EnrichmentAgent.progressiveRadii
         let maxRadius = radii.last ?? 100_000
         guard progressiveScratchRadiusMeters < maxRadius else {
@@ -2732,7 +2733,7 @@ public final class MapViewModel {
             nextRadius = maxRadius
             lastProgressiveRadiusIndex = radii.count - 1
         }
-        await exploreProgressively(at: center, startingRadiusMeters: nextRadius)
+        await exploreProgressively(at: center, startingRadiusMeters: nextRadius, isCurrent: isCurrent)
         return nil
     }
 
@@ -2766,11 +2767,14 @@ public final class MapViewModel {
         at coordinate: CLLocationCoordinate2D,
         startingRadiusMeters: Int? = nil,
         category: ExperienceCategory? = nil,
-        filter: ExperienceFilter? = nil
+        filter: ExperienceFilter? = nil,
+        isCurrent: @escaping @MainActor () -> Bool = { true }
     ) async {
+        guard !Task.isCancelled, isCurrent() else { return }
         lastExploreCenter = coordinate
         let radius = startingRadiusMeters ?? 3000
-        await exploreNearby(at: coordinate, radiusMeters: radius, category: category)
+        await exploreNearby(at: coordinate, radiusMeters: radius, category: category, isCurrent: isCurrent)
+        guard !Task.isCancelled, isCurrent() else { return }
         if let filter {
             let trimmed = visibleExperiences.filter { filter.matches($0) }
             if trimmed.count != visibleExperiences.count {
@@ -2790,8 +2794,10 @@ public final class MapViewModel {
     public func exploreNearby(
         at coordinate: CLLocationCoordinate2D,
         radiusMeters: Int = 3000,
-        category: ExperienceCategory? = nil
+        category: ExperienceCategory? = nil,
+        isCurrent: @escaping @MainActor () -> Bool = { true }
     ) async {
+        guard !Task.isCancelled, isCurrent() else { return }
         // DIAG: trace why amap is/isn't reached — entry, gates, flag.
         // All gates short-circuit before EnrichmentAgent.basePOIs ever runs,
         // so without this log a user reporting "no amap data" can't tell
@@ -2810,7 +2816,10 @@ public final class MapViewModel {
         if !isProUser {
             logger.debug("🧭 exploreNearby: gated by paywall (free tier)")
             onPaywallUnlocked = { [weak self] in
-                Task { await self?.exploreNearby(at: coordinate, radiusMeters: radiusMeters, category: category) }
+                Task {
+                    guard isCurrent() else { return }
+                    await self?.exploreNearby(at: coordinate, radiusMeters: radiusMeters, category: category, isCurrent: isCurrent)
+                }
             }
             isShowingPaywall = true
             return
@@ -2822,7 +2831,10 @@ public final class MapViewModel {
         if !preferences.hasAcceptedExploreConsent {
             logger.debug("🧭 exploreNearby: gated by explore consent (not yet accepted)")
             onExploreConsentAccepted = { [weak self] in
-                Task { await self?.exploreNearby(at: coordinate, radiusMeters: radiusMeters, category: category) }
+                Task {
+                    guard isCurrent() else { return }
+                    await self?.exploreNearby(at: coordinate, radiusMeters: radiusMeters, category: category, isCurrent: isCurrent)
+                }
             }
             isShowingExploreConsent = true
             return
@@ -2846,9 +2858,12 @@ public final class MapViewModel {
             // US-MR-04: always clear progress on exit so a fail / partial
             // run doesn't leave the capsule stuck.
             exploreProgress = .idle
-            // US-011: clear the radius ring overlay when explore ends.
-            withAnimation(.easeOut(duration: 0.4)) {
-                exploreRadiusOverlay = nil
+            // Busy/progress belong to this invocation, including cancellation.
+            // Invalidated work must not animate the active map scene.
+            if isCurrent() {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    exploreRadiusOverlay = nil
+                }
             }
         }
 
@@ -2860,6 +2875,7 @@ public final class MapViewModel {
             // US-016: resolve a real city name up front (both pipelines need
             // it). Fall back to the synthetic osm_<lat>_<lon> on geocoder miss.
             let resolved = await geocodeService.resolve(coordinate: coordinate)
+            guard !Task.isCancelled, isCurrent() else { return }
             let cityCode = resolved?.cityCode ?? Self.cityCode(for: coordinate)
 
             // Persist the discovered city so the picker shows real names
@@ -2894,7 +2910,7 @@ public final class MapViewModel {
                     locale: LanguageService.shared.effectiveLocale,
                     countryCode: resolved?.countryCode,
                     onProgress: { [weak self] progress in
-                        guard let self else { return }
+                        guard let self, !Task.isCancelled, isCurrent() else { return }
                         // Track which radius we've scanned for US-006 toast.
                         if case .scanning(let km) = progress {
                             self.progressiveScratchRadiusMeters = Int((km * 1_000).rounded())
@@ -2912,13 +2928,15 @@ public final class MapViewModel {
                         self.exploreProgress = progress
                     },
                     onBatch: { [weak self] batch in
-                        guard let self else { return }
+                        guard let self, !Task.isCancelled, isCurrent() else { return }
                         let result = self.mergeDiscoveryBatch(batch)
                         self.progressiveScratchAddedCount += result.insertedCount
                         self.exploreSessionAddedIds.formUnion(result.insertedIDs)
-                    }
+                    },
+                    isCurrent: isCurrent
                 )
 
+                guard !Task.isCancelled, isCurrent() else { return }
                 // Set the final radius so US-006 toast can reference it.
                 progressiveFinalRadiusKm = Double(progressiveScratchRadiusMeters) / 1_000
                 lastExploreAddedCount = progressiveScratchAddedCount
@@ -2954,6 +2972,7 @@ public final class MapViewModel {
                     category: category
                 )
 
+                guard !Task.isCancelled, isCurrent() else { return }
                 // US-013: Foursquare fallback when Overpass is thin.
                 var pois = overpassPois
                 let fsqKey = Secrets.resolvedFoursquareKey
@@ -2964,9 +2983,11 @@ public final class MapViewModel {
                             radiusMeters: radiusMeters,
                             category: category
                         )
+                        guard !Task.isCancelled, isCurrent() else { return }
                         preferences.incrementFoursquareCallsToday()
                         pois = FoursquareService.merge(overpass: overpassPois, foursquare: fsq)
                     } catch {
+                        guard !Task.isCancelled, isCurrent() else { return }
                         logger.debug("Foursquare fallback failed: \(error.localizedDescription, privacy: .public)")
                     }
                 }
@@ -2996,6 +3017,7 @@ public final class MapViewModel {
                     cityCode: cityCode,
                     locale: LanguageService.shared.effectiveLocale
                 )
+                guard !Task.isCancelled, isCurrent() else { return }
                 effectiveRadius = ringRadius
             }
 
@@ -3138,6 +3160,7 @@ public final class MapViewModel {
                 lastExploreToast = NSLocalizedString("explore.toast.partial", comment: "Partial nearby results")
             }
         } catch {
+            guard !Task.isCancelled, isCurrent() else { return }
             // US-022: on network failure, look for a recent nearby region and
             // surface its cached SwiftData pins instead of showing an error.
             if let region = experienceService.repo.closestRecentRegion(to: coordinate) {

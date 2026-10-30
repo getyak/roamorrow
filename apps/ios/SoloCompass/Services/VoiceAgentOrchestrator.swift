@@ -47,6 +47,29 @@ public final class VoiceAgentOrchestrator: Identifiable {
     /// Optional persistence for chat history. When wired, each completed turn
     /// upserts the conversation so it survives the sheet closing / app restart.
     private let historyStore: ChatHistoryStore?
+    // The adapters retain transport/UI ownership; all dispatch receipts go
+    // through the same Foundation runtime used by CompanionHome.
+    var executionJournal = FileAgentExecutionJournal.shared
+    var deviceMemory: any AgentMemoryProviding = DeviceAgentMemoryStore.shared
+    private let toolExecutor = AgentToolExecutor()
+    private var activeTurnContext: AgentTurnContext?
+    private var interruptedTurnID: UUID?
+    private var forceFinalResponse = false
+    // Registration lives on the main actor; NotificationCenter removal is
+    // thread-safe when the nonisolated deinitializer releases this token.
+    nonisolated(unsafe) private var deletionObserver: NSObjectProtocol?
+
+    // Optional transport boundaries keep recovery testable without model,
+    // location or navigation requests. Production uses the existing services.
+    var responseProvider: (([VoiceAgentSession.Message], [AIService.AgentTool]) async throws -> AIService.AgentResponse)?
+    var toolExecutionProvider: ((VoiceAgentSession.ToolCall) async throws -> (String, VoiceAgentToolRouter.ToolEffect?))?
+
+    func waitForCurrentTurn() async { await turnTask?.value }
+
+    private var sessionDescriptor: AgentSessionDescriptor {
+        AgentSessionDescriptor(id: persistedConversationId,
+                               scope: scopedExperience.map { "experience:\($0.id)" } ?? "global")
+    }
 
     /// Stable id for THIS conversation in the history store. A fresh UUID per
     /// orchestrator session; reused across turns so saves upsert rather than
@@ -198,6 +221,24 @@ public final class VoiceAgentOrchestrator: Identifiable {
             complianceService: complianceService
         )
         self.planner = TurnPlanner(aiService: aiService)
+        deletionObserver = NotificationCenter.default.addObserver(
+            forName: ChatHistoryStore.didDelete, object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let sessionID = notification.object as? String else { return }
+            Task { @MainActor [weak self] in
+                guard let self, self.persistedConversationId == sessionID else { return }
+                self.stop()
+                self.activeTurnContext = nil
+                self.interruptedTurnID = nil
+                self.persistedConversationId = UUID().uuidString
+                self.persistedConversationCreatedAt = nil
+                self.session.reseedSystem(self.currentSystemPrompt)
+            }
+        }
+    }
+
+    deinit {
+        if let deletionObserver { NotificationCenter.default.removeObserver(deletionObserver) }
     }
 
     /// Persist the current conversation snapshot (no-op when no store is wired
@@ -209,35 +250,56 @@ public final class VoiceAgentOrchestrator: Identifiable {
     /// off-thread and does not block the caller; it re-reads
     /// `session.messages` from the main actor.
     public func persistConversation() {
-        guard let historyStore else { return }
+        _ = persistSnapshot()
+    }
+
+    /// A failed durable snapshot blocks the next model/action boundary.
+    @discardableResult
+    private func persistSnapshot() -> Bool {
+        guard let historyStore else { return false }
         let wrote = historyStore.saveSession(
             id: persistedConversationId,
             messages: session.transcript,
             scopedExperienceId: scopedExperience?.id,
             createdAt: persistedConversationCreatedAt
         )
-        if wrote, persistedConversationCreatedAt == nil {
-            // Capture the created stamp from the just-written record so later
-            // upserts preserve it.
-            persistedConversationCreatedAt = historyStore
-                .recentSessions(limit: 1)
-                .first(where: { $0.id == persistedConversationId })?
-                .createdAt
+        guard wrote else { return false }
+        if persistedConversationCreatedAt == nil {
+            persistedConversationCreatedAt = historyStore.recentSessions(limit: 30)
+                .first(where: { $0.id == persistedConversationId })?.createdAt
         }
-
-        // P2.0 #202: fire-and-forget digest update. Only kicks in when at
-        // least one user turn exists so we don't churn the snapshot on
-        // stub conversations.
-        if let digest = memoryDigest {
-            let snapshotMessages = session.messages
-            let hasUserTurn = snapshotMessages.contains { $0.role == .user }
-            if hasUserTurn {
-                let cityCode = scopedExperience?.location.cityCode
-                Task { @MainActor in
-                    await digest.digestConversation(snapshotMessages, cityCode: cityCode)
-                }
+        // Only the currently completed turn can become new memory. Re-saving
+        // a transcript after Forget Me must never ingest its older turns again.
+        guard let currentTurnID,
+              let index = session.transcript.firstIndex(where: { $0.id == currentTurnID && $0.role == .user }),
+              let text = session.transcript[index].content,
+              let final = session.transcript.suffix(from: index + 1).prefix(while: { $0.role != .user }).last(where: {
+                  $0.role == .assistant && $0.toolCalls.isEmpty && !($0.content ?? "").isEmpty
+              }), let answer = final.content else { return true }
+        let admitted = deviceMemory.recordCompletedTurn(AgentCompletedTurn(
+            identity: AgentTurnIdentity(session: sessionDescriptor, turnID: currentTurnID),
+            userText: ChatDisplayText.removingContextEnvelopes(text),
+            assistantText: answer, cityCode: scopedExperience?.location.cityCode,
+            memoryEpoch: activeTurnContext?.memoryEpoch
+        ))
+        if admitted, let digest = memoryDigest {
+            let turnMessages = [session.transcript[index], final]
+            let cityCode = scopedExperience?.location.cityCode
+            let generation = digest.generation
+            Task { @MainActor in
+                await digest.digestConversation(turnMessages, cityCode: cityCode, expectedGeneration: generation)
             }
         }
+        return true
+    }
+
+    private func failPersistence() {
+        errorMessage = NSLocalizedString("chat.error.network", comment: "Unable to save this turn; retry before continuing")
+        uiState = .error(.network)
+        session.end(reason: .error)
+        thinkingStep = ""
+        streamingContent = ""
+        isExecutingTool = false
     }
 
     /// Reopen a saved conversation: cancel any in-flight turn, re-seed a fresh
@@ -251,6 +313,9 @@ public final class VoiceAgentOrchestrator: Identifiable {
     ) {
         turnTask?.cancel()
         turnTask = nil
+        currentTurnID = nil
+        activeTurnContext = nil
+        interruptedTurnID = nil
         synthesizer.stopSpeaking(at: .immediate)
         didRequestImmediateSpeechStop = true
 
@@ -283,6 +348,8 @@ public final class VoiceAgentOrchestrator: Identifiable {
             // ordering is [system, ...restored].
             session.reseedSystem(prompt)
             session.restoreHistory(restored)
+            interruptedTurnID = incompleteUserMessage()?.id
+            hydrateSavedCards()
             isSeeded = true
             isRunning = true
             uiState = .listening
@@ -352,6 +419,9 @@ public final class VoiceAgentOrchestrator: Identifiable {
         // into the new scope's session.
         turnTask?.cancel()
         turnTask = nil
+        currentTurnID = nil
+        activeTurnContext = nil
+        interruptedTurnID = nil
         synthesizer.stopSpeaking(at: .immediate)
         didRequestImmediateSpeechStop = true
 
@@ -567,6 +637,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
     /// Cancelled/superseded turns fail this and must not mutate the session.
     private func isTurnCurrent(_ turnID: UUID, generation: Int) -> Bool {
         !Task.isCancelled && turnID == currentTurnID && generation == contextGeneration
+            && !executionJournal.isForgotten(sessionID: persistedConversationId)
     }
 
     /// A timed-out tool chain must end visibly and remain retryable.
@@ -584,45 +655,86 @@ public final class VoiceAgentOrchestrator: Identifiable {
         return true
     }
 
-    private func runTurn(transcript: String) {
-        let safe = VoiceAgentOrchestrator.sanitizeUserInput(transcript)
-        // Beta-P1-J: refresh the latest spatial-temporal context before each
-        // turn so the agent knows where the user is *now* and what hour
-        // it is, even after the user has been walking around the city for
-        // 30 minutes. The original system prompt is baked in at session
-        // seed and never updates — this avoids stale viewport-of-place
-        // answers without invalidating the conversation history.
-        let prefixed = Self.prependContextRefresh(to: safe, scopedExperience: scopedExperience)
-        // ② tool structured errors: a fresh user turn = a fresh retry budget.
-        // Without this, a previous turn's exhausted (tool, reason) counter
-        // would carry over and the very next call to the same tool would be
-        // force-fatal, even after the user has corrected their intent.
-        toolRouter.retryLedger.resetForNewTurn()
-        // ① Plan-Execute-Reflect: clear any prior plan so the reasoning
-        // trace doesn't leak steps from the previous turn.
-        currentTurnPlan = nil
-        session.beginUserTurn(transcript: prefixed)
-        thinkingStep = NSLocalizedString("agent.step.thinking", comment: "Thinking…")
-        streamingContent = ""
-        uiState = .processing
-        // Fresh reasoning trace for the new turn; seed with the opening
-        // "thinking" step so the elegant trace panel never starts empty.
-        reasoningTrace = [ReasoningStep(kind: .thinking, label: thinkingStep)]
+    private func incompleteUserMessage() -> VoiceAgentSession.Message? {
+        guard let index = session.transcript.lastIndex(where: { $0.role == .user }) else { return nil }
+        let user = session.transcript[index]
+        if user.id == interruptedTurnID { return user }
+        let finished = session.transcript.suffix(from: index + 1).contains {
+            $0.role == .assistant && $0.toolCalls.isEmpty && !($0.content ?? "").isEmpty
+        }
+        return finished ? nil : user
+    }
 
-        // #83: cancel any in-flight turn before launching a new one. Every
-        // other entry point that reassigns turnTask (stop, rebindContext,
-        // restoreConversation) cancels first; runTurn was the lone exception.
-        // Without this, a user tapping send twice within ~100ms launches two
-        // concurrent turn Tasks that race on session.messages and produce
-        // duplicate AI calls + duplicate assistant bubbles.
+    private func runTurn(transcript: String) {
+        let safe = Self.sanitizeUserInput(transcript)
+        let pending = incompleteUserMessage()
+        let retry = pending.flatMap { message in
+            ChatDisplayText.removingContextEnvelopes(message.content ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines) == safe ? message : nil
+        }
         turnTask?.cancel()
         turnTask = nil
-
-        let turnID = UUID()
+        let descriptor = sessionDescriptor
+        // Register this namespace before the first suspension so Forget Me
+        // can invalidate a still-running turn before it creates any memories.
+        let memoryContext = deviceMemory.context(for: descriptor)
+        let memory = memoryContext.renderForPrompt()
+        if retry == nil {
+            toolRouter.retryLedger.resetForNewTurn()
+            currentTurnPlan = nil
+            activeTurnContext = nil
+            forceFinalResponse = false
+            let prefixed = Self.prependContextRefresh(to: safe, scopedExperience: scopedExperience)
+            session.beginUserTurn(transcript: prefixed)
+        } else {
+            session.resumeInterruptedTurn()
+        }
+        guard let user = retry ?? session.transcript.last(where: { $0.role == .user }) else { return }
+        let turnID = user.id
+        let turn = AgentTurnIdentity(session: descriptor, turnID: turnID)
         currentTurnID = turnID
+        interruptedTurnID = turnID
         let generation = contextGeneration
+        let recoveryOnly = retry != nil
+        // Accepted input is durable before even the planner may call a model.
+        guard persistSnapshot() else { failPersistence(); return }
+        if recoveryOnly,
+           let start = session.transcript.firstIndex(where: { $0.id == user.id }),
+           let final = session.transcript.suffix(from: start + 1).last(where: {
+               $0.role == .assistant && $0.toolCalls.isEmpty && !($0.content ?? "").isEmpty
+           }) {
+            interruptedTurnID = nil
+            uiState = .responding(final.content ?? "")
+            session.finishSpeakingTurn()
+            return
+        }
+        thinkingStep = NSLocalizedString("agent.step.thinking", comment: "Thinking…")
+        streamingContent = ""
+        errorMessage = nil
+        uiState = .processing
+        reasoningTrace = [ReasoningStep(kind: .thinking, label: thinkingStep)]
+        let rawUser = user.content ?? ""
+        let contextEnvelope = rawUser.hasSuffix(safe) ? String(rawUser.dropLast(safe.count)) : rawUser
+        let frozenFacts = contextEnvelope + "\n" + memory
+        let provider = LegacyMapContextProvider(
+            facts: frozenFacts, contextManager: recoveryOnly ? nil : contextManager,
+            memoryEpoch: recoveryOnly ? nil : memoryContext.epoch
+        )
 
         turnTask = Task {
+            let savedContext = executionJournal.context(for: turn)
+                ?? executionJournal.toolBatches(for: turn).first?.context
+            let context: AgentTurnContext
+            if let savedContext { context = savedContext }
+            else if let activeTurnContext { context = activeTurnContext }
+            else { context = await provider.snapshot(for: descriptor) }
+            guard self.isTurnCurrent(turnID, generation: generation), context.scope == descriptor.scope else { return }
+            guard executionJournal.saveContext(context, for: turn) else { failPersistence(); return }
+            activeTurnContext = context
+            session.appendSystemContinuation(context.renderForPrompt())
+            if recoveryOnly {
+                guard await recoverToolBatches(for: turn, generation: generation) else { return }
+            }
             // ① Planner dispatch — done BEFORE the streaming loop opens so
             // .clarify can short-circuit without a tool round-trip, and
             // .compound can seed a plan block into session.messages.
@@ -630,7 +742,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
             // Failure to plan is non-fatal: `planner.plan` never throws; on
             // any error it returns `.single` with a rationale telemetry can
             // watch. The turn always survives.
-            let plan = await planner.plan(transcript: safe)
+            let plan = recoveryOnly ? TurnPlan.single(rationale: "resume:durable-turn") : await planner.plan(transcript: safe)
             guard self.isTurnCurrent(turnID, generation: generation) else { return }
             currentTurnPlan = plan
 
@@ -647,7 +759,8 @@ public final class VoiceAgentOrchestrator: Identifiable {
                 reasoningTrace.append(ReasoningStep(kind: .thinking, label: NSLocalizedString("agent.step.clarify", comment: "Asking to clarify…")))
                 archiveReasoningTrace()
                 speakResponse(question)
-                persistConversation()
+                guard persistSnapshot() else { failPersistence(); return }
+                interruptedTurnID = nil
                 return
 
             case .compound:
@@ -679,7 +792,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
 
             while shouldContinue, !Task.isCancelled, !session.isEnded {
                 if session.hasExceededRecursionBudget {
-                    await sendForceText(prompt: "You are out of tool-call budget. Summarize what you know and give a direct answer in one or two sentences.")
+                    await sendForceText(prompt: "You are out of tool-call budget. Summarize what you know and give a direct answer in one or two sentences.", turnID: turnID, generation: generation)
                     return
                 }
                 // #84: check the turn timeout BEFORE consuming another
@@ -694,13 +807,13 @@ public final class VoiceAgentOrchestrator: Identifiable {
                 if finishTurnIfTimedOut(elapsed: Date().timeIntervalSince(turnStart)) { return }
 
                 guard self.isTurnCurrent(turnID, generation: generation) else { return }
-                guard await sendToAIStreaming() else { return }
+                guard await sendToAIStreaming(turnID: turnID, generation: generation, allowsTools: !recoveryOnly && !forceFinalResponse) else { return }
                 // A canceled or superseded turn must not commit tool results or
                 // a reply into the new context.
                 guard self.isTurnCurrent(turnID, generation: generation) else { return }
 
                 if case .toolExecuting = session.state {
-                    await executePendingTools()
+                    guard await executePendingTools(for: turn, generation: generation) else { return }
                     guard self.isTurnCurrent(turnID, generation: generation) else { return }
                     session.resumeThinkingAfterTools()
                     thinkingStep = NSLocalizedString("agent.step.thinking", comment: "Thinking…")
@@ -731,7 +844,8 @@ public final class VoiceAgentOrchestrator: Identifiable {
                     speakResponse(finalText)
                     // Turn complete — persist the conversation so it survives the
                     // sheet closing and shows up in history.
-                    persistConversation()
+                    guard persistSnapshot() else { failPersistence(); return }
+                    interruptedTurnID = nil
                     // ④ Self-eval Rubric: every finished turn scores itself
                     // synchronously (heuristic, <1ms). No await, no throw —
                     // if the scorer ever regresses, log-and-move-on rather
@@ -744,7 +858,10 @@ public final class VoiceAgentOrchestrator: Identifiable {
 
     /// Stream one AI turn, updating streamingContent and thinkingStep progressively.
     /// Returns false on unrecoverable error.
-    private func sendToAIStreaming() async -> Bool {
+    private func sendToAIStreaming(turnID: UUID, generation: Int, allowsTools: Bool) async -> Bool {
+        if responseProvider != nil {
+            return await sendToAIFallback(turnID: turnID, generation: generation, allowsTools: allowsTools)
+        }
         streamingContent = ""
         resetStreamThrottle()
         var accumulatedContent = ""
@@ -753,10 +870,10 @@ public final class VoiceAgentOrchestrator: Identifiable {
         do {
             let stream = aiService.sendAgentMessageStreaming(
                 messages: session.messages,
-                tools: VoiceAgentToolRouter.allTools
+                tools: allowsTools ? VoiceAgentToolRouter.allTools : []
             )
             for try await event in stream {
-                guard !Task.isCancelled else { return false }
+                guard self.isTurnCurrent(turnID, generation: generation) else { return false }
                 switch event {
                 case .contentDelta(let delta):
                     accumulatedContent += delta
@@ -772,10 +889,12 @@ public final class VoiceAgentOrchestrator: Identifiable {
 
             // Force the final, complete text through the throttle gate so the
             // full message always lands even if the last tokens were coalesced.
+            guard self.isTurnCurrent(turnID, generation: generation) else { return false }
             publishStreaming(accumulatedContent, force: true)
 
             // A canceled turn must not commit its partial reply into the session.
-            guard !Task.isCancelled else { return false }
+            guard self.isTurnCurrent(turnID, generation: generation) else { return false }
+            guard allowsTools || pendingToolCalls.isEmpty else { failPersistence(); return false }
 
             let sessionCalls = pendingToolCalls.map {
                 VoiceAgentSession.ToolCall(id: $0.id, name: $0.name, argumentsJSON: $0.args)
@@ -795,20 +914,24 @@ public final class VoiceAgentOrchestrator: Identifiable {
             // network call for it.
             if Task.isCancelled || error is CancellationError { return false }
             // Streaming failed — fall back to non-streaming path.
-            return await sendToAIFallback()
+            return await sendToAIFallback(turnID: turnID, generation: generation, allowsTools: allowsTools)
         }
     }
 
     /// Non-streaming fallback for servers that don't support SSE.
-    private func sendToAIFallback() async -> Bool {
+    private func sendToAIFallback(turnID: UUID, generation: Int, allowsTools: Bool) async -> Bool {
         do {
-            let response = try await aiService.sendAgentMessage(
-                messages: session.messages,
-                tools: VoiceAgentToolRouter.allTools
-            )
+            let tools = allowsTools ? VoiceAgentToolRouter.allTools : []
+            let response: AIService.AgentResponse
+            if let responseProvider {
+                response = try await responseProvider(session.messages, tools)
+            } else {
+                response = try await aiService.sendAgentMessage(messages: session.messages, tools: tools)
+            }
             // The await is a suspension point: a canceled/superseded turn must
             // not commit the response into the new session.
-            guard !Task.isCancelled else { return false }
+            guard self.isTurnCurrent(turnID, generation: generation) else { return false }
+            guard allowsTools || response.toolCalls.isEmpty else { failPersistence(); return false }
             session.appendAssistantTurn(
                 content: response.content,
                 toolCalls: response.toolCalls
@@ -819,50 +942,198 @@ public final class VoiceAgentOrchestrator: Identifiable {
             streamingContent = ""
             return true
         } catch {
-            if Task.isCancelled || error is CancellationError { return false }
+            if error is CancellationError || !self.isTurnCurrent(turnID, generation: generation) { return false }
             errorMessage = error.localizedDescription
             uiState = .error(.network)
             session.end(reason: .error)
             thinkingStep = ""
+            persistConversation()
             return false
         }
     }
 
-    /// Execute all tool calls from the last assistant turn and feed results
-    /// back into the session so the next AI call sees them.
-    private func executePendingTools() async {
-        guard let lastMsg = session.messages.last, lastMsg.role == .assistant else { return }
-        isExecutingTool = true
-        let assistantId = lastMsg.id
-        for call in lastMsg.toolCalls {
-            // Do not run or append tools for a canceled/superseded turn.
-            guard !Task.isCancelled, session.messages.contains(where: { $0.id == assistantId }) else {
-                // The replacement context owns its activity indicator now.
-                return
-            }
-            let stepLabel = thinkingStepLabel(for: call.name)
-            thinkingStep = stepLabel
-            // Record what tool is running so the reasoning panel shows the steps.
-            reasoningTrace.append(ReasoningStep(kind: .tool, label: stepLabel))
-            let resultJSON = await toolRouter.execute(call)
-            // The tool await is a suspension point: a canceled turn must not
-            // append stale results into the new session.
-            guard !Task.isCancelled, session.messages.contains(where: { $0.id == assistantId }) else {
-                // The replacement context owns its activity indicator now.
-                return
-            }
-            // Pull any inline-card effect (places / route) BEFORE the next call
-            // resets it, and attach it to the assistant turn that requested it.
-            if let effect = toolRouter.lastEffect {
-                appendCard(from: effect, to: assistantId)
-            }
-            session.appendToolResult(
-                toolCallId: call.id,
-                name: call.name,
-                resultJSON: resultJSON
+    /// Freeze the legacy model call into the shared journal shape. A historical
+    /// result without a journal is still observed evidence and is never replayed.
+    private func toolBatch(for message: VoiceAgentSession.Message, turn: AgentTurnIdentity) -> AgentToolBatch {
+        if let saved = executionJournal.toolBatches(for: turn).first(where: { $0.id == message.id }) {
+            return saved
+        }
+        let calls = message.toolCalls.map { call in
+            let resolved = toolRouter.prepareForExecution(call)
+            return AgentToolCheckpoint(
+                id: call.id, name: call.name, argumentsJSON: call.argumentsJSON,
+                resolvedArgumentsJSON: resolved.argumentsJSON
             )
         }
-        isExecutingTool = false
+        return AgentToolBatch(id: message.id, assistantContent: message.content,
+                              calls: calls, context: activeTurnContext)
+    }
+
+    private func executePendingTools(for turn: AgentTurnIdentity, generation: Int) async -> Bool {
+        guard let assistant = session.transcript.last(where: { $0.role == .assistant }),
+              !assistant.toolCalls.isEmpty else { return false }
+        let known = Set(executionJournal.toolBatches(for: turn).flatMap(\.calls).map(\.id))
+        let proposed = known.union(assistant.toolCalls.map(\.id))
+        if proposed.count > VoiceAgentSession.toolCallsMaxPerTurn {
+            let error = #"{"outcome":"fatal","reason":"tool_budget_exhausted","hint":"The five-tool budget is exhausted. Explain existing results without calling more tools."}"#
+            let rows = assistant.toolCalls.map {
+                VoiceAgentSession.Message(role: .tool, content: error, toolCallId: $0.id, name: $0.name)
+            }
+            session.restoreToolResults(rows, after: assistant.id)
+            if let activeTurnContext { session.appendSystemContinuation(activeTurnContext.renderForPrompt()) }
+            forceFinalResponse = true
+            guard persistSnapshot() else { failPersistence(); return false }
+            return true
+        }
+        // The entire assistant protocol row must exist on disk before the
+        // executor can save its plan/start checkpoints and dispatch anything.
+        guard persistSnapshot() else { failPersistence(); return false }
+        return await executeToolBatch(toolBatch(for: assistant, turn: turn),
+                                      for: turn, generation: generation)
+    }
+
+    private func recoverToolBatches(for turn: AgentTurnIdentity, generation: Int) async -> Bool {
+        guard let start = session.transcript.firstIndex(where: { $0.id == turn.turnID }) else { return false }
+        let assistants = session.transcript.suffix(from: start + 1).filter {
+            $0.role == .assistant && !$0.toolCalls.isEmpty
+        }
+        for assistant in assistants {
+            let batch = toolBatch(for: assistant, turn: turn)
+            if !executionJournal.toolBatches(for: turn).contains(where: { $0.id == batch.id }) {
+                let observed = session.toolResults(after: assistant.id)
+                if observed.count == assistant.toolCalls.count,
+                   Set(observed.compactMap(\.toolCallId)) == Set(assistant.toolCalls.map(\.id)) {
+                    // A complete legacy/budget-rejection group is valid model
+                    // evidence already; restoring it never needs dispatch.
+                    continue
+                }
+                // Import old observed results and missing started receipts
+                // in one atomic journal write. A partial migration must never
+                // leave an old uncertain side effect eligible for dispatch.
+                var historical = batch
+                let rows = session.toolResults(after: assistant.id)
+                for index in historical.calls.indices {
+                    if let row = rows.first(where: { $0.toolCallId == historical.calls[index].id }),
+                       let json = row.content {
+                        historical.calls[index].resultJSON = json
+                        historical.calls[index].state = .completed
+                    }
+                }
+                guard executionJournal.importObservedBatch(historical, for: turn) else {
+                    failPersistence(); return false
+                }
+            }
+            for call in executionJournal.toolBatches(for: turn).first(where: { $0.id == batch.id })?.calls ?? []
+                where call.state == .planned && ["build_route", "compile_workday_route", "expand_radius"].contains(call.name) {
+                var refused = call
+                refused.state = .completed
+                refused.resultJSON = #"{"outcome":"fatal","reason":"interrupted_context_unavailable","hint":"This unfinished action depends on the earlier map context. Ask for a new explicit request instead of rebuilding it from the current map."}"#
+                refused.effectJSON = nil
+                guard executionJournal.saveResult(refused, for: turn) else { failPersistence(); return false }
+            }
+            guard await executeToolBatch(batch, for: turn, generation: generation) else { return false }
+        }
+        session.resumeInterruptedTurn()
+        return true
+    }
+
+    private func executeToolBatch(_ batch: AgentToolBatch, for turn: AgentTurnIdentity, generation: Int) async -> Bool {
+        isExecutingTool = true
+        var snapshotFailed = false
+        do {
+            let results = try await toolExecutor.execute(
+                batch, for: turn, journal: executionJournal,
+                allowedTools: Set(VoiceAgentToolRouter.allTools.map(\.name)),
+                isCurrent: { self.isTurnCurrent(turn.turnID, generation: generation) && !snapshotFailed },
+                perform: { checkpoint in
+                    guard self.isTurnCurrent(turn.turnID, generation: generation), !snapshotFailed else {
+                        throw CancellationError()
+                    }
+                    let label = self.thinkingStepLabel(for: checkpoint.name)
+                    self.thinkingStep = label
+                    self.reasoningTrace.append(ReasoningStep(kind: .tool, label: label))
+                    let call = VoiceAgentSession.ToolCall(
+                        id: checkpoint.id, name: checkpoint.name,
+                        argumentsJSON: checkpoint.resolvedArgumentsJSON ?? checkpoint.argumentsJSON
+                    )
+                    self.toolRouter.memoryScope = turn.session.scope
+                    let resultJSON: String
+                    let effect: VoiceAgentToolRouter.ToolEffect?
+                    if let provider = self.toolExecutionProvider {
+                        (resultJSON, effect) = try await provider(call)
+                    } else {
+                        resultJSON = await self.toolRouter.execute(call, isCurrent: {
+                            self.isTurnCurrent(turn.turnID, generation: generation) && !snapshotFailed
+                        })
+                        effect = self.toolRouter.lastEffect
+                    }
+                    var observed = checkpoint
+                    observed.resultJSON = resultJSON
+                    observed.state = .completed
+                    observed.effectJSON = effect.flatMap(VoiceAgentToolRouter.encodeEffect)
+                    // Even a stale observed result returns to the executor so
+                    // its receipt can be saved under the original turn. Only
+                    // the still-active invocation may update UI/history.
+                    if self.isTurnCurrent(turn.turnID, generation: generation) {
+                        var rows = self.session.toolResults(after: batch.id)
+                        rows.removeAll { $0.toolCallId == checkpoint.id }
+                        rows.append(.init(role: .tool, content: resultJSON,
+                                          toolCallId: checkpoint.id, name: checkpoint.name))
+                        self.session.restoreToolResults(rows, after: batch.id)
+                        snapshotFailed = !self.persistSnapshot()
+                    }
+                    return observed
+                }
+            )
+            guard self.isTurnCurrent(turn.turnID, generation: generation) else { return false }
+            guard !snapshotFailed else { failPersistence(); return false }
+            let rows = results.compactMap { result -> VoiceAgentSession.Message? in
+                guard let json = result.resultJSON else { return nil }
+                let existingID = session.toolResults(after: batch.id).first {
+                    $0.toolCallId == result.id
+                }?.id ?? UUID()
+                return .init(id: existingID, role: .tool, content: json,
+                             toolCallId: result.id, name: result.name)
+            }
+            session.restoreToolResults(rows, after: batch.id)
+            if let activeTurnContext { session.appendSystemContinuation(activeTurnContext.renderForPrompt()) }
+            guard persistSnapshot() else { failPersistence(); return false }
+            for result in results { hydrateCard(result, to: batch.id) }
+            isExecutingTool = false
+            return true
+        } catch {
+            guard self.isTurnCurrent(turn.turnID, generation: generation) else { return false }
+            failPersistence()
+            return false
+        }
+    }
+
+    /// Rebuild presentation from completed receipts. No router calls, network
+    /// requests, navigation or mutation are involved in restoring a card.
+    private func hydrateSavedCards() {
+        var userID: UUID?
+        for (index, message) in session.transcript.enumerated() {
+            if message.role == .user { userID = message.id }
+            guard message.role == .assistant, let userID else { continue }
+            let turn = AgentTurnIdentity(session: sessionDescriptor, turnID: userID)
+            let remainingTurn = session.transcript.dropFirst(index + 1).prefix { $0.role != .user }
+            let final = remainingTurn.last {
+                $0.role == .assistant && $0.toolCalls.isEmpty && !($0.content ?? "").isEmpty
+            }
+            let targetID = (message.content ?? "").isEmpty ? (final?.id ?? message.id) : message.id
+            for batch in executionJournal.toolBatches(for: turn) where batch.id == message.id {
+                for result in batch.calls { hydrateCard(result, to: targetID) }
+            }
+        }
+        commitAllProvisionalCards()
+    }
+
+    private func hydrateCard(_ checkpoint: AgentToolCheckpoint, to messageID: UUID) {
+        guard checkpoint.state == .completed,
+              let encoded = checkpoint.effectJSON,
+              let effect = VoiceAgentToolRouter.decodeEffect(encoded),
+              !provisionalCards.entries.contains(where: { $0.card.id == checkpoint.cardID }) else { return }
+        appendCard(from: effect, to: messageID, cardID: checkpoint.cardID)
     }
 
     /// Map a tool's side effect onto an inline chat card under the assistant
@@ -873,12 +1144,12 @@ public final class VoiceAgentOrchestrator: Identifiable {
     /// for `undoWindow` seconds — either the user pulls it via
     /// `undoLastCard()` or the next turn calls `commitAllProvisionalCards()`
     /// (or the deadline passes and it auto-settles on the next sync).
-    private func appendCard(from effect: VoiceAgentToolRouter.ToolEffect, to messageId: UUID) {
+    private func appendCard(from effect: VoiceAgentToolRouter.ToolEffect, to messageId: UUID, cardID: UUID = UUID()) {
         let card: ChatCard
         switch effect {
         case let .experiences(list):
             guard !list.isEmpty else { return }
-            card = .experiences(id: UUID(), list)
+            card = .experiences(id: cardID, list)
             reasoningTrace.append(ReasoningStep(
                 kind: .insight,
                 label: String(
@@ -887,7 +1158,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
                 )
             ))
         case let .route(proposal):
-            card = .route(id: UUID(), proposal)
+            card = .route(id: cardID, proposal)
             reasoningTrace.append(ReasoningStep(
                 kind: .insight,
                 label: String(
@@ -897,7 +1168,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
             ))
         case let .events(list):
             guard !list.isEmpty else { return }
-            card = .events(id: UUID(), list)
+            card = .events(id: cardID, list)
             reasoningTrace.append(ReasoningStep(
                 kind: .insight,
                 label: String(
@@ -907,7 +1178,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
             ))
         case let .webSources(list):
             guard !list.isEmpty else { return }
-            card = .webSources(id: UUID(), list)
+            card = .webSources(id: cardID, list)
             reasoningTrace.append(ReasoningStep(
                 kind: .insight,
                 label: String(
@@ -926,8 +1197,9 @@ public final class VoiceAgentOrchestrator: Identifiable {
     /// the end of every completed turn; no-op when nothing is orphaned.
     private func rebindOrphanCards() {
         guard let finalId = session.messages.last(where: { $0.role == .assistant })?.id else { return }
+        let lastUser = session.transcript.lastIndex(where: { $0.role == .user }) ?? 0
         let orphanIds = Set(
-            session.messages
+            session.transcript.suffix(from: lastUser)
                 .filter {
                     $0.role == .assistant
                         && $0.id != finalId
@@ -1136,12 +1408,12 @@ public final class VoiceAgentOrchestrator: Identifiable {
     }
 
     /// Force one more non-tool response from the model (budget overflow path).
-    private func sendForceText(prompt: String) async {
-        guard !Task.isCancelled else { return }
+    private func sendForceText(prompt: String, turnID: UUID, generation: Int) async {
+        guard self.isTurnCurrent(turnID, generation: generation) else { return }
         session.appendSystemContinuation(prompt)
-        _ = await sendToAIFallback()
+        guard await sendToAIFallback(turnID: turnID, generation: generation, allowsTools: false) else { return }
         // A canceled/superseded turn must not speak or close the new session.
-        guard !Task.isCancelled else { return }
+        guard self.isTurnCurrent(turnID, generation: generation) else { return }
         // Read the committed reply, not the live buffer (now cleared after commit).
         let finalText = session.lastAssistantText ?? ""
         uiState = .responding(finalText)
@@ -1149,6 +1421,8 @@ public final class VoiceAgentOrchestrator: Identifiable {
         archiveReasoningTrace()
         thinkingStep = ""
         speakResponse(finalText)
+        guard persistSnapshot() else { failPersistence(); return }
+        interruptedTurnID = nil
     }
 
     // MARK: - UI helpers
@@ -1198,20 +1472,6 @@ public final class VoiceAgentOrchestrator: Identifiable {
                 "  [\($0.id)] \($0.title) — \($0.category.rawValue) — score \($0.soloScoreDisplay)"
               }.joined(separator: "\n")
 
-        let coord = mapViewModel?.exploreAnchorCoordinate ?? MapViewModel.defaultCenter
-
-        var contextBlock = ""
-        if let cm = contextManager {
-            let ctx = await cm.snapshot()
-            if let json = ctx.jsonString() {
-                contextBlock = """
-
-                CONTEXT SNAPSHOT (JSON — use to personalize recommendations):
-                \(json)
-                """
-            }
-        }
-
         // P2.0 #201: inject the singleton AgentMemorySnapshot so the agent
         // opens each session already knowing the user. Empty fields are
         // suppressed inside `systemPromptBlock()` so a cold-start user
@@ -1245,7 +1505,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
 
         return """
         You are Roamorrow, a warm and knowledgeable travel companion for solo travelers.
-        The user is at approximately (\(String(format: "%.4f", coord.latitude)), \(String(format: "%.4f", coord.longitude))).\(contextBlock)\(memoryBlock)\(temporalBlock)\(experienceBlock)
+        Use the frozen DEVICE TURN CONTEXT for this turn's current observations.\(memoryBlock)\(temporalBlock)\(experienceBlock)
 
         CURRENT VISIBLE EXPERIENCES (use ONLY these IDs when calling tools):
         \(visibleSummary)
@@ -1254,7 +1514,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
         1. explore_nearby(latitude, longitude, radius_meters) — Fetch real OSM POIs near a coordinate and enrich with AI. Use when the user wants new places or is in an unfamiliar area. Surfaced places appear to the user as tappable cards. If the first ring is empty this tool AUTOMATICALLY widens the search (5 → 10 → 25 → 100 km) until it finds something or runs out of range — you do NOT need to call expand_radius yourself. The result reports `auto_expanded_stages` and `search_exhausted`.
         2. filter_by_category(category) — Filter the map to one category. Values: culture|nature|food|coffee|work|wellness|nightlife|hidden
         3. show_details(experience_id) — Present ONE place to the user as an inline card they can tap. Does NOT seize the map. MUST use an ID from CURRENT VISIBLE EXPERIENCES.
-        4. save_to_favorites(experience_id) — Toggle favorite status for an experience.
+        4. save_to_favorites(experience_id) — Save an experience to favorites. Repeated saves keep it saved.
         5. dismiss_recommendation(experience_id) — Hide an experience from the current view. Ephemeral — it can return after refresh.
         6. search_places(query, latitude, longitude, radius_meters) — Search for a specific type or named place (e.g. "ramen", "7-Eleven", "rooftop bar"). Returns newly discovered experiences as cards. Like explore_nearby, it AUTOMATICALLY widens the radius when the first ring is empty, so don't give up early.
         7. navigate_to(experience_id) — Open the user's preferred map app with walking directions. ONLY when the user explicitly asks to go / get directions.
@@ -1476,5 +1736,23 @@ public final class VoiceAgentOrchestrator: Identifiable {
 
         \(transcript)
         """
+    }
+}
+
+/// Captures only facts already authorized by the legacy map surface. Device
+/// location is read by its existing per-turn envelope; this requests no access.
+@MainActor
+private struct LegacyMapContextProvider: AgentContextProviding {
+    let facts: String
+    let contextManager: (any ContextManager)?
+    let memoryEpoch: UUID?
+
+    func snapshot(for session: AgentSessionDescriptor) async -> AgentTurnContext {
+        var evidence = facts
+        if let contextManager {
+            let snapshot = await contextManager.snapshot()
+            if let json = snapshot.jsonString() { evidence += "\nMap contextual observations: " + json }
+        }
+        return AgentTurnContext(capturedAt: Date(), scope: session.scope, facts: evidence, memoryEpoch: memoryEpoch)
     }
 }

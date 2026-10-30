@@ -16,12 +16,22 @@ public final class ChatHistoryStore {
     /// history list without holding a strong reference to the store.
     public static let didChange = Notification.Name("SoloCompass.ChatHistoryStore.didChange")
 
+    public static let didDelete = Notification.Name("SoloCompass.ChatHistoryStore.didDelete")
+
     let context: ModelContext
     private let saveDeletion: () throws -> Void
+    private let saveSnapshot: () throws -> Void
+    var recoveryJournal = FileAgentExecutionJournal.shared
+    var recoveryMemory: any AgentMemoryProviding = DeviceAgentMemoryStore.shared
 
-    public init(context: ModelContext, saveDeletion: (() throws -> Void)? = nil) {
+    public init(
+        context: ModelContext,
+        saveDeletion: (() throws -> Void)? = nil,
+        saveSnapshot: (() throws -> Void)? = nil
+    ) {
         self.context = context
         self.saveDeletion = saveDeletion ?? { try context.save() }
+        self.saveSnapshot = saveSnapshot ?? { try context.save() }
     }
 
     /// Convenience init using the shared on-disk container.
@@ -50,41 +60,66 @@ public final class ChatHistoryStore {
         let conversational = messages.filter { $0.role == .user || $0.role == .assistant }
         guard conversational.contains(where: { $0.role == .user }) else { return false }
 
-        let now = Self.nowISO()
-        let created = createdAt ?? existingSession(sessionId)?.createdAt ?? now
-
-        // Replace any prior rows for this session (idempotent upsert).
-        deleteRows(sessionId: sessionId)
-
-        let title = Self.deriveTitle(from: messages)
-        let session = ChatSessionRecord(
-            id: sessionId,
-            scopedExperienceId: scopedExperienceId,
-            title: title,
-            createdAt: created,
-            updatedAt: now,
-            messageCount: conversational.count
+        guard !recoveryJournal.isForgotten(sessionID: sessionId) else { return false }
+        let descriptor = FetchDescriptor<ChatMessageRecord>(
+            predicate: #Predicate { $0.sessionId == sessionId }
         )
-        context.insert(session)
-
-        for (index, message) in messages.enumerated() {
-            // Don't persist the system prompt — it's rebuilt fresh on restore
-            // and would otherwise bloat every stored conversation.
-            guard message.role != .system else { continue }
-            context.insert(
-                ChatMessageRecord.fromMessage(
-                    message,
-                    sessionId: sessionId,
-                    orderIndex: index,
-                    createdAt: now
-                )
-            )
+        guard let oldRows = try? context.fetch(descriptor) else { return false }
+        let oldSession = existingSession(sessionId)
+        let oldMetadata = oldSession.map {
+            ($0.scopedExperienceId, $0.title, $0.createdAt, $0.updatedAt, $0.messageCount)
         }
-
+        let oldValues = oldRows.map { row in
+            (row, row.asMessage, row.orderIndex, row.createdAt)
+        }
+        let now = Self.nowISO()
+        let session = oldSession ?? ChatSessionRecord(
+            id: sessionId, scopedExperienceId: scopedExperienceId,
+            title: Self.deriveTitle(from: messages), createdAt: createdAt ?? now,
+            updatedAt: now, messageCount: conversational.count
+        )
+        if oldSession == nil { context.insert(session) }
+        session.scopedExperienceId = scopedExperienceId
+        session.title = Self.deriveTitle(from: messages)
+        session.updatedAt = now
+        session.messageCount = conversational.count
+        var oldByID = Dictionary(uniqueKeysWithValues: oldRows.map { ($0.id, $0) })
+        var inserted: [ChatMessageRecord] = []
+        for (index, message) in messages.enumerated() where message.role != .system {
+            let replacement = ChatMessageRecord.fromMessage(
+                message, sessionId: sessionId, orderIndex: index, createdAt: now
+            )
+            if let row = oldByID.removeValue(forKey: replacement.id) {
+                Self.copyMessage(replacement, to: row)
+            } else {
+                context.insert(replacement)
+                inserted.append(replacement)
+            }
+        }
+        let deleted = Array(oldByID.values)
+        for row in deleted { context.delete(row) }
         do {
-            try context.save()
+            try saveSnapshot()
         } catch {
-            assertionFailure("ChatHistoryStore.saveSession failed: \(error)")
+            // Undo only this upsert. ModelContext.rollback() would discard
+            // unrelated pending edits owned by another screen sharing it.
+            for row in inserted { context.delete(row) }
+            for row in deleted { context.insert(row) }
+            for (row, message, index, created) in oldValues {
+                let replacement = ChatMessageRecord.fromMessage(
+                    message, sessionId: sessionId, orderIndex: index, createdAt: created
+                )
+                Self.copyMessage(replacement, to: row)
+            }
+            if let oldMetadata {
+                session.scopedExperienceId = oldMetadata.0
+                session.title = oldMetadata.1
+                session.createdAt = oldMetadata.2
+                session.updatedAt = oldMetadata.3
+                session.messageCount = oldMetadata.4
+            } else {
+                context.delete(session)
+            }
             return false
         }
         postChange()
@@ -125,35 +160,34 @@ public final class ChatHistoryStore {
         try? deletePersisted(sessionId: sessionId)
     }
 
-    /// Delete only after a successful durable commit. Restore these rows on
-    /// failure without rolling back unrelated edits in the shared context.
+    /// Persist deletion intent before removing visible history. Cleanup failure
+    /// leaves the row available for retry while late turns remain invalidated.
+    /// Restore only these rows if the final SwiftData commit fails.
     public func deletePersisted(sessionId: String) throws {
+        guard recoveryJournal.forget(sessionID: sessionId) else {
+            throw DeletionError.recoveryCleanupFailed
+        }
+        NotificationCenter.default.post(name: Self.didDelete, object: sessionId)
+        guard recoveryMemory.forget(sessionID: sessionId) else {
+            throw DeletionError.recoveryCleanupFailed
+        }
         let rows = try context.fetch(FetchDescriptor<ChatMessageRecord>(
             predicate: #Predicate { $0.sessionId == sessionId }
         ))
         let session = existingSession(sessionId)
-        let restoredRows = rows.map { row in
-            ChatMessageRecord(id: row.id, sessionId: row.sessionId, role: row.role,
-                              content: row.content, orderIndex: row.orderIndex,
-                              createdAt: row.createdAt, toolCallsBlob: row.toolCallsBlob,
-                              toolCallId: row.toolCallId, toolName: row.toolName)
-        }
-        let restoredSession = session.map { row in
-            ChatSessionRecord(id: row.id, scopedExperienceId: row.scopedExperienceId,
-                              title: row.title, createdAt: row.createdAt,
-                              updatedAt: row.updatedAt, messageCount: row.messageCount)
-        }
         for row in rows { context.delete(row) }
         if let session { context.delete(session) }
         do {
             try saveDeletion()
         } catch {
-            for row in restoredRows { context.insert(row) }
-            if let restoredSession { context.insert(restoredSession) }
+            for row in rows { context.insert(row) }
+            if let session { context.insert(session) }
             throw error
         }
         postChange()
     }
+
+    private enum DeletionError: Error { case recoveryCleanupFailed }
 
     // MARK: - Private helpers
 
@@ -164,12 +198,15 @@ public final class ChatHistoryStore {
         return (try? context.fetch(descriptor))?.first
     }
 
-    private func deleteRows(sessionId: String) {
-        let descriptor = FetchDescriptor<ChatMessageRecord>(
-            predicate: #Predicate { $0.sessionId == sessionId }
-        )
-        let rows = (try? context.fetch(descriptor)) ?? []
-        for row in rows { context.delete(row) }
+    private static func copyMessage(_ source: ChatMessageRecord, to target: ChatMessageRecord) {
+        target.sessionId = source.sessionId
+        target.role = source.role
+        target.content = source.content
+        target.orderIndex = source.orderIndex
+        target.createdAt = source.createdAt
+        target.toolCallsBlob = source.toolCallsBlob
+        target.toolCallId = source.toolCallId
+        target.toolName = source.toolName
     }
 
     private func postChange() {

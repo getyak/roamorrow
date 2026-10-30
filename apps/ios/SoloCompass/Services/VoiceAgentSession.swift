@@ -180,12 +180,75 @@ public final class VoiceAgentSession {
     public func restoreHistory(_ restored: [Message]) {
         let nonSystem = restored.filter { $0.role != .system }
         guard !nonSystem.isEmpty else { return }
-        messages.append(contentsOf: nonSystem)
+        messages.append(contentsOf: Self.normalizedToolGroups(nonSystem))
         transcript.append(contentsOf: nonSystem)
         turnCount = nonSystem.filter { $0.role == .user }.count
         recursionDepth = 0
         state = .idle
         compactIfNeeded()
+    }
+
+    /// Merge durable recovery results into presentation history without issuing
+    /// tools. The journal owns receipts; this method only restores their rows.
+    func restoreToolResults(_ results: [Message], after assistantID: UUID) {
+        guard let index = transcript.firstIndex(where: { $0.id == assistantID }),
+              transcript[index].role == .assistant else { return }
+        let callIDs = Set(transcript[index].toolCalls.map(\.id))
+        var end = index + 1
+        while end < transcript.count, transcript[end].role == .tool { end += 1 }
+        let matching = results.filter { $0.role == .tool && callIDs.contains($0.toolCallId ?? "") }
+        transcript.replaceSubrange((index + 1)..<end, with: matching)
+        let system = messages.first(where: { $0.role == .system })
+        messages = system.map { [$0] } ?? []
+        messages.append(contentsOf: Self.normalizedToolGroups(transcript))
+        compactIfNeeded()
+    }
+
+    func toolResults(after assistantID: UUID) -> [Message] {
+        guard let index = transcript.firstIndex(where: { $0.id == assistantID }) else { return [] }
+        return Array(transcript.dropFirst(index + 1).prefix { $0.role == .tool })
+    }
+
+    /// A partial saved batch is visible to the traveler but is not a valid
+    /// OpenAI message group until every announced call has exactly one result.
+    static func normalizedToolGroups(_ input: [Message]) -> [Message] {
+        var output: [Message] = []
+        var index = 0
+        while index < input.count {
+            let message = input[index]
+            if message.role == .tool { index += 1; continue }
+            guard message.role == .assistant, !message.toolCalls.isEmpty else {
+                output.append(message)
+                index += 1
+                continue
+            }
+            var next = index + 1
+            var results: [Message] = []
+            while next < input.count, input[next].role == .tool {
+                results.append(input[next])
+                next += 1
+            }
+            let expected = Set(message.toolCalls.map(\.id))
+            let actual = results.compactMap(\.toolCallId)
+            if expected.count == message.toolCalls.count,
+               actual.count == expected.count, Set(actual) == expected {
+                output.append(message)
+                for call in message.toolCalls {
+                    if let result = results.first(where: { $0.toolCallId == call.id }) {
+                        output.append(result)
+                    }
+                }
+            }
+            index = next
+        }
+        return output
+    }
+
+    func resumeInterruptedTurn() {
+        guard endReason == nil || endReason == .timeout || endReason == .error else { return }
+        endReason = nil
+        recursionDepth = 0
+        state = .thinking
     }
 
     /// Transition .idle → .listening. Caller is the long-press gesture.
@@ -334,10 +397,15 @@ public final class VoiceAgentSession {
         }
 
         // Keep the most recent 4 messages (~2 user/assistant pairs).
+        rest = Self.normalizedToolGroups(rest)
         let tailKeep = 4
         guard rest.count > tailKeep else { return }
-        let dropping = rest.dropLast(tailKeep)
-        let tail = Array(rest.suffix(tailKeep))
+        var tailStart = rest.count - tailKeep
+        // Move the cut back to the assistant that announced a retained tool.
+        // Compaction may exceed the soft row limit for one atomic group.
+        while tailStart > 0, rest[tailStart].role == .tool { tailStart -= 1 }
+        let dropping = rest.prefix(tailStart)
+        let tail = Array(rest.suffix(from: tailStart))
 
         // Build a coarse summary. We pull at most 3 user turns for
         // the summary; verbosity here costs tokens forever.

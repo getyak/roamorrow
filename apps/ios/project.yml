@@ -241,6 +241,17 @@ targets:
       - path: SoloCompass/Tests/VoiceServiceGenerationTests.swift
       - path: SoloCompass/Tests/VoiceServiceActorIsolationTest.swift
       - path: SoloCompass/Tests/VoiceAgentOrchestratorLifecycleTests.swift
+      - path: SoloCompass/Tests/AgentRuntimeTests.swift
+      - path: SoloCompass/Tests/CompanionRuntimeRecoveryTests.swift
+      - path: SoloCompass/Tests/LegacyAgentRecoveryTests.swift
+      - path: SoloCompass/Tests/AgentMemoryRuntimeTests.swift
+      - path: SoloCompass/Tests/AgentMapSafetyTests.swift
+      - path: SoloCompass/Tests/ChatHistoryDeletionTests.swift
+      - path: SoloCompass/Tests/MemoryDigestServiceTests.swift
+      - path: SoloCompass/Tests/ForgetMeServiceTests.swift
+      - path: SoloCompass/Tests/ToolOutcomeTests.swift
+      - path: SoloCompass/Tests/ToolRouterOutcomeTests.swift
+      - path: SoloCompass/Tests/RecallMemoryToolTests.swift
       - path: SoloCompass/Tests/WebSearchServiceTests.swift
       - path: SoloCompass/Tests/WebSearchOutcomeTests.swift
     settings:

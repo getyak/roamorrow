@@ -1,5 +1,11 @@
 # Architecture
 
+The iOS companion and legacy map conversation share device-session, context,
+tool-journal recovery and memory contracts. See the [unified Agent runtime
+design](architecture/unified-agent-runtime.md) for execution guarantees,
+compatibility and the boundary around interrupted side effects. UI history
+adapters stay separate; this does not join account Harness context or the map MCP.
+
 The Go service in `apps/api` also exposes the email/context Harness and its
 authenticated MCP tools. The native account page uses a separate verified
 Supabase session; Harness profiles and encrypted Google tokens live in a private

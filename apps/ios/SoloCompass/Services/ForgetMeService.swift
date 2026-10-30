@@ -27,6 +27,8 @@ public final class ForgetMeService {
     private static let log = OSLog(subsystem: "com.solocompass.app", category: "ForgetMe")
 
     private var modelContainer: ModelContainer?
+    /// Internal seam for isolated tests; production uses the device singleton.
+    var memoryProvider: any AgentMemoryProviding = DeviceAgentMemoryStore.shared
 
     private init() {}
 
@@ -66,6 +68,8 @@ public final class ForgetMeService {
     ///   and logs — never throws, so a Settings button never hangs on an alert.
     @discardableResult
     public func forgetEverything() -> Result {
+        MemoryDigestService.invalidatePendingDigests()
+        let deviceMemoryCleared = memoryProvider.forgetAll()
         guard let container = modelContainer else {
             os_log("ForgetMe skipped — no ModelContainer bound",
                    log: Self.log, type: .error)
@@ -79,7 +83,7 @@ public final class ForgetMeService {
         let capsules  = deleteAll(TimeCapsule.self,         in: context)
         let memories  = deleteAll(AgentMemorySnapshot.self, in: context)
 
-        var saved = true
+        var saved = deviceMemoryCleared
         do {
             try context.save()
         } catch {

@@ -3,7 +3,7 @@ import Observation
 
 @MainActor
 @Observable
-final class CompanionHomeStore {
+final class CompanionHomeStore: AgentExecutionJournal {
     private(set) var entries: [CompanionHomeEntry] = []
     var composerDraft = "" { didSet { if !isLoading { persist() } } }
     private(set) var draftAttachments: [CompanionMediaAttachment] = []
@@ -21,6 +21,9 @@ final class CompanionHomeStore {
     var activeCommitments: [CompanionHomeCommitment] { commitments.filter { $0.status == .active } }
     private(set) var invites: [CompanionHomeInvite] = []
     private(set) var experienceService: ExperienceService?
+
+    private(set) var agentSession = AgentSessionDescriptor(id: UUID().uuidString, scope: "global")
+    @ObservationIgnored private let memory: any AgentMemoryProviding
 
     @ObservationIgnored private var agent: (any CompanionHomeResponding)?
     @ObservationIgnored private var productionAgent: CompanionHomeAgent?
@@ -46,9 +49,13 @@ final class CompanionHomeStore {
         var toolJournals: [String: [CompanionHomeToolBatch]]? = nil
         var draftAttachments: [CompanionMediaAttachment]? = nil
         var draftQuote: CompanionQuotedMessage? = nil
+        var agentSessionID: String? = nil
     }
 
-    init(url: URL? = nil) {
+    init(url: URL? = nil, memory: (any AgentMemoryProviding)? = nil) {
+        if let memory { self.memory = memory }
+        else if let url { self.memory = DeviceAgentMemoryStore(fileURL: url.appendingPathExtension("memory.json")) }
+        else { self.memory = DeviceAgentMemoryStore.shared }
         self.url = url ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Roamorrow/CompanionHome/v1.json")
         self.originalURL = self.url
@@ -62,6 +69,7 @@ final class CompanionHomeStore {
         self.experienceService = experienceService
         let production = CompanionHomeAgent(aiService: aiService, experienceService: experienceService)
         production.journalStore = self
+        production.memory = memory
         production.searchArea = searchAreaProvider
         production.activeCommitments = { [weak self] in self?.activeCommitments ?? [] }
         productionAgent = production
@@ -82,7 +90,11 @@ final class CompanionHomeStore {
     /// Injection seam; does not create a second production credential path.
     func configure(agent: any CompanionHomeResponding) {
         self.agent = agent
-        (agent as? CompanionHomeAgent)?.searchArea = searchAreaProvider
+        if let companion = agent as? CompanionHomeAgent {
+            companion.searchArea = searchAreaProvider
+            companion.journalStore = self
+            companion.memory = memory
+        }
     }
 
     var selectedSearchArea: CompanionHomeSearchArea? { searchAreaProvider?() }
@@ -148,7 +160,8 @@ final class CompanionHomeStore {
         let previousText = composerDraft
         let previousAttachments = draftAttachments
         let previousQuote = draftQuote
-        let entry = CompanionHomeEntry(role: .user, text: text, attachments: attachments.isEmpty ? nil : attachments, quotedMessage: quote)
+        let entry = CompanionHomeEntry(role: .user, text: text, attachments: attachments.isEmpty ? nil : attachments,
+                                       quotedMessage: quote, memoryEpoch: memory.context(for: agentSession).epoch)
         entries.append(entry)
         // One write moves draft -> message; a crash cannot restore both copies.
         isLoading = true
@@ -178,6 +191,7 @@ final class CompanionHomeStore {
             if persist() {
                 errorMessage = nil
                 activity = .completed(id)
+                recordCompletedTurn(id: id, memoryEpoch: entry.memoryEpoch)
             } else {
                 entries[index].status = .failed
                 activity = .failed(id)
@@ -301,38 +315,98 @@ final class CompanionHomeStore {
         toolJournals[entryID.uuidString] ?? []
     }
 
-    /// A complete model tool plan must reach disk before any of its calls execute.
+    func toolBatches(for turn: AgentTurnIdentity) -> [AgentToolBatch] {
+        guard turn.session == agentSession else { return [] }
+        return toolJournal(for: turn.turnID)
+    }
+
+    func savePlan(_ batch: AgentToolBatch, for turn: AgentTurnIdentity) -> Bool {
+        guard turn.session == agentSession else { return false }
+        return checkpointToolPlan(entryID: turn.turnID, batch: batch)
+    }
+
+    func saveStarted(callID: String, for turn: AgentTurnIdentity) -> Bool {
+        guard !Task.isCancelled, turn.session == agentSession,
+              let position = checkpointPosition(entryID: turn.turnID, callID: callID),
+              var call = toolJournals[turn.turnID.uuidString]?[position.0].calls[position.1] else { return false }
+        guard call.resultJSON == nil, call.state == .planned else { return false }
+        let previous = toolJournals
+        call.state = .started
+        replaceCheckpoint(call, entryID: turn.turnID)
+        guard persist() else { toolJournals = previous; return false }
+        return true
+    }
+
+    func saveResult(_ result: AgentToolCheckpoint, for turn: AgentTurnIdentity) -> Bool {
+        guard turn.session == agentSession else { return false }
+        return checkpointToolResult(entryID: turn.turnID, result: result)
+    }
+
+    /// Compatibility entry point. The executor uses the same atomic journal write.
     @discardableResult
     func checkpointToolPlan(entryID: UUID, batch: CompanionHomeToolBatch) -> Bool {
         guard !Task.isCancelled, entries.contains(where: { $0.id == entryID && $0.role == .user }) else { return false }
         let previous = toolJournal(for: entryID)
         let existingCalls = previous.flatMap(\.calls)
         let allowed: Set<String> = ["manage_follow_up", "search_places", "show_details", "web_search"]
-        guard previous.count < 3, !batch.calls.isEmpty,
-              existingCalls.allSatisfy({ $0.resultJSON != nil }),
-              existingCalls.count + batch.calls.count <= 5,
+        guard batch.context == nil || batch.context?.scope == agentSession.scope,
+              !batch.calls.isEmpty, batch.calls.count <= 5,
               (batch.assistantContent?.count ?? 0) <= 2_000,
-              batch.calls.allSatisfy({ !$0.id.isEmpty && $0.id.count <= 128 && allowed.contains($0.name) && $0.argumentsJSON.utf8.count <= 12_000 && $0.resultJSON == nil && $0.sourceTitles.isEmpty && $0.placeID == nil }),
-              Set((existingCalls + batch.calls).map(\.id)).count == existingCalls.count + batch.calls.count else { return false }
-        toolJournals[entryID.uuidString] = previous + [batch]
+              Set(batch.calls.map(\.id)).count == batch.calls.count else { return false }
+        if let existing = previous.first(where: { $0.id == batch.id }) {
+            guard existing.calls.count == batch.calls.count,
+                  existing.assistantContent == batch.assistantContent,
+                  existing.context == batch.context else { return false }
+            return zip(existing.calls, batch.calls).allSatisfy { (try? $0.hasSameIdentity(as: $1)) == true }
+        }
+        guard previous.count < 3, existingCalls.allSatisfy({ $0.resultJSON != nil }),
+              Set((existingCalls + batch.calls).map(\.id)).count <= 5 else { return false }
+        var accepted = batch
+        for index in accepted.calls.indices {
+            let call = accepted.calls[index]
+            guard !call.id.isEmpty, call.id.count <= 128, allowed.contains(call.name),
+                  call.argumentsJSON.utf8.count <= 12_000, call.implementationVersion == 1,
+                  (try? AgentToolCheckpoint.canonicalArguments(call.argumentsJSON)) != nil else { return false }
+            if let existing = existingCalls.first(where: { $0.id == call.id }) {
+                guard (try? existing.hasSameIdentity(as: call)) == true else { return false }
+                accepted.calls[index] = existing
+            } else {
+                guard call.state == .planned, call.resultJSON == nil,
+                      call.sourceTitles.isEmpty, call.placeID == nil, call.placeIDs.isEmpty,
+                      call.effectJSON == nil else { return false }
+            }
+        }
+        toolJournals[entryID.uuidString] = previous + [accepted]
         guard persist() else { toolJournals[entryID.uuidString] = previous; return false }
         return true
     }
 
-    /// Read tools have no local commitment mutation; record their actual bounded result.
+    /// An observed result may be saved after cancellation under its original turn.
     @discardableResult
     func checkpointToolResult(entryID: UUID, result: CompanionHomeToolCheckpoint) -> Bool {
-        guard !Task.isCancelled, let json = result.resultJSON, json.utf8.count <= 64_000,
+        guard let json = result.resultJSON, json.utf8.count <= 64_000,
               result.sourceTitles.count <= 20, result.sourceTitles.allSatisfy({ $0.count <= 600 }),
-              let position = checkpointPosition(entryID: entryID, callID: result.id) else { return false }
-        let key = entryID.uuidString
-        let planned = toolJournals[key]?[position.0].calls[position.1]
-        guard planned?.name == result.name, planned?.argumentsJSON == result.argumentsJSON else { return false }
-        if planned?.resultJSON != nil { return planned == result }
-        let previous = toolJournals[key]
-        toolJournals[key]?[position.0].calls[position.1] = result
-        guard persist() else { toolJournals[key] = previous; return false }
+              let position = checkpointPosition(entryID: entryID, callID: result.id),
+              let planned = toolJournals[entryID.uuidString]?[position.0].calls[position.1],
+              (try? planned.hasSameIdentity(as: result)) == true else { return false }
+        var completed = result
+        // Old callers set resultJSON directly; keep the compatibility API terminal.
+        if completed.state != .uncertain { completed.state = .completed }
+        if planned.resultJSON != nil { return planned == completed }
+        let previous = toolJournals
+        replaceCheckpoint(completed, entryID: entryID)
+        guard persist() else { toolJournals = previous; return false }
         return true
+    }
+
+    private func replaceCheckpoint(_ result: AgentToolCheckpoint, entryID: UUID) {
+        let key = entryID.uuidString
+        for batchIndex in (toolJournals[key] ?? []).indices {
+            for callIndex in (toolJournals[key]?[batchIndex].calls ?? []).indices
+                where toolJournals[key]?[batchIndex].calls[callIndex].id == result.id {
+                toolJournals[key]?[batchIndex].calls[callIndex] = result
+            }
+        }
     }
 
     /// Commitment change and its exact tool result share one atomic snapshot write.
@@ -359,7 +433,8 @@ final class CompanionHomeStore {
         }
         var completed = planned
         completed.resultJSON = json
-        toolJournals[entryID.uuidString]?[position.0].calls[position.1] = completed
+        completed.state = .completed
+        replaceCheckpoint(completed, entryID: entryID)
         guard persist() else {
             commitments = previousCommitments
             toolJournals = previousJournals
@@ -398,7 +473,8 @@ final class CompanionHomeStore {
         var prepared: [(url: URL, bytes: Data?)] = []
         var attempted: [(url: URL, bytes: Data?)] = []
         do {
-            let empty = Snapshot(entries: [], composerDraft: "", people: [], selectedPeopleIDs: [], invites: [], commitments: [], toolJournals: [:])
+            let clearedSession = AgentSessionDescriptor(id: UUID().uuidString, scope: "global")
+            let empty = Snapshot(entries: [], composerDraft: "", people: [], selectedPeopleIDs: [], invites: [], commitments: [], toolJournals: [:], agentSessionID: clearedSession.id)
             let data = try JSONEncoder().encode(empty)
             // Read only the exact files we might overwrite so a partial failure can roll back.
             for target in targets {
@@ -414,6 +490,8 @@ final class CompanionHomeStore {
                 attempted.append(backup)
                 try data.write(to: backup.url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             }
+            guard memory.forget(sessionID: agentSession.id) else { throw CocoaError(.fileWriteUnknown) }
+            agentSession = clearedSession
             isLoading = true
             entries = []
             composerDraft = ""
@@ -457,7 +535,7 @@ final class CompanionHomeStore {
         Snapshot(entries: entries, composerDraft: composerDraft, people: people,
                  selectedPeopleIDs: selectedPeopleIDs, invites: invites,
                  commitments: commitments, toolJournals: toolJournals,
-                 draftAttachments: draftAttachments, draftQuote: draftQuote)
+                 draftAttachments: draftAttachments, draftQuote: draftQuote, agentSessionID: agentSession.id)
     }
 
     func clearError() { errorMessage = nil }
@@ -472,6 +550,8 @@ final class CompanionHomeStore {
             return
         }
         let attemptID = UUID()
+        let session = agentSession
+        let memoryEpoch = entries[index].memoryEpoch
         activeAttemptID = attemptID
         isWorking = true
         activity = .working(id)
@@ -492,7 +572,7 @@ final class CompanionHomeStore {
             let result = try await withTaskCancellationHandler {
                 try await task.value
             } onCancel: { task.cancel() }
-            guard activeID == id, activeAttemptID == attemptID else { return }
+            guard activeID == id, activeAttemptID == attemptID, agentSession == session else { return }
             try Task.checkCancellation()
             guard !task.isCancelled else { throw CancellationError() }
             entries[index].status = .delivered
@@ -508,7 +588,7 @@ final class CompanionHomeStore {
             }
             responded = true
         } catch {
-            guard activeID == id, activeAttemptID == attemptID else { return }
+            guard activeID == id, activeAttemptID == attemptID, agentSession == session else { return }
             entries[index].status = .failed
             // Never surface raw network response bodies, credentials, or model diagnostics.
             if errorMessage == nil {
@@ -522,6 +602,15 @@ final class CompanionHomeStore {
         let saved = persist()
         if !saved { entries[index].status = .failed }
         activity = responded && saved ? .completed(id) : .failed(id)
+        if responded && saved { recordCompletedTurn(id: id, memoryEpoch: memoryEpoch) }
+    }
+
+    private func recordCompletedTurn(id: UUID, memoryEpoch: UUID?) {
+        guard let user = entries.first(where: { $0.id == id && $0.role == .user && $0.status == .delivered }),
+              let reply = entries.first(where: { $0.replyToID == id && $0.role == .companion && $0.status == .delivered }) else { return }
+        // Deliberately exclude attachments, selected people, tool blobs and private account data.
+        _ = memory.recordCompletedTurn(.init(identity: .init(session: agentSession, turnID: id),
+                                             userText: user.text, assistantText: reply.text, memoryEpoch: memoryEpoch))
     }
 
     private func load() {
@@ -529,6 +618,10 @@ final class CompanionHomeStore {
         do {
             let snapshot = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: url))
             guard snapshot.version == 1 else { throw CocoaError(.fileReadCorruptFile) }
+            if let sessionID = snapshot.agentSessionID {
+                guard UUID(uuidString: sessionID) != nil else { throw CocoaError(.fileReadCorruptFile) }
+                agentSession = .init(id: sessionID, scope: "global")
+            }
             entries = snapshot.entries.map { entry in
                 var restored = entry
                 if restored.status == .working { restored.status = .failed }
