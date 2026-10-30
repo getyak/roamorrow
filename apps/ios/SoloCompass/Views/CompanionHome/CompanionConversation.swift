@@ -33,7 +33,7 @@ struct CompanionConversation: View {
 
     var body: some View {
         let projection = store.timelineProjection
-        return ScrollViewReader { scrollProxy in
+        return Group {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     if !store.activeCommitments.isEmpty {
@@ -166,18 +166,8 @@ struct CompanionConversation: View {
             .onChange(of: isActive) { _, active in if active { restoreReading() } }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in restoreAfterKeyboardLayout() }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in restoreAfterKeyboardLayout() }
-            .task(id: scrollRequest.revision) {
-                let request = scrollRequest
-                guard request.revision > 0 else { return }
-                await Task.yield()
-                guard !Task.isCancelled, isActive, let target = request.target,
-                      intent.permitsScroll(request, current: scrollRequest) else { traceScroll("request-skipped"); return }
-                traceScroll("perform-\(request.kind)")
-                withAnimation(request.animated && !reduceMotion ? .easeOut(duration: 0.2) : nil) {
-                    scrollProxy.scrollTo(target, anchor: .bottom)
-                }
-                scrollRequest.consume(revision: request.revision)
-            }
+            .modifier(CompanionScrollExecution(request: $scrollRequest, intent: $intent,
+                isActive: isActive, reduceMotion: reduceMotion, trace: traceScroll))
             .overlay(alignment: .bottom) {
                 if isActive && (intent.hasUnread || (!intent.followsLatest && !intent.nearLatest)) {
                     Button {

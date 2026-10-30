@@ -139,3 +139,75 @@ struct CompanionLegacyScrollProbe: UIViewRepresentable {
         func stop() { link?.invalidate(); link = nil }
     }
 }
+
+/// Position-state changes update this modifier, retaining its existing content
+/// node instead of re-running a factory for the entire lazy conversation.
+@MainActor
+struct CompanionScrollExecution: ViewModifier {
+    @Binding var request: CompanionScrollIntent.ScrollRequest
+    @Binding var intent: CompanionScrollIntent
+    let isActive: Bool
+    let reduceMotion: Bool
+    let trace: (String) -> Void
+
+    func body(content: Content) -> some View {
+        let execution = CompanionScrollExecutionContext(request: $request, intent: $intent,
+            isActive: isActive, reduceMotion: reduceMotion, trace: trace)
+        if #available(iOS 18.0, *) {
+            content.modifier(CompanionModernScrollExecution(execution: execution))
+        } else {
+            ScrollViewReader { proxy in
+                content.task(id: execution.key) {
+                    await execution.perform { target in proxy.scrollTo(target, anchor: .bottom) }
+                }
+            }
+        }
+    }
+}
+
+private struct CompanionScrollExecutionKey: Hashable {
+    let revision: Int
+    let isActive: Bool
+}
+
+@MainActor
+private struct CompanionScrollExecutionContext {
+    let request: Binding<CompanionScrollIntent.ScrollRequest>
+    let intent: Binding<CompanionScrollIntent>
+    let isActive: Bool
+    let reduceMotion: Bool
+    let trace: (String) -> Void
+    var key: CompanionScrollExecutionKey { .init(revision: request.wrappedValue.revision, isActive: isActive) }
+
+    func perform(_ move: @MainActor (String) -> Void) async {
+        let captured = request.wrappedValue
+        guard captured.revision > 0 else { return }
+        await Task.yield()
+        guard !Task.isCancelled, isActive, let target = captured.target,
+              intent.wrappedValue.permitsScroll(captured, current: request.wrappedValue) else {
+            trace("request-skipped"); return
+        }
+        trace("perform-\(captured.kind)")
+        withAnimation(captured.animated && !reduceMotion ? .easeOut(duration: 0.2) : nil) { move(target) }
+        var current = request.wrappedValue
+        current.consume(revision: captured.revision)
+        request.wrappedValue = current
+    }
+}
+
+@available(iOS 18.0, *)
+@MainActor
+private struct CompanionModernScrollExecution: ViewModifier {
+    let execution: CompanionScrollExecutionContext
+    @State private var position = ScrollPosition(idType: String.self)
+
+    func body(content: Content) -> some View {
+        content.scrollPosition($position)
+            .task(id: execution.key) {
+                await execution.perform { target in
+                    if target == "stream-bottom" { position.scrollTo(edge: .bottom) }
+                    else { position.scrollTo(id: target, anchor: .bottom) }
+                }
+            }
+    }
+}
