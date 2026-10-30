@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-30",
+  "sourceBase": "20f2ff8b",
+  "designVersion": "V4: Conversation / Map / Itinerary / Me; Saved in Map",
+  "scope": "HTML interaction design plus targeted native Agent place-search and provenance repair",
+  "audits": {
+    "board": {
+      "lint": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "runtime": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "layout": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "motion": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "contrast": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "craft": {
+        "errors": 0,
+        "warnings": 4
+      },
+      "audio": {
+        "errors": 0,
+        "warnings": 0
+      }
+    },
+    "film": {
+      "lint": {
+        "errors": 0,
+        "warnings": 5
+      },
+      "runtime": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "layout": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "motion": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "contrast": {
+        "errors": 0,
+        "warnings": 0
+      },
+      "craft": {
+        "errors": 0,
+        "warnings": 9
+      },
+      "audio": {
+        "errors": 0,
+        "warnings": 0
+      }
+    }
+  },
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "frames": 420,
+    "durationSeconds": 14,
+    "audioStreams": 0,
+    "decodedFrameReviewedAtSeconds": 4.5
+  },
+  "browserScenarios": [
+    "message → same Map tab → select another candidate → original conversation and draft restored",
+    "Map asks about selected experience in originating conversation; scope consumed once",
+    "saved toggle shares same collection; removing final saved item produces empty state",
+    "explicit map search for bookstore returns Book & Brew; area scope preserves query",
+    "no visible matches stay empty rather than reopening a different result",
+    "pointer send works after focused composer; historical user/assistant turns retained"
+  ],
+  "independentReview": "No remaining confirmed P0/P1/P2 in scoped V4 state/focus review and native search review. Event/host checks are isolated simulations.",
+  "toolsEval": {
+    "prototypeStateTests": 15,
+    "existingMapContractTests": 35,
+    "providerSecurityTests": 2,
+    "goHarnessTests": 25,
+    "nativeSearchHostChecks": 56,
+    "publicProviderRequests": 6,
+    "publicProviderOutcome": "4 Wikidata HTTP200; matrix URLError; direct foot route HTTP200; explicit QA disambiguation, no model calls"
+  },
+  "nativeValidation": {
+    "status": "local_dependency_download_blocked",
+    "note": "Pinned dependency resolution did not reach compilation because official Sentry 8.58.2 binary artifacts timed out. Host checks passed 56/56. Native navigation is unchanged; platform build/tests remain unverified locally. See native-validation.md.",
+    "hostChecks": 56,
+    "nativeCompilationStarted": false,
+    "nativeTargetedTestsRun": false,
+    "sourceFixCommit": "671d1940"
+  },
+  "auditContext": [
+    "Intentional scroll clipping is only marked for ink outside its scroll viewport.",
+    "Film has five nonblocking timeline-structure lint warnings and documented compact-UI craft warnings.",
+    "Map positions and walking times in the prototype are illustrative, not real user location or navigation."
+  ],
+  "notVerified": [
+    "New four-tab SwiftUI navigation",
+    "physical iPhone",
+    "native keyboard/Dynamic Type/VoiceOver",
+    "real model autonomous orchestration",
+    "real MapKit network/SwiftData integration",
+    "real accounts, bookings and payment"
+  ]
+}

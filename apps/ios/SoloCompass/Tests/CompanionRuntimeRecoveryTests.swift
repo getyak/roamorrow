@@ -112,6 +112,66 @@ final class CompanionRuntimeRecoveryTests: XCTestCase {
         XCTAssertFalse(context.selectedAreaFact?.contains("memory-evidence-marker") == true)
     }
 
+    func testLegacyImplicitSearchNeverResolvesItsOldPlanFromANewLiveCity() async throws {
+        let url = location()
+        let store = CompanionHomeStore(url: url)
+        await store.send(text: "原来地图附近的书店")
+        let id = try XCTUnwrap(store.entries.first?.id)
+        let planned = AgentToolCheckpoint(id: "legacy-implicit", name: "search_places", argumentsJSON: #"{"query":"books"}"#)
+        XCTAssertTrue(store.checkpointToolPlan(entryID: id, batch: .init(calls: [planned])))
+        let restored = CompanionHomeStore(url: url)
+        var executions = 0
+        let agent = CompanionHomeAgent(aiService: AIService(useSharedCache: false), experienceService: ExperienceService(seed: []), toolExecutor: { _ in
+            executions += 1
+            return (#"{"ok":true,"origin_source":"map_viewport"}"#, nil)
+        })
+        restored.configure(searchArea: { .init(name: "New city", latitude: 1.35, longitude: 103.82) })
+        restored.configure(agent: agent)
+        agent.messageSender = { messages, tools in
+            XCTAssertTrue(tools.isEmpty, "Unknown legacy scope requires a new explicit user turn")
+            XCTAssertTrue(messages.contains { $0.role == .tool && ($0.content?.contains("legacy_search_scope_unavailable") == true) })
+            return .init(content: "请选择搜索范围并开始一个新问题。", toolCalls: [])
+        }
+        await restored.retry(id: id)
+        XCTAssertEqual(executions, 0)
+        let receipt = try XCTUnwrap(CompanionHomeStore(url: url).toolJournal(for: id).first?.calls.first)
+        XCTAssertEqual(receipt.state, .uncertain)
+        XCTAssertNil(receipt.resolvedArgumentsJSON)
+        XCTAssertEqual(receipt.argumentsJSON, planned.argumentsJSON)
+        XCTAssertEqual(restored.entries.first?.status, .delivered)
+    }
+
+    func testLegacyPlannedScopedSearchPersistsResolvedCoordinatesBeforeDispatch() async throws {
+        let url = location()
+        let scope = CompanionHomeAreaScope(area: .init(name: "Tokyo", latitude: 35.7, longitude: 139.7), query: nil, category: nil)
+        let entry = CompanionHomeEntry(role: .user, text: "就在这片区域", searchArea: scope)
+        let entries = try JSONSerialization.jsonObject(with: JSONEncoder().encode([entry]))
+        let snapshot: [String: Any] = ["version": 1, "entries": entries, "composerDraft": "", "people": [], "selectedPeopleIDs": [], "invites": []]
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try JSONSerialization.data(withJSONObject: snapshot).write(to: url)
+        let store = CompanionHomeStore(url: url)
+        let planned = AgentToolCheckpoint(id: "legacy-pending", name: "search_places", argumentsJSON: #"{"query":"books"}"#)
+        XCTAssertTrue(store.checkpointToolPlan(entryID: entry.id, batch: .init(calls: [planned])))
+        var executions = 0
+        let agent = CompanionHomeAgent(aiService: AIService(useSharedCache: false), experienceService: ExperienceService(seed: []), toolExecutor: { call in
+            executions += 1
+            let durable = try? XCTUnwrap(CompanionHomeStore(url: url).toolJournal(for: entry.id).first?.calls.first)
+            XCTAssertEqual(durable?.state, .started)
+            XCTAssertEqual(durable?.resolvedArgumentsJSON, call.argumentsJSON)
+            let args = try? JSONSerialization.jsonObject(with: Data(call.argumentsJSON.utf8)) as? [String: Any]
+            XCTAssertEqual(args?["latitude"] as? Double, 35.7)
+            XCTAssertEqual(args?["longitude"] as? Double, 139.7)
+            return (#"{"ok":true,"origin_source":"explicit_coordinates"}"#, nil)
+        })
+        store.configure(searchArea: { .init(name: "Singapore", latitude: 1.35, longitude: 103.82) })
+        store.configure(agent: agent)
+        agent.messageSender = { _, _ in .init(content: "原区域的查询结果已保留。", toolCalls: []) }
+        await store.retry(id: entry.id)
+        XCTAssertEqual(executions, 1)
+        XCTAssertEqual(store.entries.first?.status, .delivered)
+        XCTAssertEqual(store.toolJournal(for: entry.id).first?.calls.first?.argumentsJSON, planned.argumentsJSON)
+    }
+
     func testReceivedReplyDoesNotEnterMemoryUntilFinalSaveSucceeds() async throws {
         let url = location()
         let memory = DeviceAgentMemoryStore(fileURL: location())

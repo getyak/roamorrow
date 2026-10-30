@@ -1,5 +1,6 @@
 import XCTest
 import CoreLocation
+import MapKit
 @testable import SoloCompass
 
 @MainActor
@@ -57,14 +58,33 @@ final class AgentMapSafetyTests: XCTestCase {
 
     func testPreparedExplorationFreezesCoordinatesWithoutChangingCallIdentity() throws {
         let (router, map, _) = fixture()
+        let viewport = CLLocationCoordinate2D(latitude: 35.68, longitude: 139.77)
+        map.noteWorkspaceViewport(MKCoordinateRegion(center: viewport,
+                                                     span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)))
         let call = VoiceAgentSession.ToolCall(id: "explore", name: "explore_nearby", argumentsJSON: "{}")
         let prepared = router.prepareForExecution(call)
         XCTAssertEqual(prepared.id, call.id)
         XCTAssertEqual(prepared.name, call.name)
         let args = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(prepared.argumentsJSON.utf8)) as? [String: Any])
-        XCTAssertEqual(args["latitude"] as? Double, map.exploreAnchorCoordinate.latitude)
-        XCTAssertEqual(args["longitude"] as? Double, map.exploreAnchorCoordinate.longitude)
+        XCTAssertEqual(args["latitude"] as? Double, viewport.latitude)
+        XCTAssertEqual(args["longitude"] as? Double, viewport.longitude)
         XCTAssertEqual(router.prepareForExecution(prepared), prepared)
+    }
+
+    func testPreparationDoesNotInventMissingCoordinateOrFallbackOrigin() async throws {
+        let (router, map, _) = fixture()
+        let incomplete = router.prepareForExecution(.init(id: "partial", name: "search_places",
+                                                          argumentsJSON: #"{"query":"ramen","latitude":35.68}"#))
+        let args = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(incomplete.argumentsJSON.utf8)) as? [String: Any])
+        XCTAssertNil(args["longitude"])
+        let result = await router.execute(incomplete)
+        XCTAssertTrue(result.contains("provide both latitude and longitude"))
+        if map.agentSearchOrigin == nil {
+            let missing = router.prepareForExecution(.init(id: "missing", name: "explore_nearby", argumentsJSON: "{}"))
+            let missingArgs = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(missing.argumentsJSON.utf8)) as? [String: Any])
+            XCTAssertNil(missingArgs["latitude"])
+            XCTAssertNil(missingArgs["longitude"])
+        }
     }
 
     func testEffectRoundTripAndUnknownVersionFailClosed() throws {

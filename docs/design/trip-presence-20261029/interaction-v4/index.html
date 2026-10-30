@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Roamorrow · 对话与地图 V4 设计板</title>
+    <link rel="stylesheet" href="assets/style.css" />
+    <style>
+      html,
+      body {
+        width: 1800px;
+        height: 1240px;
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="conversation-map-v4"
+      data-width="1800"
+      data-height="1240"
+      data-duration="1"
+      data-no-timeline
+    >
+      <main class="board-page">
+        <header class="board-heading">
+          <p class="kicker">ROAMORROW · CONVERSATION + MAP</p>
+          <h1>聊到的地方，在地图上接着看。</h1>
+          <p>对话默认首页；地图独立可达。选中一处，带着范围回到原来的对话。</p>
+        </header>
+        <section class="board-column" style="left: 130px">
+          <h2>01 · 对话给出两个选择</h2>
+          <p>回答保留各自的理由与来源，再去地图看位置。</p>
+          <div class="phone" data-fixture="chat"></div>
+        </section>
+        <section class="board-column" style="left: 704px">
+          <h2>02 · 在同一张地图选点</h2>
+          <p>候选高亮；附近与收藏切换，来源对话仍可返回。</p>
+          <div class="phone" data-fixture="map"></div>
+        </section>
+        <section class="board-column" style="left: 1278px">
+          <h2>03 · 带范围，继续刚才的话题</h2>
+          <p>「关于 Parkside Café」只作用于下一问，草稿仍在。</p>
+          <div class="phone" data-fixture="scoped"></div>
+        </section>
+        <footer class="board-footer">
+          2026.10.30 · GET-324 · 393 × 852 pt 交互概念 · 现有旅行伙伴与本地地图素材 ·
+          虚构地点与演示数据，未接入原生或真实服务
+        </footer>
+      </main>
+    </div>
+    <script src="assets/data.js"></script>
+    <script src="assets/map-flow.js"></script>
+    <script src="assets/app.js"></script>
+  </body>
+</html>

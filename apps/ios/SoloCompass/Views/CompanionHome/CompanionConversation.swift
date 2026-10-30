@@ -5,24 +5,34 @@ struct CompanionConversation: View {
     let store: CompanionHomeStore
     let isActive: Bool
     let onSources: (CompanionHomeEntry) -> Void
-    let onPlace: (String) -> Void
+    let onPlace: (CompanionHomeEntry, String?) -> Void
     let onCommitments: () -> Void
     let onMedia: (CompanionMediaAttachment) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scrollTarget: String?
     @State private var unread = false
+    @State private var followsLatest = true
     @State private var viewport = CGRect.zero
     private var events: [CompanionTimeline.Event] {
         CompanionTimeline.events(entries: store.entries, invites: store.invites)
     }
 
+    init(store: CompanionHomeStore, isActive: Bool,
+         onSources: @escaping (CompanionHomeEntry) -> Void,
+         onPlace: @escaping (CompanionHomeEntry, String?) -> Void,
+         onCommitments: @escaping () -> Void, onMedia: @escaping (CompanionMediaAttachment) -> Void) {
+        self.store = store; self.isActive = isActive; self.onSources = onSources
+        self.onPlace = onPlace; self.onCommitments = onCommitments; self.onMedia = onMedia
+        _scrollTarget = State(initialValue: store.readingState.anchorID)
+        _unread = State(initialValue: store.readingState.hasUnread)
+        _followsLatest = State(initialValue: store.readingState.followsLatest)
+    }
+
     var body: some View {
         let events = self.events
         let replyContexts = CompanionTimeline.replyContexts(in: events)
-        Group {
-        if isActive {
             ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: 10) {
                     if !store.activeCommitments.isEmpty {
                         Button(action: onCommitments) {
                             HStack(spacing: 10) {
@@ -53,7 +63,7 @@ struct CompanionConversation: View {
                                     replyContext: replyContexts[entry.id],
                                     onRetry: { Task { await store.retry(id: entry.id) } },
                                     onSources: { onSources(entry) },
-                                    onPlace: { if let id = entry.placeID { onPlace(id) } },
+                                    onPlace: { id in onPlace(entry, id) },
                                     onMedia: onMedia, onQuote: { store.setDraftQuote($0) },
                                     onReaction: { store.toggleReaction(entryID: entry.id) })
                             case .invite(let invite):
@@ -63,8 +73,8 @@ struct CompanionConversation: View {
                     }
                     if store.isWorking {
                         HStack(spacing: 10) {
-                            CompanionCharacter(activity: store.activity, viewport: viewport)
-                            Text(companionText("companion.character.working", "正在处理消息…"))
+                            CompanionCharacter(activity: isActive ? store.activity : .idle, viewport: viewport)
+                            Text(progressText)
                                 .font(.subheadline).foregroundStyle(CompanionHomeStyle.secondaryInk)
                         }
                         .accessibilityElement(children: .combine)
@@ -85,6 +95,11 @@ struct CompanionConversation: View {
                         .id("stream-error")
                     }
                     Color.clear.frame(height: 1).id("stream-bottom")
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear.preference(key: CompanionConversationBottom.self, value: proxy.frame(in: .global).maxY)
+                            }
+                        }
                 }
                 .scrollTargetLayout()
                 .padding(.top, 20).padding(.bottom, 16)
@@ -101,24 +116,40 @@ struct CompanionConversation: View {
             .scrollDismissesKeyboard(.interactively)
             .defaultScrollAnchor(.bottom)
             .scrollPosition(id: $scrollTarget, anchor: .bottom)
-        } else { Color.clear }
-        }
+            .simultaneousGesture(DragGesture(minimumDistance: 6).onChanged { _ in
+                if isActive { followsLatest = false }
+            })
+            .onPreferenceChange(CompanionConversationBottom.self) { bottom in
+                guard isActive, viewport.height > 0, bottom > 0 else { return }
+                if bottom <= viewport.maxY + 24 && bottom >= viewport.minY {
+                    followsLatest = true; unread = false
+                    saveReading()
+                }
+            }
+            .onChange(of: store.presentationRestoreToken) { _, _ in restoreReading() }
             .onChange(of: scrollTarget) { _, target in
-                if target == "stream-bottom" { unread = false }
+                if target == "stream-bottom" && followsLatest { unread = false }
+                saveReading()
             }
             .onChange(of: events.map(\.id)) { old, new in
                 let added = Set(new).subtracting(old)
                 guard !added.isEmpty else { return }
-                if events.contains(where: { added.contains($0.id) && $0.isUserAction }) {
+                let userSent = events.contains { event in
+                    guard added.contains(event.id), case .message(let entry) = event else { return false }
+                    return entry.role == .user
+                }
+                if userSent || followsLatest {
+                    followsLatest = true
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { scrollTarget = "stream-bottom" }
                     unread = false
-                } else if scrollTarget != "stream-bottom" { unread = true }
+                } else { unread = true }
+                saveReading()
             }
             .overlay(alignment: .bottom) {
                 if unread && isActive {
                     Button {
                         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { scrollTarget = "stream-bottom" }
-                        unread = false
+                        unread = false; followsLatest = true; saveReading()
                     } label: {
                         Label(companionText("companion.new_content", "有新内容"), systemImage: "arrow.down")
                             .font(.subheadline.weight(.medium)).padding(.horizontal, 16).frame(minHeight: 44)
@@ -126,6 +157,31 @@ struct CompanionConversation: View {
                     }.padding(.bottom, 8)
                 }
             }
+    }
+
+    private var progressText: String {
+        switch store.workingProgress {
+        case .thinking: return companionText("companion.progress.thinking", "正在整理回复…")
+        case .tool(let name):
+            switch name {
+            case "search_places": return companionText("companion.progress.search", "正在查找地点…")
+            case "manage_follow_up": return companionText("companion.progress.followup", "正在记录待办…")
+            default: return companionText("companion.progress.sources", "正在核对资料…")
+            }
+        }
+    }
+
+    private func saveReading() {
+        // Scroll observation updates memory; tab/background transitions flush once.
+        guard followsLatest || scrollTarget != "stream-bottom" else { return }
+        store.noteReadingPosition(anchorID: isActive ? scrollTarget : store.readingState.anchorID,
+            followsLatest: isActive ? followsLatest : store.readingState.followsLatest, hasUnread: unread)
+    }
+
+    private func restoreReading() {
+        scrollTarget = store.readingState.anchorID
+        followsLatest = store.readingState.followsLatest
+        unread = store.readingState.hasUnread
     }
 
     private func showsTimestamp(_ entry: CompanionHomeEntry) -> Bool {
@@ -143,7 +199,7 @@ struct CompanionConversation: View {
             }.foregroundStyle(CompanionHomeStyle.secondaryInk)
             VStack(alignment: .leading, spacing: 14) {
                 Text(companionText("companion.welcome.title", "我在。\n你慢慢来。"))
-                    .font(.system(.largeTitle, design: .serif))
+                    .font(.largeTitle.weight(.semibold))
                     .lineSpacing(5).fixedSize(horizontal: false, vertical: true)
                 Text(companionText("companion.welcome.body", "想去哪里、还惦记着什么，\n都可以留在这里。"))
                     .font(.body).lineSpacing(5).foregroundStyle(CompanionHomeStyle.secondaryInk)
@@ -179,4 +235,9 @@ struct CompanionConversation: View {
 private struct CompanionConversationViewport: PreferenceKey {
     static let defaultValue = CGRect.zero
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
+}
+
+private struct CompanionConversationBottom: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

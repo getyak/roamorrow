@@ -31,6 +31,7 @@ public enum DiscoveryRefreshPolicy {
         "© OpenStreetMap contributors + Foursquare/Apple Maps + AI",
         "© AutoNavi (Amap)",
         "© AutoNavi (Amap) + AI",
+        "Apple Maps",
     ]
 
     /// Confidence `reason` strings written verbatim by the same pipelines.
@@ -40,6 +41,7 @@ public enum DiscoveryRefreshPolicy {
         "AI-synthesized from OpenStreetMap + Foursquare/Apple Maps signals",
         "OpenStreetMap entry, no AI enrichment",
         "Amap entry, no AI enrichment",
+        "Apple Maps entry, no AI enrichment",
     ]
 
     /// Why a same-ID incoming experience left the stored row untouched.

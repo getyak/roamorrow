@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Provenance chip surfaced on Experience cards and detail hero. Reads
-/// `experience.sources` + id prefix and picks one of five buckets so the
+/// `experience.sources` + id prefix and picks a provenance bucket so the
 /// user can tell an Amap POI apart from an OSM POI at a glance — solving
 /// the "every explored card looks identical" opacity that hid data
 /// quality differences between sources.
@@ -16,6 +16,8 @@ public struct TrustBadge: View {
         case verified(sourceCount: Int)
         /// AutoNavi (高德) is the authoritative base. Mainland-China coverage.
         case amap
+        /// Apple's live point-of-interest search, without AI enrichment.
+        case appleMaps
         /// OpenStreetMap contributor data.
         case osm
         /// The user registered this place themselves; unverified.
@@ -31,6 +33,7 @@ public struct TrustBadge: View {
                     n
                 )
             case .amap:        return NSLocalizedString("trustBadge.amap", comment: "AutoNavi (Amap)")
+            case .appleMaps:   return NSLocalizedString("location.openIn.apple", comment: "Apple Maps")
             case .osm:         return NSLocalizedString("trustBadge.osm", comment: "OpenStreetMap")
             case .userCreated: return NSLocalizedString("trustBadge.user", comment: "User-added")
             case .curated:     return NSLocalizedString("trustBadge.curated", comment: "Curated")
@@ -41,7 +44,7 @@ public struct TrustBadge: View {
             switch self {
             case .verified:    return CT.verifiedGreenDot
             case .amap:        return Color(red: 0x1D / 255, green: 0x6F / 255, blue: 0xCC / 255) // AutoNavi blue
-            case .osm:         return CT.sunGold
+            case .osm, .appleMaps: return CT.sunGold
             case .userCreated: return CT.fgSubtle
             case .curated:     return CT.fgMuted
             }
@@ -51,7 +54,7 @@ public struct TrustBadge: View {
             switch self {
             case .verified:    return CT.verifiedGreen
             case .amap:        return Color(red: 0x14 / 255, green: 0x50 / 255, blue: 0x9C / 255) // deeper AutoNavi
-            case .osm:         return CT.sunGoldDeep
+            case .osm, .appleMaps: return CT.sunGoldDeep
             case .userCreated: return CT.fgMuted
             case .curated:     return CT.fgMuted
             }
@@ -123,6 +126,9 @@ public extension Experience {
         }
         if isUserCreated {
             return .userCreated
+        }
+        if sources.contains(where: { $0.attribution == "Apple Maps" }) {
+            return .appleMaps
         }
         if isFromOpenStreetMap {
             return .osm

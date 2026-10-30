@@ -1,0 +1,52 @@
+{
+  "recorded_at": "2026-10-29T19:33:39.563384+00:00",
+  "head": "4278f74a3757a67c942b22ecb2960ef60d56ecf7",
+  "scope": "Runtime REST Auth -> deployed tavily-search Edge; not native iOS SDK or model orchestration acceptance",
+  "status": "runtime_auth_failed",
+  "configured_project_host": "oknhlhpeuoqaaodalxyl.supabase.co",
+  "authorization": {
+    "existing_project_runtime_config": true,
+    "existing_AGENTS_test_account": true,
+    "followup_authorized_runtime_attempt_despite_admin_connector_visibility": true,
+    "capability_fallback": "Supabase management plugin has no existing-user password-login and app-runtime Edge invocation path; HTTPS REST used without changing plugin account."
+  },
+  "query": "神保町书店官网来源",
+  "execution": {
+    "authentication_attempts": 1,
+    "authentication_budget": 1,
+    "edge_query_attempts": 0,
+    "edge_query_budget": 1,
+    "new_session_created": false,
+    "returned_email_exactly_matches_expected": null,
+    "tokens_in_memory_only": true,
+    "tokens_persisted": false,
+    "credential_values_logged_or_persisted": false,
+    "keychain_written": false,
+    "flags_changed": false,
+    "permissions_changed": false,
+    "account_registered": false,
+    "resources_created": false,
+    "direct_provider_bypass_used": false
+  },
+  "signout": {
+    "attempted": false,
+    "scope": "local",
+    "endpoint_path": "/auth/v1/logout?scope=local"
+  },
+  "source_sha256": {
+    "apps/ios/SoloCompass/Services/WebSearchService.swift": "ec2282f70ea1f501656b75c189bc5d1195c47b0ac2df19bb04410f1f0c79168b",
+    "apps/ios/SoloCompass/Services/SupabaseClient.swift": "cf3cea4612436f003564d38888b7acb390c414021e49760a81a3cb6e3312484c",
+    "apps/ios/SoloCompass/Services/EmailAccountService.swift": "ba331bb662f0498785ed39bd82ad8e839a855402a2b94a7b702cf62d9938bc01",
+    "apps/ios/SoloCompass/Resources/FeatureFlags.plist": "7984873ee0ab198003b8ea49c4e77e6c23f69b23c9ca4c6de4a365a6fb6d9245",
+    "infra/supabase/functions/tavily-search/index.ts": "965730f9e154e6c6efe5e068cbc0ab34c924d7a64c1c869c06e9edd891fafaf0"
+  },
+  "auth_started_at": "2026-10-29T19:33:39.622470+00:00",
+  "auth": {
+    "http_status": 400,
+    "elapsed_ms": 4365,
+    "response_parse": "json",
+    "error_code_or_label": "invalid_credentials",
+    "sanitized_reason": "invalid_login_credentials"
+  },
+  "completed_at": "2026-10-29T19:33:43.988683+00:00"
+}

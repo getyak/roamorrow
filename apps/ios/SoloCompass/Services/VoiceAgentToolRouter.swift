@@ -491,9 +491,11 @@ public final class VoiceAgentToolRouter {
         guard let data = call.argumentsJSON.data(using: .utf8),
               var args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return call }
         if call.name == "explore_nearby" || call.name == "search_places" {
-            let anchor = mapViewModel?.exploreAnchorCoordinate ?? MapViewModel.defaultCenter
-            if args["latitude"] == nil { args["latitude"] = anchor.latitude }
-            if args["longitude"] == nil { args["longitude"] = anchor.longitude }
+            if args["latitude"] == nil, args["longitude"] == nil,
+               let origin = mapViewModel?.agentSearchOrigin {
+                args["latitude"] = origin.coordinate.latitude
+                args["longitude"] = origin.coordinate.longitude
+            }
         }
         if call.name == "get_city_kit" || call.name == "find_local_events" {
             if args["city_code"] == nil, let city = mapViewModel?.selectedCity { args["city_code"] = city }
@@ -514,6 +516,8 @@ public final class VoiceAgentToolRouter {
     /// Live web search backing the `web_search` tool. Defaults to the shared
     /// instance; injectable so tests can stub the network.
     private let webSearchService: WebSearchService
+    private lazy var placeSearchService = MapKitPOIService()
+    private var isSearchingPlaces = false
 
     public convenience init(
         mapViewModel: MapViewModel,
@@ -561,7 +565,7 @@ public final class VoiceAgentToolRouter {
     public static let allTools: [AIService.AgentTool] = [
         .init(
             name: "explore_nearby",
-            description: "Fetch real OSM POIs near a coordinate and enrich them with AI. Use when the user wants new places not in the current visible set, or moves to a new area. Returns the count of newly added experiences.",
+            description: "Fetch real OSM POIs near a coordinate and enrich them with AI. Omit both coordinates to use the current map area or an authorized location; the result labels its origin_source, which must not be described as the user's current location unless authorized_location. If no area is available, ask the user to choose one. Returns the count of newly added experiences.",
             parametersJSON: #"""
             {
               "type": "object",
@@ -650,7 +654,7 @@ public final class VoiceAgentToolRouter {
         ),
         .init(
             name: "search_places",
-            description: "Search for a specific type or named place near a coordinate (e.g. 'ramen', '7-Eleven', 'rooftop bar'). Fetches real OSM POIs matching the query and synthesises them. Returns count of newly added experiences.",
+            description: "Search Apple Maps for a specific type or named place (e.g. 'ramen', '7-Eleven', 'rooftop bar'). Each radius uses the same query; results are real provider POIs with unassessed quality, without AI enrichment. Omit both coordinates to use the current map area or an authorized location. Respect origin_source: a map area or selected city is not the user's current location. Returns found_count, eligible_count, added_count and grounded result ids; provider failure is distinct from no matches.",
             parametersJSON: #"""
             {
               "type": "object",
@@ -1039,10 +1043,10 @@ public final class VoiceAgentToolRouter {
     private func executeExploreNearby(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
         let parsed: ExploreNearbyArgs = try Self.decode(args, tool: "explore_nearby")
         let vm = try requireMapVM(tool: "explore_nearby")
-        let coord = CLLocationCoordinate2D(
-            latitude: parsed.latitude ?? MapViewModel.defaultCenter.latitude,
-            longitude: parsed.longitude ?? MapViewModel.defaultCenter.longitude
+        let origin = try resolveSearchOrigin(
+            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "explore_nearby"
         )
+        let coord = origin.coordinate
         let useProgressive = parsed.progressive ?? true
         // Explicit radius_meters overrides the progressive starting ring.
         let radius = parsed.radius_meters ?? 3000
@@ -1083,6 +1087,7 @@ public final class VoiceAgentToolRouter {
             "progressive": useProgressive,
             "auto_expanded_stages": stagesExpanded,
             "search_exhausted": ladderExhausted,
+            "origin_source": origin.source,
         ])
     }
 
@@ -1207,46 +1212,112 @@ public final class VoiceAgentToolRouter {
     private func executeSearchPlaces(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
         let parsed: SearchPlacesArgs = try Self.decode(args, tool: "search_places")
         let vm = try requireMapVM(tool: "search_places")
-        let coord = CLLocationCoordinate2D(
-            latitude: parsed.latitude ?? MapViewModel.defaultCenter.latitude,
-            longitude: parsed.longitude ?? MapViewModel.defaultCenter.longitude
+        let query = parsed.query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            throw RouterError.invalidArguments(tool: "search_places", reason: "query must not be empty")
+        }
+        let origin = try resolveSearchOrigin(
+            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "search_places"
         )
         let useProgressive = parsed.progressive ?? true
         let radius = parsed.radius_meters ?? 2000
-        let category = parsed.categories?.compactMap(ExperienceCategory.init(rawValue:)).first
-        let before = Set(vm.visibleExperiences.map(\.id))
-        if useProgressive {
-            await vm.exploreProgressively(
-                at: coord,
-                startingRadiusMeters: parsed.radius_meters,
-                category: category,
-                filter: Self.buildFilter(from: parsed),
-                isCurrent: isCurrent
+        guard (500...100_000).contains(radius) else {
+            throw RouterError.invalidArguments(tool: "search_places", reason: "radius_meters must be between 500 and 100000")
+        }
+        guard !isSearchingPlaces, !vm.isSearchingWeb else {
+            throw RouterError.dependencyUnavailable(
+                tool: "search_places", dependency: "place search",
+                hint: "A place search is already running. Wait for it to finish before searching again."
             )
-        } else {
-            await vm.exploreNearby(at: coord, radiusMeters: radius, category: category, isCurrent: isCurrent)
         }
-        try Self.checkCurrent(isCurrent)
-        // Same auto-widen behavior as explore_nearby: a query that found nothing
-        // in the first ring keeps expanding instead of returning an empty result
-        // and stalling the agent.
-        var stagesExpanded = 0
-        var ladderExhausted = false
-        if useProgressive {
-            let outcome = try await autoExpandUntilResults(vm: vm, isCurrent: isCurrent)
-            stagesExpanded = outcome.stagesExpanded
-            ladderExhausted = outcome.exhausted
+        isSearchingPlaces = true
+        defer { isSearchingPlaces = false }
+        let searchCity = vm.selectedCity
+        let filter = Self.buildFilter(from: parsed)
+        let radii = [radius] + (useProgressive ? EnrichmentAgent.progressiveRadii.filter { $0 > radius } : [])
+        var providerHitIDs: Set<String> = []
+
+        for (stage, searchRadius) in radii.enumerated() {
+            try Self.checkCurrent(isCurrent)
+            let pois: [OverpassService.POI]
+            do {
+                pois = try await placeSearchService.search(
+                    query: query, near: origin.coordinate, radiusMeters: searchRadius
+                )
+                try Self.checkCurrent(isCurrent)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                try Self.checkCurrent(isCurrent)
+                throw RouterError.underlying(tool: "search_places", message: "Apple Maps place search failed; no completed search results are available.")
+            }
+            if origin.source != "explicit_coordinates" {
+                guard vm.selectedCity == searchCity else {
+                    throw RouterError.underlying(tool: "search_places", message: "The map city changed while searching. Old search results were discarded.")
+                }
+                guard let current = vm.agentSearchOrigin,
+                      current.source == origin.source,
+                      current.coordinate.latitude == origin.coordinate.latitude,
+                      current.coordinate.longitude == origin.coordinate.longitude else {
+                    throw RouterError.underlying(tool: "search_places", message: "The map area changed while searching. Old search results were discarded.")
+                }
+            }
+            // Keep provider facts and unknown quality explicit. Existing rich
+            // entries are the authority for filtering and cards on repeat hits.
+            let existing = Dictionary(uniqueKeysWithValues: vm.allExperiences.map { ($0.id, $0) })
+            let discovered = pois.map {
+                AIService.skeletonExperience(from: $0, cityCode: MapViewModel.cityCode(for: origin.coordinate))
+            }
+            providerHitIDs.formUnion(discovered.map(\.id))
+            let candidates = discovered.filter { filter.matches(existing[$0.id] ?? $0) }
+            try Self.checkCurrent(isCurrent)
+            let merged = vm.mergeDiscoveryBatch(candidates)
+            let canonical = Dictionary(uniqueKeysWithValues: vm.allExperiences.map { ($0.id, $0) })
+            var seen: Set<String> = []
+            let matches = candidates.compactMap { canonical[$0.id] }
+                .filter { seen.insert($0.id).inserted }
+            // A provider hit that fails the requested category/quality does
+            // not satisfy the search. Keep the same query in the next ring.
+            guard !matches.isEmpty || stage == radii.count - 1 else { continue }
+            let cards = Array(matches.prefix(Self.maxCardExperiences))
+            try Self.checkCurrent(isCurrent)
+            if !cards.isEmpty { lastEffect = .experiences(cards) }
+            return Self.successJSON([
+                "query": query,
+                "provider": "apple_maps",
+                "origin_source": origin.source,
+                "found_count": providerHitIDs.count,
+                "eligible_count": matches.count,
+                "added_count": merged.insertedCount,
+                "radius_meters": searchRadius,
+                "progressive": useProgressive,
+                "auto_expanded_stages": stage,
+                "search_exhausted": matches.isEmpty && useProgressive,
+                "quality_note": "New Apple Maps places have unassessed solo quality and may have no rating; quality constraints are never inferred.",
+                "results": cards.map { ["experience_id": $0.id, "title": $0.title] },
+            ])
         }
-        try Self.checkCurrent(isCurrent)
-        recordAddedEffect(before: before, vm: vm)
-        return Self.successJSON([
-            "query": parsed.query,
-            "added_count": vm.lastExploreAddedCount,
-            "radius_meters": radius,
-            "progressive": useProgressive,
-            "auto_expanded_stages": stagesExpanded,
-            "search_exhausted": ladderExhausted,
-        ])
+        throw RouterError.underlying(tool: "search_places", message: "No search radius was available.")
+    }
+
+    private func resolveSearchOrigin(
+        latitude: Double?, longitude: Double?, vm: MapViewModel, tool: String
+    ) throws -> (coordinate: CLLocationCoordinate2D, source: String) {
+        switch (latitude, longitude) {
+        case let (.some(latitude), .some(longitude)):
+            let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            guard latitude.isFinite, longitude.isFinite, CLLocationCoordinate2DIsValid(coordinate) else {
+                throw RouterError.invalidArguments(tool: tool, reason: "latitude and longitude must be valid finite coordinates")
+            }
+            return (coordinate, "explicit_coordinates")
+        case (.none, .none):
+            guard let origin = vm.agentSearchOrigin else {
+                throw RouterError.invalidArguments(tool: tool, reason: "No map area or authorized location is available. Ask the user to choose an area or enable location; do not guess their coordinates")
+            }
+            return origin
+        default:
+            throw RouterError.invalidArguments(tool: tool, reason: "provide both latitude and longitude, or omit both to use the current map area")
+        }
     }
 
     // MARK: - web_search (live web search via Tavily)

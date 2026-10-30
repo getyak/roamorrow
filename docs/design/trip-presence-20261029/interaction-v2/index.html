@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="assets/style.css" />
+    <style>
+      html,
+      body {
+        width: 1800px;
+        height: 1240px;
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="interaction-v2"
+      data-width="1800"
+      data-height="1240"
+      data-duration="1"
+      data-no-timeline
+    >
+      <div class="board-page">
+        <header class="board-header">
+          <span>Roamorrow · 基于现有 iOS 的交互深化</span>
+          <h1>一张地图，一条连续的任务</h1>
+          <p>AI 作为输入方式。结果落成可比较、可确认、可执行的对象。</p>
+        </header>
+        <section class="board-column" style="left: 133px">
+          <h2>看附近，顺手问一句</h2>
+          <p>收起独立 AI 目的地，把输入放到手边。</p>
+          <div class="phone" data-fixture="home"></div>
+        </section>
+        <section class="board-column" style="left: 698px">
+          <h2>比较选择，地图同步回应</h2>
+          <p>看哪一项，就亮哪一个图钉；保留提问范围。</p>
+          <div class="phone" data-fixture="results"></div>
+        </section>
+        <section class="board-column" style="left: 1263px">
+          <h2>确认之后，变成今天的行动</h2>
+          <p>建议、已加入、导航，各自有明确状态。</p>
+          <div class="phone" data-fixture="today"></div>
+        </section>
+        <footer class="board-footer">
+          2026.10.30 · 390 × 844 pt 概念界面 · 沿用现有棕金色系 ·
+          使用演示数据，不代表真实商家或原生功能验收
+        </footer>
+      </div>
+    </div>
+    <script src="assets/data.js"></script>
+    <script src="assets/app.js"></script>
+  </body>
+</html>

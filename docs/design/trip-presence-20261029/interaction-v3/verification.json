@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-30",
+  "sourceBase": "20f2ff8b",
+  "scope": "Conversation-first HTML design prototype; no native product changes or native acceptance",
+  "hyperframesVersion": "0.8.216",
+  "hyperframesUsage": "unknown: usage request failed",
+  "boardCheck": {
+    "lint": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "runtime": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "layout": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "motion": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "contrast": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "craft": {
+      "errors": 0,
+      "warnings": 10
+    },
+    "audio": {
+      "errors": 0,
+      "warnings": 0
+    }
+  },
+  "filmCheck": {
+    "lint": {
+      "errors": 0,
+      "warnings": 3
+    },
+    "runtime": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "layout": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "motion": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "contrast": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "craft": {
+      "errors": 0,
+      "warnings": 3
+    },
+    "audio": {
+      "errors": 0,
+      "warnings": 0
+    }
+  },
+  "auditContext": [
+    "Scrollable message/timeline children outside their viewport are explicitly marked as intended occlusion; visible viewport ink remains audited.",
+    "Film lint warnings request more sub-compositions. The short source groups three fixed UI states; its authored UI remains in assets/app.js and style.css.",
+    "Craft warnings concern compact UI typography. The board is reviewed at phone scale; this does not establish native accessibility acceptance."
+  ],
+  "browserWalkthrough": [
+    "composer focus hides navigation; a single pointer click sends",
+    "new turns retain prior user/assistant messages",
+    "draft survives keyboard dismissal and navigation changes",
+    "new conversation retains the prior conversation and draft in local history",
+    "candidate map expands and returns to its originating content",
+    "earliest-arrival and museum-overlap conflicts block confirmation",
+    "explicit confirmation updates the trip; one-use undo restores prior trip",
+    "unbound museum route explains missing destination rather than using a cafe"
+  ],
+  "independentReview": "All scoped P1/P2 findings fixed and re-reviewed, including map ownership, immutable prior answers and Chinese IME Enter handling. Isolated memory simulation; no Simulator use.",
+  "notVerified": [
+    "SwiftUI build",
+    "Simulator",
+    "physical iPhone",
+    "native Dynamic Type and VoiceOver",
+    "native keyboard and Chinese input method",
+    "real model, location, microphone, booking and payment",
+    "cross-launch persistence and offline behavior"
+  ],
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "frames": 360,
+    "durationSeconds": 12,
+    "audioStreams": 0,
+    "decodedFrameAt5Seconds": "visually inspected; icons and UI text present"
+  }
+}

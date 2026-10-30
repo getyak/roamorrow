@@ -8,8 +8,15 @@ final class CompanionHomeStore: AgentExecutionJournal {
     var composerDraft = "" { didSet { if !isLoading { persist() } } }
     private(set) var draftAttachments: [CompanionMediaAttachment] = []
     private(set) var draftQuote: CompanionQuotedMessage?
+    private(set) var conversationID = UUID().uuidString
+    private(set) var nextTurnPlace: CompanionHomePlaceScope?
+    private(set) var nextTurnArea: CompanionHomeAreaScope?
+    private(set) var readingState = CompanionConversationReadingState()
+    private(set) var mapSource: CompanionConversationMapSource?
+    private(set) var presentationRestoreToken = 0
     private(set) var isWorking = false
     private(set) var activity: CompanionActivity = .idle
+    private(set) var workingProgress: CompanionHomeAgent.Progress = .thinking
     private(set) var errorMessage: String?
     private var storedPeople: [CompanionHomePerson] = []
     var people: [CompanionHomePerson] {
@@ -50,6 +57,12 @@ final class CompanionHomeStore: AgentExecutionJournal {
         var draftAttachments: [CompanionMediaAttachment]? = nil
         var draftQuote: CompanionQuotedMessage? = nil
         var agentSessionID: String? = nil
+        // Optional additions keep every existing v1 conversation/media record readable.
+        var conversationID: String? = nil
+        var nextTurnPlace: CompanionHomePlaceScope? = nil
+        var nextTurnArea: CompanionHomeAreaScope? = nil
+        var readingState: CompanionConversationReadingState? = nil
+        var mapSource: CompanionConversationMapSource? = nil
     }
 
     init(url: URL? = nil, memory: (any AgentMemoryProviding)? = nil) {
@@ -98,6 +111,133 @@ final class CompanionHomeStore: AgentExecutionJournal {
     }
 
     var selectedSearchArea: CompanionHomeSearchArea? { searchAreaProvider?() }
+
+    @discardableResult
+    func setNextTurnExperience(_ experience: Experience?) -> Bool {
+        guard let experience else { return clearNextTurnScope() }
+        let place = CompanionHomePlaceScope(
+            experienceID: experience.id, name: experience.shortName,
+            cityCode: experience.location.cityCode,
+            latitude: experience.coordinate?.latitude, longitude: experience.coordinate?.longitude
+        )
+        guard place.isValid else { return false }
+        let previousPlace = nextTurnPlace
+        let previousArea = nextTurnArea
+        nextTurnPlace = place
+        nextTurnArea = nil
+        guard persist() else {
+            nextTurnPlace = previousPlace; nextTurnArea = previousArea
+            return false
+        }
+        return true
+    }
+
+    @discardableResult
+    func setNextTurnArea(
+        _ area: CompanionHomeSearchArea, query: String? = nil, category: String? = nil,
+        experienceIDs: [String] = [], latitudeDelta: Double? = nil, longitudeDelta: Double? = nil
+    ) -> Bool {
+        var seen: Set<String> = []
+        let scope = CompanionHomeAreaScope(
+            area: area, query: query, category: category,
+            experienceIDs: experienceIDs.filter { seen.insert($0).inserted },
+            latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta
+        )
+        guard scope.isValid else { return false }
+        let previousPlace = nextTurnPlace
+        let previousArea = nextTurnArea
+        nextTurnPlace = nil
+        nextTurnArea = scope
+        guard persist() else {
+            nextTurnPlace = previousPlace; nextTurnArea = previousArea
+            return false
+        }
+        return true
+    }
+
+    @discardableResult
+    func clearNextTurnExperience() -> Bool { clearNextTurnScope() }
+
+    @discardableResult
+    func clearNextTurnScope() -> Bool {
+        let previousPlace = nextTurnPlace
+        let previousArea = nextTurnArea
+        nextTurnPlace = nil
+        nextTurnArea = nil
+        guard persist() else {
+            nextTurnPlace = previousPlace; nextTurnArea = previousArea
+            return false
+        }
+        return true
+    }
+
+    /// Update in memory while scrolling. Flush once on tab/background transitions
+    /// rather than rewriting the complete media snapshot for every visible row.
+    func noteReadingPosition(anchorID: String?, followsLatest: Bool, hasUnread: Bool) {
+        guard followsLatest || validReadingAnchor(anchorID) else { return }
+        readingState = CompanionConversationReadingState(
+            anchorID: followsLatest ? "stream-bottom" : anchorID,
+            followsLatest: followsLatest, hasUnread: followsLatest ? false : hasUnread
+        )
+    }
+
+    @discardableResult
+    func savePresentation() -> Bool { persist() }
+
+    func restorePresentation(preferredAnchorID: String? = nil) {
+        if let preferredAnchorID, validReadingAnchor(preferredAnchorID) {
+            readingState.anchorID = preferredAnchorID
+            readingState.followsLatest = preferredAnchorID == "stream-bottom"
+        } else if !validReadingAnchor(readingState.anchorID) {
+            readingState = CompanionConversationReadingState()
+        }
+        presentationRestoreToken &+= 1
+    }
+
+    @discardableResult
+    func captureMapSource(messageID: UUID, experienceIDs: [String]) -> Bool {
+        guard let entry = entries.first(where: { $0.id == messageID }) else { return false }
+        let actualIDs = Set(entry.mapPlaceIDs)
+        var seen: Set<String> = []
+        let requested = experienceIDs.isEmpty ? entry.mapPlaceIDs : experienceIDs
+        let ids = requested.filter { actualIDs.contains($0) && seen.insert($0).inserted }
+        let previous = mapSource
+        let anchor = readingState.anchorID == "stream-bottom" || readingState.anchorID == nil
+            ? "message:\(messageID)" : readingState.anchorID
+        mapSource = CompanionConversationMapSource(
+            conversationID: conversationID, messageID: messageID,
+            experienceIDs: ids, readingAnchorID: anchor
+        )
+        guard persist() else { mapSource = previous; return false }
+        return true
+    }
+
+    @discardableResult
+    func restoreMapSource() -> Bool {
+        guard let source = mapSource, source.conversationID == conversationID,
+              entries.contains(where: { $0.id == source.messageID }) else { return false }
+        let anchor = validReadingAnchor(source.readingAnchorID)
+            ? source.readingAnchorID : "message:\(source.messageID)"
+        restorePresentation(preferredAnchorID: anchor)
+        return true
+    }
+
+    @discardableResult
+    func clearMapSource() -> Bool {
+        let previous = mapSource
+        mapSource = nil
+        guard persist() else { mapSource = previous; return false }
+        return true
+    }
+
+    private func validReadingAnchor(_ anchor: String?) -> Bool {
+        guard let anchor else { return false }
+        if anchor == "stream-bottom" { return true }
+        if anchor == "stream-introduction" { return entries.isEmpty && invites.isEmpty }
+        if anchor == "stream-commitments" { return !activeCommitments.isEmpty }
+        return entries.contains { "message:\($0.id)" == anchor }
+            || invites.contains { "invite:\($0.id)" == anchor }
+    }
 
     var canStartRecording: Bool {
         let bytes = (entries.flatMap { $0.attachments ?? [] } + draftAttachments).reduce(0) { $0 + $1.byteCount }
@@ -160,12 +300,21 @@ final class CompanionHomeStore: AgentExecutionJournal {
         let previousText = composerDraft
         let previousAttachments = draftAttachments
         let previousQuote = draftQuote
-        let entry = CompanionHomeEntry(role: .user, text: text, attachments: attachments.isEmpty ? nil : attachments,
-                                       quotedMessage: quote, memoryEpoch: memory.context(for: agentSession).epoch)
+        let previousPlace = nextTurnPlace
+        let previousArea = nextTurnArea
+        let previousReading = readingState
+        let entry = CompanionHomeEntry(
+            role: .user, text: text, placeScope: nextTurnPlace, searchArea: nextTurnArea,
+            attachments: attachments.isEmpty ? nil : attachments, quotedMessage: quote,
+            memoryEpoch: memory.context(for: agentSession).epoch
+        )
         entries.append(entry)
         // One write moves draft -> message; a crash cannot restore both copies.
         isLoading = true
         if consumesDraft { composerDraft = ""; draftAttachments = []; draftQuote = nil }
+        nextTurnPlace = nil
+        nextTurnArea = nil
+        readingState = CompanionConversationReadingState()
         isLoading = false
         guard persist() else {
             entries.removeAll { $0.id == entry.id }
@@ -173,6 +322,9 @@ final class CompanionHomeStore: AgentExecutionJournal {
             composerDraft = previousText.isEmpty ? text : previousText
             draftAttachments = previousAttachments
             draftQuote = previousQuote
+            nextTurnPlace = previousPlace
+            nextTurnArea = previousArea
+            readingState = previousReading
             isLoading = false
             activity = .failed(entry.id)
             return
@@ -325,6 +477,26 @@ final class CompanionHomeStore: AgentExecutionJournal {
         return checkpointToolPlan(entryID: turn.turnID, batch: batch)
     }
 
+    /// Compatibility migration for old planned calls. The original model identity
+    /// is unchanged, and the frozen execution arguments reach disk before dispatch.
+    func resolvePendingToolArguments(callID: String, argumentsJSON: String, for turn: AgentTurnIdentity) -> Bool {
+        guard !Task.isCancelled, turn.session == agentSession,
+              (try? AgentToolCheckpoint.canonicalArguments(argumentsJSON)) != nil,
+              let position = checkpointPosition(entryID: turn.turnID, callID: callID),
+              var call = toolJournals[turn.turnID.uuidString]?[position.0].calls[position.1],
+              call.state == .planned, call.resultJSON == nil,
+              call.implementationVersion == AgentToolCheckpoint.currentImplementationVersion else { return false }
+        if let resolved = call.resolvedArgumentsJSON {
+            return (try? AgentToolCheckpoint.canonicalArguments(resolved))
+                == (try? AgentToolCheckpoint.canonicalArguments(argumentsJSON))
+        }
+        let previous = toolJournals
+        call.resolvedArgumentsJSON = argumentsJSON
+        replaceCheckpoint(call, entryID: turn.turnID)
+        guard persist() else { toolJournals = previous; return false }
+        return true
+    }
+
     func saveStarted(callID: String, for turn: AgentTurnIdentity) -> Bool {
         guard !Task.isCancelled, turn.session == agentSession,
               let position = checkpointPosition(entryID: turn.turnID, callID: callID),
@@ -351,6 +523,7 @@ final class CompanionHomeStore: AgentExecutionJournal {
         let allowed: Set<String> = ["manage_follow_up", "search_places", "show_details", "web_search"]
         guard batch.context == nil || batch.context?.scope == agentSession.scope,
               !batch.calls.isEmpty, batch.calls.count <= 5,
+              batch.calls.allSatisfy({ $0.implementationVersion == AgentToolCheckpoint.currentImplementationVersion }),
               (batch.assistantContent?.count ?? 0) <= 2_000,
               Set(batch.calls.map(\.id)).count == batch.calls.count else { return false }
         if let existing = previous.first(where: { $0.id == batch.id }) {
@@ -388,7 +561,12 @@ final class CompanionHomeStore: AgentExecutionJournal {
               result.sourceTitles.count <= 20, result.sourceTitles.allSatisfy({ $0.count <= 600 }),
               let position = checkpointPosition(entryID: entryID, callID: result.id),
               let planned = toolJournals[entryID.uuidString]?[position.0].calls[position.1],
-              (try? planned.hasSameIdentity(as: result)) == true else { return false }
+              (try? planned.hasSameIdentity(as: result)) == true,
+              planned.implementationVersion == AgentToolCheckpoint.currentImplementationVersion,
+              result.implementationVersion == planned.implementationVersion,
+              let actualArguments = try? AgentToolCheckpoint.canonicalArguments(result.resolvedArgumentsJSON ?? result.argumentsJSON),
+              let plannedArguments = try? AgentToolCheckpoint.canonicalArguments(planned.resolvedArgumentsJSON ?? planned.argumentsJSON),
+              actualArguments == plannedArguments else { return false }
         var completed = result
         // Old callers set resultJSON directly; keep the compatibility API terminal.
         if completed.state != .uncertain { completed.state = .completed }
@@ -474,7 +652,10 @@ final class CompanionHomeStore: AgentExecutionJournal {
         var attempted: [(url: URL, bytes: Data?)] = []
         do {
             let clearedSession = AgentSessionDescriptor(id: UUID().uuidString, scope: "global")
-            let empty = Snapshot(entries: [], composerDraft: "", people: [], selectedPeopleIDs: [], invites: [], commitments: [], toolJournals: [:], agentSessionID: clearedSession.id)
+            let replacementConversationID = UUID().uuidString
+            let empty = Snapshot(entries: [], composerDraft: "", people: [], selectedPeopleIDs: [], invites: [],
+                                 commitments: [], toolJournals: [:], agentSessionID: clearedSession.id,
+                                 conversationID: replacementConversationID, readingState: CompanionConversationReadingState())
             let data = try JSONEncoder().encode(empty)
             // Read only the exact files we might overwrite so a partial failure can roll back.
             for target in targets {
@@ -502,6 +683,12 @@ final class CompanionHomeStore: AgentExecutionJournal {
             toolJournals = [:]
             draftAttachments = []
             draftQuote = nil
+            conversationID = replacementConversationID
+            nextTurnPlace = nil
+            nextTurnArea = nil
+            readingState = CompanionConversationReadingState()
+            mapSource = nil
+            presentationRestoreToken &+= 1
             isLoading = false
             storageBlocked = false
             url = originalURL
@@ -535,7 +722,9 @@ final class CompanionHomeStore: AgentExecutionJournal {
         Snapshot(entries: entries, composerDraft: composerDraft, people: people,
                  selectedPeopleIDs: selectedPeopleIDs, invites: invites,
                  commitments: commitments, toolJournals: toolJournals,
-                 draftAttachments: draftAttachments, draftQuote: draftQuote, agentSessionID: agentSession.id)
+                 draftAttachments: draftAttachments, draftQuote: draftQuote, agentSessionID: agentSession.id,
+                 conversationID: conversationID, nextTurnPlace: nextTurnPlace,
+                 nextTurnArea: nextTurnArea, readingState: readingState, mapSource: mapSource)
     }
 
     func clearError() { errorMessage = nil }
@@ -554,6 +743,7 @@ final class CompanionHomeStore: AgentExecutionJournal {
         let memoryEpoch = entries[index].memoryEpoch
         activeAttemptID = attemptID
         isWorking = true
+        workingProgress = .thinking
         activity = .working(id)
         activeID = id
         entries[index].status = .working
@@ -565,6 +755,14 @@ final class CompanionHomeStore: AgentExecutionJournal {
         errorMessage = nil
         // Retry a past input with the history that preceded it, never later user turns.
         let context = Array(entries.prefix(index + 1))
+        if let production = agent as? CompanionHomeAgent {
+            // The agent snapshots this callback per attempt. A canceled older
+            // request cannot publish progress into a retry or a different turn.
+            production.onProgress = { [weak self] progress in
+                guard let self, self.activeID == id, self.activeAttemptID == attemptID else { return }
+                self.workingProgress = progress
+            }
+        }
         let task = Task { try await agent.respond(to: context) }
         activeTask = task
         var responded = false
@@ -580,12 +778,15 @@ final class CompanionHomeStore: AgentExecutionJournal {
                 entries[responseIndex].text = result.text
                 entries[responseIndex].sourceTitles = result.sourceTitles
                 entries[responseIndex].placeID = result.placeID
+                entries[responseIndex].placeIDs = result.placeIDs.isEmpty ? nil : result.placeIDs
                 entries[responseIndex].status = .delivered
             } else {
                 let response = CompanionHomeEntry(role: .companion, text: result.text, status: .delivered,
-                                                  sourceTitles: result.sourceTitles, placeID: result.placeID, replyToID: id)
+                                                  sourceTitles: result.sourceTitles, placeID: result.placeID,
+                                                  placeIDs: result.placeIDs.isEmpty ? nil : result.placeIDs, replyToID: id)
                 entries.insert(response, at: index + 1)
             }
+            if !readingState.followsLatest { readingState.hasUnread = true }
             responded = true
         } catch {
             guard activeID == id, activeAttemptID == attemptID, agentSession == session else { return }
@@ -625,6 +826,8 @@ final class CompanionHomeStore: AgentExecutionJournal {
             entries = snapshot.entries.map { entry in
                 var restored = entry
                 if restored.status == .working { restored.status = .failed }
+                restored.placeScope = restored.placeScope.flatMap { $0.isValid ? $0 : nil }
+                restored.searchArea = restored.placeScope == nil ? restored.searchArea.flatMap { $0.isValid ? $0 : nil } : nil
                 return restored
             }
             commitments = snapshot.commitments ?? []
@@ -632,9 +835,25 @@ final class CompanionHomeStore: AgentExecutionJournal {
             draftAttachments = snapshot.draftAttachments ?? []
             draftQuote = snapshot.draftQuote
             composerDraft = snapshot.composerDraft
+            invites = snapshot.invites.map { value in var draft = value; draft.status = .draft; return draft }
+            if let storedID = snapshot.conversationID, !storedID.isEmpty, storedID.count <= 200 {
+                conversationID = storedID
+            }
+            nextTurnPlace = snapshot.nextTurnPlace.flatMap { $0.isValid ? $0 : nil }
+            nextTurnArea = nextTurnPlace == nil ? snapshot.nextTurnArea.flatMap { $0.isValid ? $0 : nil } : nil
+            readingState = snapshot.readingState ?? CompanionConversationReadingState()
+            if !validReadingAnchor(readingState.anchorID) { readingState = CompanionConversationReadingState() }
+            mapSource = snapshot.mapSource.flatMap { source in
+                guard source.conversationID == conversationID,
+                      let entry = entries.first(where: { $0.id == source.messageID }) else { return nil }
+                var restored = source
+                let actualIDs = Set(entry.mapPlaceIDs)
+                var seen: Set<String> = []
+                restored.experienceIDs = source.experienceIDs.filter { actualIDs.contains($0) && seen.insert($0).inserted }
+                return restored
+            }
             people = snapshot.people
             selectedPeopleIDs = snapshot.selectedPeopleIDs.intersection(Set(people.map(\.id)))
-            invites = snapshot.invites.map { value in var draft = value; draft.status = .draft; return draft }
         } catch {
             // Preserve the original bytes at the original URL. Save new work to a distinct
             // recovery namespace; never silently replace a damaged or future-version store.
