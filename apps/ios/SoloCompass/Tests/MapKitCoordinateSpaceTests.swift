@@ -112,6 +112,49 @@ final class MapKitCoordinateSpaceTests: XCTestCase {
         XCTAssertNotNil(space.mapCoordinate(haodian))
     }
 
+    func testCancelledWaiterReturnsWhileSharedProbeRemainsSuspended() async throws {
+        var probes: [(MapKitCoordinateSpace.Anchor, CheckedContinuation<MapKitCoordinateSpace.Sample, Error>)] = []
+        let space = MapKitCoordinateSpace(renderStyles: [.standard], fetchSample: { anchor in
+            try await withCheckedThrowingContinuation { probes.append((anchor, $0)) }
+        })
+        let cancelled = Task { try await space.prepare(near: haodian, countryCode: "CN") }
+        while probes.isEmpty { await Task.yield() }
+        var remainingStarted = false
+        var remainingFinished = false
+        let remaining = Task {
+            remainingStarted = true
+            try await space.prepare(near: haodian, countryCode: "CN")
+            remainingFinished = true
+        }
+        while !remainingStarted { await Task.yield() }
+
+        let cancelledReturned = expectation(description: "Canceled waiter returns without releasing shared probe")
+        let observer = Task {
+            do {
+                try await cancelled.value
+                XCTFail("Canceled waiter must throw CancellationError")
+            } catch is CancellationError {
+                // The caller's cancellation is independent of the producer.
+            } catch {
+                XCTFail("Unexpected cancellation error: \(error)")
+            }
+            cancelledReturned.fulfill()
+        }
+        cancelled.cancel()
+        await fulfillment(of: [cancelledReturned], timeout: 1)
+        XCTAssertFalse(remainingFinished, "The other caller still waits for the probe")
+        XCTAssertEqual(probes.count, 1, "Cancellation must not restart or duplicate calibration")
+
+        probes[0].1.resume(returning: sample(probes[0].0))
+        while probes.count < 2 { await Task.yield() }
+        probes[1].1.resume(returning: sample(probes[1].0))
+        try await remaining.value
+        await observer.value
+        XCTAssertEqual(probes.count, 2)
+        XCTAssertTrue(remainingFinished)
+        XCTAssertEqual(space.profile(for: haodian, countryCode: "CN").searchOutput, .gcj02)
+    }
+
     func testCameraEchoDoesNotBecomeAnotherProgrammaticMove() async throws {
         let space = MapKitCoordinateSpace(renderStyles: [.standard], fetchSample: { self.sample($0) })
         try await space.prepare(near: haodian)

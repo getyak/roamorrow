@@ -46,6 +46,7 @@ public final class MapKitPOIService {
         radiusMeters: Int = 1000,
         category: ExperienceCategory? = nil
     ) async throws -> [OverpassService.POI] {
+        try Task.checkCancellation()
         isFetching = true
         defer { isFetching = false }
 
@@ -63,8 +64,9 @@ public final class MapKitPOIService {
         let search = MKLocalSearch(request: request)
         let response: MKLocalSearch.Response
         do {
-            response = try await search.start()
+            response = try await Self.performSearch(search)
         } catch {
+            try Task.checkCancellation()
             // An empty-result search surfaces as an error on some OS versions;
             // treat that as "no POIs" rather than a hard failure.
             let ns = error as NSError
@@ -78,6 +80,7 @@ public final class MapKitPOIService {
             try Task.checkCancellation()
             try? await space.prepare(near: item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
         }
+        try Task.checkCancellation()
         return Self.withinRadius(response.mapItems.compactMap { Self.poi(from: $0) }, center: coordinate, meters: radiusMeters)
     }
 
@@ -107,6 +110,7 @@ public final class MapKitPOIService {
     ) async throws -> [OverpassService.POI] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
+        try Task.checkCancellation()
 
         isFetching = true
         defer { isFetching = false }
@@ -127,8 +131,9 @@ public final class MapKitPOIService {
         let search = MKLocalSearch(request: request)
         let response: MKLocalSearch.Response
         do {
-            response = try await search.start()
+            response = try await Self.performSearch(search)
         } catch {
+            try Task.checkCancellation()
             let ns = error as NSError
             if ns.domain == MKError.errorDomain, ns.code == MKError.placemarkNotFound.rawValue {
                 return []
@@ -137,9 +142,38 @@ public final class MapKitPOIService {
         }
 
         for item in response.mapItems {
+            try Task.checkCancellation()
             try? await space.prepare(near: item.placemark.coordinate, countryCode: item.placemark.isoCountryCode)
         }
+        try Task.checkCancellation()
         return Self.withinRadius(response.mapItems.compactMap { Self.poi(from: $0) }, center: coordinate, meters: radiusMeters)
+    }
+
+    /// MKLocalSearch exposes explicit cancellation. Keep the non-Sendable SDK
+    /// object behind a main-actor owner; cancellation can originate on any
+    /// executor and is marshalled back to that actor without an unsafe capture.
+    @MainActor
+    private final class SearchOperation {
+        let search: MKLocalSearch
+        init(_ search: MKLocalSearch) { self.search = search }
+        func cancel() { search.cancel() }
+    }
+
+    private static func performSearch(_ search: MKLocalSearch) async throws -> MKLocalSearch.Response {
+        let operation = SearchOperation(search)
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            do {
+                let response = try await operation.search.start()
+                try Task.checkCancellation()
+                return response
+            } catch {
+                try Task.checkCancellation()
+                throw error
+            }
+        } onCancel: {
+            Task { @MainActor in operation.cancel() }
+        }
     }
 
     // MARK: - Mapping

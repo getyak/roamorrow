@@ -410,10 +410,15 @@ public final class MapViewModel {
     /// - Parameters:
     ///   - query: The user-typed search string. Empty/whitespace is a no-op.
     ///   - coordinate: Center to bias results toward (map center or user fix).
+    ///   - constrainWorkspaceResults: The V4 map's explicit search owns only
+    ///     this query's IDs, including already-known places. Empty and failed
+    ///     searches clear this result scope instead of showing old nearby pins.
+    ///     Existing callers retain the append-only behavior by default.
     @discardableResult
     public func webSearchPOIs(
         query: String,
-        near coordinate: CLLocationCoordinate2D
+        near coordinate: CLLocationCoordinate2D,
+        constrainWorkspaceResults: Bool = false
     ) async -> Int {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isSearchingWeb else { return 0 }
@@ -421,6 +426,7 @@ public final class MapViewModel {
         isSearchingWeb = true
         lastWebSearchResult = nil
         let searchCity = selectedCity
+        let searchRevision = mapWorkspaceRevision
         defer { isSearchingWeb = false }
 
         let pois: [OverpassService.POI]
@@ -434,13 +440,17 @@ public final class MapViewModel {
         } catch is CancellationError {
             return 0
         } catch {
-            guard selectedCity == searchCity else { return 0 }
+            guard !Task.isCancelled, selectedCity == searchCity,
+                  !constrainWorkspaceResults || mapWorkspaceRevision == searchRevision else { return 0 }
+            if constrainWorkspaceResults { openMessageResults([]) }
             lastWebSearchResult = POISearchOutcome(query: trimmed, status: .failed)
             return 0
         }
 
-        guard selectedCity == searchCity else { return 0 }
+        guard !Task.isCancelled, selectedCity == searchCity,
+              !constrainWorkspaceResults || mapWorkspaceRevision == searchRevision else { return 0 }
         guard !pois.isEmpty else {
+            if constrainWorkspaceResults { openMessageResults([]) }
             lastWebSearchResult = POISearchOutcome(query: trimmed, status: .empty)
             return 0
         }
@@ -448,10 +458,19 @@ public final class MapViewModel {
         // Skeleton conversion mirrors the free/Overpass explore path — name +
         // coords + generic tagline, honestly attributed to MapKit. Enrichment is
         // the user's next (optional, Pro) step via deep cross-compile.
-        let cityCode = selectedCity ?? ""
+        let cityCode = constrainWorkspaceResults ? Self.cityCode(for: coordinate) : (selectedCity ?? "")
         let skeletons = pois.map { AIService.skeletonExperience(from: $0, cityCode: cityCode) }
         let added = experienceService.appendGenerated(skeletons)
-        lastWebSearchResult = POISearchOutcome(query: trimmed, status: .found(pois.count))
+        if constrainWorkspaceResults { openMessageResults(skeletons.map(\.id)) }
+        let status: POISearchOutcome.Status
+        if constrainWorkspaceResults {
+            // Only canonical, durably available IDs can become visible query
+            // results. A local persistence failure must not claim phantom pins.
+            status = visibleExperiences.isEmpty ? .failed : .found(visibleExperiences.count)
+        } else {
+            status = .found(pois.count)
+        }
+        lastWebSearchResult = POISearchOutcome(query: trimmed, status: status)
         if added > 0 {
             Haptics.notify(.success)
         }
@@ -752,6 +771,13 @@ public final class MapViewModel {
         didSet {
             guard selectedCity != oldValue else { return }
             lastVisibleMapCenter = nil
+            // A deliberately different city starts a new map browsing context.
+            // An older answer remains in its conversation and can reopen its
+            // exact IDs; it must not quietly pin the new city's browsing view.
+            messageResultIDs = nil
+            workspaceUsesVisibleArea = false
+            mapWorkspaceRevision &+= 1
+            mapBrowsingSnapshots.removeAll()
             lastWebSearchResult = nil
             invalidateCityCache()
             // #86: candidateExperiences live under the previous city's
@@ -1018,6 +1044,12 @@ public final class MapViewModel {
     /// GPS fix / foreground re-follow must not fight (V-007); explore's
     /// programmatic discovery passes `false` so GPS city-follow stays armed.
     public func selectCity(_ cityCode: String?, explicit: Bool = true) {
+        mapWorkspaceRevision &+= 1
+        workspaceUsesVisibleArea = false
+        messageResultIDs = nil
+        lastVisibleMapCenter = nil
+        mapBrowsingSnapshots.removeAll()
+        lastWebSearchResult = nil
         if explicit {
             cityPickedExplicitlyThisSession = true
         }
@@ -1164,8 +1196,50 @@ public final class MapViewModel {
     /// this value. Mutually exclusive with `selectedCategory` and
     /// `isNowFilter` — selecting any of those clears the others. US-008.
     public var selectedCustomTag: String?
-    public var visibleExperiences: [Experience] = [] {
-        didSet {
+    public private(set) var mapBrowseMode: MapWorkspaceBrowseMode = .nearby
+    public private(set) var mapFavoriteScope: MapWorkspaceFavoriteScope = .currentCity
+    /// The retained API name covers an explicitly opened message or live map
+    /// query. nil means ordinary browsing; [] means explicit empty results and
+    /// must never fall back to an unrelated nearby collection. Message source
+    /// identity remains owned separately by the conversation store.
+    public private(set) var messageResultIDs: [String]?
+    /// Invalidates an in-flight explicit query when the user chooses a newer
+    /// map source/mode/filter. Ordinary camera updates are cancelled by the
+    /// host's owned search Task rather than guessed from programmatic movement.
+    @ObservationIgnored private var mapWorkspaceRevision: UInt64 = 0
+    @ObservationIgnored private var workspaceUsesVisibleArea = false
+
+    private struct MapBrowsingSnapshot {
+        let category: ExperienceCategory?
+        let customTag: String?
+        let now: Bool
+        let legacyFavoriteFilter: Bool
+        let camera: MapCameraPosition
+        let latitudeSpan: CLLocationDegrees
+        let center: CLLocationCoordinate2D?
+        let selectedID: String?
+        let messageIDs: [String]?
+        let usesVisibleArea: Bool
+    }
+    @ObservationIgnored private var mapBrowsingSnapshots: [MapWorkspaceBrowseMode: MapBrowsingSnapshot] = [:]
+
+    @ObservationIgnored private var workspaceVisibleExperiences: [Experience] = []
+    private var visibleExperiencesVersion: UInt64 = 0
+    public var visibleExperiences: [Experience] {
+        get {
+            _ = visibleExperiencesVersion
+            return workspaceVisibleExperiences
+        }
+        set {
+            // All writers, including delayed discovery/search completions,
+            // respect the active browsing owner. Camera refresh is not allowed
+            // to overwrite a historical answer or the global saved collection.
+            let resolved = resolveWorkspaceExperiences(regularResults: newValue)
+            withMutation(keyPath: \.visibleExperiencesVersion) {
+                workspaceVisibleExperiences = resolved
+                visibleExperiencesVersion &+= 1
+            }
+            reconcileWorkspaceSelection()
             mapRenderGeneration &+= 1
             invalidateMapRenderCache()
         }
@@ -1646,6 +1720,241 @@ public final class MapViewModel {
 
     // MARK: - Loading
 
+    // MARK: - V4 map browsing
+
+    /// Switch modes deterministically. Re-selecting a tab/mode is a no-op so it
+    /// cannot restore an older camera or discard a newly selected filter.
+    public func setMapBrowseMode(_ mode: MapWorkspaceBrowseMode) {
+        guard mode != mapBrowseMode else { return }
+        mapWorkspaceRevision &+= 1
+        mapBrowsingSnapshots[mapBrowseMode] = MapBrowsingSnapshot(
+            category: selectedCategory, customTag: selectedCustomTag, now: isNowFilter,
+            legacyFavoriteFilter: isFavoriteFilter, camera: cameraPosition,
+            latitudeSpan: currentSpanLatitudeDelta,
+            center: lastVisibleMapCenter, selectedID: selectedExperience?.id, messageIDs: messageResultIDs,
+            usesVisibleArea: workspaceUsesVisibleArea
+        )
+        mapBrowseMode = mode
+        if let snapshot = mapBrowsingSnapshots[mode] {
+            selectedCategory = snapshot.category
+            selectedCustomTag = snapshot.customTag
+            isNowFilter = snapshot.now
+            isFavoriteFilter = snapshot.legacyFavoriteFilter
+            messageResultIDs = snapshot.messageIDs
+            workspaceUsesVisibleArea = snapshot.usesVisibleArea
+            lastVisibleMapCenter = snapshot.center
+            cameraPosition = snapshot.camera
+            currentSpanLatitudeDelta = snapshot.latitudeSpan
+            selectedExperience = snapshot.selectedID.flatMap { experienceService.getExperience(id: $0) }
+        } else {
+            selectedCategory = nil
+            selectedCustomTag = nil
+            isNowFilter = false
+            isFavoriteFilter = false
+            messageResultIDs = nil
+            workspaceUsesVisibleArea = false
+            selectedExperience = nil
+        }
+        isShowingDetail = false
+        refreshWorkspaceMapPreservingCamera()
+    }
+
+    /// Selects the saved-place scope and refreshes results without moving the map camera.
+    public func setMapFavoriteScope(_ scope: MapWorkspaceFavoriteScope) {
+        guard scope != mapFavoriteScope else { return }
+        mapWorkspaceRevision &+= 1
+        mapFavoriteScope = scope
+        refreshWorkspaceMapPreservingCamera()
+    }
+
+    /// A message or explicit query owns ordered canonical IDs. Never copy its
+    /// prose or manufacture missing places; unavailable IDs simply render empty.
+    /// This is an explicit open, so it fits once. Ordinary tab visits do not.
+    public func openMessageResults(_ ids: [String], selectedID: String? = nil) {
+        setMapBrowseMode(.nearby)
+        mapWorkspaceRevision &+= 1
+        var seen: Set<String> = []
+        messageResultIDs = ids.filter { seen.insert($0).inserted }
+        selectedCategory = nil
+        selectedCustomTag = nil
+        isNowFilter = false
+        isFavoriteFilter = false
+        refreshWorkspaceMapPreservingCamera()
+        selectedExperience = selectedID.flatMap { id in visibleExperiences.first { $0.id == id } }
+            ?? visibleExperiences.first
+        isShowingDetail = false
+        frameMessageResultsOnce()
+    }
+
+    /// Explicitly release an answer's result set and read the known local
+    /// collection for this viewport. Network/model work remains an explicit
+    /// caller action; this method never silently launches either.
+    public func searchThisArea() {
+        mapWorkspaceRevision &+= 1
+        messageResultIDs = nil
+        workspaceUsesVisibleArea = true
+        refreshWorkspaceMapPreservingCamera()
+    }
+
+    /// Keep the explicitly visible area accurate even when the cheap refresh
+    /// policy skips refiltering a small camera movement.
+    public func noteWorkspaceViewport(_ region: MKCoordinateRegion) {
+        guard CLLocationCoordinate2DIsValid(region.center),
+              region.center.latitude.isFinite, region.center.longitude.isFinite,
+              region.span.latitudeDelta.isFinite, region.span.longitudeDelta.isFinite,
+              region.span.latitudeDelta > 0, region.span.longitudeDelta > 0 else { return }
+        lastVisibleMapCenter = region.center
+        currentSpanLatitudeDelta = region.span.latitudeDelta
+    }
+
+    /// Refreshes visible experiences while preserving the user's current map camera.
+    public func refreshWorkspaceMapPreservingCamera() {
+        loadNearbyExperiences(overrideRadiusKm: nil, fitCamera: false)
+    }
+
+    /// Call when the shared UserPreferences favorite set changes on any tab.
+    public func refreshFavorites() {
+        refreshWorkspaceMapPreservingCamera()
+    }
+
+    /// Select a visible card without moving a map the user has just positioned.
+    /// The map host may mirror this ID for its panel page, while this model
+    /// retains the selection independently for each browsing mode.
+    public func selectWorkspaceExperience(_ experience: Experience?) {
+        selectedExperience = experience.flatMap { selected in
+            visibleExperiences.first { $0.id == selected.id }
+        }
+        isShowingDetail = false
+    }
+
+    /// The V4 category controls are local filters, not an implicit request to
+    /// run AI enrichment. Preserve legacy selectCategory's discovery behavior
+    /// for its existing callers while keeping this explicit UI predictable.
+    public func selectWorkspaceCategory(_ category: ExperienceCategory?) {
+        mapWorkspaceRevision &+= 1
+        selectedCategory = category
+        selectedCustomTag = nil
+        isNowFilter = false
+        isFavoriteFilter = false
+        refreshWorkspaceMapPreservingCamera()
+    }
+
+    private func resolveWorkspaceExperiences(regularResults: [Experience]) -> [Experience] {
+        let base: [Experience]
+        if let ids = messageResultIDs {
+            base = ids.compactMap { experienceService.getExperience(id: $0) }
+        } else if mapBrowseMode == .saved {
+            base = allExperiences.filter { preferences.isFavorited($0.id) }
+                .filter { experience in
+                    guard mapFavoriteScope == .currentCity else { return true }
+                    return belongsToSavedMapArea(experience)
+                }
+                .sorted { lhs, rhs in
+                    let left = preferences.favoritedAt[lhs.id] ?? .distantPast
+                    let right = preferences.favoritedAt[rhs.id] ?? .distantPast
+                    return left == right ? lhs.id < rhs.id : left > right
+                }
+        } else {
+            return regularResults
+        }
+        return base.filter { experience in
+            if let category = selectedCategory, experience.category != category { return false }
+            if let tag = selectedCustomTag, !(experience.userTags ?? []).contains(tag) { return false }
+            if isNowFilter && !experience.isBestNow(at: AppClock.now()) { return false }
+            if isFavoriteFilter && !preferences.isFavorited(experience.id) { return false }
+            // Opening an answer or the saved collection is explicit intent.
+            // Recommendation preferences may rank fresh nearby exploration,
+            // but must not hide a previously saved or explicitly opened ID.
+            return true
+        }
+    }
+
+    private func reconcileWorkspaceSelection() {
+        guard let selected = selectedExperience else { return }
+        guard let canonical = visibleExperiences.first(where: { $0.id == selected.id }) else {
+            selectedExperience = nil
+            isShowingDetail = false
+            return
+        }
+        if selected != canonical { selectedExperience = canonical }
+    }
+
+    private func belongsToSavedMapArea(_ experience: Experience) -> Bool {
+        guard let city = selectedCity else {
+            // A manually browsed map remains a valid area when GPS is denied
+            // and no named city has been selected. Do not call it a location
+            // fix; group saved places around the known map viewport only.
+            guard let center = lastVisibleMapCenter ?? cameraPosition.region?.center else { return false }
+            return isWithinSavedMapArea(experience, center: center)
+        }
+        let namedCenter = customCoordinates ?? defaultCenterForSelectedCity
+        if let viewport = lastVisibleMapCenter ?? cameraPosition.region?.center,
+           CLLocation(latitude: viewport.latitude, longitude: viewport.longitude).distance(
+               from: CLLocation(latitude: namedCenter.latitude, longitude: namedCenter.longitude)
+           ) > 25_000 {
+            // The user may be inspecting a past answer in another city. The
+            // current-area collection follows that map without editing the trip.
+            return isWithinSavedMapArea(experience, center: viewport)
+        }
+        if Self.cityCodeMatches(experience.location.cityCode, selected: city) { return true }
+        // Provider skeletons use a coarse coordinate-grid identity, not a
+        // municipal city code. Without this bounded area fallback, a place
+        // just saved from Apple Maps would vanish from the current-area view.
+        // This is collection grouping, never a claim about city boundaries or
+        // the traveler's physical location. All Saved remains unbounded.
+        guard experience.location.cityCode.hasPrefix("osm_") || city.hasPrefix("custom_"),
+              experience.coordinate != nil else { return false }
+        let center = customCoordinates ?? defaultCenterForSelectedCity
+        return isWithinSavedMapArea(experience, center: center)
+    }
+
+    private func isWithinSavedMapArea(_ experience: Experience, center: CLLocationCoordinate2D) -> Bool {
+        guard let coordinate = experience.coordinate,
+              CLLocationCoordinate2DIsValid(coordinate), CLLocationCoordinate2DIsValid(center),
+              coordinate.latitude.isFinite, coordinate.longitude.isFinite,
+              center.latitude.isFinite, center.longitude.isFinite else { return false }
+        return CLLocation(latitude: center.latitude, longitude: center.longitude).distance(
+            from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        ) <= 25_000
+    }
+
+    private func frameMessageResultsOnce() {
+        let coordinates = visibleExperiences.compactMap(\.coordinate).filter {
+            $0.latitude.isFinite && $0.longitude.isFinite && CLLocationCoordinate2DIsValid($0)
+        }
+        guard let first = coordinates.first else { return }
+        let minLatitude = coordinates.map(\.latitude).min() ?? first.latitude
+        let maxLatitude = coordinates.map(\.latitude).max() ?? first.latitude
+        // Frame the short arc across the antimeridian instead of placing
+        // nearby +179/-179 degree results on opposite sides of the globe.
+        let longitudes = coordinates.map { $0.longitude < 0 ? $0.longitude + 360 : $0.longitude }.sorted()
+        var largestGap = -Double.infinity
+        var arcStart = longitudes[0]
+        var arcWidth = 0.0
+        for index in longitudes.indices {
+            let next = index + 1 < longitudes.count ? longitudes[index + 1] : longitudes[0] + 360
+            let gap = next - longitudes[index]
+            if gap > largestGap {
+                largestGap = gap
+                arcStart = next.truncatingRemainder(dividingBy: 360)
+                arcWidth = 360 - gap
+            }
+        }
+        var centerLongitude = (arcStart + arcWidth / 2).truncatingRemainder(dividingBy: 360)
+        if centerLongitude > 180 { centerLongitude -= 360 }
+        let center = CLLocationCoordinate2D(
+            latitude: (minLatitude + maxLatitude) / 2,
+            longitude: centerLongitude
+        )
+        let span = MKCoordinateSpan(
+            latitudeDelta: min(180, max(0.02, (maxLatitude - minLatitude) * 1.7)),
+            longitudeDelta: min(360, max(0.02, arcWidth * 1.7))
+        )
+        lastVisibleMapCenter = center
+        currentSpanLatitudeDelta = span.latitudeDelta
+        cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
+    }
+
     /// Called when the distance slider is released in SettingsView.
     /// Reloads visible experiences with the newly committed radius.
     public func reloadForDistanceChange() {
@@ -1670,16 +1979,17 @@ public final class MapViewModel {
         invalidateCityCache()
         let center = nearbyQueryOrigin
         let radiusKm = max(1.0, overrideRadiusKm ?? preferences.maxDistanceKm)
-        let nearby = applyFilters(near: center, radiusKm: radiusKm)
+        let ordinaryBrowsing = messageResultIDs == nil && mapBrowseMode == .nearby
+        let nearby = ordinaryBrowsing ? applyFilters(near: center, radiusKm: radiusKm) : []
         withAnimation(Self.markerSetAnimation) {
             visibleExperiences = nearby
-            nearbySoloCount = computeNearbySoloCount(in: nearby)
+            nearbySoloCount = computeNearbySoloCount(in: visibleExperiences)
         }
         aiSmartPickIds = []
         recomputeNowCount()
         updateBottomInfo()
-        if fitCamera {
-            fitCameraToPinsIfNeeded(nearby)
+        if fitCamera && messageResultIDs == nil && mapBrowseMode == .nearby && !workspaceUsesVisibleArea {
+            fitCameraToPinsIfNeeded(visibleExperiences)
         }
         scheduleColdStartEmptyWatchdog()
     }
@@ -1760,7 +2070,8 @@ public final class MapViewModel {
     /// any non-empty load lands. No-op when no preset city is selected (an empty
     /// GPS-follow map isn't necessarily a bug).
     private func scheduleColdStartEmptyWatchdog() {
-        guard let city = selectedCity, !city.hasPrefix("custom_") else {
+        guard messageResultIDs == nil, mapBrowseMode == .nearby, !workspaceUsesVisibleArea,
+              let city = selectedCity, !city.hasPrefix("custom_") else {
             coldStartWatchdogTask?.cancel()
             coldStartWatchdogTask = nil
             reportedColdStartEmpty = false
@@ -1779,7 +2090,8 @@ public final class MapViewModel {
             try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
             guard let self, !Task.isCancelled else { return }
             self.coldStartWatchdogTask = nil
-            guard let current = self.selectedCity, !current.hasPrefix("custom_"),
+            guard self.messageResultIDs == nil, self.mapBrowseMode == .nearby,
+                  let current = self.selectedCity, !current.hasPrefix("custom_"),
                   self.visibleExperiences.isEmpty, !self.reportedColdStartEmpty else { return }
             self.reportedColdStartEmpty = true
             SentryService.capture(
@@ -1818,7 +2130,7 @@ public final class MapViewModel {
             near: nearbyQueryOrigin,
             radiusKm: max(1.0, preferences.maxDistanceKm)
         )
-        if let cityCode = selectedCity, !cityCode.hasPrefix("custom_") {
+        if !workspaceUsesVisibleArea, let cityCode = selectedCity, !cityCode.hasPrefix("custom_") {
             nearby = nearby.filter { Self.cityCodeMatches($0.location.cityCode, selected: cityCode) }
         }
         if !preferences.dislikedCategories.isEmpty {
@@ -1836,7 +2148,7 @@ public final class MapViewModel {
               coordinate.latitude, coordinate.longitude, radiusKm, allCount, nearby.count, selectedCity ?? "nil")
         #endif
         // Custom locations have no matching cityCode — show all nearby experiences instead.
-        if let cityCode = selectedCity, !cityCode.hasPrefix("custom_") {
+        if !workspaceUsesVisibleArea, let cityCode = selectedCity, !cityCode.hasPrefix("custom_") {
             // V-004: alias-aware so a header slug (`chiang-mai`) matches the seed
             // `cityCode` (`cmi`) — exact `==` left the cold-start map empty.
             nearby = nearby.filter { Self.cityCodeMatches($0.location.cityCode, selected: cityCode) }
@@ -1942,6 +2254,7 @@ public final class MapViewModel {
     /// Apply (or clear, when nil) a category filter from the category pills,
     /// clearing other active filters and refreshing the map.
     public func selectCategory(_ category: ExperienceCategory?) {
+        mapWorkspaceRevision &+= 1
         selectedCategory = category
         selectedCustomTag = nil
         isNowFilter = false
@@ -1955,6 +2268,7 @@ public final class MapViewModel {
     /// Activate the "best right now" filter, clearing other filters and showing
     /// only experiences well-suited to the current time of day.
     public func selectNowFilter() {
+        mapWorkspaceRevision &+= 1
         isNowFilter = true
         selectedCategory = nil
         selectedCustomTag = nil
@@ -1968,6 +2282,7 @@ public final class MapViewModel {
     /// clears every other active filter so the four filter modes stay mutually
     /// exclusive. The favourite set lives in `preferences.favoritedExperiences`.
     public func selectFavoriteFilter() {
+        mapWorkspaceRevision &+= 1
         if isFavoriteFilter {
             isFavoriteFilter = false
         } else {
@@ -1982,6 +2297,7 @@ public final class MapViewModel {
 
     /// Reset all active map filters back to showing every nearby experience.
     public func clearFilters() {
+        mapWorkspaceRevision &+= 1
         selectedCategory = nil
         selectedCustomTag = nil
         isNowFilter = false
@@ -2048,6 +2364,7 @@ public final class MapViewModel {
     /// different tag replaces the current selection and clears any other
     /// active filter. US-008.
     public func selectCustomTag(_ tag: String) {
+        mapWorkspaceRevision &+= 1
         if selectedCustomTag == tag {
             selectedCustomTag = nil
         } else {
@@ -2252,7 +2569,10 @@ public final class MapViewModel {
     public func refreshForLocation(_ coordinate: CLLocationCoordinate2D) {
         lastVisibleMapCenter = coordinate
         let radiusKm = max(1.0, preferences.maxDistanceKm)
-        let nearby = applyFilters(near: coordinate, radiusKm: radiusKm)
+        let ordinaryBrowsing = messageResultIDs == nil && mapBrowseMode == .nearby
+        let nearby = resolveWorkspaceExperiences(
+            regularResults: ordinaryBrowsing ? applyFilters(near: coordinate, radiusKm: radiusKm) : []
+        )
         // A meaningful viewport move can still resolve to the exact same
         // ordered set. Avoid invalidating the full Map/BottomSheet hierarchy in
         // that case; the user gets a stable map instead of a gratuitous marker
@@ -3439,6 +3759,29 @@ public final class MapViewModel {
     /// Explore button.
     public var exploreAnchorCoordinate: CLLocationCoordinate2D {
         nearbyQueryOrigin
+    }
+
+    /// Agent searches must name their actual scope and never promote the
+    /// startup placeholder city into the traveler's current location.
+    var agentSearchOrigin: (coordinate: CLLocationCoordinate2D, source: String)? {
+        func valid(_ coordinate: CLLocationCoordinate2D) -> Bool {
+            coordinate.latitude.isFinite && coordinate.longitude.isFinite && CLLocationCoordinate2DIsValid(coordinate)
+        }
+        if let center = lastVisibleMapCenter, valid(center) { return (center, "map_viewport") }
+        if let coordinate = customCoordinates, valid(coordinate) { return (coordinate, "map_selection") }
+        if cityPickedExplicitlyThisSession, let city = selectedCity {
+            let center = Self.knownCityCenters[city]
+                ?? Self.cityCodeAliases[city.lowercased()].flatMap { Self.knownCityCenters[$0] }
+                ?? Self.knownCityCenters[city.uppercased()]
+                ?? Self.knownCityCenters[city.lowercased()]
+                ?? availableCities.first(where: { Self.cityCodeMatches($0.code, selected: city) })?.center
+            if let center, valid(center) { return (center, "selected_city") }
+        }
+        if locationService.authorizationStatus == .authorizedWhenInUse || locationService.authorizationStatus == .authorizedAlways,
+           let coordinate = locationService.currentLocation?.coordinate, valid(coordinate) {
+            return (coordinate, "authorized_location")
+        }
+        return nil
     }
 
     // MARK: - US-011 auto-explore on empty category

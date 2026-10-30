@@ -1,0 +1,9 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/hyperframes.json",
+  "authoringSkill": "hyperframes",
+  "paths": {
+    "assets": "assets",
+    "blocks": "compositions",
+    "components": "compositions/components"
+  }
+}

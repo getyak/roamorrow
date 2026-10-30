@@ -19,6 +19,9 @@ struct MeSheet: View {
     /// auto-opens the matching ChatView). `nil` for any other entry point.
     var deepLinkConversationId: String? = nil
 
+    var embedded = false
+    var onOpenSettings: (() -> Void)? = nil
+
     @Environment(\.dismiss) private var dismiss
     @Environment(UserPreferences.self) private var preferences
     @Environment(\.modelContext) private var modelContext
@@ -160,7 +163,7 @@ struct MeSheet: View {
 
                 Section {
                     Button {
-                        showingSettings = true
+                        if let onOpenSettings { onOpenSettings() } else { showingSettings = true }
                     } label: {
                         MeRow(
                             systemImage: "gearshape.fill",
@@ -189,8 +192,10 @@ struct MeSheet: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(NSLocalizedString("common.done", comment: "Done")) { dismiss() }
+                if !embedded {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(NSLocalizedString("common.done", comment: "Done")) { dismiss() }
+                    }
                 }
             }
             .sheet(isPresented: $showingSettings) {
@@ -216,7 +221,7 @@ struct MeSheet: View {
                     topTab = .archive
                 }
                 if ProcessInfo.processInfo.arguments.contains("-openSettings") {
-                    showingSettings = true
+                    if let onOpenSettings { onOpenSettings() } else { showingSettings = true }
                 }
                 #endif
             }

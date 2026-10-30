@@ -1,0 +1,94 @@
+{
+  "captured_evidence_date": "2026-10-30",
+  "capture_base_revision": "d237600ebff01e58cca49d6abe83754bb4e64754",
+  "scope": "Exact public receipts and generated source snapshots; raw capture bytes compressed to preserve them through formatting. Not a current-head native iOS acceptance.",
+  "evidence": [
+    {
+      "path": "model-input.public.json.gz",
+      "sha256": "454aeb5722844182d9ae5bf19f26226a4ed1a67fdb7ce839659de8545160c7e8",
+      "bytes": 3391,
+      "uncompressed_sha256": "b7aa02feb3ca41008372397735e997666d1d4aea0f9c77465e664bd648100693",
+      "uncompressed_bytes": 8479
+    },
+    {
+      "path": "model-live-sdk-compile.txt.gz",
+      "sha256": "154d085ac39244cda2379ad778f61fe8871badc6383ed2103ace1b350a1983b3",
+      "bytes": 2104,
+      "uncompressed_sha256": "8216c9441cb3d4b0a774862cac2031172ef0f676335f8925a44f49139b5c746c",
+      "uncompressed_bytes": 13125
+    },
+    {
+      "path": "model-live-sdk-source.swift.gz",
+      "sha256": "3079e1d5645400feccffe5e01f9a268bbb1d16850ff0d6ac4eeb8b18bc348623",
+      "bytes": 30337,
+      "uncompressed_sha256": "dfbed25af8a7e910931ce9ae2efd09a80e1cd82e66ec61f6b99f6246de241cc4",
+      "uncompressed_bytes": 116442
+    },
+    {
+      "path": "model-live.json.gz",
+      "sha256": "264af8e9a03d2fcd6a1477aa0f3c665a604dc8bb49eb46fff9c5294979cac331",
+      "bytes": 2922,
+      "uncompressed_sha256": "578c1b59a57a0ab69f18b2c6ce00f1557fa51ac186bbe7b22976b129e808204e",
+      "uncompressed_bytes": 8618
+    },
+    {
+      "path": "model-streaming-final.json.gz",
+      "sha256": "a8419b8c13a444f053519560c1497d7b9dff6901b67e22fe6a91060af7f5b244",
+      "bytes": 719,
+      "uncompressed_sha256": "0dfc9e762e7726b67d19d34553667487c148893dee93bb91bc527f4177a918c9",
+      "uncompressed_bytes": 1165
+    },
+    {
+      "path": "model-summary.json",
+      "sha256": "e88595c7e1c2fbed5c830e3d69600029bfd5a94c16563be6829b1a556c714991",
+      "bytes": 1596
+    },
+    {
+      "path": "sdk-initial-compile.txt.gz",
+      "sha256": "823ceaae5664ed908ee588c203e6aafed9219869e9ad6e1e8db42f1ba3bc9d83",
+      "bytes": 1811,
+      "uncompressed_sha256": "f20ced511754f7d8f49992ed4cd067a3fa391bde7793b4d90a95bbfd1bc12243",
+      "uncompressed_bytes": 9080
+    },
+    {
+      "path": "sdk-initial-source.swift.gz",
+      "sha256": "10a88102aa397d77f86ce7cd892432b26ccd496ce737fdf8d72ed6b273fc26a8",
+      "bytes": 29710,
+      "uncompressed_sha256": "745043ddc73b25bf39d0d1a6f4e833092cd318bb7333ec2312e78cdd3b6780ae",
+      "uncompressed_bytes": 112997
+    },
+    {
+      "path": "sdk-initial.json.gz",
+      "sha256": "844dc3be99ef8949ffb220e46a5146afdc26ef05926f589a64e7cc528aaaa1f3",
+      "bytes": 2002,
+      "uncompressed_sha256": "66407efeb3a70750760bdf42f067b70265496757b0f96bdaaaf5bf34875d53f1",
+      "uncompressed_bytes": 6465
+    },
+    {
+      "path": "sdk-station-compile.txt.gz",
+      "sha256": "a5e5a372462a12ceeda169e1fb8f5ff0c5009ea74a02f23c1688fa4b8cfebb29",
+      "bytes": 2109,
+      "uncompressed_sha256": "c77b92060f5abcbc01efaeb26efb82c41c3bd0aa01d88559e7864733674200d7",
+      "uncompressed_bytes": 13253
+    },
+    {
+      "path": "sdk-station-raw.json.gz",
+      "sha256": "756ba8de495d3cf775416d35aedce080022b580219a54c02aa030aedb34b9c4a",
+      "bytes": 1485,
+      "uncompressed_sha256": "21f854d90a0982983c143bd194707673357cdf72d702ae842847672f4c7453d0",
+      "uncompressed_bytes": 2960
+    },
+    {
+      "path": "sdk-station-source.swift.gz",
+      "sha256": "3079e1d5645400feccffe5e01f9a268bbb1d16850ff0d6ac4eeb8b18bc348623",
+      "bytes": 30337,
+      "uncompressed_sha256": "dfbed25af8a7e910931ce9ae2efd09a80e1cd82e66ec61f6b99f6246de241cc4",
+      "uncompressed_bytes": 116442
+    },
+    {
+      "path": "sdk-summary.json",
+      "sha256": "343dededd7f455bfbcceba056cd1eb77aeee73708a079fad08d0a2b00cd14c6d",
+      "bytes": 618
+    }
+  ]
+}

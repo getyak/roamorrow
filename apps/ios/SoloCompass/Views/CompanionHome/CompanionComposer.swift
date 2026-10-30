@@ -10,6 +10,8 @@ struct CompanionComposer: View {
     var store: CompanionHomeStore? = nil
     var onAddMedia: (() -> Void)? = nil
     var onOpenMedia: ((CompanionMediaAttachment) -> Void)? = nil
+    var focusOnAppear = false
+    var onFocusChange: ((Bool) -> Void)? = nil
     @Environment(CompanionAudioSession.self) private var audio
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scenePhase) private var scenePhase
@@ -25,6 +27,18 @@ struct CompanionComposer: View {
     }
     var body: some View {
         VStack(spacing: 8) {
+            if let scopeName {
+                HStack(spacing: 8) {
+                    Image(systemName: store?.nextTurnPlace == nil ? "map" : "mappin")
+                    Text(String(format: companionText("companion.scope.next", "本次关于：%@"), scopeName))
+                        .font(.subheadline).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("companion.scope.next")
+                    CompanionIconButton(symbol: "xmark", label: companionText("companion.scope.clear", "清除本次范围")) {
+                        _ = store?.clearNextTurnScope()
+                    }.accessibilityIdentifier("companion.scope.clear")
+                }.padding(.leading, 12)
+                    .background(CompanionHomeStyle.incoming, in: RoundedRectangle(cornerRadius: 16))
+            }
             if let quote = store?.draftQuote {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "arrowshape.turn.up.left").accessibilityHidden(true)
@@ -128,7 +142,13 @@ struct CompanionComposer: View {
         }
         .foregroundStyle(CompanionHomeStyle.ink)
         .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 8)
-        .onChange(of: isActive) { _, active in if !active { stopCapture() } }
+        .onAppear { if focusOnAppear && isActive { isFocused = true } }
+        .onChange(of: focusOnAppear) { _, requested in if requested && isActive { isFocused = true } }
+        .onChange(of: isFocused) { _, focused in onFocusChange?(focused) }
+        .onChange(of: isActive) { _, active in
+            if !active { stopCapture() }
+            else if focusOnAppear { isFocused = true }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background || (phase == .inactive && audio.isRecording) { stopCapture() }
         }
@@ -136,6 +156,15 @@ struct CompanionComposer: View {
         .accessibilityElement(children: .contain).accessibilityIdentifier("companion.input.area")
         .disabled(!isActive)
     }
+    private var scopeName: String? {
+        if let place = store?.nextTurnPlace { return place.name }
+        guard let scope = store?.nextTurnArea else { return nil }
+        var labels = [scope.area.name]
+        if let query = scope.query, !query.isEmpty { labels.append(query) }
+        if let category = scope.category.flatMap(ExperienceCategory.init(rawValue:)) { labels.append(category.localizedTitle) }
+        return labels.joined(separator: " · ")
+    }
+
     private func startRecording() {
         guard isActive else { return }
         guard store?.canStartRecording == true else {

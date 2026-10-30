@@ -794,8 +794,18 @@ public final class VoiceAgentOrchestrator: Identifiable {
             // A cancellation is a deliberate stop — never fall back to a fresh
             // network call for it.
             if Task.isCancelled || error is CancellationError { return false }
-            // Streaming failed — fall back to non-streaming path.
-            return await sendToAIFallback()
+            // Only an explicit SSE rejection before output warrants a second
+            // request. Authentication, quota, timeout and partial-stream errors
+            // must remain visible instead of repeating the paid operation.
+            if AIService.shouldFallbackFromAgentStreaming(after: error) {
+                return await sendToAIFallback()
+            }
+            errorMessage = error.localizedDescription
+            uiState = .error(.network)
+            session.end(reason: .error)
+            thinkingStep = ""
+            persistConversation()
+            return false
         }
     }
 

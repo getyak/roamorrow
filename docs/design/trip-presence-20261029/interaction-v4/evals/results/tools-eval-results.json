@@ -1,0 +1,264 @@
+{
+  "runAt": "2026-10-29T17:44:20.883Z",
+  "scope": "Host contract tests plus optional bounded public Tokyo provider smoke. Not iOS, personal-data, model or production acceptance.",
+  "host": [
+    {
+      "id": "node-contracts",
+      "command": [
+        "/Users/cubxxw/Library/pnpm/store/v11/links/@/node-bin-darwin-arm64/22.23.2/28a1e843c80aa6c5ab77582f26e556c9c70038e2997a20f9f3edb7f1f39f00c7/node_modules/node-bin-darwin-arm64/bin/node",
+        "--test",
+        "--test-concurrency=1",
+        "docs/design/agent-map-layer-v1/acceptance/camera.test.mjs",
+        "docs/design/agent-map-layer-v1/acceptance/model-schema.test.mjs",
+        "docs/design/agent-map-layer-v1/acceptance/domain-live.test.mjs",
+        "docs/design/agent-map-layer-v1/acceptance/control.test.mjs",
+        "docs/design/agent-map-layer-v1/acceptance/integrity.test.mjs",
+        "docs/design/agent-map-layer-v1/acceptance/score.test.mjs"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "elapsedMs": 584,
+      "evidence": "node-contracts.log",
+      "tests": {
+        "tests": 35,
+        "pass": 35,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "id": "provider-security",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "docs/design/agent-map-layer-v1/acceptance",
+        "-p",
+        "*_test.py",
+        "-v"
+      ],
+      "exitCode": 0,
+      "error": null,
+      "elapsedMs": 112,
+      "evidence": "provider-security.log"
+    },
+    {
+      "id": "go-harness",
+      "command": [
+        "go",
+        "test",
+        "./internal/harness",
+        "-run",
+        "Test(TravelerProfileTool|ToolArguments|GoogleToolsRequire|ModelCallsRequire|CalendarToolWindow|MailToolBounds|MCP|ChatResponse|ChatWithoutConsent|ChatWithConsent|ChatBounds|ChatUntrusted)",
+        "-count=1"
+      ],
+      "exitCode": 1,
+      "error": null,
+      "elapsedMs": 107,
+      "evidence": "go-harness.log"
+    }
+  ],
+  "live": {
+    "status": "partial_pass",
+    "providerRequestLimit": 6,
+    "queries": [
+      {
+        "query": "上野公园",
+        "status": "resolved",
+        "candidates": [
+          {
+            "place_ref": "wikidata:Q746216",
+            "name": "上野公园",
+            "canonical_name": "上野公園",
+            "coordinates": [139.771111, 35.712222],
+            "provider": "Wikidata",
+            "source_url": "https://www.wikidata.org/wiki/Q746216",
+            "source_revision": "2503257609",
+            "fetched_at": "2026-10-29T17:44:26.292Z",
+            "evidence_status": "resolved",
+            "duration_minutes": 60
+          }
+        ]
+      },
+      {
+        "query": "浅草寺",
+        "status": "ambiguous",
+        "candidates": [
+          {
+            "place_ref": "wikidata:Q615183",
+            "name": "浅草寺",
+            "canonical_name": "淺草寺",
+            "coordinates": [139.79663888889, 35.714555555556],
+            "provider": "Wikidata",
+            "source_url": "https://www.wikidata.org/wiki/Q615183",
+            "source_revision": "2559821763",
+            "fetched_at": "2026-10-29T17:44:30.008Z",
+            "evidence_status": "resolved",
+            "duration_minutes": 60
+          },
+          {
+            "place_ref": "wikidata:Q130478881",
+            "name": "浅草寺",
+            "canonical_name": "浅草寺大わらじ",
+            "coordinates": [139.79666666666665, 35.71396111111111],
+            "provider": "Wikidata",
+            "source_url": "https://www.wikidata.org/wiki/Q130478881",
+            "source_revision": "2561357245",
+            "fetched_at": "2026-10-29T17:44:30.008Z",
+            "evidence_status": "resolved",
+            "duration_minutes": 60
+          }
+        ]
+      }
+    ],
+    "observations": [
+      {
+        "url": "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%E4%B8%8A%E9%87%8E%E5%85%AC%E5%9B%AD&language=zh&uselang=zh&format=json&limit=5",
+        "elapsed_ms": 1592,
+        "status": 200
+      },
+      {
+        "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q746216&props=claims%7Clabels%7Cinfo&languages=zh%7Cja%7Cen&format=json",
+        "elapsed_ms": 2734,
+        "status": 200
+      },
+      {
+        "url": "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=%E6%B5%85%E8%8D%89%E5%AF%BA&language=zh&uselang=zh&format=json&limit=5",
+        "elapsed_ms": 1175,
+        "status": 200
+      },
+      {
+        "url": "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q615183%7CQ107045289%7CQ109362059%7CQ130478881%7CQ45264844&props=claims%7Clabels%7Cinfo&languages=zh%7Cja%7Cen&format=json",
+        "elapsed_ms": 2367,
+        "status": 200
+      }
+    ],
+    "notVerified": [
+      "opening hours",
+      "correct entrance",
+      "native map UI",
+      "model autonomous orchestration",
+      "personal calendar/mail",
+      "transit or driving",
+      "payment"
+    ],
+    "testSelection": {
+      "mode": "explicit_test_oracle",
+      "placeRefs": ["wikidata:Q746216", "wikidata:Q615183"],
+      "notModelDisambiguation": true,
+      "note": "The public query 浅草寺 is ambiguous. A real user must choose; only this provider-routing smoke explicitly selects temple Q615183 rather than the sandal monument."
+    },
+    "rawEvidence": [
+      {
+        "file": "public-provider-evidence/38e4f6468dd88439d277eb1476ce2800720318ed4c1616cf5458d366f35506aa.json.gz",
+        "sha256": "62ac9f456b74fc79085fff7ff6ee449636472a8a21b30338fc099540d15e2aef",
+        "bytes": 148223
+      },
+      {
+        "file": "public-provider-evidence/6e3aa751eadc0643987f60f30623bb7ec29db46384b139dba71ac3ebe00e7e23.json.gz",
+        "sha256": "1a2641675d5a984072b8f82102c395bedfa15fb85a965fd765ec324b5def3148",
+        "bytes": 103123
+      },
+      {
+        "file": "public-provider-evidence/f947efc0bb26c3b3fc311fb6d386dab5cd2e4651c721da2e7bb0df83564cf08a.json.gz",
+        "sha256": "aa97f50eabf6cb31c39a8a8143011e936621cdb7efa940e8fc1a9e0e05c42708",
+        "bytes": 3881
+      },
+      {
+        "file": "public-provider-evidence/fa4892ef7947b640d28885a021f22d51748c4b8ec7ab700df462fd98791409dc.json.gz",
+        "sha256": "fe0f4c42e5c6227e72448bf6bc31deda52d17f640f8e65c61a22dd80f2c778f9",
+        "bytes": 1147
+      }
+    ],
+    "networkRequestsTotal": 6,
+    "matrixRequest": {
+      "status": "unavailable",
+      "error": "URLError",
+      "noFallback": true
+    },
+    "directFootRoute": {
+      "status": "passed",
+      "evidence": "public-route-direct.json",
+      "domainReplay": "public-route-domain.json",
+      "durationSeconds": 2280.1,
+      "distanceMeters": 2850.2,
+      "geometryPoints": 211,
+      "notModelOrNativeAcceptance": true
+    }
+  },
+  "continuedAt": "2026-10-29T17:46:19.040Z",
+  "prototypeStateTests": {
+    "command": "node --test --test-concurrency=1 docs/design/trip-presence-20261029/interaction-v4/evals/map-flow.test.mjs",
+    "tests": 15,
+    "pass": 15,
+    "fail": 0,
+    "evidence": "map-flow.log",
+    "scope": "fixture-based pure state contract only; not browser or iOS",
+    "sourceSha256": "e2e07d371feebd14a125052d092eb0e785300e4226ad0403f36c5b327c9ead62"
+  },
+  "goHarnessFinal": {
+    "status": "passed",
+    "toolchain": "go1.27.3",
+    "globalVersionChanged": false,
+    "GOMAXPROCS": 2,
+    "packageBuildConcurrency": 1,
+    "passedTests": [
+      "TestChatResponseShapeAndToolTrace",
+      "TestChatWithoutConsentOffersNoTools",
+      "TestChatWithConsentOffersOnlyGrantedScopes",
+      "TestChatBoundsRoundsAndCalls",
+      "TestChatUntrustedProviderTextIsNotInstructions",
+      "TestMCPInitializeLifecycle",
+      "TestMCPInitializeValidation",
+      "TestMCPPingAndToolsList",
+      "TestMCPToolsCallExecution",
+      "TestMCPToolsCallStrictArguments",
+      "TestMCPProtocolErrors",
+      "TestMCPNotificationsAcceptedWith202",
+      "TestMCPGetReturns405",
+      "TestMCPRequiresAuth",
+      "TestMCPOriginValidation",
+      "TestMCPUpperLevelProtocolChecks",
+      "TestMCPOversizedBodyFails",
+      "TestMCPTrailingGarbageRejected",
+      "TestMCPOriginValidatedOnGetDelete",
+      "TestTravelerProfileToolNeverReturnsEmail",
+      "TestToolArgumentsCannotSelectUserOrWindow",
+      "TestGoogleToolsRequireConsentThenScopeThenConnection",
+      "TestModelCallsRequireContextConsentEvenForProfile",
+      "TestCalendarToolWindowIsServerOwned",
+      "TestMailToolBoundsAndSanitizesQuery"
+    ],
+    "failedTests": [],
+    "skippedTests": [],
+    "testCount": 25,
+    "evidence": "go-harness-official.jsonl",
+    "sourceSha256": {
+      "tools.go": "a546d240b17ea04faffb21cb6e56acd72dc444e6ba4dcb249cb442fbd9e09a49",
+      "mcp.go": "85844921879456f774068f355b28e68ba1d53560d4a8fbb1b8f90b231de273f2",
+      "chat.go": "d70bc1b8c12990ff6e75aac4bd88b0dbf2fc6be8d27299513d0f5101589c6ec4"
+    },
+    "scope": "in-process HTTP/fake provider/fake model tools tests; no personal account or actual model request"
+  },
+  "nativeSearchHost": {
+    "status": "passed",
+    "checks": 56,
+    "passed": 56,
+    "evidence": "native-search-host.log",
+    "providedBy": "agent_search_fix",
+    "scope": "stubbed platform/store/network boundaries; production search fragments extracted by scripts/qa/agent-place-search-host.py; not actual MapKit/iOS or live model acceptance",
+    "reportedFixes": [
+      "consume query via query-specific search path",
+      "resolve explicit/map/current-city/authorized-location origin rather than hardcoded Chiang Mai",
+      "progressively expand based on eligible matches after quality/category filtering",
+      "reject invalidated implicit context before merging results"
+    ],
+    "readbackSourceSha256": {
+      "apps/ios/SoloCompass/Services/VoiceAgentToolRouter.swift": "291af553919e8f2c3e4dd41c3fa8417f09245b3d89005c5ee5188b28b57528ff",
+      "apps/ios/SoloCompass/ViewModels/MapViewModel.swift": "c8eab2e1de9147ba67fa1ad0a10f33a5a7a1296c1865deaa95fe2d3b689edc97",
+      "scripts/qa/agent-place-search-host.py": "2ce6eafab9c7f84a7747d8a39f5d3df7e7aa97be190ed7e3a62c7f0bf2001318"
+    }
+  }
+}

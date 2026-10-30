@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Roamorrow · 先聊聊，再出发</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+  <body class="preview-page">
+    <main class="preview-layout">
+      <section class="presentation">
+        <p class="kicker">ROAMORROW · INTERACTION 03</p>
+        <h1>先聊聊，<br />再出发。</h1>
+        <p class="lead">打开就是熟悉的对话。<br />地图在需要的时候，来到你面前。</p>
+        <div class="preview-controls" aria-label="查看设计状态">
+          <button data-scene="chat" class="selected">对话首页</button
+          ><button data-scene="typing">输入状态</button><button data-scene="trip">今天的行程</button
+          ><button data-scene="map">展开地图</button>
+        </div>
+        <div class="design-note">
+          <b>输入在上，导航在下。</b>
+          <p>对话 / 行程 / 收藏 / 我的<br />键盘出现时，导航让位给输入。</p>
+        </div>
+        <p class="demo-note">
+          交互设计稿 · 地点、时间和来源均为演示数据。<br />不连接模型、麦克风、定位、预订或支付。<br />页面刷新后恢复初始状态。
+        </p>
+      </section>
+      <div class="phone-stage">
+        <div
+          class="phone"
+          id="interactive-phone"
+          data-fixture="chat"
+          aria-label="Roamorrow iPhone 交互原型"
+        ></div>
+      </div>
+      <aside class="navigation-note">
+        <span>01 / 对话优先</span>
+        <p>问一句、看选择、确认安排。<br />始终在同一段对话里。</p>
+        <span>02 / 地图支持</span>
+        <p>先看小地图，再展开。<br />返回后继续刚才的话题。</p>
+        <span>03 / 四项导航</span>
+        <p>切换的是内容，<br />不是 Agent 的工作模式。</p>
+      </aside>
+    </main>
+    <script src="assets/data.js"></script>
+    <script src="assets/app.js"></script>
+  </body>
+</html>

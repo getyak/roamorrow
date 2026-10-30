@@ -479,6 +479,7 @@
 "location.banner.openSettings" = "打开设置";
 "explore.skeleton.oneLiner" = "一处来自 OpenStreetMap 的真实地点。";
 "explore.skeleton.oneLiner.amap" = "一处来自高德地图的真实地点。";
+"explore.skeleton.oneLiner.mapkit" = "来自 Apple 地图的真实地点，尚未评估。";
 "explore.skeleton.why" = "我们还没有这个地方的精选故事。去看看，然后告诉我们你发现了什么。";
 "explore.skeleton.why.amap" = "我们还没有这个地方的精选故事。去看看，然后告诉我们你发现了什么。";
 "explore.quota.dailyLimit" = "今日 AI 调用次数已达上限。明天恢复前会展示真实地点但不再增强。";
@@ -3229,3 +3230,65 @@
 "harness.error.network" = "无法连接账户后端，请确认设备已连接获授权的 Tailscale 网络。";
 "account.changeEmail" = "更换邮箱";
 "account.resendCode" = "重新发送";
+
+"companion.tab.conversation" = "对话";
+
+"companion.tab.map" = "地图";
+
+"companion.tab.itinerary" = "行程";
+
+"companion.tab.me" = "我的";
+
+"companion.scope.next" = "本次关于：%@";
+
+"companion.scope.clear" = "清除本次范围";
+
+"companion.map.sourceUnavailable" = "原消息已不在本机，已保留当前对话和草稿。";
+
+"companion.map.sourceKept" = "原对话与草稿已保留";
+
+"companion.map.area" = "这片地图";
+
+"companion.map.askArea" = "问问这片区域";
+
+"companion.map.showResult" = "在地图上看";
+
+"companion.map.search" = "搜索地点";
+
+"companion.map.searchPlaceholder" = "地点、咖啡馆、书店…";
+
+"map.workspace.nearby" = "附近";
+
+"map.workspace.saved" = "收藏";
+
+"map.workspace.saved.currentCity" = "当前区域";
+
+"map.workspace.saved.all" = "全部收藏";
+
+"map.workspace.saved.list" = "查看收藏列表";
+
+"map.workspace.source.return" = "回到原对话";
+
+"map.workspace.searchArea" = "更新此区域";
+
+"map.workspace.askSelected" = "聊聊这里";
+
+"map.workspace.empty.saved" = "这个范围还没有收藏，可以切回附近挑选地点。";
+
+"map.workspace.empty.results" = "当前范围没有匹配的地点。";
+
+"companion.progress.thinking" = "正在整理回复…";
+
+"companion.progress.search" = "正在查找地点…";
+
+"companion.progress.sources" = "正在核对资料…";
+
+"companion.progress.followup" = "正在记录待办…";
+
+"companion.map.retrySearch" = "重试这次搜索";
+
+"companion.map.editSearch" = "修改搜索词";
+
+"companion.map.browseNearby" = "看看附近";
+
+"companion.map.sourceMissing" = "这条回答的地点资料暂不可用，可回到原对话继续核对。";

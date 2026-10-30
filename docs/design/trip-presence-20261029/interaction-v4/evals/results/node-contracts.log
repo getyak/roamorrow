@@ -1,0 +1,220 @@
+TAP version 13
+# Subtest: every actual coordinate fits with physical pin clearance at 1050x780
+ok 1 - every actual coordinate fits with physical pin clearance at 1050x780
+  ---
+  duration_ms: 1.029833
+  type: 'test'
+  ...
+# Subtest: every actual coordinate fits with physical pin clearance at 330x400
+ok 2 - every actual coordinate fits with physical pin clearance at 330x400
+  ---
+  duration_ms: 0.116166
+  type: 'test'
+  ...
+# Subtest: private fault and clock seams cannot be enabled on public acceptance runtime
+ok 3 - private fault and clock seams cannot be enabled on public acceptance runtime
+  ---
+  duration_ms: 1.33375
+  type: 'test'
+  ...
+# Subtest: live mode uses injected catalog and exact provider time without fixture fallback
+ok 4 - live mode uses injected catalog and exact provider time without fixture fallback
+  ---
+  duration_ms: 22.985875
+  type: 'test'
+  ...
+# Subtest: live mode with missing network data never generates straight-line ETA
+ok 5 - live mode with missing network data never generates straight-line ETA
+  ---
+  duration_ms: 4.236334
+  type: 'test'
+  ...
+# Subtest: internal preparation preview leaves neither map nor idempotency result on disk
+ok 6 - internal preparation preview leaves neither map nor idempotency result on disk
+  ---
+  duration_ms: 2.10525
+  type: 'test'
+  ...
+# Subtest: share revocation is owner-only and expiry rejects the exact deadline after reload
+ok 7 - share revocation is owner-only and expiry rejects the exact deadline after reload
+  ---
+  duration_ms: 5.699708
+  type: 'test'
+  ...
+# Subtest: old running process cannot be labelled current candidate
+ok 8 - old running process cannot be labelled current candidate
+  ---
+  duration_ms: 0.687916
+  type: 'test'
+  ...
+# Subtest: response headers must match runtime identity
+ok 9 - response headers must match runtime identity
+  ---
+  duration_ms: 18.498
+  type: 'test'
+  ...
+# Subtest: requested move succeeds
+ok 10 - requested move succeeds
+  ---
+  duration_ms: 0.166666
+  type: 'test'
+  ...
+# Subtest: unrelated successful update is not a requested move
+ok 11 - unrelated successful update is not a requested move
+  ---
+  duration_ms: 0.062958
+  type: 'test'
+  ...
+# Subtest: edit without final model response is incomplete
+ok 12 - edit without final model response is incomplete
+  ---
+  duration_ms: 0.04825
+  type: 'test'
+  ...
+# Subtest: third day must remain unchanged
+ok 13 - third day must remain unchanged
+  ---
+  duration_ms: 0.096667
+  type: 'test'
+  ...
+# Subtest: truncated model output is not a normal successful finish
+ok 14 - truncated model output is not a normal successful finish
+  ---
+  duration_ms: 0.157209
+  type: 'test'
+  ...
+# Subtest: stale afterEdit cannot hide later mutation of third day
+ok 15 - stale afterEdit cannot hide later mutation of third day
+  ---
+  duration_ms: 0.094292
+  type: 'test'
+  ...
+# Subtest: moving a stop cannot silently shorten its stay
+ok 16 - moving a stop cannot silently shorten its stay
+  ---
+  duration_ms: 0.260125
+  type: 'test'
+  ...
+# Subtest: function API receives object items, original strict MCP tuple stays unchanged
+ok 17 - function API receives object items, original strict MCP tuple stays unchanged
+  ---
+  duration_ms: 1.590792
+  type: 'test'
+  ...
+# Subtest: strictly greater than 98
+ok 18 - strictly greater than 98
+  ---
+  duration_ms: 0.426917
+  type: 'test'
+  ...
+# Subtest: all verified proof fixtures produce expected scoring in this unit only
+ok 19 - all verified proof fixtures produce expected scoring in this unit only
+  ---
+  duration_ms: 4.076666
+  type: 'test'
+  ...
+# Subtest: minor missing point has verified lower bound 99
+ok 20 - minor missing point has verified lower bound 99
+  ---
+  duration_ms: 0.721917
+  type: 'test'
+  ...
+# Subtest: critical missing cannot pass
+ok 21 - critical missing cannot pass
+  ---
+  duration_ms: 0.719458
+  type: 'test'
+  ...
+# Subtest: fixture never gets live credit
+ok 22 - fixture never gets live credit
+  ---
+  duration_ms: 0.476583
+  type: 'test'
+  ...
+# Subtest: old candidate and rubric excluded
+ok 23 - old candidate and rubric excluded
+  ---
+  duration_ms: 1.168708
+  type: 'test'
+  ...
+# Subtest: DeepSeek local cannot satisfy Grok-public
+ok 24 - DeepSeek local cannot satisfy Grok-public
+  ---
+  duration_ms: 0.360125
+  type: 'test'
+  ...
+# Subtest: cannot stitch different runs
+ok 25 - cannot stitch different runs
+  ---
+  duration_ms: 0.472792
+  type: 'test'
+  ...
+# Subtest: cannot stitch revisions even with consistent per-file proofs
+ok 26 - cannot stitch revisions even with consistent per-file proofs
+  ---
+  duration_ms: 2.025208
+  type: 'test'
+  ...
+# Subtest: stale evidence rejected
+ok 27 - stale evidence rejected
+  ---
+  duration_ms: 0.672667
+  type: 'test'
+  ...
+# Subtest: pass without assertion evidence rejected
+ok 28 - pass without assertion evidence rejected
+  ---
+  duration_ms: 0.368541
+  type: 'test'
+  ...
+# Subtest: missing evidence file rejected
+ok 29 - missing evidence file rejected
+  ---
+  duration_ms: 0.272041
+  type: 'test'
+  ...
+# Subtest: changed proof bytes rejected by sha256
+ok 30 - changed proof bytes rejected by sha256
+  ---
+  duration_ms: 0.257041
+  type: 'test'
+  ...
+# Subtest: wrong assertion anchor rejected
+ok 31 - wrong assertion anchor rejected
+  ---
+  duration_ms: 0.295583
+  type: 'test'
+  ...
+# Subtest: metadata-only fake xAI response cannot earn A1
+ok 32 - metadata-only fake xAI response cannot earn A1
+  ---
+  duration_ms: 1.237958
+  type: 'test'
+  ...
+# Subtest: unknown case fails closed
+ok 33 - unknown case fails closed
+  ---
+  duration_ms: 0.436792
+  type: 'test'
+  ...
+# Subtest: failed replay cannot hide under previous pass
+ok 34 - failed replay cannot hide under previous pass
+  ---
+  duration_ms: 0.709541
+  type: 'test'
+  ...
+# Subtest: verified evidence supersedes missing coverage regardless of receipt enumeration order
+ok 35 - verified evidence supersedes missing coverage regardless of receipt enumeration order
+  ---
+  duration_ms: 0.958875
+  type: 'test'
+  ...
+1..35
+# tests 35
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 482.973791

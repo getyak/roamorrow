@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "sourceRecordedAt": "2026-10-29T17:47:30.051491+00:00",
+  "replayedAt": "2026-10-29T18:00:00.741Z",
+  "scope": "actual recorded public foot route injected into standalone acceptance domain; not native or model orchestration",
+  "sourceURL": "https://routing.openstreetmap.de/routed-foot/route/v1/driving/139.771111,35.712222;139.79663888889,35.714555555556?overview=full&geometries=geojson&steps=false",
+  "sourceResponseSha256": "98d48f0d879909c84c4ad51a521cb4cae0331035cbfce44813f87f157f48cb79",
+  "durationSeconds": 2280.1,
+  "durationMinutes": 39,
+  "distanceMeters": 2850.2,
+  "geometryPoints": 211,
+  "snappedDistanceMeters": [1.445235636, 3.339665549],
+  "schema": "existing strict build_route outputSchema",
+  "mapDemo": false
+}
