@@ -118,9 +118,9 @@ struct CompanionConversation: View {
             .onPreferenceChange(CompanionConversationViewport.self) { value in
                 guard scrolling.viewport != value else { return }
                 let resized = scrolling.viewport.height > 0 && scrolling.viewport.size != value.size
-                scrolling.updateViewport(value)
-                // Geometry observes layout; only content, explicit actions and
-                // completed keyboard changes may request a new scroll.
+                scrolling.updateViewport(value, isActive: isActive)
+                // The execution channel follows real size changes only while
+                // idle at latest; history and native gestures retain ownership.
                 if resized { traceScroll("viewport-resized") }
             }
             .contentMargins(.horizontal, CompanionHomeStyle.inset, for: .scrollContent)

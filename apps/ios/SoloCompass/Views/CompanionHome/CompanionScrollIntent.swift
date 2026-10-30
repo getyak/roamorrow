@@ -172,7 +172,17 @@ final class CompanionScrollState {
         request.consume(revision: revision)
     }
 
-    func updateViewport(_ value: CGRect) { if viewport != value { viewport = value } }
+    func updateViewport(_ value: CGRect, isActive: Bool = true) {
+        guard viewport != value else { return }
+        let resized = viewport.height > 0 && viewport.size != value.size
+        viewport = value
+        // Composer wrapping and keyboard layout can move the native position
+        // without a scroll gesture. Keep only an idle latest intention pinned.
+        if resized, value.height > 0, value.width > 0, isActive,
+           intent.followsLatest, !intent.isInteracting {
+            request.enqueue(kind: .following)
+        }
+    }
 
     private func publishPresentation() {
         let updated = Presentation(intent)

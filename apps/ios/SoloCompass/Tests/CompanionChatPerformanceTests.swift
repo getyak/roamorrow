@@ -435,4 +435,36 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertFalse(state.presentation.showsLatest)
     }
 
+
+    func testViewportChangesFollowLatestButNeverInterruptManualHistory() {
+        let state = CompanionScrollState(reading: .init())
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 500))
+        let initial = state.request.revision
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 460))
+        XCTAssertGreaterThan(state.request.revision, initial)
+        XCTAssertEqual(state.request.target, "stream-bottom")
+        XCTAssertEqual(state.request.kind, .following)
+        state.setInteraction(true)
+        state.setNearLatest(false)
+        state.setInteraction(false)
+        let manual = state.request.revision
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 400))
+        XCTAssertEqual(state.request.revision, manual)
+        XCTAssertNil(state.request.target)
+        state.revealLatest()
+        state.enqueue(kind: .explicit)
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 380))
+        XCTAssertEqual(state.request.kind, .explicit)
+        let historical = CompanionScrollState(reading: .init(anchorID: "message:source", followsLatest: false, hasUnread: false))
+        historical.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 500))
+        let restored = historical.request
+        historical.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 300))
+        XCTAssertEqual(historical.request, restored)
+        let hidden = CompanionScrollState(reading: .init())
+        hidden.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 500))
+        let hiddenRequest = hidden.request
+        hidden.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 300), isActive: false)
+        XCTAssertEqual(hidden.request, hiddenRequest)
+    }
+
 }
