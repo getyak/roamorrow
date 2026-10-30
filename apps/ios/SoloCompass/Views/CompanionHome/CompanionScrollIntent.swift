@@ -2,7 +2,22 @@ import Foundation
 
 /// User intent is independent of changing content height and layout estimates.
 struct CompanionScrollIntent: Equatable {
-    enum ScrollRequestKind: Sendable { case following, explicit, restoration }
+    enum ScrollRequestKind: Equatable, Sendable { case following, explicit, restoration }
+
+    struct ScrollRequest: Equatable, Sendable {
+        var revision = 0
+        var target: String? = "stream-bottom"
+        var animated = false
+        var kind: ScrollRequestKind = .following
+
+        mutating func cancelForInteraction() {
+            // A deferred automatic request must not revive after the gesture
+            // finishes and following becomes eligible again.
+            guard kind != .explicit, target != nil else { return }
+            revision += 1
+            target = nil
+        }
+    }
     private(set) var followsLatest: Bool
     private(set) var hasUnread: Bool
     private(set) var isInteracting = false
@@ -52,5 +67,19 @@ struct CompanionScrollIntent: Equatable {
         case .restoration: return !isInteracting
         case .following: return followsLatest && !isInteracting
         }
+    }
+
+    func permitsScroll(_ request: ScrollRequest, currentRevision: Int) -> Bool {
+        request.revision == currentRevision && request.target != nil && permitsScroll(request.kind)
+    }
+
+    func keyboardRestorationTarget(reading: CompanionConversationReadingState) -> String? {
+        guard !isInteracting else { return nil }
+        if followsLatest { return "stream-bottom" }
+        // A tall row can leave the persisted ID temporarily behind the native
+        // offset. Keyboard layout must never promote current history intent
+        // from a stale latest checkpoint or reset its unread state.
+        guard let anchor = reading.anchorID, anchor != "stream-bottom" else { return nil }
+        return anchor
     }
 }

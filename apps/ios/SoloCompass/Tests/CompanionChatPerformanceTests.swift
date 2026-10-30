@@ -293,6 +293,37 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertEqual(intent.anchorForSaving(visible: "keyboard-layout-row", saved: "user-chosen-row"), "user-chosen-row")
     }
 
+    func testAutomaticScrollQueuedBeforeAGestureCannotReviveAfterItEnds() {
+        var intent = CompanionScrollIntent(reading: .init())
+        var pending = CompanionScrollIntent.ScrollRequest(revision: 3)
+        let deferred = pending
+        intent.interactionChanged(active: true)
+        pending.cancelForInteraction()
+        intent.visibilityChanged(nearLatest: true)
+        intent.interactionChanged(active: false)
+        XCTAssertTrue(intent.permitsScroll(.following))
+        XCTAssertNil(pending.target, "An old automatic task stays cancelled even after following resumes")
+        XCTAssertGreaterThan(pending.revision, 3)
+        XCTAssertFalse(intent.permitsScroll(deferred, currentRevision: pending.revision),
+                       "A captured old task cannot depend on SwiftUI cancelling it before the next layout")
+
+        var explicit = CompanionScrollIntent.ScrollRequest(revision: 7, kind: .explicit)
+        explicit.cancelForInteraction()
+        XCTAssertEqual(explicit.target, "stream-bottom")
+        XCTAssertEqual(explicit.revision, 7)
+    }
+
+    func testKeyboardLayoutCannotPromoteCurrentHistoryIntentFromAnOldCheckpoint() {
+        var history = CompanionScrollIntent(reading: .init(anchorID: "history", followsLatest: false, hasUnread: true))
+        XCTAssertNil(history.keyboardRestorationTarget(reading: .init(anchorID: "stream-bottom", followsLatest: true)))
+        XCTAssertFalse(history.followsLatest)
+        XCTAssertTrue(history.hasUnread)
+        XCTAssertEqual(history.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false)), "source")
+        XCTAssertFalse(history.followsLatest)
+        history.interactionChanged(active: true)
+        XCTAssertNil(history.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false)))
+    }
+
     func testMapReturnPinsTheSourceInsteadOfANeighboringVisibleRow() async throws {
         let store = CompanionHomeStore(url: location())
         let agent = Agent()

@@ -272,6 +272,7 @@ jobs:
           PY
 
       - name: Seed long conversation and empty profile (CI-owned device)
+        id: chat_fixture
         shell: bash
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
@@ -295,6 +296,13 @@ jobs:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
         run: |
           set -euo pipefail
+          # Only boolean intent/phase diagnostics from this owned CI device;
+          # never message text, anchor IDs, credentials or travel information.
+          xcrun simctl spawn "$SIMULATOR_UDID" log stream --level debug --style compact \
+            --predicate 'subsystem == "com.solocompass.chat-scroll"' \
+            > "$RUNNER_TEMP/chat-native/scroll-intent.log" 2>&1 &
+          CHAT_TRACE_PID=$!
+          trap 'kill "$CHAT_TRACE_PID" 2>/dev/null || true' EXIT
           cd apps/ios
           xcodebuild test-without-building \
             -project SoloCompass.xcodeproj -scheme AccountAcceptance \
@@ -308,6 +316,8 @@ jobs:
             -configuration Debug CODE_SIGNING_ALLOWED=NO 2>&1 | tee chat-and-me.log
 
       - name: Seed populated profile with long name (CI-owned device)
+        id: chat_populated_fixture
+        if: ${{ always() && !cancelled() && steps.chat_fixture.outcome == 'success' }}
         shell: bash
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
@@ -324,6 +334,7 @@ jobs:
           xcrun simctl ui "$SIMULATOR_UDID" content_size accessibility-extra-extra-extra-large
 
       - name: Me large text, long name and dark appearance
+        if: ${{ always() && !cancelled() && steps.chat_populated_fixture.outcome == 'success' }}
         shell: bash
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}

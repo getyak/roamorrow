@@ -1,4 +1,7 @@
 import SwiftUI
+#if DEBUG
+import OSLog
+#endif
 
 @MainActor
 struct CompanionConversation: View {
@@ -13,12 +16,7 @@ struct CompanionConversation: View {
     @State private var intent: CompanionScrollIntent
     @State private var scrollRequest = ScrollRequest()
     @State private var viewport = CGRect.zero
-    private struct ScrollRequest {
-        var revision = 0
-        var target: String? = "stream-bottom"
-        var animated = false
-        var kind: CompanionScrollIntent.ScrollRequestKind = .following
-    }
+    private typealias ScrollRequest = CompanionScrollIntent.ScrollRequest
 
     init(store: CompanionHomeStore, isActive: Bool,
          onSources: @escaping (CompanionHomeEntry) -> Void,
@@ -126,10 +124,9 @@ struct CompanionConversation: View {
                 guard viewport != value else { return }
                 let resized = viewport.height > 0 && viewport.size != value.size
                 viewport = value
-                // Composer line-wrap/keyboard resizing follows the tail only
-                // when that is still the user's intent; row-size estimates do
-                // not change this viewport and cannot schedule a follow loop.
-                if resized, intent.followsLatest, !intent.isInteracting { requestLatest() }
+                // Geometry observes layout; only content, explicit actions and
+                // completed keyboard changes may request a new scroll.
+                if resized { traceScroll("viewport-resized") }
             }
             .contentMargins(.horizontal, CompanionHomeStyle.inset, for: .scrollContent)
             .scrollDismissesKeyboard(.interactively)
@@ -170,7 +167,8 @@ struct CompanionConversation: View {
                 guard request.revision > 0 else { return }
                 await Task.yield()
                 guard !Task.isCancelled, isActive, let target = request.target,
-                      intent.permitsScroll(request.kind) else { return }
+                      intent.permitsScroll(request, currentRevision: scrollRequest.revision) else { traceScroll("request-skipped"); return }
+                traceScroll("perform-\(request.kind)")
                 withAnimation(request.animated && !reduceMotion ? .easeOut(duration: 0.2) : nil) {
                     scrollProxy.scrollTo(target, anchor: .bottom)
                 }
@@ -221,27 +219,33 @@ struct CompanionConversation: View {
             // scroll view after tab/keyboard layout. Replay the stable target.
             scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, target: target, kind: .restoration)
         }
+        traceScroll("restore-presentation")
     }
 
     private func restoreAfterKeyboardLayout() {
-        guard isActive, !intent.isInteracting else { return }
+        guard isActive else { return }
+        traceScroll("keyboard-completed")
+        guard let target = intent.keyboardRestorationTarget(reading: store.readingState) else { return }
         if intent.followsLatest { requestLatest() }
-        else { restoreReading() }
+        else {
+            // The bound scroll position is also a command. Automatic layout
+            // restoration must use the cancellable queue, then let the native
+            // scroll view report its new visible ID.
+            scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, target: target, kind: .restoration)
+        }
     }
 
     private func requestLatest(force: Bool = false) {
         guard isActive else { return }
         scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, kind: force ? .explicit : .following)
+        traceScroll(force ? "request-explicit" : "request-following")
     }
 
     private func observeInteraction(_ active: Bool) {
         guard isActive, intent.isInteracting != active else { return }
         intent.interactionChanged(active: active)
-        if active, scrollRequest.kind == .restoration, scrollRequest.target != nil {
-            // Invalidate a queued restoration even if the gesture also finishes
-            // before its task resumes. Explicit send/latest actions still win.
-            scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, target: nil, kind: .restoration)
-        }
+        if active { scrollRequest.cancelForInteraction() }
+        traceScroll(active ? "phase-interacting" : "phase-idle")
         saveReading()
     }
 
@@ -250,6 +254,17 @@ struct CompanionConversation: View {
         intent.visibilityChanged(nearLatest: near)
         saveReading()
     }
+
+    // Debug-only, constant-size state diagnostics. Never record message text,
+    // identities, travel data or the scroll anchor itself.
+    private func traceScroll(_ event: String) {
+        #if DEBUG
+        Self.scrollLog.debug("event=\(event, privacy: .public) follows=\(intent.followsLatest) interacting=\(intent.isInteracting) near=\(intent.nearLatest) unread=\(intent.hasUnread) kind=\(String(describing: scrollRequest.kind), privacy: .public) revision=\(scrollRequest.revision) targetNil=\(scrollRequest.target == nil) visibleNil=\(scrollTarget == nil) savedBottom=\(store.readingState.anchorID == "stream-bottom")")
+        #endif
+    }
+    #if DEBUG
+    private static let scrollLog = Logger(subsystem: "com.solocompass.chat-scroll", category: "intent")
+    #endif
 
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 24) {

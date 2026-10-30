@@ -51,6 +51,7 @@ final class ChatAndMeUITests: XCTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(last.isHittable, "Opening the keyboard at latest keeps the tail visible")
         composer.typeText(marker)
+        XCTAssertTrue(last.isHittable, "Composer line wrapping keeps the latest tail visible")
         for _ in 0..<3 { stream.swipeDown(velocity: .fast) }
         XCTAssertEqual(composer.value as? String, marker)
         XCTAssertFalse(last.isHittable)
