@@ -44,6 +44,30 @@ final class ChatHistoryDeletionTests: XCTestCase {
         ], scopedExperienceId: nil))
     }
 
+    func testSuccessfulDeleteKeepsUnrelatedChangesPendingUntilCallerSaves() throws {
+        let container = SoloCompassModelContainer.makeInMemory()
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        let store = ChatHistoryStore(context: context)
+        isolate(store)
+        XCTAssertTrue(store.saveSession(id: "delete", messages: [
+            .init(role: .user, content: "Delete this history")
+        ], scopedExperienceId: nil))
+        let pending = ChatSessionRecord(id: "pending", scopedExperienceId: nil, title: "Unsaved",
+                                        createdAt: "old", updatedAt: "old", messageCount: 0)
+        context.insert(pending)
+        try store.deletePersisted(sessionId: "delete")
+        XCTAssertEqual(store.recentSessions().map(\.id), ["pending"])
+        XCTAssertTrue(store.messages(sessionId: "delete").isEmpty)
+        XCTAssertTrue(context.hasChanges)
+        let beforeCallerSave = ChatHistoryStore(context: ModelContext(container))
+        XCTAssertTrue(beforeCallerSave.recentSessions().isEmpty)
+        XCTAssertNoThrow(try context.save())
+        let afterCallerSave = ChatHistoryStore(context: ModelContext(container))
+        XCTAssertEqual(afterCallerSave.recentSessions().map(\.id), ["pending"])
+        XCTAssertTrue(afterCallerSave.messages(sessionId: "delete").isEmpty)
+    }
+
     @MainActor
     private final class RefusingMemoryDeletion: AgentMemoryProviding {
         let base: any AgentMemoryProviding
@@ -84,6 +108,32 @@ final class ChatHistoryDeletionTests: XCTestCase {
         XCTAssertTrue(store.messages(sessionId: descriptor.id).isEmpty)
         XCTAssertFalse(store.recentSessions().contains(where: { $0.id == descriptor.id }))
         XCTAssertTrue(memory.context(for: descriptor).records.isEmpty)
+    }
+
+    func testFailedSnapshotShrinkRetainsMessagesAndUnrelatedPendingEdits() throws {
+        let container = SoloCompassModelContainer.makeInMemory()
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        let store = ChatHistoryStore(context: context)
+        isolate(store)
+        let messages: [VoiceAgentSession.Message] = [
+            .init(role: .user, content: "Original"), .init(role: .assistant, content: "Keep the reply")
+        ]
+        XCTAssertTrue(store.saveSession(id: "shrink", messages: messages, scopedExperienceId: nil))
+        context.insert(ChatSessionRecord(id: "pending", scopedExperienceId: nil, title: "Unsaved",
+                                         createdAt: "old", updatedAt: "old", messageCount: 0))
+        let failing = ChatHistoryStore(context: context, saveSnapshot: { throw StorageFailure.full })
+        reuseRecoverySources(from: store, in: failing)
+        XCTAssertFalse(failing.saveSession(id: "shrink", messages: [messages[0]], scopedExperienceId: nil))
+        XCTAssertEqual(failing.messages(sessionId: "shrink"), messages)
+        XCTAssertEqual(Set(failing.recentSessions().map(\.id)), ["shrink", "pending"])
+        let beforeCallerSave = ChatHistoryStore(context: ModelContext(container))
+        XCTAssertEqual(beforeCallerSave.messages(sessionId: "shrink"), messages)
+        XCTAssertEqual(beforeCallerSave.recentSessions().map(\.id), ["shrink"])
+        XCTAssertNoThrow(try context.save())
+        let afterCallerSave = ChatHistoryStore(context: ModelContext(container))
+        XCTAssertEqual(afterCallerSave.messages(sessionId: "shrink"), messages)
+        XCTAssertEqual(Set(afterCallerSave.recentSessions().map(\.id)), ["shrink", "pending"])
     }
 
     func testFailedDeleteRetainsMessagesAndUnrelatedPendingEdits() throws {

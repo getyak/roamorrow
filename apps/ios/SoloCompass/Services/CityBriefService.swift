@@ -77,10 +77,10 @@ public final class CityBriefService {
         CityBriefHealth.dailyPick(from: events, now: now)
     }
 
-    /// Loads content for a city: cache first, then a TTL-gated network
-    /// refresh, then the bundled seed as last resort.
     private var loadRevision: UInt64 = 0
 
+    /// Load city content from cache, a TTL-gated refresh, or the bundled seed.
+    /// Superseded requests never publish into the active city.
     public func load(
         cityCode: String,
         now: Date = Date(),

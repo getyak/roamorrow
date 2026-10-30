@@ -3895,7 +3895,7 @@ final class SoloCompassTests: XCTestCase {
         XCTAssertTrue(result.contains(#""outcome":"retryable"#), "got: \(result)")
     }
 
-    func testToolRouterSaveToFavoritesTogglesPersistence() async throws {
+    func testToolRouterSaveToFavoritesKeepsPersistenceOnRepeatedSave() async throws {
         let rig = makeRouterTestRig()
         guard let firstId = rig.seededIds.first else {
             XCTFail("seed expected at least 1 experience")
@@ -3910,13 +3910,13 @@ final class SoloCompassTests: XCTestCase {
         XCTAssertTrue(result.contains(#""now_favorited":true"#))
         XCTAssertTrue(rig.prefs.isFavorited(firstId))
 
-        // Toggle off
+        // A new model call ID must still mean "save", so retries cannot remove it.
         let result2 = await rig.router.execute(.init(
             id: "c2", name: "save_to_favorites",
             argumentsJSON: #"{"experience_id":"\#(firstId)"}"#
         ))
-        XCTAssertTrue(result2.contains(#""now_favorited":false"#))
-        XCTAssertFalse(rig.prefs.isFavorited(firstId))
+        XCTAssertTrue(result2.contains(#""now_favorited":true"#))
+        XCTAssertTrue(rig.prefs.isFavorited(firstId))
     }
 
     func testToolRouterDismissRemovesFromVisible() async throws {

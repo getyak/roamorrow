@@ -314,6 +314,9 @@ jobs:
       - name: Test shared Agent runtime on host
         run: bash scripts/qa/agent-runtime-host.sh
 
+      - name: Test chat history transactions with SwiftData
+        run: bash scripts/qa/chat-history-host.sh
+
       - name: Install SwiftLint
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"

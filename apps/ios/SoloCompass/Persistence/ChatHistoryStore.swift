@@ -19,18 +19,23 @@ public final class ChatHistoryStore {
     public static let didDelete = Notification.Name("SoloCompass.ChatHistoryStore.didDelete")
 
     let context: ModelContext
-    private let saveDeletion: () throws -> Void
+    /// Failure-injection seam run immediately before the isolated deletion
+    /// context saves. It must not save or mutate the caller's context.
+    private let saveDeletion: (() throws -> Void)?
     private let saveSnapshot: () throws -> Void
     var recoveryJournal = FileAgentExecutionJournal.shared
     var recoveryMemory: any AgentMemoryProviding = DeviceAgentMemoryStore.shared
 
+    /// `saveDeletion` is an optional pre-commit failure hook for tests. The
+    /// store always commits deletions with its own isolated ModelContext; the
+    /// hook must not save or modify the caller's context.
     public init(
         context: ModelContext,
         saveDeletion: (() throws -> Void)? = nil,
         saveSnapshot: (() throws -> Void)? = nil
     ) {
         self.context = context
-        self.saveDeletion = saveDeletion ?? { try context.save() }
+        self.saveDeletion = saveDeletion
         self.saveSnapshot = saveSnapshot ?? { try context.save() }
     }
 
@@ -104,12 +109,19 @@ public final class ChatHistoryStore {
             // Undo only this upsert. ModelContext.rollback() would discard
             // unrelated pending edits owned by another screen sharing it.
             for row in inserted { context.delete(row) }
-            for row in deleted { context.insert(row) }
+            let deletedIDs = Set(deleted.map(\.id))
             for (row, message, index, created) in oldValues {
                 let replacement = ChatMessageRecord.fromMessage(
                     message, sessionId: sessionId, orderIndex: index, createdAt: created
                 )
-                Self.copyMessage(replacement, to: row)
+                if deletedIDs.contains(row.id) {
+                    // Reinserting the same deleted SwiftData instance does
+                    // not undelete it. Restore a fresh model with the same
+                    // durable id; a later caller save retains the old value.
+                    context.insert(replacement)
+                } else {
+                    Self.copyMessage(replacement, to: row)
+                }
             }
             if let oldMetadata {
                 session.scopedExperienceId = oldMetadata.0
@@ -162,7 +174,8 @@ public final class ChatHistoryStore {
 
     /// Persist deletion intent before removing visible history. Cleanup failure
     /// leaves the row available for retry while late turns remain invalidated.
-    /// Restore only these rows if the final SwiftData commit fails.
+    /// The deletion uses its own context, so failure never marks caller models
+    /// deleted and saving the target cannot flush unrelated caller edits.
     public func deletePersisted(sessionId: String) throws {
         guard recoveryJournal.forget(sessionID: sessionId) else {
             throw DeletionError.recoveryCleanupFailed
@@ -171,19 +184,33 @@ public final class ChatHistoryStore {
         guard recoveryMemory.forget(sessionID: sessionId) else {
             throw DeletionError.recoveryCleanupFailed
         }
-        let rows = try context.fetch(FetchDescriptor<ChatMessageRecord>(
+        let messageDescriptor = FetchDescriptor<ChatMessageRecord>(
             predicate: #Predicate { $0.sessionId == sessionId }
-        ))
-        let session = existingSession(sessionId)
-        for row in rows { context.delete(row) }
-        if let session { context.delete(session) }
+        )
+        let sessionDescriptor = FetchDescriptor<ChatSessionRecord>(
+            predicate: #Predicate { $0.id == sessionId }
+        )
+        let callerRows = try context.fetch(messageDescriptor)
+        let callerSessions = try context.fetch(sessionDescriptor)
+        let deletionContext = ModelContext(context.container)
+        deletionContext.autosaveEnabled = false
+        let persistedRows = try deletionContext.fetch(messageDescriptor)
+        let persistedSessions = try deletionContext.fetch(sessionDescriptor)
+        for row in persistedRows { deletionContext.delete(row) }
+        for session in persistedSessions { deletionContext.delete(session) }
         do {
-            try saveDeletion()
+            try saveDeletion?()
+            try deletionContext.save()
         } catch {
-            for row in rows { context.insert(row) }
-            if let session { context.insert(session) }
+            // This context owns only the target deletion. Its rollback cannot
+            // discard pending data from the caller's separate context.
+            deletionContext.rollback()
             throw error
         }
+        // Invalidate the caller's cached/pending target rows only after the
+        // durable commit. Keep its unrelated changes unsaved for their owner.
+        for row in callerRows { context.delete(row) }
+        for session in callerSessions { context.delete(session) }
         postChange()
     }
 
