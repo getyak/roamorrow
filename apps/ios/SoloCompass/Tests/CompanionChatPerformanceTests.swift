@@ -1,3 +1,4 @@
+import CoreGraphics
 import XCTest
 import Observation
 @testable import SoloCompass
@@ -389,4 +390,49 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertEqual(completed.rows.map(\.id), ["message:\(user.id)", "message:\(reply.id)"])
         XCTAssertNil(completed.replyContexts[reply.id])
     }
+
+    func testScrollPolicyPhasesDoNotNotifyUnchangedPresentation() {
+        let state = CompanionScrollState(reading: .init(anchorID: "message:history", followsLatest: false, hasUnread: false))
+        state.setInteraction(true)
+        let probe = ObservationProbe()
+        withObservationTracking { _ = state.presentation } onChange: { probe.mark() }
+        state.setInteraction(false)
+        state.setInteraction(true)
+        state.setInteraction(false)
+        XCTAssertFalse(probe.wasMarked, "Pan/deceleration policy must not republish an unchanged latest/unread control")
+        XCTAssertTrue(state.presentation.showsLatest)
+    }
+
+    func testScrollCommandAndViewportChannelsDoNotInvalidatePresentation() {
+        let state = CompanionScrollState(reading: .init())
+        let probe = ObservationProbe()
+        withObservationTracking { _ = state.presentation } onChange: { probe.mark() }
+        state.enqueue(kind: .explicit)
+        state.consume(revision: state.request.revision)
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 500))
+        XCTAssertFalse(probe.wasMarked, "Execution and viewport changes belong to their own child observers")
+        XCTAssertNil(state.request.target)
+        XCTAssertFalse(state.presentation.showsLatest)
+    }
+
+    func testScrollUnreadUpdatesPresentationWithoutExposingPolicyChanges() {
+        let state = CompanionScrollState(reading: .init(anchorID: "message:history", followsLatest: false, hasUnread: false))
+        let display = ObservationProbe()
+        withObservationTracking { _ = state.presentation } onChange: { display.mark() }
+        XCTAssertFalse(state.contentArrived(isUserAction: false))
+        XCTAssertTrue(display.wasMarked)
+        XCTAssertTrue(state.presentation.hasUnread)
+        let policy = ObservationProbe()
+        withObservationTracking { _ = state.intent } onChange: { policy.mark() }
+        state.setInteraction(true)
+        state.setInteraction(false)
+        XCTAssertFalse(policy.wasMarked, "Internal policy is not a display observation channel")
+        let cleared = ObservationProbe()
+        withObservationTracking { _ = state.presentation } onChange: { cleared.mark() }
+        state.revealLatest()
+        XCTAssertTrue(cleared.wasMarked)
+        XCTAssertFalse(state.presentation.hasUnread)
+        XCTAssertFalse(state.presentation.showsLatest)
+    }
+
 }

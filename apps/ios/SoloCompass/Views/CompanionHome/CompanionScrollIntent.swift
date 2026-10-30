@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+import Observation
 
 /// User intent is independent of changing content height and layout estimates.
 struct CompanionScrollIntent: Equatable {
@@ -103,5 +105,77 @@ struct CompanionScrollIntent: Equatable {
         // from a stale latest checkpoint or reset its unread state.
         guard let anchor = reading.anchorID, anchor != "stream-bottom" else { return nil }
         return anchor
+    }
+}
+
+
+/// Scroll policy is not display state. Only its small presentation projection
+/// and the execution channel publish changes, to their respective child views.
+@MainActor
+@Observable
+final class CompanionScrollState {
+    struct Presentation: Equatable {
+        var showsLatest: Bool
+        var hasUnread: Bool
+        init(_ intent: CompanionScrollIntent) {
+            showsLatest = intent.hasUnread || (!intent.followsLatest && !intent.nearLatest)
+            hasUnread = intent.hasUnread
+        }
+    }
+
+    @ObservationIgnored private(set) var intent: CompanionScrollIntent
+    private(set) var request: CompanionScrollIntent.ScrollRequest
+    private(set) var presentation: Presentation
+    private(set) var viewport = CGRect.zero
+
+    init(reading: CompanionConversationReadingState) {
+        let intent = CompanionScrollIntent(reading: reading)
+        self.intent = intent
+        request = .initial(reading: reading)
+        presentation = Presentation(intent)
+    }
+
+    func restore(reading: CompanionConversationReadingState) {
+        intent = CompanionScrollIntent(reading: reading)
+        if let target = reading.anchorID { request.enqueue(target: target, kind: .restoration) }
+        publishPresentation()
+    }
+
+    func setInteraction(_ active: Bool) {
+        guard intent.isInteracting != active else { return }
+        intent.interactionChanged(active: active)
+        if active { request.cancelForInteraction() }
+        publishPresentation()
+    }
+
+    func setNearLatest(_ near: Bool) {
+        guard near != intent.nearLatest else { return }
+        intent.visibilityChanged(nearLatest: near)
+        publishPresentation()
+    }
+
+    func contentArrived(isUserAction: Bool) -> Bool {
+        let follow = intent.contentArrived(isUserAction: isUserAction)
+        publishPresentation()
+        return follow
+    }
+
+    func revealLatest() { intent.revealLatest(); publishPresentation() }
+
+    func enqueue(target: String? = "stream-bottom", animated: Bool = false,
+                 kind: CompanionScrollIntent.ScrollRequestKind) {
+        request.enqueue(target: target, animated: animated, kind: kind)
+    }
+
+    func consume(revision: Int) {
+        guard request.revision == revision, request.target != nil else { return }
+        request.consume(revision: revision)
+    }
+
+    func updateViewport(_ value: CGRect) { if viewport != value { viewport = value } }
+
+    private func publishPresentation() {
+        let updated = Presentation(intent)
+        if updated != presentation { presentation = updated }
     }
 }

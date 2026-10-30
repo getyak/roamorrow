@@ -144,14 +144,13 @@ struct CompanionLegacyScrollProbe: UIViewRepresentable {
 /// node instead of re-running a factory for the entire lazy conversation.
 @MainActor
 struct CompanionScrollExecution: ViewModifier {
-    @Binding var request: CompanionScrollIntent.ScrollRequest
-    @Binding var intent: CompanionScrollIntent
+    let scrolling: CompanionScrollState
     let isActive: Bool
     let reduceMotion: Bool
     let trace: (String) -> Void
 
     func body(content: Content) -> some View {
-        let execution = CompanionScrollExecutionContext(request: $request, intent: $intent,
+        let execution = CompanionScrollExecutionContext(scrolling: scrolling,
             isActive: isActive, reduceMotion: reduceMotion, trace: trace)
         if #available(iOS 18.0, *) {
             content.modifier(CompanionModernScrollExecution(execution: execution))
@@ -172,26 +171,23 @@ private struct CompanionScrollExecutionKey: Hashable {
 
 @MainActor
 private struct CompanionScrollExecutionContext {
-    let request: Binding<CompanionScrollIntent.ScrollRequest>
-    let intent: Binding<CompanionScrollIntent>
+    let scrolling: CompanionScrollState
     let isActive: Bool
     let reduceMotion: Bool
     let trace: (String) -> Void
-    var key: CompanionScrollExecutionKey { .init(revision: request.wrappedValue.revision, isActive: isActive) }
+    var key: CompanionScrollExecutionKey { .init(revision: scrolling.request.revision, isActive: isActive) }
 
     func perform(_ move: @MainActor (String) -> Void) async {
-        let captured = request.wrappedValue
+        let captured = scrolling.request
         guard captured.revision > 0 else { return }
         await Task.yield()
         guard !Task.isCancelled, isActive, let target = captured.target,
-              intent.wrappedValue.permitsScroll(captured, current: request.wrappedValue) else {
+              scrolling.intent.permitsScroll(captured, current: scrolling.request) else {
             trace("request-skipped"); return
         }
         trace("perform-\(captured.kind)")
         withAnimation(captured.animated && !reduceMotion ? .easeOut(duration: 0.2) : nil) { move(target) }
-        var current = request.wrappedValue
-        current.consume(revision: captured.revision)
-        request.wrappedValue = current
+        scrolling.consume(revision: captured.revision)
     }
 }
 
@@ -205,8 +201,7 @@ private struct CompanionModernScrollExecution: ViewModifier {
         content.scrollPosition($position)
             .task(id: execution.key) {
                 await execution.perform { target in
-                    if target == "stream-bottom" { position.scrollTo(edge: .bottom) }
-                    else { position.scrollTo(id: target, anchor: .bottom) }
+                    position.scrollTo(id: target, anchor: .bottom)
                 }
             }
     }

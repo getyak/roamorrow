@@ -15,10 +15,7 @@ struct CompanionConversation: View {
     // Only the iOS 17 binding publishes this value. Modern visible-ID readback
     // records an ignored checkpoint without invalidating the whole lazy list.
     @State private var legacyAnchorID: String?
-    @State private var intent: CompanionScrollIntent
-    @State private var scrollRequest = ScrollRequest()
-    @State private var viewport = CGRect.zero
-    private typealias ScrollRequest = CompanionScrollIntent.ScrollRequest
+    @State private var scrolling: CompanionScrollState
 
     init(store: CompanionHomeStore, isActive: Bool,
          onSources: @escaping (CompanionHomeEntry) -> Void,
@@ -27,8 +24,7 @@ struct CompanionConversation: View {
         self.store = store; self.isActive = isActive; self.onSources = onSources
         self.onPlace = onPlace; self.onCommitments = onCommitments; self.onMedia = onMedia
         _legacyAnchorID = State(initialValue: store.readingState.anchorID)
-        _intent = State(initialValue: CompanionScrollIntent(reading: store.readingState))
-        _scrollRequest = State(initialValue: ScrollRequest.initial(reading: store.readingState))
+        _scrolling = State(initialValue: CompanionScrollState(reading: store.readingState))
     }
 
     var body: some View {
@@ -76,11 +72,7 @@ struct CompanionConversation: View {
                         }.id(row.id)
                     }
                     if store.isWorking {
-                        HStack(spacing: 10) {
-                            CompanionCharacter(activity: isActive ? store.activity : .idle, viewport: viewport)
-                            Text(progressText)
-                                .font(.subheadline).foregroundStyle(CompanionHomeStyle.secondaryInk)
-                        }
+                        CompanionWorkingIndicator(store: store, scrolling: scrolling, isActive: isActive)
                         .accessibilityElement(children: .combine)
                         .accessibilityIdentifier("companion.activity.working")
                         .id("stream-working")
@@ -124,9 +116,9 @@ struct CompanionConversation: View {
                 }
             }
             .onPreferenceChange(CompanionConversationViewport.self) { value in
-                guard viewport != value else { return }
-                let resized = viewport.height > 0 && viewport.size != value.size
-                viewport = value
+                guard scrolling.viewport != value else { return }
+                let resized = scrolling.viewport.height > 0 && scrolling.viewport.size != value.size
+                scrolling.updateViewport(value)
                 // Geometry observes layout; only content, explicit actions and
                 // completed keyboard changes may request a new scroll.
                 if resized { traceScroll("viewport-resized") }
@@ -140,8 +132,8 @@ struct CompanionConversation: View {
                 onVisibility: observeNearLatest, action: observeInteraction))
             .onPreferenceChange(CompanionConversationBottom.self) { bottom in
                 if #available(iOS 18.0, *) { return }
-                guard isActive, viewport.height > 0 else { return }
-                let near = bottom <= viewport.maxY + 24 && bottom >= viewport.minY
+                guard isActive, scrolling.viewport.height > 0 else { return }
+                let near = bottom <= scrolling.viewport.maxY + 24 && bottom >= scrolling.viewport.minY
                 observeNearLatest(near)
             }
             .onChange(of: store.presentationRestoreToken) { _, _ in restoreReading() }
@@ -152,48 +144,28 @@ struct CompanionConversation: View {
                 if new.reset { restoreReading(); return }
                 if new.contentRevision > old.contentRevision {
                     let userAction = new.userActionRevision > old.userActionRevision
-                    if intent.contentArrived(isUserAction: userAction) {
+                    if scrolling.contentArrived(isUserAction: userAction) {
                         requestLatest(force: userAction)
                     }
-                } else if intent.followsLatest && !intent.isInteracting {
+                } else if scrolling.intent.followsLatest && !scrolling.intent.isInteracting {
                     requestLatest()
                 }
                 saveReading()
             }
             .onChange(of: store.isWorking) { _, _ in
-                if intent.followsLatest && !intent.isInteracting { requestLatest() }
+                if scrolling.intent.followsLatest && !scrolling.intent.isInteracting { requestLatest() }
             }
             .onChange(of: isActive) { _, active in if active { restoreReading() } }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in restoreAfterKeyboardLayout() }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in restoreAfterKeyboardLayout() }
-            .modifier(CompanionScrollExecution(request: $scrollRequest, intent: $intent,
+            .modifier(CompanionScrollExecution(scrolling: scrolling,
                 isActive: isActive, reduceMotion: reduceMotion, trace: traceScroll))
             .overlay(alignment: .bottom) {
-                if isActive && (intent.hasUnread || (!intent.followsLatest && !intent.nearLatest)) {
-                    Button {
-                        intent.revealLatest()
-                        requestLatest(force: true)
-                        saveReading()
-                    } label: {
-                        Label(intent.hasUnread ? companionText("companion.new_content", "有新内容")
-                            : companionText("companion.scroll.latest", "回到最新"), systemImage: "arrow.down")
-                            .font(.subheadline.weight(.medium)).padding(.horizontal, 16).frame(minHeight: 44)
-                            .background(.regularMaterial, in: Capsule())
-                    }.padding(.bottom, 8)
-                        .accessibilityIdentifier("companion.stream.latest")
+                CompanionScrollLatestControl(scrolling: scrolling, isActive: isActive) {
+                    scrolling.revealLatest()
+                    requestLatest(force: true)
+                    saveReading()
                 }
-            }
-        }
-    }
-
-    private var progressText: String {
-        switch store.workingProgress {
-        case .thinking: return companionText("companion.progress.thinking", "正在整理回复…")
-        case .tool(let name):
-            switch name {
-            case "search_places": return companionText("companion.progress.search", "正在查找地点…")
-            case "manage_follow_up": return companionText("companion.progress.followup", "正在记录待办…")
-            default: return companionText("companion.progress.sources", "正在核对资料…")
             }
         }
     }
@@ -204,52 +176,46 @@ struct CompanionConversation: View {
         let visible: String?
         if #available(iOS 18.0, *) { visible = visibleAnchor ?? store.readingState.anchorID }
         else { visible = legacyAnchorID }
-        let anchor = intent.anchorForSaving(visible: visible, saved: store.readingState.anchorID)
-        guard intent.followsLatest || anchor != "stream-bottom" else { return }
-        store.noteReadingPosition(anchorID: anchor, followsLatest: intent.followsLatest, hasUnread: intent.hasUnread)
+        let anchor = scrolling.intent.anchorForSaving(visible: visible, saved: store.readingState.anchorID)
+        guard scrolling.intent.followsLatest || anchor != "stream-bottom" else { return }
+        store.noteReadingPosition(anchorID: anchor, followsLatest: scrolling.intent.followsLatest, hasUnread: scrolling.intent.hasUnread)
     }
 
     private func restoreReading() {
         legacyAnchorID = store.readingState.anchorID
-        intent = CompanionScrollIntent(reading: store.readingState)
-        if let target = store.readingState.anchorID {
-            // Observing an ID does not position modern native scroll views.
-            // Explicit map/tab restoration replays the stable target.
-            scrollRequest.enqueue(target: target, kind: .restoration)
-        }
+        scrolling.restore(reading: store.readingState)
         traceScroll("restore-presentation")
     }
 
     private func restoreAfterKeyboardLayout() {
         guard isActive else { return }
         traceScroll("keyboard-completed")
-        guard let target = intent.keyboardRestorationTarget(reading: store.readingState) else { return }
-        if intent.followsLatest { requestLatest() }
+        guard let target = scrolling.intent.keyboardRestorationTarget(reading: store.readingState) else { return }
+        if scrolling.intent.followsLatest { requestLatest() }
         else {
             // The bound scroll position is also a command. Automatic layout
             // restoration must use the cancellable queue, then let the native
             // scroll view report its new visible ID.
-            scrollRequest.enqueue(target: target, kind: .restoration)
+            scrolling.enqueue(target: target, kind: .restoration)
         }
     }
 
     private func requestLatest(force: Bool = false) {
         guard isActive else { return }
-        scrollRequest.enqueue(kind: force ? .explicit : .following)
+        scrolling.enqueue(kind: force ? .explicit : .following)
         traceScroll(force ? "request-explicit" : "request-following")
     }
 
     private func observeInteraction(_ active: Bool) {
-        guard isActive, intent.isInteracting != active else { return }
-        intent.interactionChanged(active: active)
-        if active { scrollRequest.cancelForInteraction() }
+        guard isActive, scrolling.intent.isInteracting != active else { return }
+        scrolling.setInteraction(active)
         traceScroll(active ? "phase-interacting" : "phase-idle")
         saveReading()
     }
 
     private func observeNearLatest(_ near: Bool) {
-        guard isActive, near != intent.nearLatest else { return }
-        intent.visibilityChanged(nearLatest: near)
+        guard isActive, near != scrolling.intent.nearLatest else { return }
+        scrolling.setNearLatest(near)
         saveReading()
     }
 
@@ -265,7 +231,7 @@ struct CompanionConversation: View {
     // identities, travel data or the scroll anchor itself.
     private func traceScroll(_ event: String) {
         #if DEBUG
-        Self.scrollLog.debug("event=\(event, privacy: .public) follows=\(intent.followsLatest) interacting=\(intent.isInteracting) near=\(intent.nearLatest) unread=\(intent.hasUnread) kind=\(String(describing: scrollRequest.kind), privacy: .public) revision=\(scrollRequest.revision) targetNil=\(scrollRequest.target == nil) checkpointNil=\(store.readingState.anchorID == nil) savedBottom=\(store.readingState.anchorID == "stream-bottom")")
+        Self.scrollLog.debug("event=\(event, privacy: .public) follows=\(scrolling.intent.followsLatest) interacting=\(scrolling.intent.isInteracting) near=\(scrolling.intent.nearLatest) unread=\(scrolling.intent.hasUnread) kind=\(String(describing: scrolling.request.kind), privacy: .public) revision=\(scrolling.request.revision) targetNil=\(scrolling.request.target == nil) checkpointNil=\(store.readingState.anchorID == nil) savedBottom=\(store.readingState.anchorID == "stream-bottom")")
         #endif
     }
     #if DEBUG
@@ -321,4 +287,48 @@ private struct CompanionConversationViewport: PreferenceKey {
 private struct CompanionConversationBottom: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+
+@MainActor
+private struct CompanionScrollLatestControl: View {
+    let scrolling: CompanionScrollState
+    let isActive: Bool
+    let onLatest: () -> Void
+    var body: some View {
+        if isActive && scrolling.presentation.showsLatest {
+            Button(action: onLatest) {
+                Label(scrolling.presentation.hasUnread ? companionText("companion.new_content", "有新内容")
+                    : companionText("companion.scroll.latest", "回到最新"), systemImage: "arrow.down")
+                    .font(.subheadline.weight(.medium)).padding(.horizontal, 16).frame(minHeight: 44)
+                    .background(.regularMaterial, in: Capsule())
+            }.padding(.bottom, 8)
+                .accessibilityIdentifier("companion.stream.latest")
+        }
+    }
+}
+
+@MainActor
+private struct CompanionWorkingIndicator: View {
+    let store: CompanionHomeStore
+    let scrolling: CompanionScrollState
+    let isActive: Bool
+    var body: some View {
+        HStack(spacing: 10) {
+            CompanionCharacter(activity: isActive ? store.activity : .idle, viewport: scrolling.viewport)
+            Text(progressText).font(.subheadline).foregroundStyle(CompanionHomeStyle.secondaryInk)
+        }
+    }
+    private var progressText: String {
+        switch store.workingProgress {
+        case .thinking: return companionText("companion.progress.thinking", "正在整理回复…")
+        case .tool(let name):
+            switch name {
+            case "search_places": return companionText("companion.progress.search", "正在查找地点…")
+            case "manage_follow_up": return companionText("companion.progress.followup", "正在记录待办…")
+            default: return companionText("companion.progress.sources", "正在核对资料…")
+            }
+        }
+    }
+
 }
