@@ -261,7 +261,7 @@ private struct CompanionNearbyMap: View {
             }
             mapCenter = context.region.center
             currentRegion = context.region
-            model.noteWorkspaceViewport(context.region)
+            model.noteWorkspaceViewport(context.region, userInteraction: model.cameraPosition.positionedByUser)
             guard viewport.consumeRefresh(for: context.region) else { return }
             model.refreshForLocation(context.region.center)
         }

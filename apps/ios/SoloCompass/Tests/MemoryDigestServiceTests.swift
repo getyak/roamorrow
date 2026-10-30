@@ -12,8 +12,10 @@ import SwiftData
 final class MemoryDigestServiceTests: XCTestCase {
 
     private var container: ModelContainer!
+    private var memoryDirectory: URL!
 
     override func setUp() async throws {
+        memoryDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("memory-digest-test-\(UUID())")
         // In-memory SwiftData container using the same models the production
         // schema V1_9 registers. Matches VisitTrackingServiceTests /
         // TasteUpdateServiceTests pattern.
@@ -26,6 +28,13 @@ final class MemoryDigestServiceTests: XCTestCase {
 
     override func tearDown() async throws {
         container = nil
+        try? FileManager.default.removeItem(at: memoryDirectory)
+    }
+
+    private func makeService(modelContainer: ModelContainer?) -> MemoryDigestService {
+        let service = MemoryDigestService(aiService: AIService(), modelContainer: modelContainer)
+        service.memoryProvider = DeviceAgentMemoryStore(fileURL: memoryDirectory.appendingPathComponent("memory.json"))
+        return service
     }
 
     // MARK: - rollUpRecentChats
@@ -112,7 +121,7 @@ final class MemoryDigestServiceTests: XCTestCase {
     // MARK: - digestConversation + persist
 
     func test_digestConversation_insertsSingletonWhenAbsent() async throws {
-        let svc = MemoryDigestService(aiService: AIService(), modelContainer: container)
+        let svc = makeService(modelContainer: container)
         let msgs: [VoiceAgentSession.Message] = [
             .init(role: .user, content: "quiet mornings in Chiang Mai"),
         ]
@@ -126,7 +135,7 @@ final class MemoryDigestServiceTests: XCTestCase {
     }
 
     func test_digestConversation_upsertsSingletonWhenPresent() async throws {
-        let svc = MemoryDigestService(aiService: AIService(), modelContainer: container)
+        let svc = makeService(modelContainer: container)
         await svc.digestConversation([
             .init(role: .user, content: "first visit"),
         ], cityCode: "cmi")
@@ -144,7 +153,7 @@ final class MemoryDigestServiceTests: XCTestCase {
     }
 
     func test_digestConversation_withoutContainer_noOps() async {
-        let svc = MemoryDigestService(aiService: AIService(), modelContainer: nil)
+        let svc = makeService(modelContainer: nil)
         await svc.digestConversation([
             .init(role: .user, content: "hi"),
         ])
@@ -154,12 +163,12 @@ final class MemoryDigestServiceTests: XCTestCase {
     // MARK: - currentSnapshot
 
     func test_currentSnapshot_returnsNilWhenAbsent() {
-        let svc = MemoryDigestService(aiService: AIService(), modelContainer: container)
+        let svc = makeService(modelContainer: container)
         XCTAssertNil(svc.currentSnapshot())
     }
 
     func test_currentSnapshot_returnsRowAfterDigest() async {
-        let svc = MemoryDigestService(aiService: AIService(), modelContainer: container)
+        let svc = makeService(modelContainer: container)
         await svc.digestConversation([
             .init(role: .user, content: "morning walks"),
         ])
@@ -170,7 +179,7 @@ final class MemoryDigestServiceTests: XCTestCase {
 
     func test_forgetMe_wipesAgentMemoryAndTasteProfile() async throws {
         // Seed one snapshot + one taste profile.
-        let svc = MemoryDigestService(aiService: AIService(), modelContainer: container)
+        let svc = makeService(modelContainer: container)
         await svc.digestConversation([
             .init(role: .user, content: "hello"),
         ])
@@ -195,7 +204,7 @@ final class MemoryDigestServiceTests: XCTestCase {
     }
 
     func test_forgetMe_withoutContainer_returnsFalse() {
-        let svc = MemoryDigestService(aiService: AIService(), modelContainer: nil)
+        let svc = makeService(modelContainer: nil)
         XCTAssertFalse(svc.forgetMe())
     }
 }

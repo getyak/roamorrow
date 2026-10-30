@@ -723,6 +723,7 @@ public final class MapViewModel {
     /// the map". No-op when there is no GPS fix yet.
     public func recenterOnUser() {
         guard let coordinate = locationService.currentLocation?.coordinate else { return }
+        agentSearchInteractionRevision &+= 1
         followUserLocation(coordinate)
     }
 
@@ -777,6 +778,7 @@ public final class MapViewModel {
             messageResultIDs = nil
             workspaceUsesVisibleArea = false
             mapWorkspaceRevision &+= 1
+            if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
             mapBrowsingSnapshots.removeAll()
             lastWebSearchResult = nil
             invalidateCityCache()
@@ -821,6 +823,7 @@ public final class MapViewModel {
         label: String,
         cityCode: String
     ) {
+        agentSearchInteractionRevision &+= 1
         cityPickedExplicitlyThisSession = true
         customCoordinates = coordinate
         customLocationLabel = label
@@ -1044,7 +1047,11 @@ public final class MapViewModel {
     /// GPS fix / foreground re-follow must not fight (V-007); explore's
     /// programmatic discovery passes `false` so GPS city-follow stays armed.
     public func selectCity(_ cityCode: String?, explicit: Bool = true) {
+        let priorProgrammaticAdoption = isProgrammaticCityAdoption
+        isProgrammaticCityAdoption = !explicit
+        defer { isProgrammaticCityAdoption = priorProgrammaticAdoption }
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         workspaceUsesVisibleArea = false
         messageResultIDs = nil
         lastVisibleMapCenter = nil
@@ -1207,6 +1214,10 @@ public final class MapViewModel {
     /// map source/mode/filter. Ordinary camera updates are cancelled by the
     /// host's owned search Task rather than guessed from programmatic movement.
     @ObservationIgnored private var mapWorkspaceRevision: UInt64 = 0
+    /// User-owned map intent, independent of an exploration adopting its own
+    /// discovered city/camera. Frozen tools use this to reject later gestures.
+    @ObservationIgnored private(set) var agentSearchInteractionRevision: UInt64 = 0
+    @ObservationIgnored private var isProgrammaticCityAdoption = false
     @ObservationIgnored private var workspaceUsesVisibleArea = false
 
     private struct MapBrowsingSnapshot {
@@ -1727,6 +1738,7 @@ public final class MapViewModel {
     public func setMapBrowseMode(_ mode: MapWorkspaceBrowseMode) {
         guard mode != mapBrowseMode else { return }
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         mapBrowsingSnapshots[mapBrowseMode] = MapBrowsingSnapshot(
             category: selectedCategory, customTag: selectedCustomTag, now: isNowFilter,
             legacyFavoriteFilter: isFavoriteFilter, camera: cameraPosition,
@@ -1763,6 +1775,7 @@ public final class MapViewModel {
     public func setMapFavoriteScope(_ scope: MapWorkspaceFavoriteScope) {
         guard scope != mapFavoriteScope else { return }
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         mapFavoriteScope = scope
         refreshWorkspaceMapPreservingCamera()
     }
@@ -1773,6 +1786,7 @@ public final class MapViewModel {
     public func openMessageResults(_ ids: [String], selectedID: String? = nil) {
         setMapBrowseMode(.nearby)
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         var seen: Set<String> = []
         messageResultIDs = ids.filter { seen.insert($0).inserted }
         selectedCategory = nil
@@ -1791,6 +1805,7 @@ public final class MapViewModel {
     /// caller action; this method never silently launches either.
     public func searchThisArea() {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         messageResultIDs = nil
         workspaceUsesVisibleArea = true
         refreshWorkspaceMapPreservingCamera()
@@ -1798,11 +1813,15 @@ public final class MapViewModel {
 
     /// Keep the explicitly visible area accurate even when the cheap refresh
     /// policy skips refiltering a small camera movement.
-    public func noteWorkspaceViewport(_ region: MKCoordinateRegion) {
+    public func noteWorkspaceViewport(_ region: MKCoordinateRegion, userInteraction: Bool = true) {
         guard CLLocationCoordinate2DIsValid(region.center),
               region.center.latitude.isFinite, region.center.longitude.isFinite,
               region.span.latitudeDelta.isFinite, region.span.longitudeDelta.isFinite,
               region.span.latitudeDelta > 0, region.span.longitudeDelta > 0 else { return }
+        if userInteraction,
+           lastVisibleMapCenter?.latitude != region.center.latitude || lastVisibleMapCenter?.longitude != region.center.longitude {
+            agentSearchInteractionRevision &+= 1
+        }
         lastVisibleMapCenter = region.center
         currentSpanLatitudeDelta = region.span.latitudeDelta
     }
@@ -1832,6 +1851,7 @@ public final class MapViewModel {
     /// for its existing callers while keeping this explicit UI predictable.
     public func selectWorkspaceCategory(_ category: ExperienceCategory?) {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         selectedCategory = category
         selectedCustomTag = nil
         isNowFilter = false
@@ -2255,6 +2275,7 @@ public final class MapViewModel {
     /// clearing other active filters and refreshing the map.
     public func selectCategory(_ category: ExperienceCategory?) {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         selectedCategory = category
         selectedCustomTag = nil
         isNowFilter = false
@@ -2269,6 +2290,7 @@ public final class MapViewModel {
     /// only experiences well-suited to the current time of day.
     public func selectNowFilter() {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         isNowFilter = true
         selectedCategory = nil
         selectedCustomTag = nil
@@ -2283,6 +2305,7 @@ public final class MapViewModel {
     /// exclusive. The favourite set lives in `preferences.favoritedExperiences`.
     public func selectFavoriteFilter() {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         if isFavoriteFilter {
             isFavoriteFilter = false
         } else {
@@ -2298,6 +2321,7 @@ public final class MapViewModel {
     /// Reset all active map filters back to showing every nearby experience.
     public func clearFilters() {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         selectedCategory = nil
         selectedCustomTag = nil
         isNowFilter = false
@@ -2365,6 +2389,7 @@ public final class MapViewModel {
     /// active filter. US-008.
     public func selectCustomTag(_ tag: String) {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         if selectedCustomTag == tag {
             selectedCustomTag = nil
         } else {
@@ -3033,7 +3058,8 @@ public final class MapViewModel {
     /// launched, or a human-readable no-op reason string when already at the
     /// max radius (100 km).
     @discardableResult
-    public func expandOneStage() async -> String? {
+    public func expandOneStage(isCurrent: @escaping @MainActor () -> Bool = { true }) async -> String? {
+        guard !Task.isCancelled, isCurrent() else { return "cancelled" }
         let radii = EnrichmentAgent.progressiveRadii
         let maxRadius = radii.last ?? 100_000
         guard progressiveScratchRadiusMeters < maxRadius else {
@@ -3052,7 +3078,7 @@ public final class MapViewModel {
             nextRadius = maxRadius
             lastProgressiveRadiusIndex = radii.count - 1
         }
-        await exploreProgressively(at: center, startingRadiusMeters: nextRadius)
+        await exploreProgressively(at: center, startingRadiusMeters: nextRadius, isCurrent: isCurrent)
         return nil
     }
 
@@ -3086,11 +3112,14 @@ public final class MapViewModel {
         at coordinate: CLLocationCoordinate2D,
         startingRadiusMeters: Int? = nil,
         category: ExperienceCategory? = nil,
-        filter: ExperienceFilter? = nil
+        filter: ExperienceFilter? = nil,
+        isCurrent: @escaping @MainActor () -> Bool = { true }
     ) async {
+        guard !Task.isCancelled, isCurrent() else { return }
         lastExploreCenter = coordinate
         let radius = startingRadiusMeters ?? 3000
-        await exploreNearby(at: coordinate, radiusMeters: radius, category: category)
+        await exploreNearby(at: coordinate, radiusMeters: radius, category: category, isCurrent: isCurrent)
+        guard !Task.isCancelled, isCurrent() else { return }
         if let filter {
             let trimmed = visibleExperiences.filter { filter.matches($0) }
             if trimmed.count != visibleExperiences.count {
@@ -3110,8 +3139,10 @@ public final class MapViewModel {
     public func exploreNearby(
         at coordinate: CLLocationCoordinate2D,
         radiusMeters: Int = 3000,
-        category: ExperienceCategory? = nil
+        category: ExperienceCategory? = nil,
+        isCurrent: @escaping @MainActor () -> Bool = { true }
     ) async {
+        guard !Task.isCancelled, isCurrent() else { return }
         // DIAG: trace why amap is/isn't reached — entry, gates, flag.
         // All gates short-circuit before EnrichmentAgent.basePOIs ever runs,
         // so without this log a user reporting "no amap data" can't tell
@@ -3130,7 +3161,10 @@ public final class MapViewModel {
         if !isProUser {
             logger.debug("🧭 exploreNearby: gated by paywall (free tier)")
             onPaywallUnlocked = { [weak self] in
-                Task { await self?.exploreNearby(at: coordinate, radiusMeters: radiusMeters, category: category) }
+                Task {
+                    guard isCurrent() else { return }
+                    await self?.exploreNearby(at: coordinate, radiusMeters: radiusMeters, category: category, isCurrent: isCurrent)
+                }
             }
             isShowingPaywall = true
             return
@@ -3142,7 +3176,10 @@ public final class MapViewModel {
         if !preferences.hasAcceptedExploreConsent {
             logger.debug("🧭 exploreNearby: gated by explore consent (not yet accepted)")
             onExploreConsentAccepted = { [weak self] in
-                Task { await self?.exploreNearby(at: coordinate, radiusMeters: radiusMeters, category: category) }
+                Task {
+                    guard isCurrent() else { return }
+                    await self?.exploreNearby(at: coordinate, radiusMeters: radiusMeters, category: category, isCurrent: isCurrent)
+                }
             }
             isShowingExploreConsent = true
             return
@@ -3166,9 +3203,12 @@ public final class MapViewModel {
             // US-MR-04: always clear progress on exit so a fail / partial
             // run doesn't leave the capsule stuck.
             exploreProgress = .idle
-            // US-011: clear the radius ring overlay when explore ends.
-            withAnimation(.easeOut(duration: 0.4)) {
-                exploreRadiusOverlay = nil
+            // Busy/progress belong to this invocation, including cancellation.
+            // Invalidated work must not animate the active map scene.
+            if isCurrent() {
+                withAnimation(.easeOut(duration: 0.4)) {
+                    exploreRadiusOverlay = nil
+                }
             }
         }
 
@@ -3180,6 +3220,7 @@ public final class MapViewModel {
             // US-016: resolve a real city name up front (both pipelines need
             // it). Fall back to the synthetic osm_<lat>_<lon> on geocoder miss.
             let resolved = await geocodeService.resolve(coordinate: coordinate)
+            guard !Task.isCancelled, isCurrent() else { return }
             let cityCode = resolved?.cityCode ?? Self.cityCode(for: coordinate)
 
             // Persist the discovered city so the picker shows real names
@@ -3214,7 +3255,7 @@ public final class MapViewModel {
                     locale: LanguageService.shared.effectiveLocale,
                     countryCode: resolved?.countryCode,
                     onProgress: { [weak self] progress in
-                        guard let self else { return }
+                        guard let self, !Task.isCancelled, isCurrent() else { return }
                         // Track which radius we've scanned for US-006 toast.
                         if case .scanning(let km) = progress {
                             self.progressiveScratchRadiusMeters = Int((km * 1_000).rounded())
@@ -3232,13 +3273,15 @@ public final class MapViewModel {
                         self.exploreProgress = progress
                     },
                     onBatch: { [weak self] batch in
-                        guard let self else { return }
+                        guard let self, !Task.isCancelled, isCurrent() else { return }
                         let result = self.mergeDiscoveryBatch(batch)
                         self.progressiveScratchAddedCount += result.insertedCount
                         self.exploreSessionAddedIds.formUnion(result.insertedIDs)
-                    }
+                    },
+                    isCurrent: isCurrent
                 )
 
+                guard !Task.isCancelled, isCurrent() else { return }
                 // Set the final radius so US-006 toast can reference it.
                 progressiveFinalRadiusKm = Double(progressiveScratchRadiusMeters) / 1_000
                 lastExploreAddedCount = progressiveScratchAddedCount
@@ -3274,6 +3317,7 @@ public final class MapViewModel {
                     category: category
                 )
 
+                guard !Task.isCancelled, isCurrent() else { return }
                 // US-013: Foursquare fallback when Overpass is thin.
                 var pois = overpassPois
                 let fsqKey = Secrets.resolvedFoursquareKey
@@ -3284,9 +3328,11 @@ public final class MapViewModel {
                             radiusMeters: radiusMeters,
                             category: category
                         )
+                        guard !Task.isCancelled, isCurrent() else { return }
                         preferences.incrementFoursquareCallsToday()
                         pois = FoursquareService.merge(overpass: overpassPois, foursquare: fsq)
                     } catch {
+                        guard !Task.isCancelled, isCurrent() else { return }
                         logger.debug("Foursquare fallback failed: \(error.localizedDescription, privacy: .public)")
                     }
                 }
@@ -3316,6 +3362,7 @@ public final class MapViewModel {
                     cityCode: cityCode,
                     locale: LanguageService.shared.effectiveLocale
                 )
+                guard !Task.isCancelled, isCurrent() else { return }
                 effectiveRadius = ringRadius
             }
 
@@ -3458,6 +3505,7 @@ public final class MapViewModel {
                 lastExploreToast = NSLocalizedString("explore.toast.partial", comment: "Partial nearby results")
             }
         } catch {
+            guard !Task.isCancelled, isCurrent() else { return }
             // US-022: on network failure, look for a recent nearby region and
             // surface its cached SwiftData pins instead of showing an error.
             if let region = experienceService.repo.closestRecentRegion(to: coordinate) {
@@ -3759,6 +3807,10 @@ public final class MapViewModel {
     /// Explore button.
     public var exploreAnchorCoordinate: CLLocationCoordinate2D {
         nearbyQueryOrigin
+    }
+
+    var agentLocationAccessAuthorized: Bool {
+        locationService.authorizationStatus == .authorizedWhenInUse || locationService.authorizationStatus == .authorizedAlways
     }
 
     /// Agent searches must name their actual scope and never promote the

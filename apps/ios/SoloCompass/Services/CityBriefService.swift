@@ -77,9 +77,19 @@ public final class CityBriefService {
         CityBriefHealth.dailyPick(from: events, now: now)
     }
 
-    /// Loads content for a city: cache first, then a TTL-gated network
-    /// refresh, then the bundled seed as last resort.
-    public func load(cityCode: String, now: Date = Date()) async {
+    private var loadRevision: UInt64 = 0
+
+    /// Load city content from cache, a TTL-gated refresh, or the bundled seed.
+    /// Superseded requests never publish into the active city.
+    public func load(
+        cityCode: String,
+        now: Date = Date(),
+        isCurrent: @escaping @MainActor () -> Bool = { true }
+    ) async {
+        guard !Task.isCancelled, isCurrent() else { return }
+        loadRevision &+= 1
+        let revision = loadRevision
+        let isActive: @MainActor () -> Bool = { self.loadRevision == revision && isCurrent() }
         let code = CityOSStore.normalizedCityKey(cityCode)
         loadedCityCode = code
 
@@ -94,9 +104,10 @@ public final class CityBriefService {
 
         let cacheIsFresh = cacheFetchedAt.map { now.timeIntervalSince($0) < Self.refreshTTL } ?? false
         if !cacheIsFresh {
-            await refresh(code: code, now: now)
+            await refresh(code: code, now: now, isCurrent: isActive)
         }
 
+        guard !Task.isCancelled, isActive() else { return }
         // Neither cache nor network produced anything → bundled seed.
         if kit.isEmpty && events.isEmpty, let seed = seedLoader(code) {
             applySeed(seed, cityCode: code)
@@ -105,12 +116,14 @@ public final class CityBriefService {
 
     // MARK: - Network refresh
 
-    private func refresh(code: String, now: Date) async {
+    private func refresh(code: String, now: Date, isCurrent: @MainActor () -> Bool) async {
+        guard !Task.isCancelled, isCurrent() else { return }
         let kitResult = await supabase.get(table: "city_kits", query: [
             URLQueryItem(name: "city_code", value: "eq.\(code)"),
             URLQueryItem(name: "select", value: "*"),
             URLQueryItem(name: "order", value: "section"),
         ])
+        guard !Task.isCancelled, isCurrent() else { return }
         let nowISO = ISO8601DateFormatter().string(from: now)
         let eventsResult = await supabase.get(table: "city_events", query: [
             URLQueryItem(name: "city_code", value: "eq.\(code)"),
@@ -120,6 +133,7 @@ public final class CityBriefService {
             URLQueryItem(name: "order", value: "starts_at.asc.nullsfirst"),
         ])
 
+        guard !Task.isCancelled, isCurrent() else { return }
         guard case let .success(kitData) = kitResult,
               case let .success(eventsData) = eventsResult,
               !kitData.isEmpty || !eventsData.isEmpty else {
@@ -140,6 +154,7 @@ public final class CityBriefService {
             Self.logger.error("city-brief decode failed for \(code, privacy: .public) — keeping cache")
             return
         }
+        guard !Task.isCancelled, isCurrent() else { return }
         guard !freshKit.isEmpty || !freshEvents.isEmpty else { return }
 
         kit = freshKit

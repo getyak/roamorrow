@@ -29,6 +29,8 @@ struct CompanionHomeEntry: Identifiable, Codable, Equatable, Sendable {
     var quotedMessage: CompanionQuotedMessage? = nil
     /// Stable parent association allows a retry to replace its response, not append duplicates.
     var replyToID: UUID?
+    /// Captured when this user input is accepted; retries never reacquire forgotten memory authority.
+    var memoryEpoch: UUID? = nil
 }
 
 struct CompanionHomePerson: Identifiable, Codable, Hashable, Sendable {
@@ -118,21 +120,9 @@ struct CompanionHomeFollowUpResult: Codable, Sendable {
     var error: String?
 }
 
-/// Persisted before execution. Tool identities and arguments survive a failed model continuation.
-struct CompanionHomeToolCheckpoint: Codable, Equatable, Sendable {
-    var id: String
-    var name: String
-    var argumentsJSON: String
-    var resultJSON: String?
-    var sourceTitles: [String] = []
-    var placeID: String?
-}
-
-struct CompanionHomeToolBatch: Codable, Equatable, Sendable {
-    var id: UUID = UUID()
-    var assistantContent: String?
-    var calls: [CompanionHomeToolCheckpoint]
-}
+/// Compatibility names keep existing snapshots and UI callers on the common runtime contract.
+typealias CompanionHomeToolCheckpoint = AgentToolCheckpoint
+typealias CompanionHomeToolBatch = AgentToolBatch
 
 /// A public city/map center chosen in the UI, never a device-location reading.
 struct CompanionHomeSearchArea: Codable, Equatable, Sendable {

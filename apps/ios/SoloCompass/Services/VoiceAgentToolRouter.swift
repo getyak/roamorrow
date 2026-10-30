@@ -422,6 +422,8 @@ public final class VoiceAgentToolRouter {
     /// `recall_memory` tool searches. Populated externally (typically by
     /// `MemoryDigestService` on session end); tests can seed directly.
     let memoryStore = MemoryEpisodeStore()
+    var memoryProvider: any AgentMemoryProviding = DeviceAgentMemoryStore.shared
+    var memoryScope: String = "global"
 
     /// Side effect of the last `execute(_:)` call that the chat surface can turn
     /// into an inline card (places to show, a route to adopt). Reset to `nil` at
@@ -440,6 +442,103 @@ public final class VoiceAgentToolRouter {
         case webSources([WebSearchResult])
     }
     public private(set) var lastEffect: ToolEffect?
+
+    private struct EffectSnapshot: Codable {
+        let version: Int
+        let kind: String
+        var experiences: [Experience]?
+        var route: Route?
+        var stopReasons: [String]?
+        var events: [CityEvent]?
+        var sources: [WebSearchResult]?
+    }
+
+    static func encodeEffect(_ effect: ToolEffect) -> String? {
+        var snapshot = EffectSnapshot(version: 1, kind: "")
+        switch effect {
+        case .experiences(let places):
+            snapshot = EffectSnapshot(version: 1, kind: "experiences", experiences: places)
+        case .route(let proposal):
+            snapshot = EffectSnapshot(version: 1, kind: "route", experiences: proposal.stops,
+                                      route: proposal.route, stopReasons: proposal.stopReasons)
+        case .events(let events):
+            snapshot = EffectSnapshot(version: 1, kind: "events", events: events)
+        case .webSources(let sources):
+            snapshot = EffectSnapshot(version: 1, kind: "webSources", sources: sources)
+        }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    static func decodeEffect(_ json: String) -> ToolEffect? {
+        guard let data = json.data(using: .utf8), data.count <= 8_000_000,
+              let snapshot = try? JSONDecoder().decode(EffectSnapshot.self, from: data),
+              snapshot.version == 1 else { return nil }
+        switch snapshot.kind {
+        case "experiences": return snapshot.experiences.map(ToolEffect.experiences)
+        case "route":
+            guard let route = snapshot.route, let stops = snapshot.experiences else { return nil }
+            return .route(RouteProposal(route: route, stops: stops, stopReasons: snapshot.stopReasons ?? []))
+        case "events": return snapshot.events.map(ToolEffect.events)
+        case "webSources": return snapshot.sources.map(ToolEffect.webSources)
+        default: return nil
+        }
+    }
+
+    /// Captured separately from model JSON and persisted alongside the plan.
+    /// Explicit coordinates (including a scoped place supplied by the caller)
+    /// have their own stable area and do not inherit the current map origin.
+    func originForExecution(_ originalCall: VoiceAgentSession.ToolCall) -> AgentToolOriginSnapshot? {
+        guard originalCall.name == "explore_nearby" || originalCall.name == "search_places",
+              let data = originalCall.argumentsJSON.data(using: .utf8),
+              let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              args["latitude"] == nil, args["longitude"] == nil,
+              let vm = mapViewModel, let origin = vm.agentSearchOrigin else { return nil }
+        return AgentToolOriginSnapshot(source: origin.source, latitude: origin.coordinate.latitude,
+                                       longitude: origin.coordinate.longitude, selectedCity: vm.selectedCity,
+                                       interactionRevision: vm.agentSearchInteractionRevision)
+    }
+
+    private func isOriginCurrent(_ origin: AgentToolOriginSnapshot, vm: MapViewModel) -> Bool {
+        if let revision = origin.interactionRevision, revision != vm.agentSearchInteractionRevision { return false }
+        guard ["map_viewport", "map_selection", "selected_city", "authorized_location"].contains(origin.source),
+              origin.latitude.isFinite, origin.longitude.isFinite,
+              CLLocationCoordinate2DIsValid(.init(latitude: origin.latitude, longitude: origin.longitude)),
+              vm.selectedCity == origin.selectedCity,
+              let current = vm.agentSearchOrigin else { return false }
+        return current.source == origin.source && current.coordinate.latitude == origin.latitude
+            && current.coordinate.longitude == origin.longitude
+    }
+
+    /// Once explore has validated its original area, its own programmatic city
+    /// adoption may change the visible source. Later user intent still cancels
+    /// it, as does revoking the location permission used by its snapshot.
+    func isExploreOriginCurrent(_ origin: AgentToolOriginSnapshot, vm: MapViewModel) -> Bool {
+        guard let revision = origin.interactionRevision else { return isOriginCurrent(origin, vm: vm) }
+        guard ["map_viewport", "map_selection", "selected_city", "authorized_location"].contains(origin.source),
+              revision == vm.agentSearchInteractionRevision else { return false }
+        return origin.source != "authorized_location" || vm.agentLocationAccessAuthorized
+    }
+
+    /// Resolve implicit public map state before the plan is durably accepted.
+    /// Restoring that plan must keep these arguments instead of reading a new city.
+    func prepareForExecution(_ call: VoiceAgentSession.ToolCall) -> VoiceAgentSession.ToolCall {
+        guard let data = call.argumentsJSON.data(using: .utf8),
+              var args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return call }
+        if call.name == "explore_nearby" || call.name == "search_places" {
+            if args["latitude"] == nil, args["longitude"] == nil,
+               let origin = mapViewModel?.agentSearchOrigin {
+                args["latitude"] = origin.coordinate.latitude
+                args["longitude"] = origin.coordinate.longitude
+            }
+        }
+        if call.name == "get_city_kit" || call.name == "find_local_events" {
+            if args["city_code"] == nil, let city = mapViewModel?.selectedCity { args["city_code"] = city }
+        }
+        guard let resolved = try? JSONSerialization.data(withJSONObject: args, options: [.sortedKeys]),
+              let json = String(data: resolved, encoding: .utf8) else { return call }
+        return VoiceAgentSession.ToolCall(id: call.id, name: call.name, argumentsJSON: json)
+    }
 
     /// City OS v2 content plane — resolves `get_city_kit` / `find_local_events`.
     /// Weak so the router can't outlive the view's services; a nil service
@@ -564,7 +663,7 @@ public final class VoiceAgentToolRouter {
         ),
         .init(
             name: "save_to_favorites",
-            description: "Add or remove an experience from the user's favorites. Toggle semantics — call again to un-favorite.",
+            description: "Save an experience to favorites. Already-saved experiences remain saved; this tool never removes a favorite.",
             parametersJSON: #"""
             {
               "type": "object",
@@ -885,17 +984,31 @@ public final class VoiceAgentToolRouter {
     /// a JSON string that the orchestrator feeds back as the `tool` row
     /// content. Failures are represented as `{"ok":false,"error":"…"}`
     /// rather than thrown so the agent can recover via the model.
-    public func execute(_ call: VoiceAgentSession.ToolCall) async -> String {
+    public func execute(
+        _ call: VoiceAgentSession.ToolCall,
+        isCurrent: @escaping @MainActor () -> Bool = { true }
+    ) async -> String {
+        await execute(call, isCurrent: isCurrent, origin: originForExecution(call))
+    }
+
+    func execute(
+        _ call: VoiceAgentSession.ToolCall,
+        isCurrent: @escaping @MainActor () -> Bool,
+        origin: AgentToolOriginSnapshot?
+    ) async -> String {
+        guard !Task.isCancelled, isCurrent() else {
+            return Self.cancelledJSON
+        }
         // Only the effect of THIS call should be visible to the orchestrator.
         lastEffect = nil
         do {
             switch call.name {
             case "explore_nearby":
-                return try await executeExploreNearby(args: call.argumentsJSON)
+                return try await executeExploreNearby(args: call.argumentsJSON, isCurrent: isCurrent, origin: origin)
             case "build_route":
-                return try await executeBuildRoute(args: call.argumentsJSON)
+                return try await executeBuildRoute(args: call.argumentsJSON, isCurrent: isCurrent)
             case "compile_workday_route":
-                return try await executeCompileWorkdayRoute(args: call.argumentsJSON)
+                return try await executeCompileWorkdayRoute(args: call.argumentsJSON, isCurrent: isCurrent)
             case "filter_by_category":
                 return try executeFilterByCategory(args: call.argumentsJSON)
             case "show_details":
@@ -905,15 +1018,15 @@ public final class VoiceAgentToolRouter {
             case "dismiss_recommendation":
                 return try executeDismissRecommendation(args: call.argumentsJSON)
             case "search_places":
-                return try await executeSearchPlaces(args: call.argumentsJSON)
+                return try await executeSearchPlaces(args: call.argumentsJSON, isCurrent: isCurrent, origin: origin)
             case "web_search":
-                return try await executeWebSearch(args: call.argumentsJSON)
+                return try await executeWebSearch(args: call.argumentsJSON, isCurrent: isCurrent)
             case "navigate_to":
                 return try executeNavigateTo(args: call.argumentsJSON)
             case "filter_visible":
                 return try executeFilterVisible(args: call.argumentsJSON)
             case "expand_radius":
-                return await executeExpandRadius()
+                return try await executeExpandRadius(isCurrent: isCurrent)
 
             // P2.1 additions (#210 – #216) + P3.5 (#352). Each returns a
             // JSON envelope; see the corresponding `execute…` handler for
@@ -937,16 +1050,24 @@ public final class VoiceAgentToolRouter {
 
             // City OS v2 kit / events.
             case "get_city_kit":
-                return try await executeGetCityKit(args: call.argumentsJSON)
+                return try await executeGetCityKit(args: call.argumentsJSON, isCurrent: isCurrent)
             case "find_local_events":
-                return try await executeFindLocalEvents(args: call.argumentsJSON)
+                return try await executeFindLocalEvents(args: call.argumentsJSON, isCurrent: isCurrent)
 
             default:
                 throw RouterError.unknownTool(call.name)
             }
+        } catch is CancellationError {
+            return Self.cancelledJSON
         } catch {
             return errorJSON(error)
         }
+    }
+
+    private static let cancelledJSON = #"{"ok":false,"error":"cancelled","hint":"This invocation is no longer current; no further action was dispatched."}"#
+
+    private static func checkCurrent(_ isCurrent: @MainActor () -> Bool) throws {
+        guard !Task.isCancelled, isCurrent() else { throw CancellationError() }
     }
 
     // MARK: - Per-tool handlers
@@ -962,13 +1083,18 @@ public final class VoiceAgentToolRouter {
         let progressive: Bool?
     }
 
-    private func executeExploreNearby(args: String) async throws -> String {
+    private func executeExploreNearby(args: String, isCurrent: @escaping @MainActor () -> Bool, origin trustedOrigin: AgentToolOriginSnapshot? = nil) async throws -> String {
         let parsed: ExploreNearbyArgs = try Self.decode(args, tool: "explore_nearby")
         let vm = try requireMapVM(tool: "explore_nearby")
         let origin = try resolveSearchOrigin(
-            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "explore_nearby"
+            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "explore_nearby", origin: trustedOrigin
         )
         let coord = origin.coordinate
+        let dispatchIsCurrent: @MainActor () -> Bool = { [weak self, weak vm] in
+            guard isCurrent(), let self, let vm else { return false }
+            return trustedOrigin.map { self.isExploreOriginCurrent($0, vm: vm) } ?? true
+        }
+        try Self.checkCurrent(dispatchIsCurrent)
         let useProgressive = parsed.progressive ?? true
         // Explicit radius_meters overrides the progressive starting ring.
         let radius = parsed.radius_meters ?? 3000
@@ -981,11 +1107,13 @@ public final class VoiceAgentToolRouter {
                 at: coord,
                 startingRadiusMeters: parsed.radius_meters,
                 category: category,
-                filter: Self.buildFilter(from: parsed)
+                filter: Self.buildFilter(from: parsed),
+                isCurrent: dispatchIsCurrent
             )
         } else {
-            await vm.exploreNearby(at: coord, radiusMeters: radius, category: category)
+            await vm.exploreNearby(at: coord, radiusMeters: radius, category: category, isCurrent: dispatchIsCurrent)
         }
+        try Self.checkCurrent(dispatchIsCurrent)
         // If the first ring came up empty, don't surrender — widen the search
         // automatically (the agent should compile the wider surroundings rather
         // than reply "found nothing"). Only meaningful on the progressive path,
@@ -993,12 +1121,13 @@ public final class VoiceAgentToolRouter {
         var stagesExpanded = 0
         var ladderExhausted = false
         if useProgressive {
-            let outcome = await autoExpandUntilResults(vm: vm)
+            let outcome = try await autoExpandUntilResults(vm: vm, isCurrent: dispatchIsCurrent)
             stagesExpanded = outcome.stagesExpanded
             ladderExhausted = outcome.exhausted
         }
         // Re-diff against the original snapshot so cards reflect everything the
         // auto-expansion surfaced, not just the (empty) first ring.
+        try Self.checkCurrent(dispatchIsCurrent)
         recordAddedEffect(before: before, vm: vm)
         return Self.successJSON([
             "added_count": vm.lastExploreAddedCount,
@@ -1037,13 +1166,15 @@ public final class VoiceAgentToolRouter {
     /// Returns how many stages it expanded (0 when the first ring already had
     /// results) and whether the ladder was exhausted, for the tool reply so the
     /// agent can tell the user how far it had to look.
-    private func autoExpandUntilResults(vm: MapViewModel) async -> (stagesExpanded: Int, exhausted: Bool) {
+    private func autoExpandUntilResults(vm: MapViewModel, isCurrent: @escaping @MainActor () -> Bool) async throws -> (stagesExpanded: Int, exhausted: Bool) {
         var stages = 0
         while vm.lastExploreAddedCount == 0, stages < Self.maxAutoExpandStages {
             // nil = a wider ring was launched; non-nil reason = already at max.
-            if await vm.expandOneStage() != nil {
+            try Self.checkCurrent(isCurrent)
+            if await vm.expandOneStage(isCurrent: isCurrent) != nil {
                 return (stages, true)
             }
+            try Self.checkCurrent(isCurrent)
             stages += 1
         }
         return (stages, false)
@@ -1097,10 +1228,10 @@ public final class VoiceAgentToolRouter {
     private func executeSaveToFavorites(args: String) throws -> String {
         let parsed: ExperienceIDArgs = try Self.decode(args, tool: "save_to_favorites")
         let wasFavorited = preferences.isFavorited(parsed.experience_id)
-        preferences.toggleFavorite(parsed.experience_id)
+        if !wasFavorited { preferences.toggleFavorite(parsed.experience_id) }
         return Self.successJSON([
             "experience_id": parsed.experience_id,
-            "now_favorited": !wasFavorited,
+            "now_favorited": true,
         ])
     }
 
@@ -1126,7 +1257,7 @@ public final class VoiceAgentToolRouter {
         let progressive: Bool?
     }
 
-    private func executeSearchPlaces(args: String) async throws -> String {
+    private func executeSearchPlaces(args: String, isCurrent: @escaping @MainActor () -> Bool, origin trustedOrigin: AgentToolOriginSnapshot? = nil) async throws -> String {
         let parsed: SearchPlacesArgs = try Self.decode(args, tool: "search_places")
         let vm = try requireMapVM(tool: "search_places")
         let query = parsed.query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1134,8 +1265,13 @@ public final class VoiceAgentToolRouter {
             throw RouterError.invalidArguments(tool: "search_places", reason: "query must not be empty")
         }
         let origin = try resolveSearchOrigin(
-            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "search_places"
+            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "search_places", origin: trustedOrigin
         )
+        let dispatchIsCurrent: @MainActor () -> Bool = { [weak self, weak vm] in
+            guard isCurrent(), let self, let vm else { return false }
+            return trustedOrigin.map { self.isOriginCurrent($0, vm: vm) } ?? true
+        }
+        try Self.checkCurrent(dispatchIsCurrent)
         let useProgressive = parsed.progressive ?? true
         let radius = parsed.radius_meters ?? 2000
         guard (500...100_000).contains(radius) else {
@@ -1155,15 +1291,17 @@ public final class VoiceAgentToolRouter {
         var providerHitIDs: Set<String> = []
 
         for (stage, searchRadius) in radii.enumerated() {
+            try Self.checkCurrent(dispatchIsCurrent)
             let pois: [OverpassService.POI]
             do {
                 pois = try await placeSearchService.search(
                     query: query, near: origin.coordinate, radiusMeters: searchRadius
                 )
-                try Task.checkCancellation()
+                try Self.checkCurrent(dispatchIsCurrent)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                try Self.checkCurrent(dispatchIsCurrent)
                 throw RouterError.underlying(tool: "search_places", message: "Apple Maps place search failed; no completed search results are available.")
             }
             if origin.source != "explicit_coordinates" {
@@ -1185,6 +1323,7 @@ public final class VoiceAgentToolRouter {
             }
             providerHitIDs.formUnion(discovered.map(\.id))
             let candidates = discovered.filter { filter.matches(existing[$0.id] ?? $0) }
+            try Self.checkCurrent(dispatchIsCurrent)
             let merged = vm.mergeDiscoveryBatch(candidates)
             let canonical = Dictionary(uniqueKeysWithValues: vm.allExperiences.map { ($0.id, $0) })
             var seen: Set<String> = []
@@ -1194,6 +1333,7 @@ public final class VoiceAgentToolRouter {
             // not satisfy the search. Keep the same query in the next ring.
             guard !matches.isEmpty || stage == radii.count - 1 else { continue }
             let cards = Array(matches.prefix(Self.maxCardExperiences))
+            try Self.checkCurrent(dispatchIsCurrent)
             if !cards.isEmpty { lastEffect = .experiences(cards) }
             return Self.successJSON([
                 "query": query,
@@ -1214,8 +1354,22 @@ public final class VoiceAgentToolRouter {
     }
 
     private func resolveSearchOrigin(
-        latitude: Double?, longitude: Double?, vm: MapViewModel, tool: String
+        latitude: Double?, longitude: Double?, vm: MapViewModel, tool: String,
+        origin trustedOrigin: AgentToolOriginSnapshot? = nil
     ) throws -> (coordinate: CLLocationCoordinate2D, source: String) {
+        if let trustedOrigin {
+            guard isOriginCurrent(trustedOrigin, vm: vm) else { throw CancellationError() }
+            switch (latitude, longitude) {
+            case let (.some(latitude), .some(longitude)):
+                guard latitude == trustedOrigin.latitude, longitude == trustedOrigin.longitude else {
+                    throw RouterError.invalidArguments(tool: tool, reason: "resolved coordinates conflict with the saved search origin")
+                }
+            case (.none, .none): break
+            default:
+                throw RouterError.invalidArguments(tool: tool, reason: "provide both latitude and longitude, or omit both to use the current map area")
+            }
+            return (.init(latitude: trustedOrigin.latitude, longitude: trustedOrigin.longitude), trustedOrigin.source)
+        }
         switch (latitude, longitude) {
         case let (.some(latitude), .some(longitude)):
             let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
@@ -1246,7 +1400,7 @@ public final class VoiceAgentToolRouter {
     /// them) and sets `lastEffect = .webSources` (so the UI can render tappable
     /// source cards). An available empty result differs from an unavailable
     /// search; the latter must not be described as a completed search.
-    private func executeWebSearch(args: String) async throws -> String {
+    private func executeWebSearch(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
         let parsed: WebSearchArgs = try Self.decode(args, tool: "web_search")
         let query = parsed.query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
@@ -1255,6 +1409,7 @@ public final class VoiceAgentToolRouter {
 
         let topic: WebSearchService.Topic = (parsed.topic == "news") ? .news : .general
         let outcome = await webSearchService.searchOutcome(query: query, topic: topic, days: parsed.days)
+        try Self.checkCurrent(isCurrent)
         let results = outcome.results
 
         // Surface source cards to the UI only when the search actually returned
@@ -1353,7 +1508,7 @@ public final class VoiceAgentToolRouter {
     /// and orders grounded candidates; the LLM can only edit route copy. When
     /// `experience_ids` are given, they're prioritised as the candidate pool;
     /// otherwise the whole visible set is the pool.
-    private func executeBuildRoute(args: String) async throws -> String {
+    private func executeBuildRoute(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
         let parsed: BuildRouteArgs = try Self.decode(args, tool: "build_route")
         let vm = try requireMapVM(tool: "build_route")
         guard let ai = aiService else {
@@ -1390,6 +1545,7 @@ public final class VoiceAgentToolRouter {
             cityCode: cityCode,
             userCoordinate: vm.exploreAnchorCoordinate
         )
+        try Self.checkCurrent(isCurrent)
         // Resolve stops in walk order so the card can render names without a lookup.
         let byId = Dictionary(uniqueKeysWithValues: candidates.map { ($0.id, $0) })
         let stops = route.experienceIds.compactMap { byId[$0] }
@@ -1408,7 +1564,7 @@ public final class VoiceAgentToolRouter {
     /// Compile a task-shaped work block against server-side evidence and a real
     /// travel matrix. All current visible ids are passed as explicit candidate
     /// pools so the returned route stays RAG-grounded and fully renderable.
-    private func executeCompileWorkdayRoute(args: String) async throws -> String {
+    private func executeCompileWorkdayRoute(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
         let parsed: CompileWorkdayArgs = try Self.decode(args, tool: "compile_workday_route")
         let vm = try requireMapVM(tool: "compile_workday_route")
 
@@ -1554,6 +1710,7 @@ public final class VoiceAgentToolRouter {
             }
         }
 
+        try Self.checkCurrent(isCurrent)
         switch result {
         case .solved(let route):
             let byId = Dictionary(uniqueKeysWithValues: visible.map { ($0.id, $0) })
@@ -1665,11 +1822,14 @@ public final class VoiceAgentToolRouter {
 
     // MARK: - expand_radius (US-021)
 
-    private func executeExpandRadius() async -> String {
+    private func executeExpandRadius(isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
         guard let vm = mapViewModel else {
             return errorJSON(RouterError.dependencyUnavailable(tool: "expand_radius", dependency: "map view model", hint: "The map session isn't active. Ask the user to reopen the map before this tool can run."))
         }
-        if let noopReason = await vm.expandOneStage() {
+        try Self.checkCurrent(isCurrent)
+        let noopReason = await vm.expandOneStage(isCurrent: isCurrent)
+        try Self.checkCurrent(isCurrent)
+        if let noopReason {
             return Self.successJSON([
                 "expanded": false,
                 "reason": noopReason,
@@ -2026,11 +2186,33 @@ public final class VoiceAgentToolRouter {
         }
         let limit = max(1, min(5, parsed.limit ?? 3))
 
-        let hits = memoryStore.search(
-            query: trimmed,
-            cityCode: parsed.city_code,
-            limit: limit
-        )
+        let memoryStatus = memoryProvider.context(for: .init(id: "router-memory-status", scope: memoryScope))
+        guard memoryStatus.isAvailable else {
+            let outcome: ToolOutcome<RecallMemoryPayload> = .fatal(
+                reason: .dependencyUnavailable,
+                hint: "Device conversation memory is unavailable. This is not an empty search and does not mean prior conversations never happened. Do not claim history was checked."
+            )
+            return outcome.encodeForModel()
+        }
+
+        let scopedHits = memoryProvider.recall(query: trimmed, scope: memoryScope, limit: limit, cityCode: parsed.city_code)
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        var hits = scopedHits.map {
+            RecallMemoryPayload.Hit(id: $0.id, occurred_at: iso.string(from: $0.occurredAt),
+                                    city_code: $0.cityCode, title: $0.title, body: $0.body,
+                                    tags: ["past-dialogue", "unverified"], score: $0.score)
+        }
+        // Compatibility seam for tests/legacy explicitly supplied episodes.
+        // This unpopulated store is never described as complete history.
+        if hits.isEmpty, !memoryStore.episodes.isEmpty, memoryScope == "global" {
+            hits = memoryStore.search(query: trimmed, cityCode: parsed.city_code, limit: limit).map {
+                RecallMemoryPayload.Hit(id: $0.episode.id.uuidString,
+                                        occurred_at: iso.string(from: $0.episode.occurredAt),
+                                        city_code: $0.episode.cityCode, title: $0.episode.title,
+                                        body: $0.episode.body, tags: $0.episode.tags, score: $0.score)
+            }
+        }
 
         // Empty result → retryable with a specific widen hint. The model
         // can re-query with the city filter dropped, or drop to broader
@@ -2040,7 +2222,7 @@ public final class VoiceAgentToolRouter {
             if parsed.city_code != nil {
                 hint = "No episodes matched '\(trimmed)' scoped to city '\(parsed.city_code!)'. Retry once WITHOUT the city_code, or rephrase the query using different keywords the user actually said."
             } else {
-                hint = "No episodes matched '\(trimmed)'. The store may have no relevant history yet, or the query is too narrow — tell the user you don't have that memory rather than retrying with the same phrase."
+                hint = "No episodes matched '\(trimmed)'. Only saved completed dialogue in this scope is available; missing or unavailable history is not proof that a conversation never happened. The query may be too narrow — tell the user you don't have that memory rather than retrying with the same phrase."
             }
             let outcome: ToolOutcome<RecallMemoryPayload> = .retryable(
                 reason: .emptyResult,
@@ -2051,23 +2233,7 @@ public final class VoiceAgentToolRouter {
             return outcome.encodeForModel()
         }
 
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime]
-
-        let payload = RecallMemoryPayload(
-            hits: hits.map { h in
-                RecallMemoryPayload.Hit(
-                    id: h.episode.id.uuidString,
-                    occurred_at: iso.string(from: h.episode.occurredAt),
-                    city_code: h.episode.cityCode,
-                    title: h.episode.title,
-                    body: h.episode.body,
-                    tags: h.episode.tags,
-                    score: h.score
-                )
-            },
-            queried: trimmed
-        )
+        let payload = RecallMemoryPayload(hits: hits, queried: trimmed)
         let outcome: ToolOutcome<RecallMemoryPayload> = .ok(
             payload: payload,
             hint: "Cite the surfaced episodes with a natural aside — 'you mentioned X last time' — before your recommendation. Don't dump the full body verbatim."
@@ -2087,11 +2253,13 @@ public final class VoiceAgentToolRouter {
     /// ONLY from `ComplianceService` (never invented by the model); when the
     /// user hasn't set an entry date, the visa row carries a `visa_setup_needed`
     /// flag instead of numbers.
-    private func executeGetCityKit(args: String) async throws -> String {
+    private func executeGetCityKit(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
         let parsed: GetCityKitArgs = try Self.decode(args, tool: "get_city_kit")
         let service = try requireCityBrief(tool: "get_city_kit")
         let code = try resolveCityCode(param: parsed.city_code, tool: "get_city_kit")
-        await service.load(cityCode: code)
+        await service.load(cityCode: code, isCurrent: isCurrent)
+        try Self.checkCurrent(isCurrent)
+        guard service.loadedCityCode == code else { throw CancellationError() }
 
         let wanted: Set<String>? = parsed.kinds.map(Set.init)
         let rows = service.kit.filter { wanted?.contains($0.kind.rawValue) ?? true }
@@ -2138,11 +2306,13 @@ public final class VoiceAgentToolRouter {
     /// Filter the city's active events by window / solo score / keyword and set
     /// a `.events` effect so the chat surface renders tappable event cards.
     /// Notices are always kept (a road closure isn't scored but matters).
-    private func executeFindLocalEvents(args: String) async throws -> String {
+    private func executeFindLocalEvents(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
         let parsed: FindLocalEventsArgs = try Self.decode(args, tool: "find_local_events")
         let service = try requireCityBrief(tool: "find_local_events")
         let code = try resolveCityCode(param: parsed.city_code, tool: "find_local_events")
-        await service.load(cityCode: code)
+        await service.load(cityCode: code, isCurrent: isCurrent)
+        try Self.checkCurrent(isCurrent)
+        guard service.loadedCityCode == code else { throw CancellationError() }
 
         let now = Date()
         let withinDays = max(1, min(30, parsed.within_days ?? 7))

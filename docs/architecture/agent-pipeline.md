@@ -1,5 +1,11 @@
 # Agent Pipeline — Architecture Decision
 
+> Historical decision from 2026-05-21. The unused AgentRouter pipeline described
+> below has been removed. Its “current state” and cleanup steps are a record of
+> that decision, not the current production architecture. See the
+> [unified device Agent runtime](unified-agent-runtime.md) for the companion and
+> legacy map adapters in use today.
+
 **Status:** DECIDED — Delete AgentRouter now (`delete-now`)
 **Date:** 2026-05-21
 **Scope:** `apps/ios/SoloCompass/Services/Agents/AgentRouter.swift` and `Services/FeatureFlags.agentRouterEnabled`

@@ -36,10 +36,18 @@ members = [
     "    private static func decode<",
     "    private static func successJSON(",
 ]
-optional_members = ["    private func resolveSearchOrigin("]
+optional_members = [
+    "    private func resolveSearchOrigin(", "    private static func checkCurrent(",
+    "    func originForExecution(", "    private func isOriginCurrent(", "    func prepareForExecution(",
+    "    func isExploreOriginCurrent(", "    private func isExploreOriginCurrent(",
+]
 extracted = "\n".join(block(router, member) for member in members)
 extracted += "\n" + "\n".join(block(router, member) for member in optional_members if member in router)
 origin = block(model, "    var agentSearchOrigin:") if "    var agentSearchOrigin:" in model else "    var agentSearchOrigin: (coordinate: CLLocationCoordinate2D, source: String)? { nil }"
+runtime_models = (APP / "Services/AgentRuntime/AgentRuntimeModels.swift").read_text()
+origin_model = block(runtime_models, "struct AgentToolOriginSnapshot:")
+session_source = (APP / "Services/VoiceAgentSession.swift").read_text()
+tool_call_model = "public enum VoiceAgentSession {\n" + block(session_source, "    public struct ToolCall:") + "\n}\n"
 quality_protocol = router[router.index("private protocol QualityArgsProvider"):router.index("/// Maps DeepSeek")]
 filter_source = (APP / "Models/ExperienceFilter.swift").read_text()
 experience_source = (APP / "Models/Experience.swift").read_text().split("    /// Returns a new Experience with selected fields overridden.")[0] + "\n}\n"
@@ -105,10 +113,14 @@ enum Authorization { case notDetermined, denied, authorizedWhenInUse, authorized
     var lastExploreAddedCount = 0
     var genericRequests: [CLLocationCoordinate2D] = []
     var isSearchingWeb = false
+    var agentSearchInteractionRevision: UInt64 = 0
+    var agentLocationAccessAuthorized: Bool {
+        locationService.authorizationStatus == .authorizedWhenInUse || locationService.authorizationStatus == .authorizedAlways
+    }
     static func cityCodeMatches(_ lhs: String, selected rhs: String) -> Bool { lhs == rhs }
     static func cityCode(for coordinate: CLLocationCoordinate2D) -> String { "geo_\(coordinate.longitude)_\(coordinate.latitude)" }
-    func exploreProgressively(at coordinate: CLLocationCoordinate2D, startingRadiusMeters: Int?, category: ExperienceCategory?, filter: ExperienceFilter?) async { genericRequests.append(coordinate) }
-    func exploreNearby(at coordinate: CLLocationCoordinate2D, radiusMeters: Int, category: ExperienceCategory?) async { genericRequests.append(coordinate) }
+    func exploreProgressively(at coordinate: CLLocationCoordinate2D, startingRadiusMeters: Int?, category: ExperienceCategory?, filter: ExperienceFilter?, isCurrent: @escaping @MainActor () -> Bool = { true }) async { if isCurrent() { genericRequests.append(coordinate) } }
+    func exploreNearby(at coordinate: CLLocationCoordinate2D, radiusMeters: Int, category: ExperienceCategory?, isCurrent: @escaping @MainActor () -> Bool = { true }) async { if isCurrent() { genericRequests.append(coordinate) } }
     func mergeDiscoveryBatch(_ experiences: [Experience]) -> DiscoveryMergeResult {
         var inserted: Set<String> = []
         for value in experiences {
@@ -129,19 +141,27 @@ wrapper = r'''
     var isSearchingPlaces = false
     private lazy var placeSearchService = MapKitPOIService()
     let vm: MapViewModel
+    private var mapViewModel: MapViewModel? { vm }
     init(vm: MapViewModel) { self.vm = vm }
     private static let maxCardExperiences = 6
     private static let maxAutoExpandStages = 6
     private func requireMapVM(tool: String) throws -> MapViewModel { vm }
-    private func autoExpandUntilResults(vm: MapViewModel) async -> (stagesExpanded: Int, exhausted: Bool) { (0, false) }
+    private func autoExpandUntilResults(vm: MapViewModel, isCurrent: @escaping @MainActor () -> Bool = { true }) async throws -> (stagesExpanded: Int, exhausted: Bool) { (0, false) }
 '''
 cases = r'''
     func search(_ args: String) async throws -> [String: Any] {
-        let json = try await executeSearchPlaces(args: args)
+        let json = try await executeSearchPlaces(args: args, isCurrent: { true })
         return try JSONSerialization.jsonObject(with: Data(json.utf8)) as! [String: Any]
     }
     func explore(_ args: String = "{}") async throws -> [String: Any] {
-        let json = try await executeExploreNearby(args: args)
+        let json = try await executeExploreNearby(args: args, isCurrent: { true })
+        return try JSONSerialization.jsonObject(with: Data(json.utf8)) as! [String: Any]
+    }
+    func preparedSearch(_ args: String) async throws -> [String: Any] {
+        let original = VoiceAgentSession.ToolCall(id: "prepared", name: "search_places", argumentsJSON: args)
+        let savedOrigin = originForExecution(original)
+        let resolved = prepareForExecution(original)
+        let json = try await executeSearchPlaces(args: resolved.argumentsJSON, isCurrent: { true }, origin: savedOrigin)
         return try JSONSerialization.jsonObject(with: Data(json.utf8)) as! [String: Any]
     }
 }
@@ -332,6 +352,34 @@ cases = r'''
             vm.locationService.currentLocation = CLLocation(latitude: 91, longitude: 139)
             check(vm.agentSearchOrigin == nil, "invalid GPS coordinate is rejected")
         }
+        do {
+            let (_, router) = fixture()
+            MapKitPOIService.responses = [[poi]]
+            let result = try await router.preparedSearch(#"{"query":"ramen","progressive":false}"#)
+            check(result["origin_source"] as? String == "map_viewport", "prepared implicit query retains original viewport provenance")
+        }
+        do {
+            let (vm, router) = fixture()
+            MapKitPOIService.responses = [[poi]]
+            MapKitPOIService.onRequest = { vm.selectedCity = "kyoto" }
+            do {
+                _ = try await router.preparedSearch(#"{"query":"ramen","progressive":false}"#)
+                check(false, "prepared implicit query rejects city change during provider await")
+            } catch { check(true, "prepared implicit query rejects city change during provider await") }
+            check(vm.allExperiences.isEmpty && router.lastEffect == nil, "prepared stale city result never reaches map or cards")
+        }
+        do {
+            let (vm, router) = fixture()
+            MapKitPOIService.responses = [[poi]]
+            MapKitPOIService.onRequest = {
+                vm.lastVisibleMapCenter = CLLocationCoordinate2D(latitude: 35.01, longitude: 135.76)
+            }
+            do {
+                _ = try await router.preparedSearch(#"{"query":"ramen","progressive":false}"#)
+                check(false, "prepared implicit query rejects viewport change during provider await")
+            } catch { check(true, "prepared implicit query rejects viewport change during provider await") }
+            check(vm.allExperiences.isEmpty && router.lastEffect == nil, "prepared stale viewport result never reaches map or cards")
+        }
         print("Agent place search: \(checks - failures)/\(checks) host checks passed (stubbed platform/store/network boundaries).")
         if failures != 0 { exit(1) }
     }
@@ -361,7 +409,7 @@ extension Experience {
 '''
 stubs = stubs.replace("enum ExperienceCategory: String, Sendable { case culture, nature, food, coffee, work, wellness, nightlife, hidden }", "")
 stubs = stubs.replace("// ENRICHMENT_RADII", "enum EnrichmentAgent { " + progressive_radii + " }")
-source.write_text(experience_source + fixture_extension + skeleton + "\n}\n" + policy + badge + stubs + origin + "\n}\n" + quality_protocol + filter_source + wrapper[wrapper.index("@MainActor final class VoiceAgentToolRouter"):] + extracted + cases)
+source.write_text(origin_model + "\n" + tool_call_model + experience_source + fixture_extension + skeleton + "\n}\n" + policy + badge + stubs + origin + "\n}\n" + quality_protocol + filter_source + wrapper[wrapper.index("@MainActor final class VoiceAgentToolRouter"):] + extracted + cases)
 command = ["xcrun", "swiftc", "-parse-as-library", "-strict-concurrency=complete", "-warnings-as-errors", "-module-cache-path", str(artifact / "ModuleCache"), str(source), "-o", str(artifact / "agent-place-search")]
 subprocess.run(command, check=True)
 subprocess.run([str(artifact / "agent-place-search")], check=True)
