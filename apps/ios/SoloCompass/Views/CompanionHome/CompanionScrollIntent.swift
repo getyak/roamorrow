@@ -10,6 +10,23 @@ struct CompanionScrollIntent: Equatable {
         var animated = false
         var kind: ScrollRequestKind = .following
 
+        static func initial(reading: CompanionConversationReadingState) -> Self {
+            guard !reading.followsLatest else { return Self() }
+            return Self(revision: reading.anchorID == nil ? 0 : 1, target: reading.anchorID, kind: .restoration)
+        }
+
+        mutating func enqueue(target: String? = "stream-bottom", animated: Bool = false, kind: ScrollRequestKind) {
+            // Working/content notifications can follow a send in the same
+            // render turn. Preserve that explicit intent until it is consumed.
+            let pendingSend = self.target != nil && self.target == target && self.kind == .explicit && kind == .following
+            self = Self(revision: revision + 1, target: target, animated: animated, kind: pendingSend ? .explicit : kind)
+        }
+
+        mutating func consume(revision: Int) {
+            guard self.revision == revision else { return }
+            target = nil
+        }
+
         mutating func cancelForInteraction() {
             // A deferred automatic request must not revive after the gesture
             // finishes and following becomes eligible again.
@@ -70,8 +87,8 @@ struct CompanionScrollIntent: Equatable {
         }
     }
 
-    func permitsScroll(_ request: ScrollRequest, currentRevision: Int) -> Bool {
-        request.revision == currentRevision && request.target != nil && permitsScroll(request.kind)
+    func permitsScroll(_ request: ScrollRequest, current: ScrollRequest) -> Bool {
+        current.target != nil && request.revision == current.revision && request.target != nil && permitsScroll(request.kind)
     }
 
     func keyboardRestorationTarget(reading: CompanionConversationReadingState) -> String? {

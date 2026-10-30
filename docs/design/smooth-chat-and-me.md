@@ -26,6 +26,7 @@ GET-338 · 2026-10-30
 6. 地图返回固定以来源消息 ID 定位，即使 ID 未变也显式重放定位。键盘展开/收起后保留历史目标；布局引发的可见行回写不替代用户阅读意图，真实拖动/惯性仍可更新锚点。
 7. 阅读检查点只供持久化使用，不发布高频显示观察通知；恢复 token 与时间线内容仍明确驱动界面。iOS 18+ 将默认底部锚点限制在初始位置与短内容对齐，避开超长行估算高度变化时的重复锚定。
 8. 新手势让所有旧的自动定位请求失效，显式发送/回最新除外。普通尺寸变化只用于观察；键盘完成不从过期检查点重建当前跟随/未读意图。手动阅读后保留原生段内偏移；显式地图/切页恢复后尚未手动滚动时，仍可重放有效的来源锚点。
+9. iOS 18+ 使用原生可见行回调记录位置，不把观察到的 ID 再绑定为定位命令。可见 ID 按缓存顺序选择，低阈值兼顾长消息，短暂空集合保留旧锚点。初次载入历史显式排队恢复；同目标的待执行发送请求不会被普通跟随降级，消费后的请求不得重放。iOS 17 保留既有绑定兼容路径，现代系统验证不能外推为 iOS 17 验收。
 
 ### 持久化与故障
 
@@ -53,4 +54,4 @@ GET-338 · 2026-10-30
 - 保存宿主优化构建和原生模拟器的独立证据；不把宿主时间或模拟器手感称为真机帧率。
 - 独立审查确认持久化/恢复安全，最新提交适用 CI 通过后交付。
 
-原生 API 依据：[滚动阶段](<https://developer.apple.com/documentation/swiftui/view/onscrollphasechange(_:)>)、[滚动几何](<https://developer.apple.com/documentation/swiftui/view/onscrollgeometrychange(for:of:action:)>)。
+原生 API 依据：[滚动阶段](<https://developer.apple.com/documentation/swiftui/view/onscrollphasechange(_:)>)、[滚动几何](<https://developer.apple.com/documentation/swiftui/view/onscrollgeometrychange(for:of:action:)>)、[可见行回调](<https://developer.apple.com/documentation/swiftui/view/onscrolltargetvisibilitychange(idtype:threshold:_:)>)。

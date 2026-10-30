@@ -304,13 +304,39 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertTrue(intent.permitsScroll(.following))
         XCTAssertNil(pending.target, "An old automatic task stays cancelled even after following resumes")
         XCTAssertGreaterThan(pending.revision, 3)
-        XCTAssertFalse(intent.permitsScroll(deferred, currentRevision: pending.revision),
+        XCTAssertFalse(intent.permitsScroll(deferred, current: pending),
                        "A captured old task cannot depend on SwiftUI cancelling it before the next layout")
 
         var explicit = CompanionScrollIntent.ScrollRequest(revision: 7, kind: .explicit)
         explicit.cancelForInteraction()
         XCTAssertEqual(explicit.target, "stream-bottom")
         XCTAssertEqual(explicit.revision, 7)
+    }
+
+    func testPendingSendKeepsPriorityUntilConsumedAndCannotBeReplayed() {
+        let intent = CompanionScrollIntent(reading: .init())
+        var request = CompanionScrollIntent.ScrollRequest(revision: 2, kind: .explicit)
+        request.enqueue(kind: .following)
+        XCTAssertEqual(request.kind, .explicit, "Working/content repaint cannot downgrade a pending user send")
+        let captured = request
+        request.consume(revision: captured.revision)
+        XCTAssertFalse(intent.permitsScroll(captured, current: request))
+        request.enqueue(kind: .following)
+        XCTAssertEqual(request.kind, .following, "A later reply uses normal following after the send is consumed")
+        let earlier = request.revision
+        request.enqueue(target: "source", kind: .restoration)
+        request.consume(revision: earlier)
+        XCTAssertEqual(request.target, "source")
+    }
+
+    func testInitialSavedHistoryHasAnExplicitQueuedRestoration() {
+        let reading = CompanionConversationReadingState(anchorID: "source", followsLatest: false, hasUnread: true)
+        let request = CompanionScrollIntent.ScrollRequest.initial(reading: reading)
+        XCTAssertGreaterThan(request.revision, 0)
+        XCTAssertEqual(request.target, "source")
+        XCTAssertEqual(request.kind, .restoration)
+        let intent = CompanionScrollIntent(reading: reading)
+        XCTAssertTrue(intent.permitsScroll(request, current: request))
     }
 
     func testKeyboardLayoutCannotPromoteCurrentHistoryIntentFromAnOldCheckpoint() {

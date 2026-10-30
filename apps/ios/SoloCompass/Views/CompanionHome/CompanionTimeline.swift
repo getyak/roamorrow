@@ -23,6 +23,23 @@ enum CompanionTimeline {
         let replyContexts: [UUID: String]
         let timestampIDs: Set<UUID>
         let change: Change
+        private let rowOrder: [String: Int]
+
+        func readingAnchor(visibleIDs: [String], retaining previous: String?) -> String? {
+            if let previous, visibleIDs.contains(previous) { return previous }
+            var latest: String?
+            var latestOrder = -1
+            for id in visibleIDs {
+                if let order = rowOrder[id], order > latestOrder { latest = id; latestOrder = order }
+            }
+            if let latest { return latest }
+            if events.isEmpty, visibleIDs.contains("stream-introduction") { return "stream-introduction" }
+            if visibleIDs.contains("stream-commitments") { return "stream-commitments" }
+            if visibleIDs.contains("stream-bottom") { return "stream-bottom" }
+            // Visibility can temporarily be empty during layout, or for an
+            // exceptionally tall row. It never means "resume following".
+            return previous
+        }
 
         init(entries: [CompanionHomeEntry] = [], invites: [CompanionHomeInvite] = [],
              previous: Projection? = nil, revision: UInt64 = 0, calendar: Calendar = .current) {
@@ -30,6 +47,10 @@ enum CompanionTimeline {
             self.events = events
             let rows = events.map { Row(id: $0.id, event: $0) }
             self.rows = rows
+            var order: [String: Int] = [:]
+            order.reserveCapacity(rows.count)
+            for (index, row) in rows.enumerated() { order[row.id] = index }
+            rowOrder = order
             eventIDs = Set(rows.map(\.id))
             replyContexts = CompanionTimeline.replyContexts(in: events)
             let oldIDs = previous?.eventIDs ?? []

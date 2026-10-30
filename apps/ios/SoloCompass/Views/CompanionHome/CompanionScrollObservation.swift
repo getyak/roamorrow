@@ -1,6 +1,24 @@
 import SwiftUI
 import UIKit
 
+/// Modern visibility is an observation, never a two-way positioning command.
+/// iOS 17 retains the existing compatible binding path.
+struct CompanionReadingPositionObserver: ViewModifier {
+    @Binding var legacyID: String?
+    let isActive: Bool
+    let onVisibleIDs: ([String]) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollTargetVisibilityChange(idType: String.self, threshold: 0.001) { ids in
+                if isActive { onVisibleIDs(ids) }
+            }
+        } else {
+            content.scrollPosition(id: $legacyID, anchor: .bottom)
+        }
+    }
+}
+
 /// Bottom placement is an initial condition. Re-anchoring every estimated
 /// content-size change fights variable-height lazy rows during native scrolling.
 struct CompanionInitialScrollAnchor: ViewModifier {
