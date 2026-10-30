@@ -176,6 +176,33 @@ final class AgentRuntimeTests: XCTestCase {
         XCTAssertEqual(result.last?.state, .uncertain)
     }
 
+    func testFrozenOriginRoundTripAndReceiptIntegrity() async throws {
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let identity = turn()
+        let origin = AgentToolOriginSnapshot(source: "map_viewport", latitude: 31.2, longitude: 121.4,
+                                             selectedCity: "Shanghai")
+        let call = AgentToolCheckpoint(id: "origin", name: "save_to_favorites", argumentsJSON: "{}",
+                                       resolvedOrigin: origin)
+        let decoded = try JSONDecoder().decode(AgentToolCheckpoint.self, from: JSONEncoder().encode(call))
+        XCTAssertEqual(decoded.resolvedOrigin, origin)
+        let journal = FileAgentExecutionJournal(url: url)
+        XCTAssertTrue(journal.savePlan(.init(calls: [call]), for: identity))
+        XCTAssertTrue(journal.saveStarted(callID: call.id, for: identity))
+        var changed = receipt(call)
+        changed.resolvedOrigin = .init(source: "current_location", latitude: 30, longitude: 120)
+        XCTAssertFalse(journal.saveResult(changed, for: identity))
+        XCTAssertEqual(journal.toolBatches(for: identity).first?.calls.first?.resolvedOrigin, origin)
+        let executorURL = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: executorURL) }
+        do {
+            _ = try await AgentToolExecutor().execute(.init(calls: [call]), for: identity,
+                journal: FileAgentExecutionJournal(url: executorURL), allowedTools: [call.name],
+                isCurrent: { true }) { _ in changed }
+            XCTFail("Observed result cannot replace the planned trusted origin")
+        } catch { XCTAssertEqual(error as? AgentRuntimeError, .identityConflict) }
+    }
+
     func testLegacyJSONDefaultsAndCanonicalIdentity() throws {
         let data = Data(#"{"id":"old","name":"web_search","argumentsJSON":"{}","resultJSON":"{}"}"#.utf8)
         let old = try JSONDecoder().decode(AgentToolCheckpoint.self, from: data)

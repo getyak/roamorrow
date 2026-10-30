@@ -112,6 +112,29 @@ final class CompanionRuntimeRecoveryTests: XCTestCase {
         XCTAssertFalse(context.selectedAreaFact?.contains("memory-evidence-marker") == true)
     }
 
+    func testTrustedImplicitOriginSurvivesReopenAndCannotBeRelabelledByReceipt() async throws {
+        let url = location()
+        let store = CompanionHomeStore(url: url)
+        await store.send(text: "当前地图附近")
+        let id = try XCTUnwrap(store.entries.first?.id)
+        let turn = AgentTurnIdentity(session: store.agentSession, turnID: id)
+        let origin = AgentToolOriginSnapshot(source: "map_viewport", latitude: 35.7, longitude: 139.7, selectedCity: "TYO")
+        let call = AgentToolCheckpoint(id: "implicit-origin", name: "search_places", argumentsJSON: #"{"query":"books"}"#,
+                                       resolvedArgumentsJSON: #"{"query":"books","latitude":35.7,"longitude":139.7}"#, resolvedOrigin: origin)
+        XCTAssertTrue(store.savePlan(.init(calls: [call]), for: turn))
+        XCTAssertTrue(store.saveStarted(callID: call.id, for: turn))
+        var receipt = call
+        receipt.state = .completed
+        receipt.resultJSON = #"{"success":true}"#
+        receipt.resolvedOrigin = nil
+        XCTAssertFalse(store.saveResult(receipt, for: turn))
+        receipt.resolvedOrigin = .init(source: "explicit_coordinates", latitude: 35.7, longitude: 139.7, selectedCity: "TYO")
+        XCTAssertFalse(store.saveResult(receipt, for: turn))
+        receipt.resolvedOrigin = origin
+        XCTAssertTrue(store.saveResult(receipt, for: turn))
+        XCTAssertEqual(CompanionHomeStore(url: url).toolBatches(for: turn).first?.calls.first?.resolvedOrigin, origin)
+    }
+
     func testLegacyImplicitSearchNeverResolvesItsOldPlanFromANewLiveCity() async throws {
         let url = location()
         let store = CompanionHomeStore(url: url)

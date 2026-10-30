@@ -723,6 +723,7 @@ public final class MapViewModel {
     /// the map". No-op when there is no GPS fix yet.
     public func recenterOnUser() {
         guard let coordinate = locationService.currentLocation?.coordinate else { return }
+        agentSearchInteractionRevision &+= 1
         followUserLocation(coordinate)
     }
 
@@ -777,6 +778,7 @@ public final class MapViewModel {
             messageResultIDs = nil
             workspaceUsesVisibleArea = false
             mapWorkspaceRevision &+= 1
+            if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
             mapBrowsingSnapshots.removeAll()
             lastWebSearchResult = nil
             invalidateCityCache()
@@ -821,6 +823,7 @@ public final class MapViewModel {
         label: String,
         cityCode: String
     ) {
+        agentSearchInteractionRevision &+= 1
         cityPickedExplicitlyThisSession = true
         customCoordinates = coordinate
         customLocationLabel = label
@@ -1044,7 +1047,11 @@ public final class MapViewModel {
     /// GPS fix / foreground re-follow must not fight (V-007); explore's
     /// programmatic discovery passes `false` so GPS city-follow stays armed.
     public func selectCity(_ cityCode: String?, explicit: Bool = true) {
+        let priorProgrammaticAdoption = isProgrammaticCityAdoption
+        isProgrammaticCityAdoption = !explicit
+        defer { isProgrammaticCityAdoption = priorProgrammaticAdoption }
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         workspaceUsesVisibleArea = false
         messageResultIDs = nil
         lastVisibleMapCenter = nil
@@ -1207,6 +1214,10 @@ public final class MapViewModel {
     /// map source/mode/filter. Ordinary camera updates are cancelled by the
     /// host's owned search Task rather than guessed from programmatic movement.
     @ObservationIgnored private var mapWorkspaceRevision: UInt64 = 0
+    /// User-owned map intent, independent of an exploration adopting its own
+    /// discovered city/camera. Frozen tools use this to reject later gestures.
+    @ObservationIgnored private(set) var agentSearchInteractionRevision: UInt64 = 0
+    @ObservationIgnored private var isProgrammaticCityAdoption = false
     @ObservationIgnored private var workspaceUsesVisibleArea = false
 
     private struct MapBrowsingSnapshot {
@@ -1727,6 +1738,7 @@ public final class MapViewModel {
     public func setMapBrowseMode(_ mode: MapWorkspaceBrowseMode) {
         guard mode != mapBrowseMode else { return }
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         mapBrowsingSnapshots[mapBrowseMode] = MapBrowsingSnapshot(
             category: selectedCategory, customTag: selectedCustomTag, now: isNowFilter,
             legacyFavoriteFilter: isFavoriteFilter, camera: cameraPosition,
@@ -1763,6 +1775,7 @@ public final class MapViewModel {
     public func setMapFavoriteScope(_ scope: MapWorkspaceFavoriteScope) {
         guard scope != mapFavoriteScope else { return }
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         mapFavoriteScope = scope
         refreshWorkspaceMapPreservingCamera()
     }
@@ -1773,6 +1786,7 @@ public final class MapViewModel {
     public func openMessageResults(_ ids: [String], selectedID: String? = nil) {
         setMapBrowseMode(.nearby)
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         var seen: Set<String> = []
         messageResultIDs = ids.filter { seen.insert($0).inserted }
         selectedCategory = nil
@@ -1791,6 +1805,7 @@ public final class MapViewModel {
     /// caller action; this method never silently launches either.
     public func searchThisArea() {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         messageResultIDs = nil
         workspaceUsesVisibleArea = true
         refreshWorkspaceMapPreservingCamera()
@@ -1798,11 +1813,15 @@ public final class MapViewModel {
 
     /// Keep the explicitly visible area accurate even when the cheap refresh
     /// policy skips refiltering a small camera movement.
-    public func noteWorkspaceViewport(_ region: MKCoordinateRegion) {
+    public func noteWorkspaceViewport(_ region: MKCoordinateRegion, userInteraction: Bool = true) {
         guard CLLocationCoordinate2DIsValid(region.center),
               region.center.latitude.isFinite, region.center.longitude.isFinite,
               region.span.latitudeDelta.isFinite, region.span.longitudeDelta.isFinite,
               region.span.latitudeDelta > 0, region.span.longitudeDelta > 0 else { return }
+        if userInteraction,
+           lastVisibleMapCenter?.latitude != region.center.latitude || lastVisibleMapCenter?.longitude != region.center.longitude {
+            agentSearchInteractionRevision &+= 1
+        }
         lastVisibleMapCenter = region.center
         currentSpanLatitudeDelta = region.span.latitudeDelta
     }
@@ -1832,6 +1851,7 @@ public final class MapViewModel {
     /// for its existing callers while keeping this explicit UI predictable.
     public func selectWorkspaceCategory(_ category: ExperienceCategory?) {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         selectedCategory = category
         selectedCustomTag = nil
         isNowFilter = false
@@ -2255,6 +2275,7 @@ public final class MapViewModel {
     /// clearing other active filters and refreshing the map.
     public func selectCategory(_ category: ExperienceCategory?) {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         selectedCategory = category
         selectedCustomTag = nil
         isNowFilter = false
@@ -2269,6 +2290,7 @@ public final class MapViewModel {
     /// only experiences well-suited to the current time of day.
     public func selectNowFilter() {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         isNowFilter = true
         selectedCategory = nil
         selectedCustomTag = nil
@@ -2283,6 +2305,7 @@ public final class MapViewModel {
     /// exclusive. The favourite set lives in `preferences.favoritedExperiences`.
     public func selectFavoriteFilter() {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         if isFavoriteFilter {
             isFavoriteFilter = false
         } else {
@@ -2298,6 +2321,7 @@ public final class MapViewModel {
     /// Reset all active map filters back to showing every nearby experience.
     public func clearFilters() {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         selectedCategory = nil
         selectedCustomTag = nil
         isNowFilter = false
@@ -2365,6 +2389,7 @@ public final class MapViewModel {
     /// active filter. US-008.
     public func selectCustomTag(_ tag: String) {
         mapWorkspaceRevision &+= 1
+        if !isProgrammaticCityAdoption { agentSearchInteractionRevision &+= 1 }
         if selectedCustomTag == tag {
             selectedCustomTag = nil
         } else {
@@ -3782,6 +3807,10 @@ public final class MapViewModel {
     /// Explore button.
     public var exploreAnchorCoordinate: CLLocationCoordinate2D {
         nearbyQueryOrigin
+    }
+
+    var agentLocationAccessAuthorized: Bool {
+        locationService.authorizationStatus == .authorizedWhenInUse || locationService.authorizationStatus == .authorizedAlways
     }
 
     /// Agent searches must name their actual scope and never promote the

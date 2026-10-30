@@ -10,6 +10,18 @@ interface. Their UI state and historical stores remain adapters. A model reply
 failure must not repeat an already completed tool. An interrupted side effect
 must remain explicitly uncertain rather than being dispatched again.
 
+```mermaid
+flowchart LR
+    UI[Conversation adapters] --> Context[Fresh context and memory admission]
+    Context --> Model[Existing model transport]
+    Model --> Journal[Durable plan and start claim]
+    Journal --> Tool[Authorized tool adapter]
+    Tool --> Receipt[Durable result and card identity]
+    Receipt --> Model
+    Model --> Final[Persist final reply]
+    Final --> Memory[Admitted device memory]
+```
+
 ## Approach and alternatives
 
 Extract a small Foundation-only execution kernel and adapt both existing callers.
@@ -118,6 +130,13 @@ repeating a save cannot remove a favorite. Tool effects are Codable snapshots.
 The default Companion allowlist stays scoped to its supported UI; the legacy
 map caller receives the full map catalog through the shared executor.
 
+Implicit search origins are trusted typed metadata alongside resolved coordinates,
+not fields supplied by the model. Their original source, city and user-interaction
+revision survive persistence and are checked before dispatch. Search results are
+discarded after a city or area change. Exploration can adopt its own discovered
+city/camera while later user gestures still invalidate it. Both map surfaces use
+MapKit's `positionedByUser` to distinguish those cases.
+
 ## Context and memory
 
 `AgentContextProviding.snapshot(for:)` returns `AgentTurnContext`; each caller
@@ -160,6 +179,7 @@ also carries a deletion generation and ingests only the current durable pair.
 
 - Swift Task cancellation is cooperative: https://docs.swift.org/latest/documentation/swift/task/cancel%28%29/
 - Foundation atomic writing replaces the destination after writing an auxiliary file: https://developer.apple.com/documentation/foundation/data/writingoptions
+- MapKit identifies a camera positioned by user interaction: https://developer.apple.com/documentation/mapkit/mapcameraposition/positionedbyuser
 
 These establish cancellation and file replacement behavior; they do not promise
 exactly-once completion of arbitrary external actions. The journal's uncertainty

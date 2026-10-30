@@ -285,8 +285,7 @@ final class CompanionHomeAgent: CompanionHomeResponding, AgentContextProviding {
             guard !recoveringMutation, response.toolCalls.count <= VoiceAgentSession.toolCallsMaxPerTurn,
                   response.toolCalls.allSatisfy({ allowedNames.contains($0.name) }) else { throw Failure.toolLimit }
             let batch = CompanionHomeToolBatch(assistantContent: response.content, calls: response.toolCalls.map {
-                .init(id: $0.id, name: $0.name, argumentsJSON: $0.argumentsJSON,
-                      resolvedArgumentsJSON: resolvedExecutionArguments($0, frozenSearchCenter: frozenSearchCenter))
+                checkpoint(for: $0, frozenSearchCenter: frozenSearchCenter)
             }, context: turnContext)
             let completed = try await finishBatch(batch, turn: turn, invocation: invocation, messages: &messages, reportProgress: reportProgress, frozenSearchCenter: frozenSearchCenter)
             sourceTitles += completed.0
@@ -305,6 +304,21 @@ final class CompanionHomeAgent: CompanionHomeResponding, AgentContextProviding {
               latitude.doubleValue.isFinite, longitude.doubleValue.isFinite,
               (-90...90).contains(latitude.doubleValue), (-180...180).contains(longitude.doubleValue) else { return true }
         return false
+    }
+
+    private func checkpoint(for original: VoiceAgentSession.ToolCall, frozenSearchCenter: FrozenSearchCenter?) -> AgentToolCheckpoint {
+        switch Self.prepareSearchExecution(original, center: frozenSearchCenter) {
+        case .blocked:
+            return .init(id: original.id, name: original.name, argumentsJSON: original.argumentsJSON,
+                         resolvedArgumentsJSON: original.argumentsJSON)
+        case .request(let scoped):
+            // Capture provenance before resolving an implicit origin into coordinates.
+            // An explicit persisted entry scope remains an explicit coordinate request.
+            let origin = toolRouter?.originForExecution(scoped)
+            let resolved = toolRouter?.prepareForExecution(scoped).argumentsJSON ?? scoped.argumentsJSON
+            return .init(id: original.id, name: original.name, argumentsJSON: original.argumentsJSON,
+                         resolvedArgumentsJSON: resolved, resolvedOrigin: origin)
+        }
     }
 
     private func resolvedExecutionArguments(_ call: VoiceAgentSession.ToolCall, frozenSearchCenter: FrozenSearchCenter?) -> String {
@@ -365,7 +379,7 @@ final class CompanionHomeAgent: CompanionHomeResponding, AgentContextProviding {
                     toolRouter.memoryScope = turn.session.scope
                     let raw = await toolRouter.execute(call, isCurrent: {
                         self.invocationID == invocation && journalStore.agentSession == turn.session && !Task.isCancelled
-                    })
+                    }, origin: planned.resolvedOrigin)
                     execution = (raw, toolRouter.lastEffect)
                 } else { throw Failure.toolLimit }
                 // Preserve observed effects under their original identity even after cancellation.

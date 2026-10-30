@@ -71,6 +71,68 @@ final class AgentMapSafetyTests: XCTestCase {
         XCTAssertEqual(router.prepareForExecution(prepared), prepared)
     }
 
+    func testOnlyImplicitCoordinatesCaptureTrustedOrigin() throws {
+        let (router, map, _) = fixture()
+        let viewport = CLLocationCoordinate2D(latitude: 35.68, longitude: 139.77)
+        map.noteWorkspaceViewport(.init(center: viewport, span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)))
+        let implicit = VoiceAgentSession.ToolCall(id: "implicit", name: "search_places", argumentsJSON: #"{"query":"ramen","_runtime_origin_source":"authorized_location"}"#)
+        let origin = try XCTUnwrap(router.originForExecution(implicit))
+        XCTAssertEqual(origin.source, "map_viewport")
+        XCTAssertEqual(origin.latitude, viewport.latitude)
+        XCTAssertEqual(origin.longitude, viewport.longitude)
+        XCTAssertEqual(origin.selectedCity, map.selectedCity)
+        XCTAssertNil(router.originForExecution(.init(id: "explicit", name: "search_places",
+                                                     argumentsJSON: #"{"query":"ramen","latitude":35.68,"longitude":139.77}"#)))
+        XCTAssertNil(router.originForExecution(.init(id: "partial", name: "search_places",
+                                                     argumentsJSON: #"{"query":"ramen","latitude":35.68}"#)))
+    }
+
+    func testPreparedImplicitSearchRejectsChangedAreaBeforeProviderDispatch() async throws {
+        let (router, map, _) = fixture()
+        map.noteWorkspaceViewport(.init(center: .init(latitude: 35.68, longitude: 139.77),
+                                       span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)))
+        let original = VoiceAgentSession.ToolCall(id: "implicit", name: "search_places", argumentsJSON: #"{"query":"ramen"}"#)
+        let origin = try XCTUnwrap(router.originForExecution(original))
+        let prepared = router.prepareForExecution(original)
+        let before = map.allExperiences.map(\.id)
+        map.noteWorkspaceViewport(.init(center: .init(latitude: 22.54, longitude: 114.05),
+                                       span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)))
+        let result = await router.execute(prepared, isCurrent: { true }, origin: origin)
+        XCTAssertTrue(result.contains("cancelled"))
+        XCTAssertEqual(map.allExperiences.map(\.id), before)
+        XCTAssertNil(router.lastEffect)
+    }
+
+    func testExploreOwnedCityAdoptionAllowsCompletionButExplicitCityPickInvalidates() throws {
+        let (router, map, _) = fixture()
+        map.noteWorkspaceViewport(.init(center: .init(latitude: 35.68, longitude: 139.77),
+                                       span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)))
+        let call = VoiceAgentSession.ToolCall(id: "owned-adoption", name: "explore_nearby", argumentsJSON: "{}")
+        let origin = try XCTUnwrap(router.originForExecution(call))
+        XCTAssertEqual(origin.interactionRevision, map.agentSearchInteractionRevision)
+        map.selectCity("cmi", explicit: false)
+        XCTAssertEqual(origin.interactionRevision, map.agentSearchInteractionRevision)
+        XCTAssertTrue(router.isExploreOriginCurrent(origin, vm: map))
+        map.selectCity("cmi", explicit: true)
+        XCTAssertFalse(router.isExploreOriginCurrent(origin, vm: map))
+        let afterExplicitPick = try XCTUnwrap(router.originForExecution(call))
+        map.selectedCity = "vte"
+        XCTAssertFalse(router.isExploreOriginCurrent(afterExplicitPick, vm: map))
+    }
+
+    func testProgrammaticViewportNoteDoesNotInvalidateExploreButUserPanDoes() throws {
+        let (router, map, _) = fixture()
+        map.noteWorkspaceViewport(.init(center: .init(latitude: 35.68, longitude: 139.77),
+                                       span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)))
+        let origin = try XCTUnwrap(router.originForExecution(.init(id: "viewport", name: "explore_nearby", argumentsJSON: "{}")))
+        map.noteWorkspaceViewport(.init(center: .init(latitude: 35.69, longitude: 139.78),
+                                       span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)), userInteraction: false)
+        XCTAssertTrue(router.isExploreOriginCurrent(origin, vm: map))
+        map.noteWorkspaceViewport(.init(center: .init(latitude: 35.70, longitude: 139.79),
+                                       span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)), userInteraction: true)
+        XCTAssertFalse(router.isExploreOriginCurrent(origin, vm: map))
+    }
+
     func testPreparationDoesNotInventMissingCoordinateOrFallbackOrigin() async throws {
         let (router, map, _) = fixture()
         let incomplete = router.prepareForExecution(.init(id: "partial", name: "search_places",
@@ -137,6 +199,33 @@ final class AgentMapSafetyTests: XCTestCase {
         XCTAssertEqual(map.visibleExperiences.map(\.id), beforeIDs)
         XCTAssertEqual(map.selectedCity, beforeCity)
         XCTAssertNil(map.lastExploreError)
+        XCTAssertNil(router.lastEffect)
+        XCTAssertFalse(map.isExploring)
+    }
+
+    func testPreparedImplicitExploreRejectsAreaChangeDuringGeocode() async throws {
+        let preferences = UserPreferences(defaults: UserDefaults(suiteName: "agent-origin-barrier-\(UUID())")!)
+        preferences.hasAcceptedExploreConsent = true
+        let geocoder = PausedGeocoder()
+        let entered = expectation(description: "geocoder entered")
+        geocoder.didEnter = { entered.fulfill() }
+        let map = MapViewModel(locationService: LocationService(), experienceService: ExperienceService(seed: []),
+                               aiService: AIService(), preferences: preferences, geocodeService: geocoder)
+        map.noteWorkspaceViewport(.init(center: .init(latitude: 35.68, longitude: 139.77),
+                                       span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)))
+        let router = VoiceAgentToolRouter(mapViewModel: map, preferences: preferences)
+        let original = VoiceAgentSession.ToolCall(id: "implicit-explore", name: "explore_nearby", argumentsJSON: "{}")
+        let origin = try XCTUnwrap(router.originForExecution(original))
+        let prepared = router.prepareForExecution(original)
+        let before = map.allExperiences.map(\.id)
+        let pending = Task { await router.execute(prepared, isCurrent: { true }, origin: origin) }
+        await fulfillment(of: [entered], timeout: 2)
+        map.noteWorkspaceViewport(.init(center: .init(latitude: 22.54, longitude: 114.05),
+                                       span: .init(latitudeDelta: 0.04, longitudeDelta: 0.04)))
+        geocoder.continuation?.resume(returning: .init(cityCode: "old-city", name: "Old city", countryCode: "xx"))
+        let result = await pending.value
+        XCTAssertTrue(result.contains("cancelled"))
+        XCTAssertEqual(map.allExperiences.map(\.id), before)
         XCTAssertNil(router.lastEffect)
         XCTAssertFalse(map.isExploring)
     }

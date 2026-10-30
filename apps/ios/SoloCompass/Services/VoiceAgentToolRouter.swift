@@ -485,6 +485,41 @@ public final class VoiceAgentToolRouter {
         }
     }
 
+    /// Captured separately from model JSON and persisted alongside the plan.
+    /// Explicit coordinates (including a scoped place supplied by the caller)
+    /// have their own stable area and do not inherit the current map origin.
+    func originForExecution(_ originalCall: VoiceAgentSession.ToolCall) -> AgentToolOriginSnapshot? {
+        guard originalCall.name == "explore_nearby" || originalCall.name == "search_places",
+              let data = originalCall.argumentsJSON.data(using: .utf8),
+              let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              args["latitude"] == nil, args["longitude"] == nil,
+              let vm = mapViewModel, let origin = vm.agentSearchOrigin else { return nil }
+        return AgentToolOriginSnapshot(source: origin.source, latitude: origin.coordinate.latitude,
+                                       longitude: origin.coordinate.longitude, selectedCity: vm.selectedCity,
+                                       interactionRevision: vm.agentSearchInteractionRevision)
+    }
+
+    private func isOriginCurrent(_ origin: AgentToolOriginSnapshot, vm: MapViewModel) -> Bool {
+        if let revision = origin.interactionRevision, revision != vm.agentSearchInteractionRevision { return false }
+        guard ["map_viewport", "map_selection", "selected_city", "authorized_location"].contains(origin.source),
+              origin.latitude.isFinite, origin.longitude.isFinite,
+              CLLocationCoordinate2DIsValid(.init(latitude: origin.latitude, longitude: origin.longitude)),
+              vm.selectedCity == origin.selectedCity,
+              let current = vm.agentSearchOrigin else { return false }
+        return current.source == origin.source && current.coordinate.latitude == origin.latitude
+            && current.coordinate.longitude == origin.longitude
+    }
+
+    /// Once explore has validated its original area, its own programmatic city
+    /// adoption may change the visible source. Later user intent still cancels
+    /// it, as does revoking the location permission used by its snapshot.
+    func isExploreOriginCurrent(_ origin: AgentToolOriginSnapshot, vm: MapViewModel) -> Bool {
+        guard let revision = origin.interactionRevision else { return isOriginCurrent(origin, vm: vm) }
+        guard ["map_viewport", "map_selection", "selected_city", "authorized_location"].contains(origin.source),
+              revision == vm.agentSearchInteractionRevision else { return false }
+        return origin.source != "authorized_location" || vm.agentLocationAccessAuthorized
+    }
+
     /// Resolve implicit public map state before the plan is durably accepted.
     /// Restoring that plan must keep these arguments instead of reading a new city.
     func prepareForExecution(_ call: VoiceAgentSession.ToolCall) -> VoiceAgentSession.ToolCall {
@@ -953,6 +988,14 @@ public final class VoiceAgentToolRouter {
         _ call: VoiceAgentSession.ToolCall,
         isCurrent: @escaping @MainActor () -> Bool = { true }
     ) async -> String {
+        await execute(call, isCurrent: isCurrent, origin: originForExecution(call))
+    }
+
+    func execute(
+        _ call: VoiceAgentSession.ToolCall,
+        isCurrent: @escaping @MainActor () -> Bool,
+        origin: AgentToolOriginSnapshot?
+    ) async -> String {
         guard !Task.isCancelled, isCurrent() else {
             return Self.cancelledJSON
         }
@@ -961,7 +1004,7 @@ public final class VoiceAgentToolRouter {
         do {
             switch call.name {
             case "explore_nearby":
-                return try await executeExploreNearby(args: call.argumentsJSON, isCurrent: isCurrent)
+                return try await executeExploreNearby(args: call.argumentsJSON, isCurrent: isCurrent, origin: origin)
             case "build_route":
                 return try await executeBuildRoute(args: call.argumentsJSON, isCurrent: isCurrent)
             case "compile_workday_route":
@@ -975,7 +1018,7 @@ public final class VoiceAgentToolRouter {
             case "dismiss_recommendation":
                 return try executeDismissRecommendation(args: call.argumentsJSON)
             case "search_places":
-                return try await executeSearchPlaces(args: call.argumentsJSON, isCurrent: isCurrent)
+                return try await executeSearchPlaces(args: call.argumentsJSON, isCurrent: isCurrent, origin: origin)
             case "web_search":
                 return try await executeWebSearch(args: call.argumentsJSON, isCurrent: isCurrent)
             case "navigate_to":
@@ -1040,13 +1083,18 @@ public final class VoiceAgentToolRouter {
         let progressive: Bool?
     }
 
-    private func executeExploreNearby(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
+    private func executeExploreNearby(args: String, isCurrent: @escaping @MainActor () -> Bool, origin trustedOrigin: AgentToolOriginSnapshot? = nil) async throws -> String {
         let parsed: ExploreNearbyArgs = try Self.decode(args, tool: "explore_nearby")
         let vm = try requireMapVM(tool: "explore_nearby")
         let origin = try resolveSearchOrigin(
-            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "explore_nearby"
+            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "explore_nearby", origin: trustedOrigin
         )
         let coord = origin.coordinate
+        let dispatchIsCurrent: @MainActor () -> Bool = { [weak self, weak vm] in
+            guard isCurrent(), let self, let vm else { return false }
+            return trustedOrigin.map { self.isExploreOriginCurrent($0, vm: vm) } ?? true
+        }
+        try Self.checkCurrent(dispatchIsCurrent)
         let useProgressive = parsed.progressive ?? true
         // Explicit radius_meters overrides the progressive starting ring.
         let radius = parsed.radius_meters ?? 3000
@@ -1060,12 +1108,12 @@ public final class VoiceAgentToolRouter {
                 startingRadiusMeters: parsed.radius_meters,
                 category: category,
                 filter: Self.buildFilter(from: parsed),
-                isCurrent: isCurrent
+                isCurrent: dispatchIsCurrent
             )
         } else {
-            await vm.exploreNearby(at: coord, radiusMeters: radius, category: category, isCurrent: isCurrent)
+            await vm.exploreNearby(at: coord, radiusMeters: radius, category: category, isCurrent: dispatchIsCurrent)
         }
-        try Self.checkCurrent(isCurrent)
+        try Self.checkCurrent(dispatchIsCurrent)
         // If the first ring came up empty, don't surrender — widen the search
         // automatically (the agent should compile the wider surroundings rather
         // than reply "found nothing"). Only meaningful on the progressive path,
@@ -1073,13 +1121,13 @@ public final class VoiceAgentToolRouter {
         var stagesExpanded = 0
         var ladderExhausted = false
         if useProgressive {
-            let outcome = try await autoExpandUntilResults(vm: vm, isCurrent: isCurrent)
+            let outcome = try await autoExpandUntilResults(vm: vm, isCurrent: dispatchIsCurrent)
             stagesExpanded = outcome.stagesExpanded
             ladderExhausted = outcome.exhausted
         }
         // Re-diff against the original snapshot so cards reflect everything the
         // auto-expansion surfaced, not just the (empty) first ring.
-        try Self.checkCurrent(isCurrent)
+        try Self.checkCurrent(dispatchIsCurrent)
         recordAddedEffect(before: before, vm: vm)
         return Self.successJSON([
             "added_count": vm.lastExploreAddedCount,
@@ -1209,7 +1257,7 @@ public final class VoiceAgentToolRouter {
         let progressive: Bool?
     }
 
-    private func executeSearchPlaces(args: String, isCurrent: @escaping @MainActor () -> Bool) async throws -> String {
+    private func executeSearchPlaces(args: String, isCurrent: @escaping @MainActor () -> Bool, origin trustedOrigin: AgentToolOriginSnapshot? = nil) async throws -> String {
         let parsed: SearchPlacesArgs = try Self.decode(args, tool: "search_places")
         let vm = try requireMapVM(tool: "search_places")
         let query = parsed.query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1217,8 +1265,13 @@ public final class VoiceAgentToolRouter {
             throw RouterError.invalidArguments(tool: "search_places", reason: "query must not be empty")
         }
         let origin = try resolveSearchOrigin(
-            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "search_places"
+            latitude: parsed.latitude, longitude: parsed.longitude, vm: vm, tool: "search_places", origin: trustedOrigin
         )
+        let dispatchIsCurrent: @MainActor () -> Bool = { [weak self, weak vm] in
+            guard isCurrent(), let self, let vm else { return false }
+            return trustedOrigin.map { self.isOriginCurrent($0, vm: vm) } ?? true
+        }
+        try Self.checkCurrent(dispatchIsCurrent)
         let useProgressive = parsed.progressive ?? true
         let radius = parsed.radius_meters ?? 2000
         guard (500...100_000).contains(radius) else {
@@ -1238,17 +1291,17 @@ public final class VoiceAgentToolRouter {
         var providerHitIDs: Set<String> = []
 
         for (stage, searchRadius) in radii.enumerated() {
-            try Self.checkCurrent(isCurrent)
+            try Self.checkCurrent(dispatchIsCurrent)
             let pois: [OverpassService.POI]
             do {
                 pois = try await placeSearchService.search(
                     query: query, near: origin.coordinate, radiusMeters: searchRadius
                 )
-                try Self.checkCurrent(isCurrent)
+                try Self.checkCurrent(dispatchIsCurrent)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                try Self.checkCurrent(isCurrent)
+                try Self.checkCurrent(dispatchIsCurrent)
                 throw RouterError.underlying(tool: "search_places", message: "Apple Maps place search failed; no completed search results are available.")
             }
             if origin.source != "explicit_coordinates" {
@@ -1270,7 +1323,7 @@ public final class VoiceAgentToolRouter {
             }
             providerHitIDs.formUnion(discovered.map(\.id))
             let candidates = discovered.filter { filter.matches(existing[$0.id] ?? $0) }
-            try Self.checkCurrent(isCurrent)
+            try Self.checkCurrent(dispatchIsCurrent)
             let merged = vm.mergeDiscoveryBatch(candidates)
             let canonical = Dictionary(uniqueKeysWithValues: vm.allExperiences.map { ($0.id, $0) })
             var seen: Set<String> = []
@@ -1280,7 +1333,7 @@ public final class VoiceAgentToolRouter {
             // not satisfy the search. Keep the same query in the next ring.
             guard !matches.isEmpty || stage == radii.count - 1 else { continue }
             let cards = Array(matches.prefix(Self.maxCardExperiences))
-            try Self.checkCurrent(isCurrent)
+            try Self.checkCurrent(dispatchIsCurrent)
             if !cards.isEmpty { lastEffect = .experiences(cards) }
             return Self.successJSON([
                 "query": query,
@@ -1301,8 +1354,22 @@ public final class VoiceAgentToolRouter {
     }
 
     private func resolveSearchOrigin(
-        latitude: Double?, longitude: Double?, vm: MapViewModel, tool: String
+        latitude: Double?, longitude: Double?, vm: MapViewModel, tool: String,
+        origin trustedOrigin: AgentToolOriginSnapshot? = nil
     ) throws -> (coordinate: CLLocationCoordinate2D, source: String) {
+        if let trustedOrigin {
+            guard isOriginCurrent(trustedOrigin, vm: vm) else { throw CancellationError() }
+            switch (latitude, longitude) {
+            case let (.some(latitude), .some(longitude)):
+                guard latitude == trustedOrigin.latitude, longitude == trustedOrigin.longitude else {
+                    throw RouterError.invalidArguments(tool: tool, reason: "resolved coordinates conflict with the saved search origin")
+                }
+            case (.none, .none): break
+            default:
+                throw RouterError.invalidArguments(tool: tool, reason: "provide both latitude and longitude, or omit both to use the current map area")
+            }
+            return (.init(latitude: trustedOrigin.latitude, longitude: trustedOrigin.longitude), trustedOrigin.source)
+        }
         switch (latitude, longitude) {
         case let (.some(latitude), .some(longitude)):
             let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)

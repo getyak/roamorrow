@@ -564,6 +564,7 @@ final class CompanionHomeStore: AgentExecutionJournal {
               (try? planned.hasSameIdentity(as: result)) == true,
               planned.implementationVersion == AgentToolCheckpoint.currentImplementationVersion,
               result.implementationVersion == planned.implementationVersion,
+              result.resolvedOrigin == planned.resolvedOrigin,
               let actualArguments = try? AgentToolCheckpoint.canonicalArguments(result.resolvedArgumentsJSON ?? result.argumentsJSON),
               let plannedArguments = try? AgentToolCheckpoint.canonicalArguments(planned.resolvedArgumentsJSON ?? planned.argumentsJSON),
               actualArguments == plannedArguments else { return false }

@@ -970,10 +970,11 @@ public final class VoiceAgentOrchestrator: Identifiable {
             return saved
         }
         let calls = message.toolCalls.map { call in
+            let origin = toolRouter.originForExecution(call)
             let resolved = toolRouter.prepareForExecution(call)
             return AgentToolCheckpoint(
                 id: call.id, name: call.name, argumentsJSON: call.argumentsJSON,
-                resolvedArgumentsJSON: resolved.argumentsJSON
+                resolvedArgumentsJSON: resolved.argumentsJSON, resolvedOrigin: origin
             )
         }
         return AgentToolBatch(id: message.id, assistantContent: message.content,
@@ -1075,7 +1076,7 @@ public final class VoiceAgentOrchestrator: Identifiable {
                     } else {
                         resultJSON = await self.toolRouter.execute(call, isCurrent: {
                             self.isTurnCurrent(turn.turnID, generation: generation) && !snapshotFailed
-                        })
+                        }, origin: checkpoint.resolvedOrigin)
                         effect = self.toolRouter.lastEffect
                     }
                     var observed = checkpoint

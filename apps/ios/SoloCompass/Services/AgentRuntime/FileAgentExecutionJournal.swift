@@ -113,6 +113,7 @@ final class FileAgentExecutionJournal: AgentExecutionJournal {
                     call = previous
                 } else {
                     call.cardID = previous.cardID
+                    call.resolvedOrigin = previous.resolvedOrigin
                     call.resolvedArgumentsJSON = previous.resolvedArgumentsJSON ?? call.resolvedArgumentsJSON
                 }
             }
@@ -214,7 +215,7 @@ final class FileAgentExecutionJournal: AgentExecutionJournal {
               result.state == .completed || result.state == .uncertain, result.resultJSON != nil,
               let index = snapshot.records.firstIndex(where: { $0.turn == turn }),
               let planned = snapshot.records[index].batches.flatMap(\.calls).first(where: { $0.id == result.id }),
-              planned.matchesIdentity(result),
+              planned.matchesIdentity(result), result.resolvedOrigin == planned.resolvedOrigin,
               planned.state == .planned || planned.state == .started
         else { return false }
         var stored = result

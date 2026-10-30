@@ -72,6 +72,7 @@ final class AgentToolExecutor {
                       let previous = (history.flatMap(\.calls) + Array(durableBatch.calls.prefix(index)))
                         .first(where: { $0.id != call.id && sameAction($0, call) }) {
                 call.cardID = previous.cardID
+                call.resolvedOrigin = previous.resolvedOrigin
             }
             durableBatch.calls[index] = call
         }
@@ -124,6 +125,7 @@ final class AgentToolExecutor {
                   observed.implementationVersion == AgentToolCheckpoint.currentImplementationVersion else {
                 throw AgentRuntimeError.invalidResult
             }
+            guard observed.resolvedOrigin == planned.resolvedOrigin else { throw AgentRuntimeError.identityConflict }
             let resolved = observed.resolvedArgumentsJSON ?? planned.resolvedArgumentsJSON ?? planned.argumentsJSON
             guard try AgentToolCheckpoint.canonicalArguments(resolved)
                 == AgentToolCheckpoint.canonicalArguments(planned.resolvedArgumentsJSON ?? planned.argumentsJSON) else {

@@ -315,9 +315,49 @@ struct AgentRuntimeHost {
         try check(importedDispatches == 0 && importedResults.last?.state == .uncertain,
                   "legacy recovery never dispatches historical missing side effect")
 
+        let origin = AgentToolOriginSnapshot(source: "selected_city", latitude: 31.2, longitude: 121.4,
+                                             selectedCity: "Shanghai", interactionRevision: 7)
+        var originCall = call
+        originCall.id = "origin-call"
+        originCall.resolvedOrigin = origin
+        let oldOrigin = try JSONDecoder().decode(AgentToolOriginSnapshot.self,
+            from: Data(#"{"source":"map_viewport","latitude":31.2,"longitude":121.4}"#.utf8))
+        try check(oldOrigin.interactionRevision == nil, "legacy origin defaults missing interaction revision")
+        let originRoundTrip = try JSONDecoder().decode(AgentToolCheckpoint.self,
+            from: JSONEncoder().encode(originCall))
+        try check(originRoundTrip.resolvedOrigin == origin, "frozen origin provenance survives checkpoint roundtrip")
+        let originJournal = FileAgentExecutionJournal(url: root.appendingPathComponent("origin.json"))
+        try check(originJournal.savePlan(.init(calls: [originCall]), for: turn), "origin plan durable")
+        try check(originJournal.saveStarted(callID: originCall.id, for: turn), "origin action claimed")
+        var mismatchedOrigin = result(originCall)
+        mismatchedOrigin.state = .completed
+        mismatchedOrigin.resolvedOrigin = .init(source: "current_location", latitude: 30, longitude: 120)
+        try check(!originJournal.saveResult(mismatchedOrigin, for: turn),
+                  "receipt cannot rewrite frozen origin provenance")
+        let originExecutorJournal = FileAgentExecutionJournal(url: root.appendingPathComponent("origin-executor.json"))
+        do {
+            _ = try await executor.execute(.init(calls: [originCall]), for: turn, journal: originExecutorJournal,
+                allowedTools: [originCall.name], isCurrent: { true }) { _ in mismatchedOrigin }
+            throw Failure.assertion("executor must reject changed result origin")
+        } catch AgentRuntimeError.identityConflict { }
+
+        let originAliasJournal = FileAgentExecutionJournal(url: root.appendingPathComponent("origin-alias.json"))
+        _ = try await executor.execute(.init(calls: [originCall]), for: turn, journal: originAliasJournal,
+            allowedTools: [originCall.name], isCurrent: { true }, perform: { result($0) })
+        var changedOriginAlias = originCall
+        changedOriginAlias.id = "origin-alias"
+        changedOriginAlias.resolvedOrigin = .init(source: "current_location", latitude: 31.2, longitude: 121.4)
+        let originAliasResults = try await executor.execute(.init(calls: [changedOriginAlias]), for: turn,
+            journal: originAliasJournal, allowedTools: [originCall.name], isCurrent: { true }) { _ in
+            throw Failure.assertion("origin alias must never redispatch the action")
+        }
+        try check(originAliasResults.first?.resolvedOrigin == origin
+            && originAliasJournal.toolBatches(for: turn).last?.calls.first?.resolvedOrigin == origin,
+                  "action alias preserves durable original receipt provenance")
+
         let legacy = Data(#"{"id":"legacy","name":"web_search","argumentsJSON":"{}","resultJSON":"{\"ok\":true}"}"#.utf8)
         let decoded = try JSONDecoder().decode(AgentToolCheckpoint.self, from: legacy)
-        try check(decoded.state == .completed && decoded.sourceTitles.isEmpty && decoded.placeIDs.isEmpty,
+        try check(decoded.state == .completed && decoded.sourceTitles.isEmpty && decoded.placeIDs.isEmpty && decoded.resolvedOrigin == nil,
                   "legacy completed result remains readable")
         let pending = try JSONDecoder().decode(AgentToolCheckpoint.self,
             from: Data(#"{"id":"pending","name":"web_search","argumentsJSON":"{}"}"#.utf8))

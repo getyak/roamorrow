@@ -22,6 +22,15 @@ enum AgentToolExecutionState: String, Codable, Sendable {
     case planned, started, completed, uncertain
 }
 
+/// Trusted metadata captured by the adapter before resolving a location-dependent call.
+struct AgentToolOriginSnapshot: Codable, Equatable, Sendable {
+    var source: String
+    var latitude: Double
+    var longitude: Double
+    var selectedCity: String? = nil
+    var interactionRevision: UInt64? = nil
+}
+
 /// The original model arguments identify a call; resolved arguments freeze device inputs.
 struct AgentToolCheckpoint: Codable, Equatable, Sendable {
     static let currentImplementationVersion = 1
@@ -35,6 +44,7 @@ struct AgentToolCheckpoint: Codable, Equatable, Sendable {
     var placeIDs: [String]
     var state: AgentToolExecutionState
     var resolvedArgumentsJSON: String?
+    var resolvedOrigin: AgentToolOriginSnapshot?
     var effectJSON: String?
     var cardID: UUID
     var implementationVersion: Int
@@ -42,7 +52,7 @@ struct AgentToolCheckpoint: Codable, Equatable, Sendable {
     init(id: String, name: String, argumentsJSON: String, resultJSON: String? = nil,
          sourceTitles: [String] = [], placeID: String? = nil, placeIDs: [String] = [],
          state: AgentToolExecutionState? = nil, resolvedArgumentsJSON: String? = nil,
-         effectJSON: String? = nil, cardID: UUID = UUID(),
+         resolvedOrigin: AgentToolOriginSnapshot? = nil, effectJSON: String? = nil, cardID: UUID = UUID(),
          implementationVersion: Int = AgentToolCheckpoint.currentImplementationVersion) {
         self.id = id
         self.name = name
@@ -53,6 +63,7 @@ struct AgentToolCheckpoint: Codable, Equatable, Sendable {
         self.placeIDs = placeIDs
         self.state = state ?? (resultJSON == nil ? .planned : .completed)
         self.resolvedArgumentsJSON = resolvedArgumentsJSON
+        self.resolvedOrigin = resolvedOrigin
         self.effectJSON = effectJSON
         self.cardID = cardID
         self.implementationVersion = implementationVersion
@@ -60,7 +71,7 @@ struct AgentToolCheckpoint: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, argumentsJSON, resultJSON, sourceTitles, placeID, placeIDs, state
-        case resolvedArgumentsJSON, effectJSON, cardID, implementationVersion
+        case resolvedArgumentsJSON, resolvedOrigin, effectJSON, cardID, implementationVersion
     }
 
     init(from decoder: any Decoder) throws {
@@ -75,6 +86,7 @@ struct AgentToolCheckpoint: Codable, Equatable, Sendable {
         state = try values.decodeIfPresent(AgentToolExecutionState.self, forKey: .state)
             ?? (resultJSON == nil ? .planned : .completed)
         resolvedArgumentsJSON = try values.decodeIfPresent(String.self, forKey: .resolvedArgumentsJSON)
+        resolvedOrigin = try values.decodeIfPresent(AgentToolOriginSnapshot.self, forKey: .resolvedOrigin)
         effectJSON = try values.decodeIfPresent(String.self, forKey: .effectJSON)
         cardID = try values.decodeIfPresent(UUID.self, forKey: .cardID) ?? Self.legacyCardID(id)
         implementationVersion = try values.decodeIfPresent(Int.self, forKey: .implementationVersion)

@@ -3310,9 +3310,12 @@ struct CompassMapContentView: View {
                 // Re-filter only after a meaningful viewport move. MapKit's
                 // tiny settle corrections retain stable pins instead of
                 // invalidating the full Map + bottom sheet hierarchy.
-                if let canonical = mapPresentation.finish(context.region, space: coordinateSpace, style: mapStyleChoice.coordinateStyle),
-                   mapInteractionCoordinator.consumeRefresh(for: canonical) {
-                    viewModel.refreshForLocation(canonical.center)
+                let positionedByUser = mapPresentation.position.positionedByUser
+                if let canonical = mapPresentation.finish(context.region, space: coordinateSpace, style: mapStyleChoice.coordinateStyle) {
+                    viewModel.noteWorkspaceViewport(canonical, userInteraction: positionedByUser)
+                    if mapInteractionCoordinator.consumeRefresh(for: canonical) {
+                        viewModel.refreshForLocation(canonical.center)
+                    }
                 }
                 // Direction 2: the curation dim-out is a cold-start cue. Once
                 // the camera settles for the first time after the user has
