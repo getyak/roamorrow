@@ -1,5 +1,10 @@
 # RFC: Agent Memory & Context Architecture
 
+> 历史提案（2026-06-05）。下文的“当前状态”、工具数量和实施顺序不能作为现有行为说明。
+> 当前会话、执行恢复与记忆接口见[统一设备端 Agent runtime](unified-agent-runtime.md)。
+> 新公共记忆使用设备本地 JSON；旧 SwiftData 摘要仍兼容。本地存储不代表内容永不离开设备：
+> 进入 AI prompt 的授权上下文与选中记忆仍交给所选模型服务处理。
+
 **Status:** Draft · **Date:** 2026-06-05 · **Scope:** iOS (`apps/ios/SoloCompass`) · **Storage:** Local-first (SwiftData)
 
 > 把现有的"无记忆 agent loop"升级为"有上下文、有记忆、会学习"的旅行 agent。
