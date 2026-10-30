@@ -53,6 +53,11 @@ final class ChatAndMeUITests: XCTestCase {
         XCTAssertEqual(composer.value as? String, marker)
         XCTAssertFalse(last.isHittable)
         capture("history-with-draft")
+        // Interactive scrolling is allowed to dismiss the keyboard. Explicitly
+        // resume composing before testing that send itself keeps it open.
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(last.isHittable)
         let started = Date()
         app.buttons["companion.send"].tap()
         let sent = app.staticTexts[marker].firstMatch

@@ -18,4 +18,4 @@ Regression evidence includes two observed failures fixed by this change: restart
 
 The fixture helper refuses local execution and unmarked existing history. Simulator preference writes occur only while the exact CI-owned device is shut down. Native results, attachments and fixture receipts are uploaded as `chat-performance-and-me`; host metrics as `companion-chat-host`.
 
-Native execution and visual inspection are pending at this revision. Physical-device frame rate, live provider responses, production deployment and TestFlight are outside this evidence.
+The linked PR records the latest native execution and visual-inspection evidence for its exact tested head. This host record alone does not establish native smoothness. Physical-device frame rate, live provider responses, production deployment and TestFlight are outside this evidence.
