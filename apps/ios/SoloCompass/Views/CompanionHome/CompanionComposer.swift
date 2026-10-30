@@ -32,12 +32,12 @@ struct CompanionComposer: View {
                     Image(systemName: store?.nextTurnPlace == nil ? "map" : "mappin")
                     Text(String(format: companionText("companion.scope.next", "本次关于：%@"), scopeName))
                         .font(.subheadline).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("companion.scope.next")
                     CompanionIconButton(symbol: "xmark", label: companionText("companion.scope.clear", "清除本次范围")) {
                         _ = store?.clearNextTurnScope()
                     }.accessibilityIdentifier("companion.scope.clear")
                 }.padding(.leading, 12)
                     .background(CompanionHomeStyle.incoming, in: RoundedRectangle(cornerRadius: 16))
-                    .accessibilityIdentifier("companion.scope.next")
             }
             if let quote = store?.draftQuote {
                 HStack(alignment: .top, spacing: 10) {

@@ -34,6 +34,7 @@ struct CompanionHomeView: View {
                     isActive: surface == .nearby, onModelReady: configureTools,
                     onConversation: { selectTab(.now) }, onReturnToSource: returnToSource,
                     onAskPlace: askAboutPlace, onAskArea: askAboutArea, messageRevealToken: mapRevealToken)
+                    .opacity(surface == .nearby ? 1 : 0)
                     .allowsHitTesting(surface == .nearby)
                     .accessibilityHidden(surface != .nearby)
                 conversationSurface
