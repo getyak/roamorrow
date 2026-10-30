@@ -254,6 +254,10 @@ jobs:
           swift ../../scripts/qa/validate-v4-recording.swift \
             "$RUNNER_TEMP/v4-native/native-interactions.mp4" \
             "$RUNNER_TEMP/v4-native/recording-validation.json"
+          swift ../../scripts/qa/export-v4-preview.swift \
+            "$RUNNER_TEMP/v4-native/native-interactions.mp4" \
+            "$RUNNER_TEMP/v4-native/native-interactions-preview.mp4" \
+            > "$RUNNER_TEMP/v4-native/preview-metadata.json"
           xcrun xcresulttool get test-results summary \
             --path "$RUNNER_TEMP/v4-native/interactions.xcresult" \
             > "$RUNNER_TEMP/v4-native/test-summary.json"
@@ -352,6 +356,30 @@ jobs:
         with:
           name: swiftlint-report
           path: apps/ios/swiftlint.log
+
+      - name: Map query replacement caller regression (host boundaries)
+        run: |
+          python3 scripts/qa/v4-map-query-host.py \
+            --artifact-dir "$RUNNER_TEMP" \
+            --run-label v4-query-race
+          python3 scripts/qa/v4-map-query-host.py \
+            --artifact-dir "$RUNNER_TEMP" \
+            --scenario message-reveal \
+            --run-label v4-message-reveal
+
+      - name: Upload map query caller evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: v4-query-caller-host
+          path: |
+            ${{ runner.temp }}/v4-query-race/*.json
+            ${{ runner.temp }}/v4-query-race/*.log
+            ${{ runner.temp }}/v4-query-race/*.swift
+            ${{ runner.temp }}/v4-message-reveal/*.json
+            ${{ runner.temp }}/v4-message-reveal/*.log
+            ${{ runner.temp }}/v4-message-reveal/*.swift
+          retention-days: 7
 
   ralph:
     name: Ralph Continuous Dev

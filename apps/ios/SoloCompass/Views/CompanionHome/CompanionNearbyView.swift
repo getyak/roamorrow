@@ -54,6 +54,7 @@ private struct CompanionNearbyMap: View {
     var messageRevealToken = 0
     @State private var didReportModel = false
     @State private var hasActivatedMap = false
+    @State private var consumedMessageRevealToken = 0
     @State private var viewport = MapInteractionCoordinator()
     @State private var locationRequested = false
     @State private var mapCenter: CLLocationCoordinate2D?
@@ -133,11 +134,14 @@ private struct CompanionNearbyMap: View {
         } else { Color.clear }
         }
             .task {
-                guard !didReportModel else { return }
-                didReportModel = true
-                onModelReady?(model)
-                if routeSession.active != nil { page = .route }
+                if isActive { hasActivatedMap = true }
+                if !didReportModel {
+                    didReportModel = true
+                    onModelReady?(model)
+                    if routeSession.active != nil { page = .route }
+                }
                 consumeRouteReveal()
+                consumeMessageReveal()
             }
             .onChange(of: isActive) { _, active in
                 if !active {
@@ -152,6 +156,7 @@ private struct CompanionNearbyMap: View {
                 } else {
                     hasActivatedMap = true
                     consumeRouteReveal()
+                    consumeMessageReveal()
                     if locationRequested && scenePhase == .active { location.startUpdating() }
                 }
             }
@@ -165,23 +170,21 @@ private struct CompanionNearbyMap: View {
                 model.followUserLocation(value.coordinate)
             }
             .onChange(of: model.selectedCity) { _, _ in
-                searchTask?.cancel(); searchTask = nil
+                searchTask?.cancel()
                 if locationRequested { location.stopUpdating() }
                 locationRequested = false
                 mapCenter = model.cameraPosition.region?.center
                 selectedPlaceID = nil
                 page = .browse
             }
+            .onChange(of: model.mapBrowseMode) { _, _ in
+                searchTask?.cancel()
+            }
             .onChange(of: preferences.favoritedExperiences) { _, _ in
                 model.refreshFavorites()
             }
             .onChange(of: messageRevealToken) { _, _ in
-                searchTask?.cancel(); searchTask = nil
-                searchQuery = ""; showsSearch = false
-                model.lastWebSearchResult = nil
-                selectedPlaceID = model.selectedExperience?.id
-                page = selectedPlaceID == nil ? .browse : .place
-                if isActive { expand() }
+                consumeMessageReveal()
             }
             .onChange(of: model.selectedExperience?.id) { _, id in
                 selectedPlaceID = id
@@ -239,7 +242,7 @@ private struct CompanionNearbyMap: View {
         .onMapCameraChange(frequency: .continuous) { context in
             guard isActive else { return }
             lastCamera = context.camera
-            if model.cameraPosition.positionedByUser { searchTask?.cancel(); searchTask = nil }
+            if model.cameraPosition.positionedByUser { searchTask?.cancel() }
             guard model.cameraPosition.positionedByUser, !voiceOver, !keyboardVisible,
                   !typeSize.isAccessibilitySize else { return }
             restoreControls?.cancel()
@@ -309,7 +312,7 @@ private struct CompanionNearbyMap: View {
 
     private func performSearch() {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty, let origin = model.agentSearchOrigin, !model.isSearchingWeb else { return }
+        guard !query.isEmpty, let origin = model.agentSearchOrigin else { return }
         model.searchThisArea()
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         let previous = searchTask
@@ -319,6 +322,17 @@ private struct CompanionNearbyMap: View {
             guard !Task.isCancelled else { return }
             await model.webSearchPOIs(query: query, near: origin.coordinate, constrainWorkspaceResults: true)
         }
+    }
+
+    private func consumeMessageReveal() {
+        guard isActive, messageRevealToken != consumedMessageRevealToken else { return }
+        consumedMessageRevealToken = messageRevealToken
+        searchTask?.cancel()
+        searchQuery = ""; showsSearch = false
+        model.lastWebSearchResult = nil
+        selectedPlaceID = model.selectedExperience?.id
+        page = selectedPlaceID == nil ? .browse : .place
+        expand()
     }
 
     private func askCurrentArea() {
@@ -554,23 +568,19 @@ private struct CompanionNearbyMap: View {
     private func placePeek(_ experience: Experience) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(experience.shortName).font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+            Text(sourceStatus(experience)).font(.caption).foregroundStyle(CompanionHomeStyle.secondaryInk)
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) { askPlaceButton(experience); saveButton(experience) }
+            } else {
+                HStack(spacing: 12) { askPlaceButton(experience); saveButton(experience) }
+            }
             Text(CompanionPlacePresentation.summary(experience.oneLiner,
                 chinese: LanguageService.shared.effectiveLocale.language.languageCode?.identifier == "zh"))
                 .font(.subheadline).foregroundStyle(CompanionHomeStyle.secondaryInk).lineLimit(2)
             if let distance = CompanionPlacePresentation.distance(to: experience.coordinate, from: distanceOrigin, usesGPS: hasFreshGPS) {
                 Text(distance).font(.subheadline).foregroundStyle(CompanionHomeStyle.secondaryInk)
             }
-            Text(sourceStatus(experience)).font(.caption).foregroundStyle(CompanionHomeStyle.secondaryInk)
-            Button { onAskPlace(experience) } label: {
-                Label(companionText("map.workspace.askSelected", "聊聊这里"), systemImage: "bubble.left")
-                    .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
-                    .foregroundStyle(CompanionHomeStyle.paper)
-                    .background(CompanionHomeStyle.ink, in: Capsule())
-            }.buttonStyle(.plain).accessibilityIdentifier("companion.map.askPlace")
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) { detailButton(experience); saveButton(experience) }
-                VStack(alignment: .leading, spacing: 8) { detailButton(experience); saveButton(experience) }
-            }
+            detailButton(experience)
             Button {
                 Task { if await routeSession.start(experience: experience, cityCode: experience.location.cityCode) { page = .route; expand() } }
             } label: {
@@ -580,6 +590,15 @@ private struct CompanionNearbyMap: View {
             .accessibilityIdentifier("companion.route.start")
             .disabled(routeSession.isUpdating)
         }.padding(.top, 8)
+    }
+
+    private func askPlaceButton(_ experience: Experience) -> some View {
+        Button { onAskPlace(experience) } label: {
+            Label(companionText("map.workspace.askSelected", "聊聊这里"), systemImage: "bubble.left")
+                .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(CompanionHomeStyle.paper)
+                .background(CompanionHomeStyle.ink, in: Capsule())
+        }.buttonStyle(.plain).accessibilityIdentifier("companion.map.askPlace")
     }
 
     private func detailButton(_ experience: Experience) -> some View {
@@ -593,7 +612,8 @@ private struct CompanionNearbyMap: View {
         let saved = preferences.favoritedExperiences.contains(experience.id)
         return Button { preferences.toggleFavorite(experience.id) } label: {
             Label(saved ? companionText("companion.place.favorited", "已收藏") : companionText("companion.nearby.saved", "收藏"),
-                  systemImage: saved ? "heart.fill" : "heart").font(.subheadline).frame(minHeight: 44)
+                  systemImage: saved ? "heart.fill" : "heart").font(.subheadline)
+                .padding(.horizontal, 12).frame(minHeight: 44)
         }.buttonStyle(.plain).accessibilityIdentifier("companion.panel.save")
             .accessibilityAddTraits(saved ? .isSelected : [])
     }
