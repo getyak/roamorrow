@@ -115,8 +115,10 @@ final class ChatAndMeUITests: XCTestCase {
         launch(large: true, dark: true)
         tab("me").tap()
         XCTAssertTrue(element("me.profile.edit").waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["一个带着很长昵称慢慢旅行的人 · 界面演示"].exists)
         let profile = element("me.profile.edit")
+        // The header deliberately combines its children into one edit-profile
+        // control; verify the accessible name rather than a hidden text child.
+        XCTAssertTrue(profile.label.contains("一个带着很长昵称慢慢旅行的人 · 界面演示"))
         XCTAssertGreaterThanOrEqual(profile.frame.width, 44)
         XCTAssertGreaterThan(profile.frame.height, 160)
         XCTAssertLessThanOrEqual(profile.frame.maxX, app.frame.maxX + 1)
