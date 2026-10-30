@@ -3281,3 +3281,15 @@
 "companion.map.browseNearby" = "Browse nearby";
 
 "companion.map.sourceMissing" = "The places from this reply are unavailable on this device. Return to the conversation to check.";
+
+/* Personal hub */
+"companion.scroll.latest" = "Back to latest";
+"me.profile.edit" = "Edit profile";
+"me.pending.count" = "%d pending requests";
+"me.section.people" = "People";
+"me.section.account" = "Account & preferences";
+"me.settings.detail" = "Account, privacy and app preferences";
+"me.archive.title" = "Travel archive";
+"me.archive.detail" = "Cities and experiences along the way";
+"me.empty.note" = "Save an experience you like for another day.";
+"me.empty.explore" = "Explore nearby";

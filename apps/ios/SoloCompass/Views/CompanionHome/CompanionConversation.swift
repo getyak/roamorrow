@@ -10,11 +10,13 @@ struct CompanionConversation: View {
     let onMedia: (CompanionMediaAttachment) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scrollTarget: String?
-    @State private var unread = false
-    @State private var followsLatest = true
+    @State private var intent: CompanionScrollIntent
+    @State private var scrollRequest = ScrollRequest()
     @State private var viewport = CGRect.zero
-    private var events: [CompanionTimeline.Event] {
-        CompanionTimeline.events(entries: store.entries, invites: store.invites)
+    private struct ScrollRequest {
+        var revision = 0
+        var animated = false
+        var force = false
     }
 
     init(store: CompanionHomeStore, isActive: Bool,
@@ -24,13 +26,12 @@ struct CompanionConversation: View {
         self.store = store; self.isActive = isActive; self.onSources = onSources
         self.onPlace = onPlace; self.onCommitments = onCommitments; self.onMedia = onMedia
         _scrollTarget = State(initialValue: store.readingState.anchorID)
-        _unread = State(initialValue: store.readingState.hasUnread)
-        _followsLatest = State(initialValue: store.readingState.followsLatest)
+        _intent = State(initialValue: CompanionScrollIntent(reading: store.readingState))
     }
 
     var body: some View {
-        let events = self.events
-        let replyContexts = CompanionTimeline.replyContexts(in: events)
+        let projection = store.timelineProjection
+        return ScrollViewReader { scrollProxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     if !store.activeCommitments.isEmpty {
@@ -49,18 +50,19 @@ struct CompanionConversation: View {
                             .accessibilityIdentifier("companion.commitments")
                             .id("stream-commitments")
                     }
-                    if events.isEmpty { introduction.id("stream-introduction") }
-                    ForEach(events) { event in
-                        Group {
+                    if projection.events.isEmpty { introduction.id("stream-introduction") }
+                    ForEach(projection.rows) { row in
+                        let event = row.event
+                        VStack(alignment: .leading, spacing: 0) {
                             switch event {
                             case .message(let entry):
-                                if showsTimestamp(entry) {
+                                if projection.timestampIDs.contains(entry.id) {
                                     Text(entry.createdAt, format: .dateTime.month().day().hour().minute())
                                         .font(.footnote).foregroundStyle(CompanionHomeStyle.secondaryInk)
                                         .frame(maxWidth: .infinity).padding(.top, 14).padding(.bottom, 6)
                                 }
                                 CompanionMessageRow(entry: entry,
-                                    replyContext: replyContexts[entry.id],
+                                    replyContext: projection.replyContexts[entry.id],
                                     onRetry: { Task { await store.retry(id: entry.id) } },
                                     onSources: { onSources(entry) },
                                     onPlace: { id in onPlace(entry, id) },
@@ -69,7 +71,7 @@ struct CompanionConversation: View {
                             case .invite(let invite):
                                 CompanionInviteCard(invite: invite)
                             }
-                        }.id(event.id)
+                        }.id(row.id)
                     }
                     if store.isWorking {
                         HStack(spacing: 10) {
@@ -96,10 +98,18 @@ struct CompanionConversation: View {
                     }
                     Color.clear.frame(height: 1).id("stream-bottom")
                         .background {
+                            if #unavailable(iOS 18.0) {
                             GeometryReader { proxy in
                                 Color.clear.preference(key: CompanionConversationBottom.self, value: proxy.frame(in: .global).maxY)
                             }
+                            }
                         }
+                }
+                .background {
+                    if #unavailable(iOS 18.0) {
+                        CompanionLegacyScrollProbe(isActive: isActive, onVisibility: observeNearLatest,
+                            onInteraction: observeInteraction).frame(width: 0, height: 0)
+                    }
                 }
                 .scrollTargetLayout()
                 .padding(.top, 20).padding(.bottom, 16)
@@ -111,52 +121,67 @@ struct CompanionConversation: View {
                     Color.clear.preference(key: CompanionConversationViewport.self, value: proxy.frame(in: .global))
                 }
             }
-            .onPreferenceChange(CompanionConversationViewport.self) { viewport = $0 }
+            .onPreferenceChange(CompanionConversationViewport.self) { value in
+                if viewport != value { viewport = value }
+            }
             .contentMargins(.horizontal, CompanionHomeStyle.inset, for: .scrollContent)
             .scrollDismissesKeyboard(.interactively)
             .defaultScrollAnchor(.bottom)
             .scrollPosition(id: $scrollTarget, anchor: .bottom)
-            .simultaneousGesture(DragGesture(minimumDistance: 6).onChanged { _ in
-                if isActive { followsLatest = false }
-            })
+            .modifier(CompanionScrollInteractionObserver(isActive: isActive,
+                onVisibility: observeNearLatest, action: observeInteraction))
             .onPreferenceChange(CompanionConversationBottom.self) { bottom in
-                guard isActive, viewport.height > 0, bottom > 0 else { return }
-                if bottom <= viewport.maxY + 24 && bottom >= viewport.minY {
-                    followsLatest = true; unread = false
-                    saveReading()
-                }
+                if #available(iOS 18.0, *) { return }
+                guard isActive, viewport.height > 0 else { return }
+                let near = bottom <= viewport.maxY + 24 && bottom >= viewport.minY
+                observeNearLatest(near)
             }
             .onChange(of: store.presentationRestoreToken) { _, _ in restoreReading() }
             .onChange(of: scrollTarget) { _, target in
-                if target == "stream-bottom" && followsLatest { unread = false }
                 saveReading()
             }
-            .onChange(of: events.map(\.id)) { old, new in
-                let added = Set(new).subtracting(old)
-                guard !added.isEmpty else { return }
-                let userSent = events.contains { event in
-                    guard added.contains(event.id), case .message(let entry) = event else { return false }
-                    return entry.role == .user
+            .onChange(of: projection.change) { old, new in
+                if new.reset { restoreReading(); return }
+                if new.contentRevision > old.contentRevision {
+                    let userAction = new.userActionRevision > old.userActionRevision
+                    if intent.contentArrived(isUserAction: userAction) {
+                        requestLatest(force: userAction)
+                    }
+                } else if intent.followsLatest && !intent.isInteracting {
+                    requestLatest()
                 }
-                if userSent || followsLatest {
-                    followsLatest = true
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { scrollTarget = "stream-bottom" }
-                    unread = false
-                } else { unread = true }
                 saveReading()
+            }
+            .onChange(of: store.isWorking) { _, _ in
+                if intent.followsLatest && !intent.isInteracting { requestLatest() }
+            }
+            .onChange(of: isActive) { _, active in if active { restoreReading() } }
+            .task(id: scrollRequest.revision) {
+                let request = scrollRequest
+                guard request.revision > 0 else { return }
+                await Task.yield()
+                guard !Task.isCancelled, isActive,
+                      request.force || (intent.followsLatest && !intent.isInteracting) else { return }
+                withAnimation(request.animated && !reduceMotion ? .easeOut(duration: 0.2) : nil) {
+                    scrollProxy.scrollTo("stream-bottom", anchor: .bottom)
+                }
             }
             .overlay(alignment: .bottom) {
-                if unread && isActive {
+                if isActive && (intent.hasUnread || (!intent.followsLatest && !intent.nearLatest)) {
                     Button {
-                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { scrollTarget = "stream-bottom" }
-                        unread = false; followsLatest = true; saveReading()
+                        intent.revealLatest()
+                        requestLatest(force: true)
+                        saveReading()
                     } label: {
-                        Label(companionText("companion.new_content", "有新内容"), systemImage: "arrow.down")
+                        Label(intent.hasUnread ? companionText("companion.new_content", "有新内容")
+                            : companionText("companion.scroll.latest", "回到最新"), systemImage: "arrow.down")
                             .font(.subheadline.weight(.medium)).padding(.horizontal, 16).frame(minHeight: 44)
                             .background(.regularMaterial, in: Capsule())
                     }.padding(.bottom, 8)
+                        .accessibilityIdentifier("companion.stream.latest")
                 }
             }
+        }
     }
 
     private var progressText: String {
@@ -173,22 +198,31 @@ struct CompanionConversation: View {
 
     private func saveReading() {
         // Scroll observation updates memory; tab/background transitions flush once.
-        guard followsLatest || scrollTarget != "stream-bottom" else { return }
-        store.noteReadingPosition(anchorID: isActive ? scrollTarget : store.readingState.anchorID,
-            followsLatest: isActive ? followsLatest : store.readingState.followsLatest, hasUnread: unread)
+        guard isActive, intent.followsLatest || scrollTarget != "stream-bottom" else { return }
+        store.noteReadingPosition(anchorID: scrollTarget, followsLatest: intent.followsLatest, hasUnread: intent.hasUnread)
     }
 
     private func restoreReading() {
         scrollTarget = store.readingState.anchorID
-        followsLatest = store.readingState.followsLatest
-        unread = store.readingState.hasUnread
+        intent = CompanionScrollIntent(reading: store.readingState)
+        if intent.followsLatest { requestLatest() }
     }
 
-    private func showsTimestamp(_ entry: CompanionHomeEntry) -> Bool {
-        guard let index = store.entries.firstIndex(where: { $0.id == entry.id }), index > 0 else { return true }
-        let previous = store.entries[index - 1]
-        return !Calendar.current.isDate(previous.createdAt, inSameDayAs: entry.createdAt)
-            || entry.createdAt.timeIntervalSince(previous.createdAt) >= 300
+    private func requestLatest(force: Bool = false) {
+        guard isActive else { return }
+        scrollRequest = ScrollRequest(revision: scrollRequest.revision + 1, animated: false, force: force)
+    }
+
+    private func observeInteraction(_ active: Bool) {
+        guard isActive, intent.isInteracting != active else { return }
+        intent.interactionChanged(active: active)
+        saveReading()
+    }
+
+    private func observeNearLatest(_ near: Bool) {
+        guard isActive, near != intent.nearLatest else { return }
+        intent.visibilityChanged(nearLatest: near)
+        saveReading()
     }
 
     private var introduction: some View {

@@ -39,7 +39,8 @@ final class CompanionHomeDataManagementTests: XCTestCase {
         let store = CompanionHomeStore(url: url)
         store.composerDraft = "recovery draft"
         let recovery = url.appendingPathExtension("recovery.json")
-        XCTAssertTrue(manager.fileExists(atPath: recovery.path))
+        let recoveryDraft = recovery.appendingPathExtension("draft.json")
+        XCTAssertEqual(try json(Data(contentsOf: recoveryDraft))["text"] as? String, "recovery draft")
         let sibling = url.deletingLastPathComponent().appendingPathComponent("unrelated-user-data.json")
         let untouched = Data("unrelated data".utf8)
         try untouched.write(to: sibling)

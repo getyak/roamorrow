@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Subscription-state strip rendered at the top of `MeSheet`. Three faces:
+/// Subscription-state row in the personal hub. Three honest entitlement faces:
 ///
 /// - **proTrial** — progress (when the offer period is actually known) +
 ///   "X days left · billing starts MMM d".
@@ -24,20 +24,15 @@ struct EntitlementBanner: View {
         } label: {
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(backgroundFill)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(borderColor, lineWidth: 1)
-                )
+                .padding(.horizontal, 18).padding(.vertical, 17)
+                .frame(minHeight: 64)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityHint(NSLocalizedString("me.entitlement.a11y.hint",
                                              comment: "Opens subscription details"))
+        .accessibilityIdentifier("me.subscription")
     }
 
     // MARK: - Content variants
@@ -71,6 +66,7 @@ struct EntitlementBanner: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
+                disclosure
             }
             // Progress bar only when its length can be derived from REAL
             // entitlement/offer dates (contract 6). Never a constant 30-day
@@ -100,6 +96,7 @@ struct EntitlementBanner: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
+            disclosure
         }
     }
 
@@ -108,7 +105,7 @@ struct EntitlementBanner: View {
     /// StoreKit eligibility is actually checked (the paywall).
     private var upsellContent: some View {
         HStack(spacing: 10) {
-            Image(systemName: "slider.horizontal.3")
+            Image(systemName: "square.stack.3d.up")
                 .font(.headline)
                 .foregroundStyle(amber)
             VStack(alignment: .leading, spacing: 2) {
@@ -122,6 +119,7 @@ struct EntitlementBanner: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
+            disclosure
         }
     }
 
@@ -177,23 +175,10 @@ struct EntitlementBanner: View {
 
     // MARK: - Styling
 
-    private var amber: Color { CT.sunGold }
-
-    private var backgroundFill: Color {
-        switch subscription.entitlement {
-        case .proTrial, .free, .proExpired:
-            return amber.opacity(0.10)
-        case .pro:
-            return amber.opacity(0.06)
-        }
-    }
-
-    private var borderColor: Color {
-        switch subscription.entitlement {
-        case .proTrial: return amber.opacity(0.35)
-        case .pro:      return amber.opacity(0.20)
-        case .free, .proExpired: return amber.opacity(0.30)
-        }
+    private var amber: Color { CompanionHomeStyle.accent }
+    private var disclosure: some View {
+        Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+            .foregroundStyle(CompanionHomeStyle.secondaryInk).accessibilityHidden(true)
     }
 }
 

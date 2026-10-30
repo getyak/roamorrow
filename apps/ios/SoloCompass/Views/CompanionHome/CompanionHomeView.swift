@@ -53,7 +53,7 @@ struct CompanionHomeView: View {
                         .accessibilityHidden(surface != .itinerary)
                 }
                 if visitedTabs.contains(.me) {
-                    MeSheet(embedded: true, onOpenSettings: { sheet = .settings })
+                    MeSheet(embedded: true, onOpenSettings: { sheet = .settings }, onExplore: { selectTab(.nearby) })
                         .opacity(surface == .me ? 1 : 0)
                         .allowsHitTesting(surface == .me)
                         .accessibilityHidden(surface != .me)
@@ -205,7 +205,7 @@ struct CompanionHomeView: View {
 
     private func selectTab(_ value: CompanionPrimaryTab) {
         guard value != surface else { return }
-        _ = store.savePresentation()
+        Task { _ = await store.savePresentationAsynchronously() }
         dismissKeyboard()
         focusComposer = false
         mediaAudio.stopPlayback()
