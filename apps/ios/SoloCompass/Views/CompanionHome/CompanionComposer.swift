@@ -123,7 +123,7 @@ struct CompanionComposer: View {
                     CompanionIconButton(symbol: "stop.fill", label: companionText("companion.cancel_response", "停止回应"), action: onCancel)
                 } else if hasContent {
                     Button {
-                        finishRecording(); cancelTranscription(); isFocused = false; onSend()
+                        finishRecording(); cancelTranscription(); onSend()
                     } label: {
                         Image(systemName: "arrow.up").font(.system(size: 18, weight: .semibold))
                             .frame(width: 34, height: 34).foregroundStyle(CompanionHomeStyle.paper)

@@ -45,7 +45,8 @@ jobs:
     runs-on: macos-latest
     # Baseline SDK build + 2015 unit tests + native UI startup exceeded 30m.
     # Keep all acceptance steps and their individual test timeouts enabled.
-    timeout-minutes: 45
+    # Retain existing full gates plus long-history and profile accessibility UI.
+    timeout-minutes: 55
     needs: [schema-parity]
 
     steps:
@@ -270,6 +271,94 @@ jobs:
           print("V4 native interaction acceptance: 2 passed, 0 failed, 0 skipped")
           PY
 
+      - name: Seed long conversation and empty profile (CI-owned device)
+        id: chat_fixture
+        shell: bash
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          CHAT_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          CHAT_CONTAINER="$(xcrun simctl get_app_container "$SIMULATOR_UDID" com.solocompass.app data)"
+          # This job owns the ephemeral runner/device; shut down this exact
+          # device so CFPreferences cannot race the marked fixture write.
+          xcrun simctl shutdown "$SIMULATOR_UDID"
+          python3 scripts/qa/seed-chat-performance-fixture.py \
+            --container "$CHAT_CONTAINER" --receipt "$RUNNER_TEMP/chat-native/empty/fixture.json"
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          xcrun simctl ui "$SIMULATOR_UDID" appearance light
+          xcrun simctl ui "$SIMULATOR_UDID" content_size large
+
+      - name: Long conversation scroll, send and Me navigation
+        shell: bash
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -euo pipefail
+          # Only boolean intent/phase diagnostics from this owned CI device;
+          # never message text, anchor IDs, credentials or travel information.
+          xcrun simctl spawn "$SIMULATOR_UDID" log stream --level debug --style compact \
+            --predicate 'subsystem == "com.solocompass.chat-scroll"' \
+            > "$RUNNER_TEMP/chat-native/scroll-intent.log" 2>&1 &
+          CHAT_TRACE_PID=$!
+          trap 'kill "$CHAT_TRACE_PID" 2>/dev/null || true' EXIT
+          cd apps/ios
+          xcodebuild test-without-building \
+            -project SoloCompass.xcodeproj -scheme AccountAcceptance \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -only-testing:CompanionAcceptanceUITests/ChatAndMeUITests \
+            -skip-testing:CompanionAcceptanceUITests/ChatAndMeUITests/testMeLongNameLargeTypeAndDarkAppearance \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 240 \
+            -resultBundlePath "$RUNNER_TEMP/chat-native/chat-and-me.xcresult" \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO 2>&1 | tee chat-and-me.log
+
+      - name: Seed populated profile with long name (CI-owned device)
+        id: chat_populated_fixture
+        if: ${{ always() && !cancelled() && steps.chat_fixture.outcome == 'success' }}
+        shell: bash
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          CHAT_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          CHAT_CONTAINER="$(xcrun simctl get_app_container "$SIMULATOR_UDID" com.solocompass.app data)"
+          xcrun simctl shutdown "$SIMULATOR_UDID"
+          python3 scripts/qa/seed-chat-performance-fixture.py \
+            --container "$CHAT_CONTAINER" --receipt "$RUNNER_TEMP/chat-native/populated/fixture.json" --populated
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          xcrun simctl ui "$SIMULATOR_UDID" appearance dark
+          xcrun simctl ui "$SIMULATOR_UDID" content_size accessibility-extra-extra-extra-large
+
+      - name: Me large text, long name and dark appearance
+        if: ${{ always() && !cancelled() && steps.chat_populated_fixture.outcome == 'success' }}
+        shell: bash
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          set -euo pipefail
+          cd apps/ios
+          xcodebuild test-without-building \
+            -project SoloCompass.xcodeproj -scheme AccountAcceptance \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -only-testing:CompanionAcceptanceUITests/ChatAndMeUITests/testMeLongNameLargeTypeAndDarkAppearance \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 240 \
+            -resultBundlePath "$RUNNER_TEMP/chat-native/me-accessibility.xcresult" \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO 2>&1 | tee me-accessibility.log
+
+      - name: Upload chat performance and Me evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: chat-performance-and-me
+          path: ${{ runner.temp }}/chat-native
+          retention-days: 7
+
       - name: Upload Build Log
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -286,6 +375,8 @@ jobs:
             apps/ios/test.log
             apps/ios/account-onboarding.log
             apps/ios/v4-navigation.log
+            apps/ios/chat-and-me.log
+            apps/ios/me-accessibility.log
 
       - name: Upload account UI results
         if: always()
@@ -316,6 +407,19 @@ jobs:
 
       - name: Test chat history transactions with SwiftData
         run: bash scripts/qa/chat-history-host.sh
+
+      - name: Long conversation production Store regressions (host)
+        run: |
+          COMPANION_CHAT_ARTIFACT_DIR="$RUNNER_TEMP/chat-host" bash scripts/qa/companion-chat-host.sh
+          python3 -m unittest discover -s scripts/qa -p test_chat_performance_fixture.py
+
+      - name: Upload chat host metrics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: companion-chat-host
+          path: ${{ runner.temp }}/chat-host
+          retention-days: 7
 
       - name: Install SwiftLint
         env:

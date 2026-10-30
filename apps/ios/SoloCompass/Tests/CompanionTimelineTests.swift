@@ -43,4 +43,21 @@ final class CompanionTimelineTests: XCTestCase {
         XCTAssertEqual(result.map(\.id), ["message:\(first.id)", "message:\(second.id)", "invite:\(first.id)"])
         XCTAssertNil(CompanionTimeline.replyContext(for: second, in: result))
     }
+
+    func testVisibleAnchorUsesCachedOrderAndPreservesHistoryWhenVisibilityIsTransient() {
+        let first = CompanionHomeEntry(role: .user, text: "first", createdAt: Date(timeIntervalSince1970: 10))
+        let tall = CompanionHomeEntry(role: .companion, text: String(repeating: "long message ", count: 5_000), createdAt: Date(timeIntervalSince1970: 20))
+        let last = CompanionHomeEntry(role: .user, text: "last", createdAt: Date(timeIntervalSince1970: 30))
+        var draft = invite(at: Date(timeIntervalSince1970: 25)); draft.id = first.id
+        let projection = CompanionTimeline.Projection(entries: [last, first, tall], invites: [draft])
+        let old = "message:\(first.id)", middle = "message:\(tall.id)", newest = "message:\(last.id)"
+        XCTAssertEqual(projection.readingAnchor(visibleIDs: [middle, newest], retaining: nil), newest)
+        XCTAssertEqual(projection.readingAnchor(visibleIDs: [newest, middle], retaining: nil), newest)
+        XCTAssertEqual(projection.readingAnchor(visibleIDs: [newest, middle], retaining: middle), middle)
+        XCTAssertEqual(projection.readingAnchor(visibleIDs: [middle], retaining: old), middle)
+        XCTAssertEqual(projection.readingAnchor(visibleIDs: [old, "invite:\(draft.id)"], retaining: nil), "invite:\(draft.id)")
+        XCTAssertEqual(projection.readingAnchor(visibleIDs: [], retaining: middle), middle)
+        XCTAssertEqual(projection.readingAnchor(visibleIDs: ["unknown"], retaining: middle), middle)
+        XCTAssertNil(projection.readingAnchor(visibleIDs: [], retaining: nil))
+    }
 }

@@ -2,6 +2,85 @@ import Foundation
 
 /// A display projection only. It never rewrites history or treats a meeting date as a creation date.
 enum CompanionTimeline {
+    struct Change: Equatable, Sendable {
+        var revision: UInt64 = 0
+        var insertedCount = 0
+        var hasUserAction = false
+        var reset = false
+        var contentRevision: UInt64 = 0
+        var userActionRevision: UInt64 = 0
+    }
+
+    /// Prepared when content changes, never in a scroll-driven view body.
+    struct Projection: Sendable {
+        struct Row: Identifiable, Sendable {
+            let id: String
+            let event: Event
+        }
+        let events: [Event]
+        let rows: [Row]
+        let eventIDs: Set<String>
+        let replyContexts: [UUID: String]
+        let timestampIDs: Set<UUID>
+        let change: Change
+        private let rowOrder: [String: Int]
+
+        func readingAnchor(visibleIDs: [String], retaining previous: String?) -> String? {
+            if let previous, visibleIDs.contains(previous) { return previous }
+            var latest: String?
+            var latestOrder = -1
+            for id in visibleIDs {
+                if let order = rowOrder[id], order > latestOrder { latest = id; latestOrder = order }
+            }
+            if let latest { return latest }
+            if events.isEmpty, visibleIDs.contains("stream-introduction") { return "stream-introduction" }
+            if visibleIDs.contains("stream-commitments") { return "stream-commitments" }
+            if visibleIDs.contains("stream-bottom") { return "stream-bottom" }
+            // Visibility can temporarily be empty during layout, or for an
+            // exceptionally tall row. It never means "resume following".
+            return previous
+        }
+
+        init(entries: [CompanionHomeEntry] = [], invites: [CompanionHomeInvite] = [],
+             previous: Projection? = nil, revision: UInt64 = 0, calendar: Calendar = .current) {
+            let events = CompanionTimeline.events(entries: entries, invites: invites)
+            self.events = events
+            let rows = events.map { Row(id: $0.id, event: $0) }
+            self.rows = rows
+            var order: [String: Int] = [:]
+            order.reserveCapacity(rows.count)
+            for (index, row) in rows.enumerated() { order[row.id] = index }
+            rowOrder = order
+            eventIDs = Set(rows.map(\.id))
+            replyContexts = CompanionTimeline.replyContexts(in: events)
+            let oldIDs = previous?.eventIDs ?? []
+            var insertedCount = 0
+            var userAction = false
+            var timestampIDs: Set<UUID> = []
+            var priorMessage: CompanionHomeEntry?
+            for row in rows {
+                let event = row.event
+                if !oldIDs.contains(row.id) {
+                    insertedCount += 1
+                    userAction = userAction || event.isUserAction
+                }
+                guard case .message(let message) = event else { continue }
+                if let priorMessage {
+                    if !calendar.isDate(priorMessage.createdAt, inSameDayAs: message.createdAt)
+                        || message.createdAt.timeIntervalSince(priorMessage.createdAt) >= 300 {
+                        timestampIDs.insert(message.id)
+                    }
+                } else { timestampIDs.insert(message.id) }
+                priorMessage = message
+            }
+            self.timestampIDs = timestampIDs
+            change = Change(revision: revision, insertedCount: insertedCount, hasUserAction: userAction,
+                            reset: events.isEmpty && !(previous?.events.isEmpty ?? true),
+                            contentRevision: insertedCount > 0 ? revision : (previous?.change.contentRevision ?? 0),
+                            userActionRevision: userAction ? revision : (previous?.change.userActionRevision ?? 0))
+        }
+    }
+
     enum Event: Identifiable, Equatable, Sendable {
         case message(CompanionHomeEntry)
         case invite(CompanionHomeInvite)

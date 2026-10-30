@@ -3292,3 +3292,15 @@
 "companion.map.browseNearby" = "看看附近";
 
 "companion.map.sourceMissing" = "这条回答的地点资料暂不可用，可回到原对话继续核对。";
+
+/* Personal hub */
+"companion.scroll.latest" = "回到最新";
+"me.profile.edit" = "编辑个人资料";
+"me.pending.count" = "%d 条待处理申请";
+"me.section.people" = "同行";
+"me.section.account" = "账号与偏好";
+"me.settings.detail" = "账号、隐私与应用偏好";
+"me.archive.title" = "旅行档案";
+"me.archive.detail" = "走过的城市与体验";
+"me.empty.note" = "喜欢的体验可以先收藏，留给下一次出发。";
+"me.empty.explore" = "去附近看看";

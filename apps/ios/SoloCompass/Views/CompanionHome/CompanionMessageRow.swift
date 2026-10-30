@@ -25,7 +25,8 @@ struct CompanionMessageRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        let parts = self.parts
+        return HStack(alignment: .top, spacing: 8) {
             if isUser { Spacer(minLength: typeSize.isAccessibilitySize ? 8 : 30) }
             if !isUser { CompanionCharacter().padding(.top, 2) }
             VStack(alignment: .leading, spacing: 6) {
@@ -128,7 +129,18 @@ struct CompanionMessageRow: View {
     private var bodyIdentifier: String {
         entry.replyToID.map { "companion.reply-to.\($0)" } ?? "companion.message.body.\(entry.id)"
     }
-    private func formatted(_ response: String) -> Text {
+    private func formatted(_ response: String) -> some View {
+        CompanionFormattedMessageText(response: response, isUser: isUser).equatable()
+    }
+}
+
+/// Value-only inputs let SwiftUI retain parsed text while scroll state changes.
+private struct CompanionFormattedMessageText: View, Equatable {
+    let response: String
+    let isUser: Bool
+    var body: some View { rendered }
+
+    private var rendered: Text {
         guard !isUser else { return Text(response) }
         guard var formatted = try? AttributedString(markdown: response,
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) else { return Text(response) }

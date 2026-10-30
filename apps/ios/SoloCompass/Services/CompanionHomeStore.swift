@@ -1,17 +1,28 @@
+import CryptoKit
 import Foundation
 import Observation
 
 @MainActor
 @Observable
 final class CompanionHomeStore: AgentExecutionJournal {
-    private(set) var entries: [CompanionHomeEntry] = []
-    var composerDraft = "" { didSet { if !isLoading { persist() } } }
+    private(set) var entries: [CompanionHomeEntry] = [] { didSet { if !isLoading { rebuildTimeline() } } }
+    private(set) var timelineProjection = CompanionTimeline.Projection()
+    var composerDraft = "" {
+        didSet {
+            guard !isLoading, oldValue != composerDraft else { return }
+            draftRevision &+= 1
+            persistDraft()
+        }
+    }
     private(set) var draftAttachments: [CompanionMediaAttachment] = []
     private(set) var draftQuote: CompanionQuotedMessage?
     private(set) var conversationID = UUID().uuidString
     private(set) var nextTurnPlace: CompanionHomePlaceScope?
     private(set) var nextTurnArea: CompanionHomeAreaScope?
-    private(set) var readingState = CompanionConversationReadingState()
+    // A viewport checkpoint, not display state. Reading this to initialize a
+    // child view must not subscribe its whole parent to every native scroll row.
+    // Explicit restoration is published through presentationRestoreToken.
+    @ObservationIgnored private(set) var readingState = CompanionConversationReadingState()
     private(set) var mapSource: CompanionConversationMapSource?
     private(set) var presentationRestoreToken = 0
     private(set) var isWorking = false
@@ -26,7 +37,7 @@ final class CompanionHomeStore: AgentExecutionJournal {
     private(set) var selectedPeopleIDs: Set<String> = []
     private(set) var commitments: [CompanionHomeCommitment] = []
     var activeCommitments: [CompanionHomeCommitment] { commitments.filter { $0.status == .active } }
-    private(set) var invites: [CompanionHomeInvite] = []
+    private(set) var invites: [CompanionHomeInvite] = [] { didSet { if !isLoading { rebuildTimeline() } } }
     private(set) var experienceService: ExperienceService?
 
     private(set) var agentSession = AgentSessionDescriptor(id: UUID().uuidString, scope: "global")
@@ -43,9 +54,19 @@ final class CompanionHomeStore: AgentExecutionJournal {
     @ObservationIgnored private let originalURL: URL
     @ObservationIgnored private var storageBlocked = false
     @ObservationIgnored private var stagingToolResult = false
+    @ObservationIgnored private let snapshotWriter: CompanionSnapshotWriter
+    @ObservationIgnored private let historyEncoder: CompanionHistoryEncoder
+    @ObservationIgnored private var durableAttachmentIDs: Set<UUID> = []
+    @ObservationIgnored private var outboxStorageBlocked = false
+    @ObservationIgnored private var outboxEntryID: UUID?
+    @ObservationIgnored private var draftRevision: UInt64 = 0
+    @ObservationIgnored private var draftStorageBlocked = false
+    @ObservationIgnored private var legacySnapshotSignature: String?
+    @ObservationIgnored private var pendingAdmissionID: UUID?
+    @ObservationIgnored private var timelineRevision: UInt64 = 0
     private var toolJournals: [String: [CompanionHomeToolBatch]] = [:]
 
-    private struct Snapshot: Codable {
+    private struct Snapshot: Codable, Sendable {
         var version = 1
         var entries: [CompanionHomeEntry]
         var composerDraft: String
@@ -63,9 +84,45 @@ final class CompanionHomeStore: AgentExecutionJournal {
         var nextTurnArea: CompanionHomeAreaScope? = nil
         var readingState: CompanionConversationReadingState? = nil
         var mapSource: CompanionConversationMapSource? = nil
+        var draftRevision: UInt64? = nil
+
+        func encoded(using encoder: CompanionHistoryEncoder, generation: CompanionHistoryEncoder.Generation) throws -> Data {
+            var envelope = self
+            envelope.entries = []
+            return try encoder.encode(envelope, entries: entries, generation: generation)
+        }
+
+        var attachmentIDs: Set<UUID> {
+            Set((entries.flatMap { $0.attachments ?? [] } + (draftAttachments ?? []))
+                .filter { $0.data != nil }.map(\.id))
+        }
     }
 
-    init(url: URL? = nil, memory: (any AgentMemoryProviding)? = nil) {
+    private struct DraftSnapshot: Codable {
+        var version = 1
+        var conversationID: String
+        var agentSessionID: String
+        var revision: UInt64
+        var text: String
+        var legacySnapshotSignature: String?
+    }
+
+    /// A small durable acceptance record precedes clearing the composer. Media
+    /// already saved by stageAttachment is referenced rather than encoded again.
+    private struct OutboxSnapshot: Codable {
+        var version = 1
+        var conversationID: String
+        var agentSessionID: String
+        var legacySnapshotSignature: String?
+        var entry: CompanionHomeEntry?
+        var attachmentReferences: Set<UUID> = []
+        var consumedDraftRevision: UInt64?
+    }
+
+    init(url: URL? = nil, memory: (any AgentMemoryProviding)? = nil,
+         snapshotWriter: CompanionSnapshotWriter? = nil, historyEncoder: CompanionHistoryEncoder? = nil) {
+        self.snapshotWriter = snapshotWriter ?? CompanionSnapshotWriter()
+        self.historyEncoder = historyEncoder ?? CompanionHistoryEncoder()
         if let memory { self.memory = memory }
         else if let url { self.memory = DeviceAgentMemoryStore(fileURL: url.appendingPathExtension("memory.json")) }
         else { self.memory = DeviceAgentMemoryStore.shared }
@@ -73,7 +130,10 @@ final class CompanionHomeStore: AgentExecutionJournal {
             .appendingPathComponent("Roamorrow/CompanionHome/v1.json")
         self.originalURL = self.url
         load()
+        loadDraft()
+        loadOutbox()
         isLoading = false
+        rebuildTimeline()
     }
 
     /// Call once from the app's existing service graph. Optional router is the same
@@ -175,14 +235,18 @@ final class CompanionHomeStore: AgentExecutionJournal {
     /// rather than rewriting the complete media snapshot for every visible row.
     func noteReadingPosition(anchorID: String?, followsLatest: Bool, hasUnread: Bool) {
         guard followsLatest || validReadingAnchor(anchorID) else { return }
-        readingState = CompanionConversationReadingState(
+        let replacement = CompanionConversationReadingState(
             anchorID: followsLatest ? "stream-bottom" : anchorID,
             followsLatest: followsLatest, hasUnread: followsLatest ? false : hasUnread
         )
+        if replacement != readingState { readingState = replacement }
     }
 
     @discardableResult
     func savePresentation() -> Bool { persist() }
+
+    /// Tab transitions capture immediately, then let file encoding yield the UI.
+    func savePresentationAsynchronously() async -> Bool { await persistAsynchronously() }
 
     func restorePresentation(preferredAnchorID: String? = nil) {
         if let preferredAnchorID, validReadingAnchor(preferredAnchorID) {
@@ -202,11 +266,9 @@ final class CompanionHomeStore: AgentExecutionJournal {
         let requested = experienceIDs.isEmpty ? entry.mapPlaceIDs : experienceIDs
         let ids = requested.filter { actualIDs.contains($0) && seen.insert($0).inserted }
         let previous = mapSource
-        let anchor = readingState.anchorID == "stream-bottom" || readingState.anchorID == nil
-            ? "message:\(messageID)" : readingState.anchorID
         mapSource = CompanionConversationMapSource(
             conversationID: conversationID, messageID: messageID,
-            experienceIDs: ids, readingAnchorID: anchor
+            experienceIDs: ids, readingAnchorID: "message:\(messageID)"
         )
         guard persist() else { mapSource = previous; return false }
         return true
@@ -216,9 +278,9 @@ final class CompanionHomeStore: AgentExecutionJournal {
     func restoreMapSource() -> Bool {
         guard let source = mapSource, source.conversationID == conversationID,
               entries.contains(where: { $0.id == source.messageID }) else { return false }
-        let anchor = validReadingAnchor(source.readingAnchorID)
-            ? source.readingAnchorID : "message:\(source.messageID)"
-        restorePresentation(preferredAnchorID: anchor)
+        // Return to the actual source, even if a legacy record captured a
+        // neighboring visible row. Viewport/keyboard sizes can differ now.
+        restorePresentation(preferredAnchorID: "message:\(source.messageID)")
         return true
     }
 
@@ -235,8 +297,8 @@ final class CompanionHomeStore: AgentExecutionJournal {
         if anchor == "stream-bottom" { return true }
         if anchor == "stream-introduction" { return entries.isEmpty && invites.isEmpty }
         if anchor == "stream-commitments" { return !activeCommitments.isEmpty }
-        return entries.contains { "message:\($0.id)" == anchor }
-            || invites.contains { "invite:\($0.id)" == anchor }
+        if !isLoading { return timelineProjection.eventIDs.contains(anchor) }
+        return entries.contains { "message:\($0.id)" == anchor } || invites.contains { "invite:\($0.id)" == anchor }
     }
 
     var canStartRecording: Bool {
@@ -297,35 +359,39 @@ final class CompanionHomeStore: AgentExecutionJournal {
     private func submit(text: String, attachments: [CompanionMediaAttachment], quote: CompanionQuotedMessage?, consumesDraft: Bool) async {
         guard !isWorking, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !attachments.isEmpty else { return }
         guard attachments.allSatisfy(\.isValid) else { return }
-        let previousText = composerDraft
-        let previousAttachments = draftAttachments
-        let previousQuote = draftQuote
-        let previousPlace = nextTurnPlace
-        let previousArea = nextTurnArea
-        let previousReading = readingState
         let entry = CompanionHomeEntry(
             role: .user, text: text, placeScope: nextTurnPlace, searchArea: nextTurnArea,
             attachments: attachments.isEmpty ? nil : attachments, quotedMessage: quote,
             memoryEpoch: memory.context(for: agentSession).epoch
         )
+        // New text may arrive before the full history finishes encoding. Keep
+        // that draft independent from the accepted original across a restart.
+        guard saveOutbox(entry, consumedDraftRevision: consumesDraft ? draftRevision &+ 1 : nil) else { return }
         entries.append(entry)
-        // One write moves draft -> message; a crash cannot restore both copies.
         isLoading = true
-        if consumesDraft { composerDraft = ""; draftAttachments = []; draftQuote = nil }
+        if consumesDraft {
+            composerDraft = ""; draftAttachments = []; draftQuote = nil
+            draftRevision &+= 1
+        }
         nextTurnPlace = nil
         nextTurnArea = nil
         readingState = CompanionConversationReadingState()
         isLoading = false
-        guard persist() else {
-            entries.removeAll { $0.id == entry.id }
-            isLoading = true
-            composerDraft = previousText.isEmpty ? text : previousText
-            draftAttachments = previousAttachments
-            draftQuote = previousQuote
-            nextTurnPlace = previousPlace
-            nextTurnArea = previousArea
-            readingState = previousReading
-            isLoading = false
+        let admissionID = UUID()
+        let session = agentSession
+        pendingAdmissionID = admissionID
+        isWorking = true
+        activity = .working(entry.id)
+        let saved = await persistAsynchronously()
+        guard pendingAdmissionID == admissionID, agentSession == session else { return }
+        pendingAdmissionID = nil
+        isWorking = false
+        guard saved else {
+            if let index = entries.firstIndex(where: { $0.id == entry.id }) {
+                // The outbox already owns this original. Never roll it back into
+                // a newer draft or hide it when the larger snapshot fails.
+                entries[index].status = .failed
+            }
             activity = .failed(entry.id)
             return
         }
@@ -354,6 +420,10 @@ final class CompanionHomeStore: AgentExecutionJournal {
     }
 
     func cancel() {
+        if pendingAdmissionID != nil, let index = entries.lastIndex(where: { $0.role == .user && $0.status == .queued }) {
+            entries[index].status = .failed
+        }
+        pendingAdmissionID = nil
         activeTask?.cancel()
         activeTask = nil
         if let id = activeID, let index = entries.firstIndex(where: { $0.id == id }) {
@@ -642,6 +712,8 @@ final class CompanionHomeStore: AgentExecutionJournal {
     @discardableResult
     func clearLocalData() -> Bool {
         cancel() // Invalidates both attempt identity and the owned task before touching storage.
+        snapshotWriter.invalidate()
+        historyEncoder.invalidate()
         let manager = FileManager.default
         let recoveryURL = originalURL.appendingPathExtension("recovery.json")
         var targets = [originalURL]
@@ -649,6 +721,12 @@ final class CompanionHomeStore: AgentExecutionJournal {
             targets.append(recoveryURL)
         }
         if !targets.contains(url) { targets.append(url) }
+        let draftTargets = targets.map { $0.appendingPathExtension("draft.json") }
+            .filter { manager.fileExists(atPath: $0.path) }
+        let outboxTargets = targets.map { $0.appendingPathExtension("outbox.json") }
+            .filter { manager.fileExists(atPath: $0.path) }
+        targets.append(contentsOf: draftTargets)
+        targets.append(contentsOf: outboxTargets)
         var prepared: [(url: URL, bytes: Data?)] = []
         var attempted: [(url: URL, bytes: Data?)] = []
         do {
@@ -658,6 +736,10 @@ final class CompanionHomeStore: AgentExecutionJournal {
                                  commitments: [], toolJournals: [:], agentSessionID: clearedSession.id,
                                  conversationID: replacementConversationID, readingState: CompanionConversationReadingState())
             let data = try JSONEncoder().encode(empty)
+            let emptyDraft = try JSONEncoder().encode(DraftSnapshot(conversationID: replacementConversationID,
+                agentSessionID: clearedSession.id, revision: 0, text: "", legacySnapshotSignature: nil))
+            let emptyOutbox = try JSONEncoder().encode(OutboxSnapshot(conversationID: replacementConversationID,
+                agentSessionID: clearedSession.id, entry: nil))
             // Read only the exact files we might overwrite so a partial failure can roll back.
             for target in targets {
                 guard target.isFileURL else { throw CocoaError(.fileWriteUnsupportedScheme) }
@@ -670,13 +752,21 @@ final class CompanionHomeStore: AgentExecutionJournal {
             for backup in prepared {
                 try manager.createDirectory(at: backup.url.deletingLastPathComponent(), withIntermediateDirectories: true)
                 attempted.append(backup)
-                try data.write(to: backup.url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                let replacement = draftTargets.contains(backup.url) ? emptyDraft
+                    : outboxTargets.contains(backup.url) ? emptyOutbox : data
+                try replacement.write(to: backup.url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             }
             guard memory.forget(sessionID: agentSession.id) else { throw CocoaError(.fileWriteUnknown) }
             agentSession = clearedSession
             isLoading = true
             entries = []
             composerDraft = ""
+            draftRevision = 0
+            draftStorageBlocked = false
+            outboxStorageBlocked = false
+            outboxEntryID = nil
+            durableAttachmentIDs = []
+            legacySnapshotSignature = nil
             storedPeople = []
             selectedPeopleIDs = []
             invites = []
@@ -691,6 +781,7 @@ final class CompanionHomeStore: AgentExecutionJournal {
             mapSource = nil
             presentationRestoreToken &+= 1
             isLoading = false
+            rebuildTimeline()
             storageBlocked = false
             url = originalURL
             errorMessage = nil
@@ -725,7 +816,14 @@ final class CompanionHomeStore: AgentExecutionJournal {
                  commitments: commitments, toolJournals: toolJournals,
                  draftAttachments: draftAttachments, draftQuote: draftQuote, agentSessionID: agentSession.id,
                  conversationID: conversationID, nextTurnPlace: nextTurnPlace,
-                 nextTurnArea: nextTurnArea, readingState: readingState, mapSource: mapSource)
+                 nextTurnArea: nextTurnArea, readingState: readingState, mapSource: mapSource,
+                 draftRevision: draftRevision)
+    }
+
+    private func rebuildTimeline() {
+        timelineRevision &+= 1
+        timelineProjection = CompanionTimeline.Projection(entries: entries, invites: invites,
+            previous: timelineProjection, revision: timelineRevision)
     }
 
     func clearError() { errorMessage = nil }
@@ -748,7 +846,9 @@ final class CompanionHomeStore: AgentExecutionJournal {
         activity = .working(id)
         activeID = id
         entries[index].status = .working
-        guard persist() else {
+        let startedSaved = await persistAsynchronously()
+        guard activeID == id, activeAttemptID == attemptID, agentSession == session else { return }
+        guard startedSaved else {
             isWorking = false; activeID = nil; activeAttemptID = nil
             entries[index].status = .failed; activity = .failed(id)
             return
@@ -797,11 +897,12 @@ final class CompanionHomeStore: AgentExecutionJournal {
                 errorMessage = NSLocalizedString("companion.response_failed", value: "这次没有完成，原话已保留，可以重试。", comment: "Companion failed")
             }
         }
+        let saved = await persistAsynchronously()
+        guard activeID == id, activeAttemptID == attemptID, agentSession == session else { return }
         activeTask = nil
         activeID = nil
         activeAttemptID = nil
         isWorking = false
-        let saved = persist()
         if !saved { entries[index].status = .failed }
         activity = responded && saved ? .completed(id) : .failed(id)
         if responded && saved { recordCompletedTurn(id: id, memoryEpoch: memoryEpoch) }
@@ -818,8 +919,12 @@ final class CompanionHomeStore: AgentExecutionJournal {
     private func load() {
         guard FileManager.default.fileExists(atPath: url.path) else { return }
         do {
-            let snapshot = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: url))
+            let data = try Data(contentsOf: url)
+            let snapshot = try JSONDecoder().decode(Snapshot.self, from: data)
             guard snapshot.version == 1 else { throw CocoaError(.fileReadCorruptFile) }
+            if snapshot.conversationID == nil || snapshot.agentSessionID == nil {
+                legacySnapshotSignature = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+            }
             if let sessionID = snapshot.agentSessionID {
                 guard UUID(uuidString: sessionID) != nil else { throw CocoaError(.fileReadCorruptFile) }
                 agentSession = .init(id: sessionID, scope: "global")
@@ -836,6 +941,7 @@ final class CompanionHomeStore: AgentExecutionJournal {
             draftAttachments = snapshot.draftAttachments ?? []
             draftQuote = snapshot.draftQuote
             composerDraft = snapshot.composerDraft
+            draftRevision = snapshot.draftRevision ?? 0
             invites = snapshot.invites.map { value in var draft = value; draft.status = .draft; return draft }
             if let storedID = snapshot.conversationID, !storedID.isEmpty, storedID.count <= 200 {
                 conversationID = storedID
@@ -855,6 +961,7 @@ final class CompanionHomeStore: AgentExecutionJournal {
             }
             people = snapshot.people
             selectedPeopleIDs = snapshot.selectedPeopleIDs.intersection(Set(people.map(\.id)))
+            durableAttachmentIDs = snapshot.attachmentIDs
         } catch {
             // Preserve the original bytes at the original URL. Save new work to a distinct
             // recovery namespace; never silently replace a damaged or future-version store.
@@ -876,15 +983,174 @@ final class CompanionHomeStore: AgentExecutionJournal {
             return false
         }
         do {
-            let directory = url.deletingLastPathComponent()
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(currentSnapshot())
-            try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            let ticket = snapshotWriter.reserve()
+            let snapshot = currentSnapshot()
+            let data = try snapshot.encoded(using: historyEncoder, generation: historyEncoder.captureGeneration())
+            guard try snapshotWriter.write(data, to: url, ticket: ticket) != .invalidated else { return false }
+            snapshotDidCommit(snapshot, ticket: ticket)
             storageBlocked = false
             return true
         } catch {
             errorMessage = NSLocalizedString("companion.storage_failed", value: "暂时无法保存到本机，请保留当前页面后重试。", comment: "Storage failure")
             return false
+        }
+    }
+
+    private func persistAsynchronously() async -> Bool {
+        guard !isLoading, !stagingToolResult else { return true }
+        guard !storageBlocked else { return false }
+        let ticket = snapshotWriter.reserve()
+        let snapshot = currentSnapshot()
+        let encodingGeneration = historyEncoder.captureGeneration()
+        let target = url
+        let session = agentSession
+        do {
+            let encoder = historyEncoder
+            let outcome = try await snapshotWriter.writeAsync(snapshot, to: target, ticket: ticket) {
+                try $0.encoded(using: encoder, generation: encodingGeneration)
+            }
+            guard session == agentSession, target == url, outcome != .invalidated else { return false }
+            snapshotDidCommit(snapshot, ticket: ticket)
+            return true
+        } catch {
+            if session == agentSession, target == url {
+                errorMessage = NSLocalizedString("companion.storage_failed", value: "暂时无法保存到本机，请保留当前页面后重试。", comment: "Storage failure")
+            }
+            return false
+        }
+    }
+
+    private func snapshotDidCommit(_ snapshot: Snapshot, ticket: CompanionSnapshotWriter.Ticket) {
+        guard snapshotWriter.isCurrent(ticket) else { return }
+        durableAttachmentIDs = snapshot.attachmentIDs
+        guard let id = outboxEntryID, snapshot.entries.contains(where: { $0.id == id }) else { return }
+        let target = url.appendingPathExtension("outbox.json")
+        // Cleanup failure is safe: replay deduplicates by the original entry ID.
+        do {
+            if FileManager.default.fileExists(atPath: target.path) { try FileManager.default.removeItem(at: target) }
+            outboxEntryID = nil
+        } catch { /* Retain the exact durable acceptance record for the next save. */ }
+    }
+
+    private func saveOutbox(_ entry: CompanionHomeEntry, consumedDraftRevision: UInt64?) -> Bool {
+        guard !storageBlocked, !outboxStorageBlocked else {
+            errorMessage = NSLocalizedString("companion.storage_failed", value: "暂时无法保存到本机，请保留当前页面后重试。", comment: "Storage failure")
+            return false
+        }
+        // Never overwrite an earlier accepted original that only the outbox owns.
+        if outboxEntryID != nil, (!persist() || outboxEntryID != nil) { return false }
+        var pending = entry
+        var references: Set<UUID> = []
+        if var attachments = pending.attachments {
+            for index in attachments.indices where durableAttachmentIDs.contains(attachments[index].id) {
+                references.insert(attachments[index].id)
+                attachments[index].data = nil
+            }
+            pending.attachments = attachments
+        }
+        let snapshot = OutboxSnapshot(conversationID: conversationID, agentSessionID: agentSession.id,
+            legacySnapshotSignature: legacySnapshotSignature, entry: pending,
+            attachmentReferences: references, consumedDraftRevision: consumedDraftRevision)
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try JSONEncoder().encode(snapshot).write(to: url.appendingPathExtension("outbox.json"),
+                options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            outboxEntryID = entry.id
+            return true
+        } catch {
+            errorMessage = NSLocalizedString("companion.storage_failed", value: "暂时无法保存到本机，请保留当前页面后重试。", comment: "Storage failure")
+            return false
+        }
+    }
+
+    private func loadOutbox() {
+        let target = url.appendingPathExtension("outbox.json")
+        guard FileManager.default.fileExists(atPath: target.path) else { return }
+        do {
+            let pending = try JSONDecoder().decode(OutboxSnapshot.self, from: Data(contentsOf: target))
+            guard pending.version == 1, UUID(uuidString: pending.agentSessionID) != nil,
+                  !pending.conversationID.isEmpty, pending.conversationID.count <= 200 else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            let matchesLegacy = legacySnapshotSignature != nil && pending.legacySnapshotSignature == legacySnapshotSignature
+            if !FileManager.default.fileExists(atPath: url.path) || matchesLegacy {
+                conversationID = pending.conversationID
+                agentSession = .init(id: pending.agentSessionID, scope: "global")
+            }
+            guard pending.conversationID == conversationID, pending.agentSessionID == agentSession.id,
+                  var entry = pending.entry else { return }
+            guard entry.role == .user else { throw CocoaError(.fileReadCorruptFile) }
+            outboxEntryID = entry.id
+            guard !entries.contains(where: { $0.id == entry.id }) else { return }
+            let available = entries.flatMap { $0.attachments ?? [] } + draftAttachments
+            if var attachments = entry.attachments {
+                guard pending.attachmentReferences.isSubset(of: Set(attachments.map(\.id))) else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                for index in attachments.indices where pending.attachmentReferences.contains(attachments[index].id) {
+                    guard let source = available.first(where: { $0.id == attachments[index].id }), let data = source.data else {
+                        throw CocoaError(.fileReadCorruptFile)
+                    }
+                    attachments[index].data = data
+                }
+                guard attachments.allSatisfy(\.isValid) else { throw CocoaError(.fileReadCorruptFile) }
+                entry.attachments = attachments
+            } else if !pending.attachmentReferences.isEmpty { throw CocoaError(.fileReadCorruptFile) }
+            entry.status = .failed // Recovery never dispatches a model/tool automatically.
+            entries.append(entry)
+            if let consumedRevision = pending.consumedDraftRevision {
+                if draftRevision < consumedRevision { composerDraft = ""; draftRevision = consumedRevision }
+                let consumedIDs = Set((entry.attachments ?? []).map(\.id))
+                draftAttachments.removeAll { consumedIDs.contains($0.id) }
+                if draftQuote == entry.quotedMessage { draftQuote = nil }
+            }
+            if nextTurnPlace == entry.placeScope { nextTurnPlace = nil }
+            if nextTurnArea == entry.searchArea { nextTurnArea = nil }
+        } catch {
+            outboxStorageBlocked = true
+            outboxEntryID = nil
+            errorMessage = NSLocalizedString("companion.storage_recovery", value: "旧记录暂时无法读取，原文件已保留。新内容将另行保存。", comment: "Recovery")
+        }
+    }
+
+    private func persistDraft() {
+        guard !storageBlocked, !draftStorageBlocked else { return }
+        do {
+            let draft = DraftSnapshot(conversationID: conversationID, agentSessionID: agentSession.id,
+                revision: draftRevision, text: composerDraft, legacySnapshotSignature: legacySnapshotSignature)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try JSONEncoder().encode(draft).write(to: url.appendingPathExtension("draft.json"),
+                options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        } catch {
+            errorMessage = NSLocalizedString("companion.storage_failed", value: "暂时无法保存到本机，请保留当前页面后重试。", comment: "Storage failure")
+        }
+    }
+
+    private func loadDraft() {
+        let target = url.appendingPathExtension("draft.json")
+        guard FileManager.default.fileExists(atPath: target.path) else { return }
+        do {
+            let draft = try JSONDecoder().decode(DraftSnapshot.self, from: Data(contentsOf: target))
+            guard draft.version == 1, UUID(uuidString: draft.agentSessionID) != nil,
+                  !draft.conversationID.isEmpty, draft.conversationID.count <= 200 else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            let matchesLegacy = legacySnapshotSignature != nil && draft.legacySnapshotSignature == legacySnapshotSignature
+            if !FileManager.default.fileExists(atPath: url.path) || matchesLegacy {
+                conversationID = draft.conversationID
+                agentSession = .init(id: draft.agentSessionID, scope: "global")
+                composerDraft = draft.text
+                draftRevision = draft.revision
+            } else if draft.conversationID == conversationID, draft.agentSessionID == agentSession.id,
+                      draft.revision > draftRevision {
+                composerDraft = draft.text
+                draftRevision = draft.revision
+            }
+        } catch {
+            // Preserve unknown bytes; a deliberate full save can still retain
+            // the visible draft without overwriting the unreadable sidecar.
+            draftStorageBlocked = true
+            errorMessage = NSLocalizedString("companion.storage_recovery", value: "旧记录暂时无法读取，原文件已保留。新内容将另行保存。", comment: "Recovery")
         }
     }
 }

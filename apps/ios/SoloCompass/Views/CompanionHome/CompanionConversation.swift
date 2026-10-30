@@ -1,4 +1,7 @@
 import SwiftUI
+#if DEBUG
+import OSLog
+#endif
 
 @MainActor
 struct CompanionConversation: View {
@@ -9,13 +12,10 @@ struct CompanionConversation: View {
     let onCommitments: () -> Void
     let onMedia: (CompanionMediaAttachment) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var scrollTarget: String?
-    @State private var unread = false
-    @State private var followsLatest = true
-    @State private var viewport = CGRect.zero
-    private var events: [CompanionTimeline.Event] {
-        CompanionTimeline.events(entries: store.entries, invites: store.invites)
-    }
+    // Only the iOS 17 binding publishes this value. Modern visible-ID readback
+    // records an ignored checkpoint without invalidating the whole lazy list.
+    @State private var legacyAnchorID: String?
+    @State private var scrolling: CompanionScrollState
 
     init(store: CompanionHomeStore, isActive: Bool,
          onSources: @escaping (CompanionHomeEntry) -> Void,
@@ -23,14 +23,13 @@ struct CompanionConversation: View {
          onCommitments: @escaping () -> Void, onMedia: @escaping (CompanionMediaAttachment) -> Void) {
         self.store = store; self.isActive = isActive; self.onSources = onSources
         self.onPlace = onPlace; self.onCommitments = onCommitments; self.onMedia = onMedia
-        _scrollTarget = State(initialValue: store.readingState.anchorID)
-        _unread = State(initialValue: store.readingState.hasUnread)
-        _followsLatest = State(initialValue: store.readingState.followsLatest)
+        _legacyAnchorID = State(initialValue: store.readingState.anchorID)
+        _scrolling = State(initialValue: CompanionScrollState(reading: store.readingState))
     }
 
     var body: some View {
-        let events = self.events
-        let replyContexts = CompanionTimeline.replyContexts(in: events)
+        let projection = store.timelineProjection
+        return Group {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     if !store.activeCommitments.isEmpty {
@@ -49,18 +48,19 @@ struct CompanionConversation: View {
                             .accessibilityIdentifier("companion.commitments")
                             .id("stream-commitments")
                     }
-                    if events.isEmpty { introduction.id("stream-introduction") }
-                    ForEach(events) { event in
-                        Group {
+                    if projection.events.isEmpty { introduction.id("stream-introduction") }
+                    ForEach(projection.rows) { row in
+                        let event = row.event
+                        VStack(alignment: .leading, spacing: 0) {
                             switch event {
                             case .message(let entry):
-                                if showsTimestamp(entry) {
+                                if projection.timestampIDs.contains(entry.id) {
                                     Text(entry.createdAt, format: .dateTime.month().day().hour().minute())
                                         .font(.footnote).foregroundStyle(CompanionHomeStyle.secondaryInk)
                                         .frame(maxWidth: .infinity).padding(.top, 14).padding(.bottom, 6)
                                 }
                                 CompanionMessageRow(entry: entry,
-                                    replyContext: replyContexts[entry.id],
+                                    replyContext: projection.replyContexts[entry.id],
                                     onRetry: { Task { await store.retry(id: entry.id) } },
                                     onSources: { onSources(entry) },
                                     onPlace: { id in onPlace(entry, id) },
@@ -69,14 +69,10 @@ struct CompanionConversation: View {
                             case .invite(let invite):
                                 CompanionInviteCard(invite: invite)
                             }
-                        }.id(event.id)
+                        }.id(row.id)
                     }
                     if store.isWorking {
-                        HStack(spacing: 10) {
-                            CompanionCharacter(activity: isActive ? store.activity : .idle, viewport: viewport)
-                            Text(progressText)
-                                .font(.subheadline).foregroundStyle(CompanionHomeStyle.secondaryInk)
-                        }
+                        CompanionWorkingIndicator(store: store, scrolling: scrolling, isActive: isActive)
                         .accessibilityElement(children: .combine)
                         .accessibilityIdentifier("companion.activity.working")
                         .id("stream-working")
@@ -96,10 +92,18 @@ struct CompanionConversation: View {
                     }
                     Color.clear.frame(height: 1).id("stream-bottom")
                         .background {
+                            if #unavailable(iOS 18.0) {
                             GeometryReader { proxy in
                                 Color.clear.preference(key: CompanionConversationBottom.self, value: proxy.frame(in: .global).maxY)
                             }
+                            }
                         }
+                }
+                .background {
+                    if #unavailable(iOS 18.0) {
+                        CompanionLegacyScrollProbe(isActive: isActive, onVisibility: observeNearLatest,
+                            onInteraction: observeInteraction).frame(width: 0, height: 0)
+                    }
                 }
                 .scrollTargetLayout()
                 .padding(.top, 20).padding(.bottom, 16)
@@ -111,85 +115,128 @@ struct CompanionConversation: View {
                     Color.clear.preference(key: CompanionConversationViewport.self, value: proxy.frame(in: .global))
                 }
             }
-            .onPreferenceChange(CompanionConversationViewport.self) { viewport = $0 }
+            .onPreferenceChange(CompanionConversationViewport.self) { value in
+                guard scrolling.viewport != value else { return }
+                let resized = scrolling.viewport.height > 0 && scrolling.viewport.size != value.size
+                scrolling.updateViewport(value, isActive: isActive)
+                // The execution channel follows real size changes only while
+                // idle at latest; history and native gestures retain ownership.
+                if resized { traceScroll("viewport-resized") }
+            }
             .contentMargins(.horizontal, CompanionHomeStyle.inset, for: .scrollContent)
             .scrollDismissesKeyboard(.interactively)
-            .defaultScrollAnchor(.bottom)
-            .scrollPosition(id: $scrollTarget, anchor: .bottom)
-            .simultaneousGesture(DragGesture(minimumDistance: 6).onChanged { _ in
-                if isActive { followsLatest = false }
-            })
+            .modifier(CompanionInitialScrollAnchor())
+            .modifier(CompanionReadingPositionObserver(legacyID: $legacyAnchorID, isActive: isActive,
+                onVisibleIDs: observeVisibleIDs))
+            .modifier(CompanionScrollInteractionObserver(isActive: isActive,
+                onVisibility: observeNearLatest, action: observeInteraction))
             .onPreferenceChange(CompanionConversationBottom.self) { bottom in
-                guard isActive, viewport.height > 0, bottom > 0 else { return }
-                if bottom <= viewport.maxY + 24 && bottom >= viewport.minY {
-                    followsLatest = true; unread = false
-                    saveReading()
-                }
+                if #available(iOS 18.0, *) { return }
+                guard isActive, scrolling.viewport.height > 0 else { return }
+                let near = bottom <= scrolling.viewport.maxY + 24 && bottom >= scrolling.viewport.minY
+                observeNearLatest(near)
             }
             .onChange(of: store.presentationRestoreToken) { _, _ in restoreReading() }
-            .onChange(of: scrollTarget) { _, target in
-                if target == "stream-bottom" && followsLatest { unread = false }
-                saveReading()
+            .onChange(of: legacyAnchorID) { _, _ in
+                if #unavailable(iOS 18.0) { saveReading() }
             }
-            .onChange(of: events.map(\.id)) { old, new in
-                let added = Set(new).subtracting(old)
-                guard !added.isEmpty else { return }
-                let userSent = events.contains { event in
-                    guard added.contains(event.id), case .message(let entry) = event else { return false }
-                    return entry.role == .user
+            .onChange(of: projection.change) { old, new in
+                if new.reset { restoreReading(); return }
+                if new.contentRevision > old.contentRevision {
+                    let userAction = new.userActionRevision > old.userActionRevision
+                    if scrolling.contentArrived(isUserAction: userAction) {
+                        requestLatest(force: userAction)
+                    }
+                } else if scrolling.intent.followsLatest && !scrolling.intent.isInteracting {
+                    requestLatest()
                 }
-                if userSent || followsLatest {
-                    followsLatest = true
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { scrollTarget = "stream-bottom" }
-                    unread = false
-                } else { unread = true }
                 saveReading()
             }
+            .onChange(of: store.isWorking) { _, _ in
+                if scrolling.intent.followsLatest && !scrolling.intent.isInteracting { requestLatest() }
+            }
+            .onChange(of: isActive) { _, active in if active { restoreReading() } }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in restoreAfterKeyboardLayout() }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in restoreAfterKeyboardLayout() }
+            .modifier(CompanionScrollExecution(scrolling: scrolling,
+                isActive: isActive, reduceMotion: reduceMotion, trace: traceScroll))
             .overlay(alignment: .bottom) {
-                if unread && isActive {
-                    Button {
-                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { scrollTarget = "stream-bottom" }
-                        unread = false; followsLatest = true; saveReading()
-                    } label: {
-                        Label(companionText("companion.new_content", "有新内容"), systemImage: "arrow.down")
-                            .font(.subheadline.weight(.medium)).padding(.horizontal, 16).frame(minHeight: 44)
-                            .background(.regularMaterial, in: Capsule())
-                    }.padding(.bottom, 8)
+                CompanionScrollLatestControl(scrolling: scrolling, isActive: isActive) {
+                    scrolling.revealLatest()
+                    requestLatest(force: true)
+                    saveReading()
                 }
-            }
-    }
-
-    private var progressText: String {
-        switch store.workingProgress {
-        case .thinking: return companionText("companion.progress.thinking", "正在整理回复…")
-        case .tool(let name):
-            switch name {
-            case "search_places": return companionText("companion.progress.search", "正在查找地点…")
-            case "manage_follow_up": return companionText("companion.progress.followup", "正在记录待办…")
-            default: return companionText("companion.progress.sources", "正在核对资料…")
             }
         }
     }
 
-    private func saveReading() {
+    private func saveReading(visibleAnchor: String? = nil) {
         // Scroll observation updates memory; tab/background transitions flush once.
-        guard followsLatest || scrollTarget != "stream-bottom" else { return }
-        store.noteReadingPosition(anchorID: isActive ? scrollTarget : store.readingState.anchorID,
-            followsLatest: isActive ? followsLatest : store.readingState.followsLatest, hasUnread: unread)
+        guard isActive else { return }
+        let visible: String?
+        if #available(iOS 18.0, *) { visible = visibleAnchor ?? store.readingState.anchorID }
+        else { visible = legacyAnchorID }
+        let anchor = scrolling.intent.anchorForSaving(visible: visible, saved: store.readingState.anchorID)
+        guard scrolling.intent.followsLatest || anchor != "stream-bottom" else { return }
+        store.noteReadingPosition(anchorID: anchor, followsLatest: scrolling.intent.followsLatest, hasUnread: scrolling.intent.hasUnread)
     }
 
     private func restoreReading() {
-        scrollTarget = store.readingState.anchorID
-        followsLatest = store.readingState.followsLatest
-        unread = store.readingState.hasUnread
+        legacyAnchorID = store.readingState.anchorID
+        scrolling.restore(reading: store.readingState)
+        traceScroll("restore-presentation")
     }
 
-    private func showsTimestamp(_ entry: CompanionHomeEntry) -> Bool {
-        guard let index = store.entries.firstIndex(where: { $0.id == entry.id }), index > 0 else { return true }
-        let previous = store.entries[index - 1]
-        return !Calendar.current.isDate(previous.createdAt, inSameDayAs: entry.createdAt)
-            || entry.createdAt.timeIntervalSince(previous.createdAt) >= 300
+    private func restoreAfterKeyboardLayout() {
+        guard isActive else { return }
+        traceScroll("keyboard-completed")
+        guard let target = scrolling.intent.keyboardRestorationTarget(reading: store.readingState) else { return }
+        if scrolling.intent.followsLatest { requestLatest() }
+        else {
+            // The bound scroll position is also a command. Automatic layout
+            // restoration must use the cancellable queue, then let the native
+            // scroll view report its new visible ID.
+            scrolling.enqueue(target: target, kind: .restoration)
+        }
     }
+
+    private func requestLatest(force: Bool = false) {
+        guard isActive else { return }
+        scrolling.enqueue(kind: force ? .explicit : .following)
+        traceScroll(force ? "request-explicit" : "request-following")
+    }
+
+    private func observeInteraction(_ active: Bool) {
+        guard isActive, scrolling.intent.isInteracting != active else { return }
+        scrolling.setInteraction(active)
+        traceScroll(active ? "phase-interacting" : "phase-idle")
+        saveReading()
+    }
+
+    private func observeNearLatest(_ near: Bool) {
+        guard isActive, near != scrolling.intent.nearLatest else { return }
+        scrolling.setNearLatest(near)
+        saveReading()
+    }
+
+    private func observeVisibleIDs(_ ids: [String]) {
+        guard isActive else { return }
+        let anchor = store.timelineProjection.readingAnchor(visibleIDs: ids, retaining: store.readingState.anchorID)
+        guard anchor != store.readingState.anchorID else { return }
+        saveReading(visibleAnchor: anchor)
+        traceScroll("visible-anchor-observed")
+    }
+
+    // Debug-only, constant-size state diagnostics. Never record message text,
+    // identities, travel data or the scroll anchor itself.
+    private func traceScroll(_ event: String) {
+        #if DEBUG
+        Self.scrollLog.debug("event=\(event, privacy: .public) follows=\(scrolling.intent.followsLatest) interacting=\(scrolling.intent.isInteracting) near=\(scrolling.intent.nearLatest) unread=\(scrolling.intent.hasUnread) kind=\(String(describing: scrolling.request.kind), privacy: .public) revision=\(scrolling.request.revision) targetNil=\(scrolling.request.target == nil) checkpointNil=\(store.readingState.anchorID == nil) savedBottom=\(store.readingState.anchorID == "stream-bottom")")
+        #endif
+    }
+    #if DEBUG
+    private static let scrollLog = Logger(subsystem: "com.solocompass.chat-scroll", category: "intent")
+    #endif
 
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -240,4 +287,48 @@ private struct CompanionConversationViewport: PreferenceKey {
 private struct CompanionConversationBottom: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+
+@MainActor
+private struct CompanionScrollLatestControl: View {
+    let scrolling: CompanionScrollState
+    let isActive: Bool
+    let onLatest: () -> Void
+    var body: some View {
+        if isActive && scrolling.presentation.showsLatest {
+            Button(action: onLatest) {
+                Label(scrolling.presentation.hasUnread ? companionText("companion.new_content", "有新内容")
+                    : companionText("companion.scroll.latest", "回到最新"), systemImage: "arrow.down")
+                    .font(.subheadline.weight(.medium)).padding(.horizontal, 16).frame(minHeight: 44)
+                    .background(.regularMaterial, in: Capsule())
+            }.padding(.bottom, 8)
+                .accessibilityIdentifier("companion.stream.latest")
+        }
+    }
+}
+
+@MainActor
+private struct CompanionWorkingIndicator: View {
+    let store: CompanionHomeStore
+    let scrolling: CompanionScrollState
+    let isActive: Bool
+    var body: some View {
+        HStack(spacing: 10) {
+            CompanionCharacter(activity: isActive ? store.activity : .idle, viewport: scrolling.viewport)
+            Text(progressText).font(.subheadline).foregroundStyle(CompanionHomeStyle.secondaryInk)
+        }
+    }
+    private var progressText: String {
+        switch store.workingProgress {
+        case .thinking: return companionText("companion.progress.thinking", "正在整理回复…")
+        case .tool(let name):
+            switch name {
+            case "search_places": return companionText("companion.progress.search", "正在查找地点…")
+            case "manage_follow_up": return companionText("companion.progress.followup", "正在记录待办…")
+            default: return companionText("companion.progress.sources", "正在核对资料…")
+            }
+        }
+    }
+
 }
