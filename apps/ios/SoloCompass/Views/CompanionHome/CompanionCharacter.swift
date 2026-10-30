@@ -18,6 +18,16 @@ struct CompanionCharacter: View {
         activity.isWorking && visible && scenePhase == .active && !reduceMotion && !lowPower
     }
     var body: some View {
+        // Idle history rows have no motion to suspend. Keep their fixed image
+        // out of the scroll view's global geometry/preference update graph.
+        Group {
+            if activity.isWorking { workingImage }
+            else { image }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var workingImage: some View {
         Group {
             if animates {
                 image.phaseAnimator([false, true]) { content, phase in
@@ -34,10 +44,11 @@ struct CompanionCharacter: View {
             }
         }
         .onPreferenceChange(CompanionCharacterVisible.self) { visible = $0 }
+        .onAppear { lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled }
+        .onDisappear { visible = false }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
-        .accessibilityHidden(true)
     }
 }
 
