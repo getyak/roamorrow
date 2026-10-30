@@ -22,6 +22,7 @@ struct CompanionScrollIntent: Equatable {
     private(set) var hasUnread: Bool
     private(set) var isInteracting = false
     private(set) var nearLatest: Bool
+    private(set) var hasInteractedSinceRestore = false
 
     init(reading: CompanionConversationReadingState) {
         followsLatest = reading.followsLatest
@@ -32,7 +33,7 @@ struct CompanionScrollIntent: Equatable {
     mutating func interactionChanged(active: Bool) {
         guard isInteracting != active else { return }
         isInteracting = active
-        if active { followsLatest = false }
+        if active { followsLatest = false; hasInteractedSinceRestore = true }
         else if nearLatest { revealLatest() }
     }
 
@@ -76,6 +77,10 @@ struct CompanionScrollIntent: Equatable {
     func keyboardRestorationTarget(reading: CompanionConversationReadingState) -> String? {
         guard !isInteracting else { return nil }
         if followsLatest { return "stream-bottom" }
+        // A row ID does not encode a reader's position inside a tall message.
+        // Native manual scrolling relinquishes layout restoration until the
+        // next explicit map/tab restore constructs a fresh intent.
+        guard !hasInteractedSinceRestore else { return nil }
         // A tall row can leave the persisted ID temporarily behind the native
         // offset. Keyboard layout must never promote current history intent
         // from a stale latest checkpoint or reset its unread state.

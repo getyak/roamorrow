@@ -322,6 +322,17 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertFalse(history.followsLatest)
         history.interactionChanged(active: true)
         XCTAssertNil(history.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false)))
+        history.interactionChanged(active: false)
+        XCTAssertNil(history.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false)),
+                     "Manual reading inside a tall row keeps the native offset instead of jumping to that row's bottom")
+        XCTAssertTrue(history.hasUnread)
+        let restored = CompanionScrollIntent(reading: .init(anchorID: "source", followsLatest: false))
+        XCTAssertEqual(restored.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false)), "source")
+        history.interactionChanged(active: true)
+        history.visibilityChanged(nearLatest: true)
+        history.interactionChanged(active: false)
+        XCTAssertTrue(history.followsLatest)
+        XCTAssertEqual(history.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false)), "stream-bottom")
     }
 
     func testMapReturnPinsTheSourceInsteadOfANeighboringVisibleRow() async throws {
