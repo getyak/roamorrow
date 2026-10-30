@@ -272,7 +272,7 @@ final class FileAgentExecutionJournal: AgentExecutionJournal {
 
     private func persist(_ candidate: Snapshot) -> Bool {
         do {
-            let data = try JSONEncoder().encode(candidate)
+            let data = try AgentRuntimeJSON.encoder().encode(candidate)
             try atomicWriter(data, url)
             snapshot = candidate
             return true
@@ -287,7 +287,7 @@ final class FileAgentExecutionJournal: AgentExecutionJournal {
             return
         }
         do {
-            let decoded = try JSONDecoder().decode(Snapshot.self, from: Data(contentsOf: url))
+            let decoded = try AgentRuntimeJSON.decoder().decode(Snapshot.self, from: Data(contentsOf: url))
             guard valid(decoded) else {
                 isAvailable = false
                 return

@@ -1,5 +1,39 @@
 import Foundation
 
+/// UTC storage format shared by the device runtime. Numeric dates remain readable
+/// for snapshots written before the ISO8601 storage convention was adopted.
+enum AgentRuntimeJSON {
+    static func storageDate(_ date: Date) -> Date {
+        Date(timeIntervalSince1970: date.timeIntervalSince1970.rounded(.down))
+    }
+
+    static func encoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    static func decoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let value = try decoder.singleValueContainer()
+            if let seconds = try? value.decode(Double.self) {
+                return storageDate(Date(timeIntervalSinceReferenceDate: seconds))
+            }
+            let string = try value.decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: string) { return storageDate(date) }
+            formatter.formatOptions = [.withInternetDateTime]
+            guard let date = formatter.date(from: string) else {
+                throw DecodingError.dataCorruptedError(in: value, debugDescription: "Invalid ISO8601 date")
+            }
+            return storageDate(date)
+        }
+        return decoder
+    }
+}
+
 struct AgentSessionDescriptor: Codable, Equatable, Hashable, Sendable {
     var id: String
     var scope: String
@@ -16,6 +50,15 @@ struct AgentTurnContext: Codable, Equatable, Sendable {
     var facts: String
     var selectedAreaFact: String? = nil
     var memoryEpoch: UUID? = nil
+
+    init(capturedAt: Date, scope: String, facts: String,
+         selectedAreaFact: String? = nil, memoryEpoch: UUID? = nil) {
+        self.capturedAt = AgentRuntimeJSON.storageDate(capturedAt)
+        self.scope = scope
+        self.facts = facts
+        self.selectedAreaFact = selectedAreaFact
+        self.memoryEpoch = memoryEpoch
+    }
 }
 
 enum AgentToolExecutionState: String, Codable, Sendable {

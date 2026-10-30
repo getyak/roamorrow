@@ -265,11 +265,40 @@ struct AgentRuntimeHost {
         }
         try check(resolvedEffects == 0, "side-effect alias compares resolved rather than model arguments")
 
+        let fractionalContext = AgentTurnContext(capturedAt: Date(timeIntervalSince1970: 1_700_000_000.987),
+            scope: "global", facts: "Fractional input")
+        try check(fractionalContext.capturedAt.timeIntervalSince1970 == 1_700_000_000,
+                  "context time normalizes to whole UTC seconds")
+        let fractionalData = try AgentRuntimeJSON.encoder().encode(fractionalContext)
+        let fractionalRoundTrip = try AgentRuntimeJSON.decoder().decode(AgentTurnContext.self, from: fractionalData)
+        try check(fractionalRoundTrip == fractionalContext, "normalized context survives ISO8601 roundtrip")
+        let encodedTime = try JSONSerialization.jsonObject(with: fractionalData) as? [String: Any]
+        try check((encodedTime?["capturedAt"] as? String)?.hasSuffix("Z") == true,
+                  "stored capturedAt uses UTC ISO8601 string")
+        let numericContextData = Data(#"{"capturedAt":721692800.987,"scope":"global","facts":"Fractional input"}"#.utf8)
+        let numericContext = try AgentRuntimeJSON.decoder().decode(AgentTurnContext.self, from: numericContextData)
+        try check(numericContext == fractionalContext, "legacy reference-date numeric context remains readable")
+
         let contextURL = root.appendingPathComponent("context.json")
         let contextJournal = FileAgentExecutionJournal(url: contextURL)
         let frozenContext = AgentTurnContext(capturedAt: Date(timeIntervalSince1970: 123), scope: "global",
             facts: "Original facts", memoryEpoch: UUID())
         try check(contextJournal.saveContext(frozenContext, for: turn), "text-only context persists before model")
+        let storedEnvelope = try JSONSerialization.jsonObject(with: Data(contentsOf: contextURL)) as? [String: Any]
+        let storedRecords = storedEnvelope?["records"] as? [[String: Any]]
+        let storedContext = storedRecords?.first?["context"] as? [String: Any]
+        try check((storedContext?["capturedAt"] as? String)?.hasSuffix("Z") == true,
+                  "file journal persists context as ISO8601 UTC")
+        var legacyEnvelope = storedEnvelope ?? [:]
+        var legacyRecords = storedRecords ?? []
+        var legacyStoredContext = storedContext ?? [:]
+        legacyStoredContext["capturedAt"] = frozenContext.capturedAt.timeIntervalSinceReferenceDate
+        legacyRecords[0]["context"] = legacyStoredContext
+        legacyEnvelope["records"] = legacyRecords
+        let legacyContextURL = root.appendingPathComponent("legacy-numeric-context.json")
+        try JSONSerialization.data(withJSONObject: legacyEnvelope).write(to: legacyContextURL)
+        try check(FileAgentExecutionJournal(url: legacyContextURL).context(for: turn) == frozenContext,
+                  "file journal reopens legacy numeric context metadata")
         let contextReload = FileAgentExecutionJournal(url: contextURL)
         try check(contextReload.context(for: turn) == frozenContext && contextReload.toolBatches(for: turn).isEmpty,
                   "text-only context and memory epoch survive reopen without tool batches")

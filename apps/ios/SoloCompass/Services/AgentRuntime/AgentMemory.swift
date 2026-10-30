@@ -116,7 +116,7 @@ final class DeviceAgentMemoryStore: AgentMemoryProviding {
         do {
             let data = try Data(contentsOf: fileURL)
             guard data.count <= 12_000_000 else { isAvailable = false; return }
-            let snapshot = try JSONDecoder().decode(Snapshot.self, from: data)
+            let snapshot = try AgentRuntimeJSON.decoder().decode(Snapshot.self, from: data)
             guard snapshot.version == 1,
                   Set(snapshot.records.map { $0.recall().id }).count == snapshot.records.count,
                   snapshot.records.allSatisfy({ !$0.userText.isEmpty && !$0.assistantText.isEmpty
@@ -167,7 +167,7 @@ final class DeviceAgentMemoryStore: AgentMemoryProviding {
         if let prior = records.first(where: { $0.identity.session.id == turn.identity.session.id && $0.identity.turnID == turn.identity.turnID }) {
             return prior.identity == turn.identity && prior.userText == user && prior.assistantText == assistant && prior.cityCode == turn.cityCode
         }
-        let record = Record(identity: turn.identity, occurredAt: Date(), userText: user,
+        let record = Record(identity: turn.identity, occurredAt: AgentRuntimeJSON.storageDate(Date()), userText: user,
                             assistantText: assistant, cityCode: turn.cityCode.map { String($0.prefix(80)) }, memoryEpoch: expectedEpoch)
         return persist(Array((records + [record]).suffix(maxRecords)))
     }
@@ -176,15 +176,17 @@ final class DeviceAgentMemoryStore: AgentMemoryProviding {
         guard isAvailable, limit > 0 else { return [] }
         let terms = Set(Self.tokens(String(query.prefix(500))))
         guard !terms.isEmpty else { return [] }
-        return records.filter {
-            $0.identity.session.scope == scope && (cityCode == nil || $0.cityCode == nil || $0.cityCode == cityCode)
-        }.compactMap { record in
+        return records.enumerated().filter {
+            $0.element.identity.session.scope == scope && (cityCode == nil || $0.element.cityCode == nil || $0.element.cityCode == cityCode)
+        }.compactMap { index, record -> (hit: AgentMemoryRecall, index: Int)? in
             let words = Set(Self.tokens(record.userText + " " + record.assistantText))
             let score = Double(terms.intersection(words).count) / Double(terms.count)
-            return score > 0 ? record.recall(score: score) : nil
+            return score > 0 ? (record.recall(score: score), index) : nil
         }.sorted {
-            $0.score == $1.score ? $0.occurredAt > $1.occurredAt : $0.score > $1.score
-        }.prefix(min(10, limit)).map { $0 }
+            if $0.hit.score != $1.hit.score { return $0.hit.score > $1.hit.score }
+            if $0.hit.occurredAt != $1.hit.occurredAt { return $0.hit.occurredAt > $1.hit.occurredAt }
+            return $0.index > $1.index
+        }.prefix(min(10, limit)).map(\.hit)
     }
 
     @discardableResult
@@ -216,7 +218,7 @@ final class DeviceAgentMemoryStore: AgentMemoryProviding {
             let epoch = nextGlobalEpoch ?? globalEpoch
             let overrides = nextSessionEpochs ?? sessionEpochs
             let deletion = nextHasGlobalDeletion ?? hasGlobalDeletion
-            let data = try JSONEncoder().encode(Snapshot(version: 1, records: next, forgottenSessionIDs: tombstones,
+            let data = try AgentRuntimeJSON.encoder().encode(Snapshot(version: 1, records: next, forgottenSessionIDs: tombstones,
                                                         globalEpoch: epoch, sessionEpochs: overrides, hasGlobalDeletion: deletion))
             try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             #if os(iOS)

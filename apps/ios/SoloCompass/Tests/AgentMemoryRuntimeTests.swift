@@ -177,6 +177,36 @@ final class AgentMemoryRuntimeTests: XCTestCase {
         XCTAssertEqual(scoped.first?.cityCode, "kyoto")
     }
 
+    func testStoredMemoryDateUsesISO8601UTC() throws {
+        let store = DeviceAgentMemoryStore(fileURL: url)
+        XCTAssertTrue(store.recordCompletedTurn(turn()))
+        let snapshot = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let record = try XCTUnwrap((snapshot["records"] as? [[String: Any]])?.first)
+        let occurredAt = try XCTUnwrap(record["occurredAt"] as? String)
+        XCTAssertTrue(occurredAt.hasSuffix("Z"))
+        XCTAssertNotNil(ISO8601DateFormatter().date(from: occurredAt))
+        let beforeReopen = try XCTUnwrap(store.recall(query: "coffee", scope: "global", limit: 1).first?.occurredAt)
+        XCTAssertEqual(beforeReopen.timeIntervalSince1970.rounded(.down), beforeReopen.timeIntervalSince1970)
+        XCTAssertEqual(DeviceAgentMemoryStore(fileURL: url).recall(query: "coffee", scope: "global", limit: 1).first?.occurredAt, beforeReopen)
+    }
+
+    func testLegacyNumericDatesReadAndSameSecondTiePrefersNewestRecord() throws {
+        let older = turn(session: "older")
+        let newer = turn(session: "newer")
+        let legacyDate = 123_456.0
+        let records: [[String: Any]] = try [older, newer].map {
+            let identity = try JSONSerialization.jsonObject(with: JSONEncoder().encode($0.identity))
+            return ["identity": identity, "occurredAt": legacyDate, "userText": $0.userText, "assistantText": $0.assistantText]
+        }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try JSONSerialization.data(withJSONObject: ["version": 1, "records": records]).write(to: url)
+        let store = DeviceAgentMemoryStore(fileURL: url)
+        let recalled = store.recall(query: "coffee", scope: "global", limit: 3)
+        XCTAssertTrue(store.isAvailable)
+        XCTAssertEqual(recalled.map(\.identity), [newer.identity, older.identity])
+        XCTAssertEqual(recalled.first?.occurredAt, Date(timeIntervalSinceReferenceDate: legacyDate))
+    }
+
     func testDigestGenerationRejectsOldScheduledEvidenceAndAllowsFreshEvidence() async throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: AgentMemorySnapshot.self, TasteProfile.self,

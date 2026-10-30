@@ -203,6 +203,27 @@ final class AgentRuntimeTests: XCTestCase {
         } catch { XCTAssertEqual(error as? AgentRuntimeError, .identityConflict) }
     }
 
+    func testContextUTCStorageSupportsFractionalInputAndLegacyNumericDates() throws {
+        let context = AgentTurnContext(capturedAt: Date(timeIntervalSince1970: 1_700_000_000.987),
+                                       scope: "global", facts: "Original")
+        XCTAssertEqual(context.capturedAt.timeIntervalSince1970, 1_700_000_000)
+        let encoded = try AgentRuntimeJSON.encoder().encode(context)
+        let fields = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(fields["capturedAt"] as? String, "2023-11-14T22:13:20Z")
+        XCTAssertEqual(try AgentRuntimeJSON.decoder().decode(AgentTurnContext.self, from: encoded), context)
+        let legacy = Data(#"{"capturedAt":721692800.987,"scope":"global","facts":"Original"}"#.utf8)
+        XCTAssertEqual(try AgentRuntimeJSON.decoder().decode(AgentTurnContext.self, from: legacy), context)
+        let url = temporaryURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let identity = turn()
+        XCTAssertTrue(FileAgentExecutionJournal(url: url).saveContext(context, for: identity))
+        let stored = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let records = try XCTUnwrap(stored["records"] as? [[String: Any]])
+        let saved = try XCTUnwrap(records.first?["context"] as? [String: Any])
+        XCTAssertEqual(saved["capturedAt"] as? String, "2023-11-14T22:13:20Z")
+        XCTAssertEqual(FileAgentExecutionJournal(url: url).context(for: identity), context)
+    }
+
     func testLegacyJSONDefaultsAndCanonicalIdentity() throws {
         let data = Data(#"{"id":"old","name":"web_search","argumentsJSON":"{}","resultJSON":"{}"}"#.utf8)
         let old = try JSONDecoder().decode(AgentToolCheckpoint.self, from: data)
