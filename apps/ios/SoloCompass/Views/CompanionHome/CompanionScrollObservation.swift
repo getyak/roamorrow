@@ -1,6 +1,19 @@
 import SwiftUI
 import UIKit
 
+/// Bottom placement is an initial condition. Re-anchoring every estimated
+/// content-size change fights variable-height lazy rows during native scrolling.
+struct CompanionInitialScrollAnchor: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.defaultScrollAnchor(.bottom, for: .initialOffset)
+                .defaultScrollAnchor(.bottom, for: .alignment)
+        } else {
+            content.defaultScrollAnchor(.bottom)
+        }
+    }
+}
+
 /// Native phases include deceleration; only boundary changes enter SwiftUI state.
 struct CompanionScrollInteractionObserver: ViewModifier {
     let isActive: Bool

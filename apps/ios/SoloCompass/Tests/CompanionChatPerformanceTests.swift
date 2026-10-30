@@ -1,8 +1,15 @@
 import XCTest
+import Observation
 @testable import SoloCompass
 
 @MainActor
 final class CompanionChatPerformanceTests: XCTestCase {
+    private final class ObservationProbe: @unchecked Sendable {
+        private let lock = NSLock()
+        private var marked = false
+        func mark() { lock.lock(); marked = true; lock.unlock() }
+        var wasMarked: Bool { lock.lock(); defer { lock.unlock() }; return marked }
+    }
     private final class Gate: @unchecked Sendable {
         let started = DispatchSemaphore(value: 0)
         let release = DispatchSemaphore(value: 0)
@@ -62,6 +69,24 @@ final class CompanionChatPerformanceTests: XCTestCase {
         let restored = CompanionHomeStore(url: url)
         XCTAssertEqual(restored.composerDraft, "新草稿 🧭\nsecond line")
         XCTAssertEqual(restored.entries, messages)
+    }
+
+    func testReadingCheckpointDoesNotInvalidateDisplayObservationAndStillRestores() async throws {
+        let url = location()
+        let store = CompanionHomeStore(url: url)
+        await store.send(text: "A historical message")
+        let entry = try XCTUnwrap(store.entries.first)
+        let probe = ObservationProbe()
+        withObservationTracking {
+            _ = store.readingState
+        } onChange: { probe.mark() }
+        let anchor = "message:\(entry.id)"
+        store.noteReadingPosition(anchorID: anchor, followsLatest: false, hasUnread: true)
+        XCTAssertFalse(probe.wasMarked, "Native viewport checkpoints must not invalidate the view that initializes the conversation")
+        XCTAssertEqual(store.readingState.anchorID, anchor)
+        XCTAssertTrue(store.readingState.hasUnread)
+        XCTAssertTrue(store.savePresentation())
+        XCTAssertEqual(CompanionHomeStore(url: url).readingState, store.readingState)
     }
 
     func testPendingAcceptancePublishesOriginalAndKeepsNewDraft() async throws {

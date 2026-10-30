@@ -48,6 +48,8 @@ final class ChatAndMeUITests: XCTestCase {
         XCTAssertTrue(last.isHittable)
         let marker = "[native send] keep scrolling with 5000 messages"
         composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(last.isHittable, "Opening the keyboard at latest keeps the tail visible")
         composer.typeText(marker)
         for _ in 0..<3 { stream.swipeDown(velocity: .fast) }
         XCTAssertEqual(composer.value as? String, marker)
@@ -75,16 +77,38 @@ final class ChatAndMeUITests: XCTestCase {
         capture("sent-with-next-draft")
     }
 
+    func testColdLongHistoryScrollWithoutKeyboard() {
+        launch()
+        XCTAssertFalse(app.keyboards.firstMatch.exists)
+        let last = element("companion.message.\(lastID)")
+        XCTAssertTrue(last.waitForExistence(timeout: 20))
+        XCTAssertTrue(last.isHittable)
+        stream.swipeDown(velocity: .fast)
+        XCTAssertFalse(last.isHittable)
+        capture("cold-scroll-without-keyboard")
+        let latest = app.buttons["companion.stream.latest"].firstMatch
+        XCTAssertTrue(latest.isHittable)
+        latest.tap()
+        XCTAssertTrue(last.isHittable)
+    }
+
     func testLongHistoryNativeScrollingMetrics() {
         launch()
         XCTAssertTrue(element("companion.message.\(lastID)").waitForExistence(timeout: 20))
         let options = XCTMeasureOptions()
         options.iterationCount = 3
+        options.invocationOptions = [.manuallyStop]
         measure(metrics: [XCTOSSignpostMetric.scrollingAndDecelerationMetric,
                           XCTCPUMetric(application: app), XCTMemoryMetric(application: app)], options: options) {
             stream.swipeDown(velocity: .fast)
             stream.swipeDown(velocity: .fast)
             stream.swipeUp(velocity: .fast)
+            stopMeasuring()
+            // Reposition outside the interval so each sample traverses the
+            // same rows. No warm-up gesture is added before the first swipe.
+            let latest = app.buttons["companion.stream.latest"].firstMatch
+            if latest.exists { latest.tap() }
+            XCTAssertTrue(element("companion.message.\(lastID)").isHittable)
         }
         capture("scroll-metrics")
     }

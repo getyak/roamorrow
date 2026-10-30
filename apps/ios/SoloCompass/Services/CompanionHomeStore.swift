@@ -19,7 +19,10 @@ final class CompanionHomeStore: AgentExecutionJournal {
     private(set) var conversationID = UUID().uuidString
     private(set) var nextTurnPlace: CompanionHomePlaceScope?
     private(set) var nextTurnArea: CompanionHomeAreaScope?
-    private(set) var readingState = CompanionConversationReadingState()
+    // A viewport checkpoint, not display state. Reading this to initialize a
+    // child view must not subscribe its whole parent to every native scroll row.
+    // Explicit restoration is published through presentationRestoreToken.
+    @ObservationIgnored private(set) var readingState = CompanionConversationReadingState()
     private(set) var mapSource: CompanionConversationMapSource?
     private(set) var presentationRestoreToken = 0
     private(set) var isWorking = false

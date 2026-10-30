@@ -123,11 +123,17 @@ struct CompanionConversation: View {
                 }
             }
             .onPreferenceChange(CompanionConversationViewport.self) { value in
-                if viewport != value { viewport = value }
+                guard viewport != value else { return }
+                let resized = viewport.height > 0 && viewport.size != value.size
+                viewport = value
+                // Composer line-wrap/keyboard resizing follows the tail only
+                // when that is still the user's intent; row-size estimates do
+                // not change this viewport and cannot schedule a follow loop.
+                if resized, intent.followsLatest, !intent.isInteracting { requestLatest() }
             }
             .contentMargins(.horizontal, CompanionHomeStyle.inset, for: .scrollContent)
             .scrollDismissesKeyboard(.interactively)
-            .defaultScrollAnchor(.bottom)
+            .modifier(CompanionInitialScrollAnchor())
             .scrollPosition(id: $scrollTarget, anchor: .bottom)
             .modifier(CompanionScrollInteractionObserver(isActive: isActive,
                 onVisibility: observeNearLatest, action: observeInteraction))
@@ -157,8 +163,8 @@ struct CompanionConversation: View {
                 if intent.followsLatest && !intent.isInteracting { requestLatest() }
             }
             .onChange(of: isActive) { _, active in if active { restoreReading() } }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in restoreHistoryAfterLayout() }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in restoreHistoryAfterLayout() }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in restoreAfterKeyboardLayout() }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in restoreAfterKeyboardLayout() }
             .task(id: scrollRequest.revision) {
                 let request = scrollRequest
                 guard request.revision > 0 else { return }
@@ -217,9 +223,10 @@ struct CompanionConversation: View {
         }
     }
 
-    private func restoreHistoryAfterLayout() {
-        guard isActive, !intent.followsLatest, !intent.isInteracting else { return }
-        restoreReading()
+    private func restoreAfterKeyboardLayout() {
+        guard isActive, !intent.isInteracting else { return }
+        if intent.followsLatest { requestLatest() }
+        else { restoreReading() }
     }
 
     private func requestLatest(force: Bool = false) {
