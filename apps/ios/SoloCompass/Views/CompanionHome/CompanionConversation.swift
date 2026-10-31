@@ -117,14 +117,14 @@ struct CompanionConversation: View {
             .onPreferenceChange(CompanionConversationViewport.self) { value in
                 guard scrolling.viewport != value else { return }
                 let resized = scrolling.viewport.height > 0 && scrolling.viewport.size != value.size
-                scrolling.updateViewport(value, isActive: isActive)
-                // The execution channel follows real size changes only while
-                // idle at latest; history and native gestures retain ownership.
+                scrolling.updateViewport(value, isActive: isActive, nativeSizing: nativeSizingEnabled)
+                // Modern native sizing owns layout corrections. Legacy
+                // execution and explicit history/user commands stay separate.
                 if resized { traceScroll("viewport-resized") }
             }
             .contentMargins(.horizontal, CompanionHomeStyle.inset, for: .scrollContent)
             .scrollDismissesKeyboard(.interactively)
-            .modifier(CompanionInitialScrollAnchor())
+            .modifier(CompanionScrollAnchors(scrolling: scrolling, isActive: isActive))
             .modifier(CompanionReadingPositionObserver(legacyID: $legacyAnchorID, isActive: isActive,
                 onVisibleIDs: observeVisibleIDs))
             .modifier(CompanionScrollInteractionObserver(isActive: isActive,
@@ -189,7 +189,8 @@ struct CompanionConversation: View {
     private func restoreAfterKeyboardLayout() {
         guard isActive else { return }
         traceScroll("keyboard-completed")
-        guard let target = scrolling.intent.keyboardRestorationTarget(reading: store.readingState) else { return }
+        guard let target = scrolling.intent.keyboardRestorationTarget(reading: store.readingState,
+            nativeSizing: nativeSizingEnabled) else { return }
         if scrolling.intent.followsLatest { requestLatest() }
         else {
             // The bound scroll position is also a command. Automatic layout
@@ -197,6 +198,11 @@ struct CompanionConversation: View {
             // scroll view report its new visible ID.
             scrolling.enqueue(target: target, kind: .restoration)
         }
+    }
+
+    private var nativeSizingEnabled: Bool {
+        if #available(iOS 18.0, *) { return true }
+        return false
     }
 
     private func requestLatest(force: Bool = false) {
@@ -220,10 +226,6 @@ struct CompanionConversation: View {
 
     private func observeVisibleIDs(_ ids: [String]) {
         guard isActive else { return }
-        #if DEBUG
-        let hasFinal = store.timelineProjection.rows.last.map { ids.contains($0.id) } ?? false
-        Self.scrollLog.debug("event=native-targets empty=\(ids.isEmpty) bottom=\(ids.contains("stream-bottom")) final=\(hasFinal)")
-        #endif
         let anchor = store.timelineProjection.readingAnchor(visibleIDs: ids, retaining: store.readingState.anchorID)
         guard anchor != store.readingState.anchorID else { return }
         saveReading(visibleAnchor: anchor)

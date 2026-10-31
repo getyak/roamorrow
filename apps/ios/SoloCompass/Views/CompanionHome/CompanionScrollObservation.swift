@@ -1,8 +1,5 @@
 import SwiftUI
 import UIKit
-#if DEBUG
-import OSLog
-#endif
 
 /// Modern visibility is an observation, never a two-way positioning command.
 /// iOS 17 retains the existing compatible binding path.
@@ -22,13 +19,18 @@ struct CompanionReadingPositionObserver: ViewModifier {
     }
 }
 
-/// Bottom placement is an initial condition. Re-anchoring every estimated
-/// content-size change fights variable-height lazy rows during native scrolling.
-struct CompanionInitialScrollAnchor: ViewModifier {
+/// Native sizing follows the bottom only for an active, idle latest intention.
+/// This also handles lazy height corrections after a keyboard command finishes.
+@MainActor
+struct CompanionScrollAnchors: ViewModifier {
+    let scrolling: CompanionScrollState
+    let isActive: Bool
+
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content.defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
+                .defaultScrollAnchor(isActive && scrolling.pinsLatestDuringLayout ? .bottom : nil, for: .sizeChanges)
         } else {
             content.defaultScrollAnchor(.bottom)
         }
@@ -45,50 +47,17 @@ struct CompanionScrollInteractionObserver: ViewModifier {
         if #available(iOS 18.0, *) {
             content
                 .onScrollGeometryChange(for: Bool.self) { geometry in
-                    geometry.contentSize.height > 0 && geometry.visibleRect.maxY >= geometry.contentSize.height - 24
+                    CompanionScrollVisibility.isNearLatest(contentHeight: geometry.contentSize.height, visibleRect: geometry.visibleRect)
                 } action: { _, near in
                     if isActive { onVisibility(near) }
                 }
-                .modifier(CompanionNativeLayoutTrace(isActive: isActive))
                 .onScrollPhaseChange { _, phase, context in
                     guard isActive else { return }
-                    if context.geometry.contentSize.height > 0 {
-                        onVisibility(context.geometry.visibleRect.maxY >= context.geometry.contentSize.height - 24)
-                    }
+                    onVisibility(CompanionScrollVisibility.isNearLatest(contentHeight: context.geometry.contentSize.height,
+                        visibleRect: context.geometry.visibleRect))
                     action(phase == .tracking || phase == .interacting || phase == .decelerating)
                 }
         } else { content }
-    }
-}
-
-/// Temporary read-only boundary probe. Geometry is in view points, never geo
-/// coordinates, message text or identifiers. It does not publish UI state.
-@available(iOS 18.0, *)
-@MainActor
-private struct CompanionNativeLayoutTrace: ViewModifier {
-    let isActive: Bool
-    #if DEBUG
-    private struct Sample: Equatable {
-        let content: CGSize
-        let container: CGSize
-        let insets: EdgeInsets
-        let offset: CGPoint
-        let visible: CGRect
-    }
-    private static let log = Logger(subsystem: "com.solocompass.chat-scroll", category: "native-layout")
-    #endif
-
-    func body(content: Content) -> some View {
-        #if DEBUG
-        content.onScrollGeometryChange(for: Sample.self) { geometry in
-            Sample(content: geometry.contentSize, container: geometry.containerSize,
-                insets: geometry.contentInsets, offset: geometry.contentOffset, visible: geometry.visibleRect)
-        } action: { _, value in
-            Self.log.debug("event=native-geometry active=\(self.isActive) contentH=\(Double(value.content.height)) contentW=\(Double(value.content.width)) containerH=\(Double(value.container.height)) containerW=\(Double(value.container.width)) insetTop=\(Double(value.insets.top)) insetBottom=\(Double(value.insets.bottom)) offsetY=\(Double(value.offset.y)) visibleMinY=\(Double(value.visible.minY)) visibleMaxY=\(Double(value.visible.maxY))")
-        }
-        #else
-        content
-        #endif
     }
 }
 

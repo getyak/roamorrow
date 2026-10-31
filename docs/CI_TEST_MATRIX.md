@@ -29,6 +29,19 @@ The owned native-device trace also retains Debug-only audio lifecycle markers
 with recording/playing/paused/ownership booleans. It never records attachment
 identities, audio, transcripts, message text or location.
 
+Latest-layout ownership is a separate observable projection. On iOS 18+, the
+active conversation uses the native `.sizeChanges` bottom anchor only while
+idle and following latest. Keyboard/viewport layout notifications do not also
+issue latest-ID commands. History restoration and explicit send/latest actions
+keep their existing command semantics; iOS 17 retains the legacy fallback.
+Modern near-tail readback also requires a finite, nonempty viewport to overlap
+the reported content, so an entire window beyond EOF cannot resume following.
+Host and XCTest checks cover gesture release before control visibility changes,
+geometry-only readback, history ownership and pending explicit requests. The
+original native 5,000-message keyboard/navigation cases remain the acceptance
+gate after removing the temporary geometry discovery probe. See
+[Apple's sizing-anchor role](https://developer.apple.com/documentation/swiftui/scrollanchorrole/sizechanges).
+
 | Workflow/job                     | Required checks                                                                                                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ci.yml` / build (Linux)         | Portable `scripts/ios/test_local_policy.py` suite, explicit skips for macOS-only tests, and `bash -n` for all five simulator entrypoint/library scripts. |

@@ -8,7 +8,7 @@
 
 **Alternatives:** A separate customization screen adds navigation; a large profile block consumes the requested reading space. Use a compact sheet from the existing header and menu. These are implementation choices under the user's instruction to proceed autonomously.
 
-**Constraints:** No new dependencies, accounts, generated remote images, permissions, schema or backend changes. Do not change chat identity, persistence, scrolling, source actions or drafts. Names are trimmed, single-line, and limited to 16 graphemes; four characters is the default, not a forced limit. Unknown future style values fall back safely. Both English and Simplified Chinese strings are required.
+**Constraints:** No new dependencies, accounts, generated remote images, permissions, schema or backend changes. Preserve chat identity, persistence, intended history/gesture behavior, source actions and drafts. Names are trimmed, single-line, and limited to 16 graphemes; four characters is the default, not a forced limit. Unknown future style values fall back safely. Both English and Simplified Chinese strings are required.
 
 **Review focus:** Legacy preference snapshots; unknown style values; blank/control-character/emoji names; cancelled edits; largest Dynamic Type and compact width; keyboard dismissal; draft/history continuity.
 
@@ -18,6 +18,8 @@
 - [x] Remove reply/progress avatars, preserving message/source actions.
 - [ ] Run host/localization checks, native CI and visual acceptance; independent branch review; one linked PR and merge after applicable gates pass.
 
-**Resources:** The shared Mac has a disk-related pause marker. Keep local work lightweight and use the existing CI native build/test lane until the marker clears. Do not remove retained test evidence or interrupt other projects.
+**Resources:** Recheck the shared Mac's pause marker and resource guard before heavy work. Reuse host checks and the existing CI native lane under memory pressure. Preserve unique evidence and other projects' services/devices.
 
-**Regression isolation:** Remove only the incoming avatar column and preserve the existing opposite-side spacer. Keep the established scroll execution and history policy. The original full-App keyboard, wrapping, reading-position and send assertions remain mandatory; candidate scroll changes that did not solve the CI failure have been removed.
+**Regression isolation:** Remove only the incoming avatar column and preserve the existing opposite-side spacer. Preserve semantic send/latest priority and saved/manual history ownership. The original full-App keyboard, wrapping, reading-position and send assertions remain mandatory.
+
+**Post-merge delivery repair (GET-345 / PR #689):** The unchanged required gate exposed idle audio-session initialization and a separate late lazy-layout drift. The scoped discovery run observed a native viewport starting at 896,527 points while reported content ended at 782,975 points, without a user gesture. The temporary read-only probe and extra discovery job are removed from the delivery candidate. An independent sizing projection lets iOS 18+ own bottom alignment during idle latest layout corrections, and releases it for gestures/history/inactive surfaces; legacy and semantic commands retain their existing paths. Host/type checks and independent review precede the original complete gate and a required post-merge native readback. Discovery or host passes alone are not acceptance.

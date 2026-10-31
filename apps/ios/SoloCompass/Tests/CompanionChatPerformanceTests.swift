@@ -467,4 +467,73 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertEqual(hidden.request, hiddenRequest)
     }
 
+    func testLayoutPinReleasesBeforeTheLatestControlChanges() {
+        let state = CompanionScrollState(reading: .init())
+        let layout = ObservationProbe()
+        let control = ObservationProbe()
+        withObservationTracking { _ = state.pinsLatestDuringLayout } onChange: { layout.mark() }
+        withObservationTracking { _ = state.presentation } onChange: { control.mark() }
+        state.setInteraction(true)
+        XCTAssertFalse(state.pinsLatestDuringLayout)
+        XCTAssertTrue(layout.wasMarked, "Native tracking must immediately release the sizing anchor")
+        XCTAssertFalse(control.wasMarked, "This boundary need not change the latest/unread control")
+        XCTAssertFalse(state.presentation.showsLatest)
+    }
+
+    func testLayoutPinFollowsIntentRatherThanGeometryReadback() {
+        let state = CompanionScrollState(reading: .init())
+        let layout = ObservationProbe()
+        withObservationTracking { _ = state.pinsLatestDuringLayout } onChange: { layout.mark() }
+        state.setNearLatest(false)
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 500))
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 300))
+        XCTAssertTrue(state.pinsLatestDuringLayout)
+        XCTAssertFalse(layout.wasMarked, "Keyboard/size readback must not repeatedly publish layout intent")
+        state.restore(reading: .init(anchorID: "message:history", followsLatest: false))
+        state.setNearLatest(true)
+        XCTAssertFalse(state.pinsLatestDuringLayout, "A saved history anchor never becomes latest from visibility alone")
+        state.revealLatest()
+        XCTAssertTrue(state.pinsLatestDuringLayout)
+        state.setInteraction(true)
+        XCTAssertTrue(state.contentArrived(isUserAction: true))
+        XCTAssertFalse(state.pinsLatestDuringLayout)
+        state.setInteraction(false)
+        XCTAssertTrue(state.pinsLatestDuringLayout)
+    }
+
+    func testNativeSizingDoesNotDuplicateOrConsumeSemanticScrollCommands() {
+        let state = CompanionScrollState(reading: .init())
+        state.enqueue(kind: .explicit)
+        let semanticRequest = state.request
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 500), nativeSizing: true)
+        state.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 300), nativeSizing: true)
+        XCTAssertEqual(state.request, semanticRequest)
+        XCTAssertEqual(state.viewport.height, 300)
+        XCTAssertNil(state.intent.keyboardRestorationTarget(reading: .init(), nativeSizing: true))
+        XCTAssertEqual(state.intent.keyboardRestorationTarget(reading: .init()), "stream-bottom")
+        var history = CompanionScrollIntent(reading: .init(anchorID: "message:history", followsLatest: false))
+        XCTAssertEqual(history.keyboardRestorationTarget(reading: .init(anchorID: "message:history", followsLatest: false), nativeSizing: true),
+            "message:history")
+        history.interactionChanged(active: true); history.interactionChanged(active: false)
+        XCTAssertNil(history.keyboardRestorationTarget(reading: .init(anchorID: "message:history", followsLatest: false), nativeSizing: true))
+    }
+
+    func testNativeTailVisibilityRequiresFiniteContentIntersection() {
+        XCTAssertTrue(CompanionScrollVisibility.isNearLatest(contentHeight: 1_000,
+            visibleRect: CGRect(x: 0, y: 700, width: 390, height: 400)))
+        XCTAssertTrue(CompanionScrollVisibility.isNearLatest(contentHeight: 10,
+            visibleRect: CGRect(x: 0, y: 0, width: 390, height: 361)))
+        XCTAssertFalse(CompanionScrollVisibility.isNearLatest(contentHeight: 1_000,
+            visibleRect: CGRect(x: 0, y: 1_200, width: 390, height: 361)))
+        XCTAssertFalse(CompanionScrollVisibility.isNearLatest(contentHeight: 1_000,
+            visibleRect: CGRect(x: 0, y: 1_000, width: 390, height: 361)))
+        XCTAssertFalse(CompanionScrollVisibility.isNearLatest(contentHeight: 10,
+            visibleRect: CGRect(x: 0, y: -110, width: 390, height: 100)))
+        XCTAssertFalse(CompanionScrollVisibility.isNearLatest(contentHeight: 1_000,
+            visibleRect: CGRect(x: 0, y: 990, width: 390, height: 0)))
+        XCTAssertFalse(CompanionScrollVisibility.isNearLatest(contentHeight: 1_000, visibleRect: .infinite))
+        XCTAssertFalse(CompanionScrollVisibility.isNearLatest(contentHeight: .infinity,
+            visibleRect: CGRect(x: 0, y: 640, width: 390, height: 361)))
+    }
+
 }

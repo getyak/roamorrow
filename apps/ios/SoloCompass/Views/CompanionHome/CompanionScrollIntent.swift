@@ -2,6 +2,19 @@ import CoreGraphics
 import Foundation
 import Observation
 
+/// Native visibility is a bounded geometric observation, not a reading intent.
+enum CompanionScrollVisibility {
+    static func isNearLatest(contentHeight: CGFloat, visibleRect: CGRect) -> Bool {
+        guard contentHeight.isFinite, contentHeight > 0,
+              !visibleRect.isInfinite, !visibleRect.isNull,
+              visibleRect.size.width > 0, visibleRect.size.height > 0,
+              visibleRect.minX.isFinite, visibleRect.maxX.isFinite,
+              visibleRect.minY.isFinite, visibleRect.maxY.isFinite,
+              visibleRect.minY < contentHeight, visibleRect.maxY > 0 else { return false }
+        return visibleRect.maxY >= contentHeight - 24
+    }
+}
+
 /// User intent is independent of changing content height and layout estimates.
 struct CompanionScrollIntent: Equatable {
     enum ScrollRequestKind: Equatable, Sendable { case following, explicit, restoration }
@@ -93,9 +106,9 @@ struct CompanionScrollIntent: Equatable {
         current.target != nil && request.revision == current.revision && request.target != nil && permitsScroll(request.kind)
     }
 
-    func keyboardRestorationTarget(reading: CompanionConversationReadingState) -> String? {
+    func keyboardRestorationTarget(reading: CompanionConversationReadingState, nativeSizing: Bool = false) -> String? {
         guard !isInteracting else { return nil }
-        if followsLatest { return "stream-bottom" }
+        if followsLatest { return nativeSizing ? nil : "stream-bottom" }
         // A row ID does not encode a reader's position inside a tall message.
         // Native manual scrolling relinquishes layout restoration until the
         // next explicit map/tab restore constructs a fresh intent.
@@ -109,8 +122,8 @@ struct CompanionScrollIntent: Equatable {
 }
 
 
-/// Scroll policy is not display state. Only its small presentation projection
-/// and the execution channel publish changes, to their respective child views.
+/// Scroll policy is independent of raw geometry. Only its small control,
+/// sizing and execution projections publish to their respective child views.
 @MainActor
 @Observable
 final class CompanionScrollState {
@@ -126,6 +139,7 @@ final class CompanionScrollState {
     @ObservationIgnored private(set) var intent: CompanionScrollIntent
     private(set) var request: CompanionScrollIntent.ScrollRequest
     private(set) var presentation: Presentation
+    private(set) var pinsLatestDuringLayout: Bool
     private(set) var viewport = CGRect.zero
 
     init(reading: CompanionConversationReadingState) {
@@ -133,6 +147,7 @@ final class CompanionScrollState {
         self.intent = intent
         request = .initial(reading: reading)
         presentation = Presentation(intent)
+        pinsLatestDuringLayout = intent.followsLatest && !intent.isInteracting
     }
 
     func restore(reading: CompanionConversationReadingState) {
@@ -172,19 +187,21 @@ final class CompanionScrollState {
         request.consume(revision: revision)
     }
 
-    func updateViewport(_ value: CGRect, isActive: Bool = true) {
+    func updateViewport(_ value: CGRect, isActive: Bool = true, nativeSizing: Bool = false) {
         guard viewport != value else { return }
         let resized = viewport.height > 0 && viewport.size != value.size
         viewport = value
-        // Composer wrapping and keyboard layout can move the native position
-        // without a scroll gesture. Keep only an idle latest intention pinned.
-        if resized, value.height > 0, value.width > 0, isActive,
+        // Legacy layout uses the command channel. Modern latest sizing is
+        // native-owned; never replace or consume a semantic pending command.
+        if !nativeSizing, resized, value.height > 0, value.width > 0, isActive,
            intent.followsLatest, !intent.isInteracting {
             request.enqueue(kind: .following)
         }
     }
 
     private func publishPresentation() {
+        let pinsLatest = intent.followsLatest && !intent.isInteracting
+        if pinsLatest != pinsLatestDuringLayout { pinsLatestDuringLayout = pinsLatest }
         let updated = Presentation(intent)
         if updated != presentation { presentation = updated }
     }

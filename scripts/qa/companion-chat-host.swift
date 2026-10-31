@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 @main struct CompanionChatHostChecks {
     @MainActor static var failures = 0
@@ -15,6 +16,13 @@ import Foundation
         var people: [CompanionHomePerson] = []
         var selectedPeopleIDs: Set<String> = []
         var invites: [CompanionHomeInvite] = []
+    }
+
+    final class ObservationProbe: @unchecked Sendable {
+        private let lock = NSLock()
+        private var marked = false
+        func mark() { lock.lock(); marked = true; lock.unlock() }
+        var wasMarked: Bool { lock.lock(); defer { lock.unlock() }; return marked }
     }
 
     final class EncodingGate: @unchecked Sendable {
@@ -211,6 +219,72 @@ import Foundation
         require(restored.permitsScroll(.restoration), "idle history restoration may replay its stable target")
         require(restored.anchorForSaving(visible: "keyboard-row", saved: "user-row") == "user-row",
             "keyboard geometry after deceleration preserves the chosen history anchor")
+
+        let layout = CompanionScrollState(reading: .init())
+        let sizingObserver = ObservationProbe()
+        withObservationTracking { _ = layout.pinsLatestDuringLayout } onChange: { sizingObserver.mark() }
+        require(layout.pinsLatestDuringLayout, "idle latest retains a native sizing anchor")
+        layout.setNearLatest(false)
+        require(layout.pinsLatestDuringLayout, "temporary keyboard geometry does not cancel latest sizing intent")
+        require(!sizingObserver.wasMarked, "geometry-only visibility does not publish sizing ownership")
+        layout.setNearLatest(true)
+        let controlObserver = ObservationProbe()
+        withObservationTracking { _ = layout.presentation } onChange: { controlObserver.mark() }
+        layout.setInteraction(true)
+        require(!layout.pinsLatestDuringLayout && !layout.presentation.showsLatest,
+            "tracking releases the sizing anchor even before the latest control changes")
+        require(sizingObserver.wasMarked && !controlObserver.wasMarked,
+            "sizing and latest-control projections notify their own observers independently")
+        layout.setNearLatest(false); layout.setInteraction(false)
+        _ = layout.contentArrived(isUserAction: false)
+        require(!layout.pinsLatestDuringLayout, "incoming history content never reanchors a reader")
+        layout.revealLatest()
+        require(layout.pinsLatestDuringLayout, "explicit latest restores native sizing ownership")
+        layout.restore(reading: .init(anchorID: "source", followsLatest: false))
+        layout.setNearLatest(true)
+        require(!layout.pinsLatestDuringLayout, "history visibility readback cannot acquire latest sizing ownership")
+        layout.setInteraction(true)
+        _ = layout.contentArrived(isUserAction: true)
+        require(!layout.pinsLatestDuringLayout, "an explicit send still waits for native interaction to end before sizing pins")
+        layout.setInteraction(false)
+        require(layout.pinsLatestDuringLayout, "the explicit send pins layout once native interaction ends")
+
+        let native = CompanionScrollState(reading: .init())
+        native.enqueue(kind: .explicit)
+        let semanticRequest = native.request
+        native.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 500), nativeSizing: true)
+        native.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 300), nativeSizing: true)
+        require(native.request == semanticRequest, "native resizing neither duplicates nor consumes an explicit latest command")
+        require(native.viewport.height == 300, "native sizing still records the real viewport cache")
+        require(native.intent.keyboardRestorationTarget(reading: .init(), nativeSizing: true) == nil,
+            "native sizing owns latest keyboard layout without another ID command")
+        require(native.intent.keyboardRestorationTarget(reading: .init()) == "stream-bottom",
+            "legacy keyboard layout retains the queued latest fallback")
+        var nativeHistory = CompanionScrollIntent(reading: .init(anchorID: "source", followsLatest: false))
+        require(nativeHistory.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false), nativeSizing: true) == "source",
+            "native sizing does not disable explicit saved history restoration")
+        nativeHistory.interactionChanged(active: true); nativeHistory.interactionChanged(active: false)
+        require(nativeHistory.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false), nativeSizing: true) == nil,
+            "manual history keeps native ownership of its position inside a tall row")
+
+        let visibilityCases: [(String, CGFloat, CGRect, Bool)] = [
+            ("normal tail", 1_000, CGRect(x: 0, y: 640, width: 390, height: 361), true),
+            ("history", 1_000, CGRect(x: 0, y: 200, width: 390, height: 361), false),
+            ("past EOF", 1_000, CGRect(x: 0, y: 1_200, width: 390, height: 361), false),
+            ("exact EOF", 1_000, CGRect(x: 0, y: 1_000, width: 390, height: 361), false),
+            ("bottom bounce intersects content", 1_000, CGRect(x: 0, y: 700, width: 390, height: 400), true),
+            ("short content", 10, CGRect(x: 0, y: 0, width: 390, height: 361), true),
+            ("short content entirely below viewport", 10, CGRect(x: 0, y: -110, width: 390, height: 100), false),
+            ("zero height", 1_000, CGRect(x: 0, y: 990, width: 390, height: 0), false),
+            ("zero width", 1_000, CGRect(x: 0, y: 640, width: 0, height: 361), false),
+            ("empty content", 0, CGRect(x: 0, y: 0, width: 390, height: 361), false),
+            ("infinite viewport", 1_000, .infinite, false),
+            ("unknown height", .nan, CGRect(x: 0, y: 0, width: 390, height: 361), false)
+        ]
+        for (name, height, rect, expected) in visibilityCases {
+            require(CompanionScrollVisibility.isNearLatest(contentHeight: height, visibleRect: rect) == expected,
+                "native visibility: \(name)")
+        }
     }
 
     @MainActor static func main() async throws {
