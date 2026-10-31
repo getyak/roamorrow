@@ -203,7 +203,10 @@ private struct CompanionScrollExecutionContext {
 @MainActor
 private struct CompanionModernScrollExecution: ViewModifier {
     let execution: CompanionScrollExecutionContext
-    @State private var position = ScrollPosition(idType: String.self)
+    // Visible IDs already have a passive, ignored checkpoint owner. The
+    // default Never ID type keeps this binding for explicit commands only;
+    // scrollTo(id:) still retains a saved history target across later layout.
+    @State private var position = ScrollPosition()
 
     func body(content: Content) -> some View {
         content.scrollPosition($position)

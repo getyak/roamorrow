@@ -14,6 +14,7 @@ args = parser.parse_args()
 repo = Path(__file__).resolve().parents[2]
 source = (repo / "apps/ios/SoloCompass/Views/CompanionHome/CompanionScrollObservation.swift").read_text()
 owner = source.index("private struct CompanionModernScrollExecution")
+initializer = re.search(r"@State private var position = ([^\n]+)", source[owner:]).group(1)
 invocation = re.search(r"await execution\.perform(?:\([^\n]*\))? \{ target in", source[owner:]).group()
 start = source.index(invocation, owner) + len(invocation)
 end = source.index("\n                }", start)
@@ -27,6 +28,7 @@ fixture = args.output / "PositionContract.swift"
 fixture.write_text("import SwiftUI\n" + reading + "\n" + context
                   + "\n@MainActor func apply(_ target: String, to position: inout ScrollPosition) {\n"
                   + adapter + "\n}\n"
+                  + "@MainActor func initialPosition() -> ScrollPosition { " + initializer + " }\n"
                   + "@MainActor private func runModern(_ execution: CompanionScrollExecutionContext, position: inout ScrollPosition) async -> Int {\nvar moves = 0\n"
                   + invocation + "\nmoves += 1\n" + adapter + "\n}\nreturn moves\n}\n" + r'''
 @main @MainActor
@@ -38,7 +40,9 @@ struct PositionContract {
         if !value { failures += 1; print("FAIL: \(label)") }
     }
     static func main() async {
-        var position = ScrollPosition(idType: String.self)
+        expect(initialPosition() == ScrollPosition(),
+               "semantic command binding does not also request automatic row-ID readback")
+        var position = initialPosition()
         apply("message:source", to: &position)
         expect(position.edge == nil, "history does not retain an endpoint")
         expect(position.viewID(type: String.self) == "message:source", "history retains the requested stable row")
@@ -59,12 +63,12 @@ struct PositionContract {
             .init(scrolling: state, isActive: active, reduceMotion: true, trace: { _ in })
         }
         let initial = CompanionScrollState(reading: .init())
-        var initialPosition = ScrollPosition(idType: String.self)
-        let initialMoves = await runModern(context(initial), position: &initialPosition)
-        expect(initialMoves == 1 && initialPosition.edge == .bottom,
+        var latestPosition = initialPosition()
+        let initialMoves = await runModern(context(initial), position: &latestPosition)
+        expect(initialMoves == 1 && latestPosition.edge == .bottom,
                "initial latest executes the native endpoint without a send or latest tap")
         expect(initial.request.target == nil, "initial endpoint command is consumed")
-        let repeatedMoves = await runModern(context(initial), position: &initialPosition)
+        let repeatedMoves = await runModern(context(initial), position: &latestPosition)
         expect(repeatedMoves == 0, "consumed initial command is not replayed")
 
         let legacyInitial = CompanionScrollState(reading: .init())
@@ -74,18 +78,18 @@ struct PositionContract {
                "legacy initial offset retains its original non-command behavior")
 
         let history = CompanionScrollState(reading: .init(anchorID: "message:saved", followsLatest: false))
-        var historyPosition = ScrollPosition(idType: String.self)
+        var historyPosition = initialPosition()
         let historyMoves = await runModern(context(history), position: &historyPosition)
         expect(historyMoves == 1 && historyPosition.viewID(type: String.self) == "message:saved" && historyPosition.edge == nil,
                "saved history remains an ID command instead of the initial latest edge")
         let missing = CompanionScrollState(reading: .init(anchorID: nil, followsLatest: false))
-        var missingPosition = ScrollPosition(idType: String.self)
+        var missingPosition = initialPosition()
         let missingMoves = await runModern(context(missing), position: &missingPosition)
         expect(missingMoves == 0 && missingPosition.edge == nil,
                "history without a saved anchor is not promoted to latest")
 
         let hidden = CompanionScrollState(reading: .init())
-        var hiddenPosition = ScrollPosition(idType: String.self)
+        var hiddenPosition = initialPosition()
         let hiddenMoves = await runModern(context(hidden, active: false), position: &hiddenPosition)
         expect(hiddenMoves == 0 && hidden.request.target != nil,
                "hidden initial latest neither moves nor consumes its command")
@@ -96,14 +100,14 @@ struct PositionContract {
         let gesture = CompanionScrollState(reading: .init())
         let captured = context(gesture)
         gesture.setInteraction(true)
-        var gesturePosition = ScrollPosition(idType: String.self)
+        var gesturePosition = initialPosition()
         let gestureMoves = await runModern(captured, position: &gesturePosition)
         expect(gestureMoves == 0 && gesturePosition.edge == nil,
                "a gesture cancels initial latest before deferred execution")
 
         let cancelled = CompanionScrollState(reading: .init())
         let cancelledTask = Task { @MainActor in
-            var cancelledPosition = ScrollPosition(idType: String.self)
+            var cancelledPosition = initialPosition()
             return await runModern(context(cancelled), position: &cancelledPosition)
         }
         cancelledTask.cancel()
@@ -127,6 +131,7 @@ result = subprocess.run([str(binary)], capture_output=True, text=True)
     "adapter_sha256": hashlib.sha256(adapter.encode()).hexdigest(),
     "execution_context_sha256": hashlib.sha256(context.encode()).hexdigest(),
     "modern_invocation": invocation,
+    "position_initializer": initializer,
     "scope": "Real SwiftUI ScrollPosition value semantics; not a native keyboard or frame-rate test",
     "exit_code": result.returncode,
 }, indent=2) + "\n")
