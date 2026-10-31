@@ -75,6 +75,7 @@ final class V4NavigationUITests: XCTestCase {
         for name in ["now", "nearby", "itinerary", "me"] {
             XCTAssertTrue(tab(name).exists)
             XCTAssertGreaterThanOrEqual(tab(name).frame.height, 44)
+            XCTAssertLessThanOrEqual(tab(name).frame.height, 50)
         }
         let marker = "V4 unsent draft stays with the conversation"
         try replaceDraft(marker)
@@ -91,6 +92,65 @@ final class V4NavigationUITests: XCTestCase {
         screenshot.name = "v4-four-tabs-draft-restored"
         screenshot.lifetime = .keepAlways
         add(screenshot)
+    }
+
+    func testAgentNameAndStyleSurviveRestartAndCancelledEdits() throws {
+        guard originalDraft == "V4 fixture draft" else {
+            throw XCTSkip("Identity editing requires the isolated CI UI fixture")
+        }
+        let title = app.buttons["companion.keyboard.dismiss"].firstMatch
+        let originalName = title.label
+        app.buttons["companion.identity.open"].tap()
+        let styles = ["moss", "pixel", "moon", "landscape"]
+        let originalStyle = try XCTUnwrap(styles.first {
+            app.buttons["companion.identity.style.\($0)"].isSelected
+        })
+        for style in styles {
+            app.buttons["companion.identity.style.\(style)"].tap()
+            capture("identity-style-\(style)")
+        }
+        func editName(_ value: String) {
+            let field = app.textFields["companion.identity.name"].firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            field.tap()
+            let old = field.value as? String ?? ""
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count) + value)
+        }
+        editName("沿途小伴")
+        app.buttons["companion.identity.style.pixel"].tap()
+        capture("identity-pixel-editor")
+        app.buttons["companion.identity.save"].tap()
+        XCTAssertEqual(title.label, "沿途小伴")
+        XCTAssertEqual(draft.value as? String, originalDraft)
+        capture("identity-compact-header")
+
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(title.waitForExistence(timeout: 25))
+        XCTAssertEqual(title.label, "沿途小伴")
+        app.buttons["companion.identity.open"].tap()
+        XCTAssertTrue(app.buttons["companion.identity.style.pixel"].isSelected)
+        editName("取消这次")
+        app.buttons["取消"].tap()
+        XCTAssertEqual(title.label, "沿途小伴")
+
+        app.buttons["companion.identity.open"].tap()
+        editName(originalName)
+        app.buttons["companion.identity.style.\(originalStyle)"].tap()
+        app.buttons["companion.identity.save"].tap()
+        XCTAssertEqual(title.label, originalName)
+        XCTAssertEqual(draft.value as? String, originalDraft)
+
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(title.waitForExistence(timeout: 25))
+        XCTAssertTrue(app.buttons["companion.identity.open"].isHittable)
+        capture("identity-large-type-header")
+        app.buttons["companion.identity.open"].tap()
+        XCTAssertTrue(app.textFields["companion.identity.name"].waitForExistence(timeout: 5))
+        capture("identity-large-type-editor")
+        app.buttons["取消"].tap()
     }
 
     func testSourceMapFavoriteScopeAndReadingReturn() throws {

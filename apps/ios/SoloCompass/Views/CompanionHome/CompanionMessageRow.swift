@@ -28,7 +28,6 @@ struct CompanionMessageRow: View {
         let parts = self.parts
         return HStack(alignment: .top, spacing: 8) {
             if isUser { Spacer(minLength: typeSize.isAccessibilitySize ? 8 : 30) }
-            if !isUser { CompanionCharacter().padding(.top, 2) }
             VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(parts.dropLast().enumerated()), id: \.offset) { index, part in
                 formatted(part).font(.body).lineSpacing(4).textSelection(.enabled)

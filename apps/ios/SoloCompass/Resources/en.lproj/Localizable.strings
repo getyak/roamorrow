@@ -3293,3 +3293,16 @@
 "me.archive.detail" = "Cities and experiences along the way";
 "me.empty.note" = "Save an experience you like for another day.";
 "me.empty.explore" = "Explore nearby";
+
+// Companion identity
+"companion.identity.save" = "Save";
+"companion.identity.defaultName" = "Roam";
+"companion.identity.edit" = "Your companion";
+"companion.identity.name" = "Name";
+"companion.identity.nameHint" = "Keep it short. Up to 16 characters.";
+"companion.identity.appearance" = "Portrait style";
+"companion.identity.style.moss" = "Moss companion";
+"companion.identity.style.pixel" = "Sunny pixels";
+"companion.identity.style.moon" = "Moonlight";
+"companion.identity.style.landscape" = "Paper hills";
+"companion.keyboard.hide" = "Dismiss keyboard";

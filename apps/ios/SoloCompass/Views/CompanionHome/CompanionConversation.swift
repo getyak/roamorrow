@@ -79,7 +79,6 @@ struct CompanionConversation: View {
                     }
                     if let error = store.errorMessage {
                         HStack(alignment: .top, spacing: 10) {
-                            CompanionCharacter(activity: store.activity)
                             Text(error).companionMetadata()
                             Spacer(minLength: 0)
                             Button { store.clearError() } label: {
@@ -241,7 +240,6 @@ struct CompanionConversation: View {
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(spacing: 8) {
-                CompanionCharacter(size: 76)
                 Text(Date.now, format: .dateTime.month(.wide).day()).font(.subheadline)
             }.foregroundStyle(CompanionHomeStyle.secondaryInk)
             VStack(alignment: .leading, spacing: 14) {
@@ -315,7 +313,7 @@ private struct CompanionWorkingIndicator: View {
     let isActive: Bool
     var body: some View {
         HStack(spacing: 10) {
-            CompanionCharacter(activity: isActive ? store.activity : .idle, viewport: scrolling.viewport)
+            ProgressView().controlSize(.small).accessibilityHidden(true)
             Text(progressText).font(.subheadline).foregroundStyle(CompanionHomeStyle.secondaryInk)
         }
     }

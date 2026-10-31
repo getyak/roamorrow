@@ -3,7 +3,7 @@ import SwiftUI
 
 /// One presenter owns both map tasks and conversation tasks.
 enum CompanionHomePresentation: Identifiable {
-    case people, journey, settings, addMedia
+    case people, journey, settings, addMedia, identity
     case media(CompanionMediaAttachment)
     case sources(CompanionHomeEntry)
     case place(Experience, distanceOrigin: CLLocationCoordinate2D?, usesGPS: Bool)
@@ -16,6 +16,7 @@ enum CompanionHomePresentation: Identifiable {
         case .people: return "people"
         case .journey: return "journey"
         case .settings: return "settings"
+        case .identity: return "identity"
         case .sources(let entry): return "sources-\(entry.id)"
         case .place(let place, _, _): return "place-\(place.id)"
         case .cities: return "cities"

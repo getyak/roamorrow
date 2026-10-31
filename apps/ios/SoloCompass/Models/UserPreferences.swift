@@ -99,6 +99,8 @@ public final class UserPreferences {
         var aiBaseURL: String = ""
         var aiModelName: String = ""
 
+        var agentIdentity = CompanionIdentity()
+
         // Companion profile (US-009)
         var companionAvatarEmoji: String = "🧭"
         var companionBio: String = ""
@@ -149,6 +151,7 @@ public final class UserPreferences {
             case includeMapInExport, visibleCategories, customTags
             case foursquareCallsToday, foursquareCallsTodayDate
             case aiProviderRaw, aiApiKey, aiBaseURL, aiModelName
+            case agentIdentity
             case companionAvatarEmoji, companionBio, companionLanguages, companionVisibilityRaw
             case displayHandle
             case activeCompanionPosts
@@ -210,7 +213,8 @@ public final class UserPreferences {
             kitSeenCities: Set<String> = [],
             cityModesRaw: [String: String] = [:],
             kitTodosDoneRaw: [String: [String]] = [:],
-            verifiedExperiences: Set<String> = []
+            verifiedExperiences: Set<String> = [],
+            agentIdentity: CompanionIdentity = CompanionIdentity()
         ) {
             self.preferredCategories = preferredCategories
             self.dislikedCategories = dislikedCategories
@@ -243,6 +247,7 @@ public final class UserPreferences {
             self.aiApiKey = aiApiKey
             self.aiBaseURL = aiBaseURL
             self.aiModelName = aiModelName
+            self.agentIdentity = agentIdentity
             self.companionAvatarEmoji = companionAvatarEmoji
             self.companionBio = companionBio
             self.companionLanguages = companionLanguages
@@ -298,6 +303,7 @@ public final class UserPreferences {
             self.aiApiKey = try container.decodeIfPresent(String.self, forKey: .aiApiKey) ?? ""
             self.aiBaseURL = try container.decodeIfPresent(String.self, forKey: .aiBaseURL) ?? ""
             self.aiModelName = try container.decodeIfPresent(String.self, forKey: .aiModelName) ?? ""
+            self.agentIdentity = try container.decodeIfPresent(CompanionIdentity.self, forKey: .agentIdentity) ?? CompanionIdentity()
             self.companionAvatarEmoji = try container.decodeIfPresent(String.self, forKey: .companionAvatarEmoji) ?? "🧭"
             self.companionBio = try container.decodeIfPresent(String.self, forKey: .companionBio) ?? ""
             self.companionLanguages = try container.decodeIfPresent([String].self, forKey: .companionLanguages) ?? []
@@ -401,6 +407,8 @@ public final class UserPreferences {
     public var aiModelName: String { didSet { persist() } }
 
     // Companion profile (US-009)
+
+    var agentIdentity: CompanionIdentity { didSet { persist() } }
 
     /// Emoji avatar for the companion profile. No real photo.
     public var companionAvatarEmoji: String { didSet { persist() } }
@@ -523,6 +531,7 @@ public final class UserPreferences {
         self.aiApiKey = snapshot.aiApiKey
         self.aiBaseURL = snapshot.aiBaseURL
         self.aiModelName = snapshot.aiModelName
+        self.agentIdentity = snapshot.agentIdentity
         self.companionAvatarEmoji = snapshot.companionAvatarEmoji
         self.companionBio = snapshot.companionBio
         self.companionLanguages = snapshot.companionLanguages
@@ -616,7 +625,8 @@ public final class UserPreferences {
             kitSeenCities: kitSeenCities,
             cityModesRaw: cityModesRaw,
             kitTodosDoneRaw: kitTodosDoneRaw,
-            verifiedExperiences: verifiedExperiences
+            verifiedExperiences: verifiedExperiences,
+            agentIdentity: agentIdentity
         )
         do {
             let data = try JSONEncoder.iso8601Encoder.encode(snapshot)

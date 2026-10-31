@@ -37,29 +37,26 @@ struct CompanionNavigationBar: View {
                     Haptics.selection()
                     onSelect(tab)
                 } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: tab.symbol)
-                            .font(.system(size: 21, weight: selected ? .semibold : .regular))
-                        Text(tab.title)
-                            .font(.caption2.weight(selected ? .semibold : .medium))
-                    }
+                    Image(systemName: tab.symbol)
+                    .font(.system(size: 19, weight: selected ? .semibold : .regular))
                     .foregroundStyle(selected ? CompanionHomeStyle.ink : CompanionHomeStyle.secondaryInk)
-                    .frame(maxWidth: .infinity, minHeight: typeSize.isAccessibilitySize ? 64 : 56)
-                    .padding(.vertical, 3)
+                    .frame(maxWidth: .infinity, minHeight: typeSize.isAccessibilitySize ? 48 : 44)
                     .background(CompanionHomeStyle.accent.opacity(selected ? 0.12 : 0), in: Capsule())
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.title)
+                .accessibilityShowsLargeContentViewer { Label(tab.title, systemImage: tab.symbol) }
                 .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier("companion.surface.\(tab.rawValue)")
             }
         }
-        .padding(5)
+        .padding(3)
         .companionGlass(in: Capsule())
         .overlay(Capsule().strokeBorder(CompanionHomeStyle.line, lineWidth: 0.5))
-        .padding(.horizontal, 16)
-        .padding(.top, 4).padding(.bottom, 6)
+        .frame(maxWidth: 320)
+        .padding(.horizontal, 20)
+        .padding(.top, 2).padding(.bottom, 4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("companion.navigation")
     }
