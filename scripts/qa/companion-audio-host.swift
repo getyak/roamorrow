@@ -32,6 +32,7 @@ enum AVAudioApplication {
 final class AVAudioSession {
     enum Category: String { case playAndRecord, playback }
     enum Mode { case `default` }
+    enum ErrorCode: Int { case isBusy = 560030580 }
     struct Options: OptionSet, Sendable {
         let rawValue: Int
         static let defaultToSpeaker = Self(rawValue: 1)
@@ -40,6 +41,7 @@ final class AVAudioSession {
     static var calls: [String] = []
     static var activationFails = false
     static var deactivationFails = false
+    static var deactivationError: NSError?
     static let instance = AVAudioSession()
     static func sharedInstance() -> AVAudioSession { calls.append("shared"); return instance }
     func setCategory(_ category: Category, mode: Mode, options: Options = []) throws {
@@ -48,6 +50,7 @@ final class AVAudioSession {
     func setActive(_ active: Bool, options: Options = []) throws {
         Self.calls.append(active ? "activate" : "deactivate")
         if active && Self.activationFails { throw FakeAudioFailure.failed }
+        if !active, let error = Self.deactivationError { throw error }
         if !active && Self.deactivationFails { throw FakeAudioFailure.failed }
     }
 }
@@ -96,6 +99,7 @@ struct CompanionAudioHost {
     static func count(_ call: String) -> Int { AVAudioSession.calls.filter { $0 == call }.count }
     static func reset() {
         AVAudioSession.calls = []; AVAudioSession.activationFails = false; AVAudioSession.deactivationFails = false
+        AVAudioSession.deactivationError = nil
         AVAudioApplication.granted = true; AVAudioApplication.permissionRequests = 0
         AVAudioRecorder.constructionFails = false; AVAudioPlayer.constructionFails = false
     }
@@ -169,6 +173,20 @@ struct CompanionAudioHost {
         AVAudioSession.deactivationFails = true; _ = recordingRetry.finishRecording()
         AVAudioSession.deactivationFails = false; recordingRetry.stopPlayback(); recordingRetry.stopPlayback()
         expect(count("deactivate") == 2, "idle cleanup retries a stopped recording's failed deactivation once")
+
+        reset()
+        let alreadyInactive = CompanionAudioSession(); alreadyInactive.togglePlayback(attachment())
+        AVAudioSession.deactivationError = NSError(domain: NSOSStatusErrorDomain, code: AVAudioSession.ErrorCode.isBusy.rawValue)
+        alreadyInactive.stopPlayback()
+        AVAudioSession.deactivationError = nil; alreadyInactive.stopPlayback()
+        expect(count("deactivate") == 1, "legacy isBusy means inactive and must not be deactivated again")
+
+        reset()
+        let unknownDomain = CompanionAudioSession(); unknownDomain.togglePlayback(attachment())
+        AVAudioSession.deactivationError = NSError(domain: "OwnedTestUnrelatedDomain", code: AVAudioSession.ErrorCode.isBusy.rawValue)
+        unknownDomain.stopPlayback()
+        AVAudioSession.deactivationError = nil; unknownDomain.stopPlayback(); unknownDomain.stopPlayback()
+        expect(count("deactivate") == 2, "an unrelated error domain with the same code retains retry ownership")
 
         reset()
         var missing = attachment(); missing.data = nil

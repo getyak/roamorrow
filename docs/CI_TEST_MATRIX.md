@@ -17,7 +17,11 @@ The macOS host audio regression compiles the shipping `CompanionAudioSession`
 controller with an inert audio-framework boundary. It checks that idle cleanup
 never initializes system audio, recording and playback release only their own
 successfully activated sessions, and failed activation/creation/cleanup preserve
-the ownership rules. It never requests microphone access or plays audio. The
+the ownership rules. Apple's legacy `isBusy` deactivation result means the session
+is already inactive, so only unknown failures retain retry ownership; the check
+also distinguishes an unrelated error domain with the same code. See
+[Apple's deactivation documentation](<https://developer.apple.com/documentation/avfaudio/avaudiosession/setactive(_:options:)>).
+The host check never requests microphone access or plays audio. The
 existing complete-App long-history, keyboard, send and navigation UI gates remain
 required separately.
 

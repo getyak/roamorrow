@@ -208,7 +208,16 @@ final class CompanionAudioSession {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
             activeSessionUse = nil
             traceAudio("release-completed")
-        } catch { /* Retain ownership so a later cleanup can retry. */ }
+        } catch {
+            let failure = error as NSError
+            if failure.domain == NSOSStatusErrorDomain,
+               failure.code == Int(AVAudioSession.ErrorCode.isBusy.rawValue) {
+                // Legacy isBusy reports a completed deactivation.
+                activeSessionUse = nil
+                traceAudio("release-completed-legacy-busy")
+            }
+            // Other failures retain ownership so later cleanup can retry.
+        }
     }
 
     private func traceAudio(_ event: String) {
