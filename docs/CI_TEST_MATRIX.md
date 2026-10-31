@@ -13,6 +13,18 @@ The helper checks the process path and records no message text or memory dump;
 the step always stops its owned watcher when testing ends. This diagnostic does
 not turn a timeout or failed UI assertion into a passing result.
 
+The macOS host audio regression compiles the shipping `CompanionAudioSession`
+controller with an inert audio-framework boundary. It checks that idle cleanup
+never initializes system audio, recording and playback release only their own
+successfully activated sessions, and failed activation/creation/cleanup preserve
+the ownership rules. It never requests microphone access or plays audio. The
+existing complete-App long-history, keyboard, send and navigation UI gates remain
+required separately.
+
+The owned native-device trace also retains Debug-only audio lifecycle markers
+with recording/playing/paused/ownership booleans. It never records attachment
+identities, audio, transcripts, message text or location.
+
 | Workflow/job                     | Required checks                                                                                                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ci.yml` / build (Linux)         | Portable `scripts/ios/test_local_policy.py` suite, explicit skips for macOS-only tests, and `bash -n` for all five simulator entrypoint/library scripts. |

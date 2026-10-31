@@ -7,6 +7,9 @@ import Speech
 import Observation
 import UniformTypeIdentifiers
 import ImageIO
+#if DEBUG
+import OSLog
+#endif
 
 /// Prepares genuine local media; extraction never substitutes for preserving the original.
 enum CompanionMediaPreparation {
@@ -70,6 +73,7 @@ enum CompanionMediaPreparation {
 @MainActor
 @Observable
 final class CompanionAudioSession {
+    private enum SessionUse { case recording, playback }
     private(set) var isRecording = false
     private(set) var elapsed: Double = 0
     private(set) var meter: Float = 0
@@ -86,6 +90,7 @@ final class CompanionAudioSession {
     @ObservationIgnored private var playbackTask: Task<Void, Never>?
     @ObservationIgnored private var generation = UUID()
     @ObservationIgnored private var pausedID: UUID?
+    @ObservationIgnored private var activeSessionUse: SessionUse?
 
     func startRecording() async {
         let id = UUID(); generation = id
@@ -100,6 +105,8 @@ final class CompanionAudioSession {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
             try session.setActive(true)
+            activeSessionUse = .recording
+            traceAudio("acquired-recording")
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("companion-recording-\(UUID()).m4a")
             let recording = try AVAudioRecorder(url: url, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC,
                 AVSampleRateKey: 44_100, AVNumberOfChannelsKey: 1, AVEncoderBitRateKey: 64_000])
@@ -120,7 +127,7 @@ final class CompanionAudioSession {
             }
         } catch {
             errorMessage = companionText("companion.media.recordFailed", "这次未能开始录音，草稿仍在。")
-            releaseSession()
+            releaseSession(for: .recording)
         }
     }
 
@@ -129,7 +136,7 @@ final class CompanionAudioSession {
         generation = UUID(); meterTask?.cancel(); meterTask = nil
         let duration = max(elapsed, recorder?.currentTime ?? 0)
         recorder?.stop(); recorder = nil; isRecording = false
-        defer { removeRecordingFile(); releaseSession() }
+        defer { removeRecordingFile(); releaseSession(for: .recording) }
         guard duration > 0.25, let url = recordingURL, let bytes = try? Data(contentsOf: url), !bytes.isEmpty else { return nil }
         return .init(kind: .audio, name: companionText("companion.media.recordingName", "语音消息") + ".m4a", mimeType: "audio/mp4",
                      data: bytes, duration: duration, samples: samples)
@@ -153,13 +160,15 @@ final class CompanionAudioSession {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default)
             try session.setActive(true)
+            activeSessionUse = .playback
+            traceAudio("acquired-playback")
             let player = try AVAudioPlayer(data: bytes)
             guard player.play() else { throw CompanionMediaPreparation.Failure.invalidFile }
             self.player = player; playingID = attachment.id
             watchPlayback()
         } catch {
             errorMessage = companionText("companion.media.playFailed", "这段音频暂时无法播放，原件仍已保留。")
-            releaseSession()
+            releaseSession(for: .playback)
         }
     }
     private func watchPlayback() {
@@ -177,15 +186,39 @@ final class CompanionAudioSession {
         }
     }
     func stopPlayback() {
+        traceAudio("stop-playback")
         playbackTask?.cancel(); playbackTask = nil
         player?.stop(); player = nil; playingID = nil; pausedID = nil; playbackProgress = 0
-        if !isRecording { releaseSession() }
+        if !isRecording, let use = activeSessionUse { releaseSession(for: use) }
+        traceAudio("stop-playback-completed")
     }
     private func removeRecordingFile() {
         if let recordingURL { try? FileManager.default.removeItem(at: recordingURL) }
         recordingURL = nil
     }
-    private func releaseSession() { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+    private func releaseSession(for use: SessionUse) {
+        // Ordinary navigation and idle composer cleanup must never initialize
+        // system audio or deactivate a session this controller never acquired.
+        guard activeSessionUse == use else {
+            traceAudio(use == .recording ? "release-skipped-recording" : "release-skipped-playback")
+            return
+        }
+        do {
+            traceAudio(use == .recording ? "release-recording" : "release-playback")
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            activeSessionUse = nil
+            traceAudio("release-completed")
+        } catch { /* Retain ownership so a later cleanup can retry. */ }
+    }
+
+    private func traceAudio(_ event: String) {
+        #if DEBUG
+        Self.audioLog.debug("event=\(event, privacy: .public) recording=\(isRecording) playing=\(playingID != nil) paused=\(pausedID != nil) owns=\(activeSessionUse != nil)")
+        #endif
+    }
+    #if DEBUG
+    private static let audioLog = Logger(subsystem: "com.solocompass.audio-lifecycle", category: "ownership")
+    #endif
 }
 
 /// Explicit transcription action; its result is editable and never a substitute for audio.
