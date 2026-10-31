@@ -36,18 +36,30 @@ struct CompanionInitialScrollAnchor: ViewModifier {
 struct CompanionScrollInteractionObserver: ViewModifier {
     let isActive: Bool
     let onVisibility: (Bool) -> Void
+    var onVisibleSize: (CGSize) -> Void = { _ in }
     let action: (Bool) -> Void
+
+    private struct VisibleGeometry: Equatable {
+        let nearLatest: Bool
+        let size: CGSize
+    }
 
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content
-                .onScrollGeometryChange(for: Bool.self) { geometry in
-                    geometry.contentSize.height > 0 && geometry.visibleRect.maxY >= geometry.contentSize.height - 24
-                } action: { _, near in
-                    if isActive { onVisibility(near) }
+                .onScrollGeometryChange(for: VisibleGeometry.self) { geometry in
+                    VisibleGeometry(nearLatest: geometry.contentSize.height > 0
+                        && geometry.visibleRect.maxY >= geometry.contentSize.height - 24,
+                        size: geometry.visibleRect.size)
+                } action: { _, value in
+                    if isActive {
+                        onVisibleSize(value.size)
+                        onVisibility(value.nearLatest)
+                    }
                 }
                 .onScrollPhaseChange { _, phase, context in
                     guard isActive else { return }
+                    onVisibleSize(context.geometry.visibleRect.size)
                     if context.geometry.contentSize.height > 0 {
                         onVisibility(context.geometry.visibleRect.maxY >= context.geometry.contentSize.height - 24)
                     }
@@ -201,7 +213,13 @@ private struct CompanionModernScrollExecution: ViewModifier {
         content.scrollPosition($position)
             .task(id: execution.key) {
                 await execution.perform { target in
-                    position.scrollTo(id: target, anchor: .bottom)
+                    if target == "stream-bottom" {
+                        // Latest is an edge, not a one-point lazy row whose
+                        // estimated location can drift during keyboard layout.
+                        position.scrollTo(edge: .bottom)
+                    } else {
+                        position.scrollTo(id: target, anchor: .bottom)
+                    }
                 }
             }
     }
