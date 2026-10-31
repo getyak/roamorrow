@@ -266,9 +266,9 @@ jobs:
           import json, sys
           from pathlib import Path
           result = json.loads(Path(sys.argv[1]).read_text())
-          assert result["passedTests"] == 2, result
+          assert result["passedTests"] == 3, result
           assert result["failedTests"] == 0 and result["skippedTests"] == 0, result
-          print("V4 native interaction acceptance: 2 passed, 0 failed, 0 skipped")
+          print("V4 native interaction acceptance: 3 passed, 0 failed, 0 skipped")
           PY
 
       - name: Seed long conversation and empty profile (CI-owned device)
