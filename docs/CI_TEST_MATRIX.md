@@ -36,6 +36,11 @@ issue latest-ID commands. History restoration and explicit send/latest actions
 keep their existing command semantics; iOS 17 retains the legacy fallback.
 Modern near-tail readback also requires a finite, nonempty viewport to overlap
 the reported content, so an entire window beyond EOF cannot resume following.
+Latest semantic requests configure `ScrollPosition` with `.bottom` edge; saved
+history remains ID-based. A host check copies the shipping adapter into a real
+SwiftUI value test and verifies latest/history/latest transitions. This validates
+position semantics, not rendered keyboard/lazy layout. See
+[Apple's ScrollPosition contract](https://developer.apple.com/documentation/swiftui/scrollposition).
 Host and XCTest checks cover gesture release before control visibility changes,
 geometry-only readback, history ownership and pending explicit requests. The
 original native 5,000-message keyboard/navigation cases remain the acceptance

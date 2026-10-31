@@ -205,7 +205,11 @@ private struct CompanionModernScrollExecution: ViewModifier {
         content.scrollPosition($position)
             .task(id: execution.key) {
                 await execution.perform { target in
-                    position.scrollTo(id: target, anchor: .bottom)
+                    if target == "stream-bottom" {
+                        position.scrollTo(edge: .bottom)
+                    } else {
+                        position.scrollTo(id: target, anchor: .bottom)
+                    }
                 }
             }
     }

@@ -427,6 +427,9 @@ jobs:
       - name: Test idle audio cleanup and session ownership (host)
         run: python3 scripts/qa/companion-audio-host.py --output "$RUNNER_TEMP/chat-host/audio"
 
+      - name: Test native scroll-position value semantics (host)
+        run: python3 scripts/qa/companion-scroll-position-host.py --output "$RUNNER_TEMP/chat-host/position"
+
       - name: Upload chat host metrics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
