@@ -124,7 +124,6 @@ final class CompanionScrollState {
     }
 
     @ObservationIgnored private(set) var intent: CompanionScrollIntent
-    @ObservationIgnored private var visibleSize: CGSize?
     private(set) var request: CompanionScrollIntent.ScrollRequest
     private(set) var presentation: Presentation
     private(set) var viewport = CGRect.zero
@@ -181,17 +180,6 @@ final class CompanionScrollState {
         // without a scroll gesture. Keep only an idle latest intention pinned.
         if resized, value.height > 0, value.width > 0, isActive,
            intent.followsLatest, !intent.isInteracting {
-            request.enqueue(kind: .following)
-        }
-    }
-
-    /// Keyboard insets can change the native visible rect without changing
-    /// the outer SwiftUI frame. Only the execution channel observes this size.
-    func updateVisibleSize(_ size: CGSize, isActive: Bool = true) {
-        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else { return }
-        let resized = visibleSize.map { $0 != size } ?? false
-        visibleSize = size
-        if resized, isActive, intent.followsLatest, !intent.isInteracting {
             request.enqueue(kind: .following)
         }
     }

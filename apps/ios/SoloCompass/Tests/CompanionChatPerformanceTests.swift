@@ -467,32 +467,4 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertEqual(hidden.request, hiddenRequest)
     }
 
-    func testNativeVisibleSizeFollowsKeyboardInsetsWithoutChangingTheHostFrame() {
-        let state = CompanionScrollState(reading: .init())
-        let frame = CGRect(x: 0, y: 80, width: 390, height: 600)
-        state.updateViewport(frame)
-        state.updateVisibleSize(CGSize(width: 390, height: 600))
-        let initial = state.request
-        let display = ObservationProbe()
-        withObservationTracking { _ = state.presentation } onChange: { display.mark() }
-        state.updateVisibleSize(CGSize(width: 390, height: 300))
-        XCTAssertEqual(state.viewport, frame)
-        XCTAssertGreaterThan(state.request.revision, initial.revision)
-        XCTAssertEqual(state.request.target, "stream-bottom")
-        XCTAssertEqual(state.request.kind, .following)
-        XCTAssertFalse(display.wasMarked, "Native viewport observations must not rebuild the lazy timeline")
-        let repeated = state.request
-        state.updateVisibleSize(CGSize(width: 390, height: 300))
-        XCTAssertEqual(state.request, repeated)
-        state.setInteraction(true)
-        let manual = state.request
-        state.updateVisibleSize(CGSize(width: 390, height: 250))
-        XCTAssertEqual(state.request, manual)
-        let historical = CompanionScrollState(reading: .init(anchorID: "message:source", followsLatest: false))
-        historical.updateVisibleSize(CGSize(width: 390, height: 600))
-        let history = historical.request
-        historical.updateVisibleSize(CGSize(width: 390, height: 300))
-        XCTAssertEqual(historical.request, history)
-    }
-
 }

@@ -211,34 +211,6 @@ import Foundation
         require(restored.permitsScroll(.restoration), "idle history restoration may replay its stable target")
         require(restored.anchorForSaving(visible: "keyboard-row", saved: "user-row") == "user-row",
             "keyboard geometry after deceleration preserves the chosen history anchor")
-        let viewport = CompanionScrollState(reading: .init())
-        let fixedFrame = CGRect(x: 0, y: 80, width: 390, height: 600)
-        viewport.updateViewport(fixedFrame)
-        viewport.updateVisibleSize(CGSize(width: 390, height: 600))
-        let initialSize = viewport.request
-        viewport.updateVisibleSize(CGSize(width: 390, height: 300))
-        require(viewport.viewport == fixedFrame && viewport.request.revision > initialSize.revision,
-            "keyboard insets trigger following even when the host frame does not resize")
-        let repeatedSize = viewport.request
-        viewport.updateVisibleSize(CGSize(width: 390, height: 300))
-        require(viewport.request == repeatedSize, "unchanged visible size does not repeat a scroll")
-        viewport.enqueue(kind: .explicit)
-        viewport.updateVisibleSize(CGSize(width: 390, height: 280))
-        require(viewport.request.kind == .explicit, "native resizing preserves pending explicit sends")
-        viewport.setInteraction(true)
-        let duringPan = viewport.request
-        viewport.updateVisibleSize(CGSize(width: 390, height: 260))
-        require(viewport.request == duringPan, "native viewport updates do not interrupt gestures")
-        let historySize = CompanionScrollState(reading: .init(anchorID: "message:source", followsLatest: false))
-        historySize.updateVisibleSize(CGSize(width: 390, height: 600))
-        let historyRequest = historySize.request
-        historySize.updateVisibleSize(CGSize(width: 390, height: 300))
-        require(historySize.request == historyRequest, "native keyboard changes retain historical reading")
-        let hiddenSize = CompanionScrollState(reading: .init())
-        hiddenSize.updateVisibleSize(CGSize(width: 390, height: 600))
-        let hiddenRequest = hiddenSize.request
-        hiddenSize.updateVisibleSize(CGSize(width: 390, height: 300), isActive: false)
-        require(hiddenSize.request == hiddenRequest, "hidden conversation does not scroll for native resizing")
     }
 
     @MainActor static func main() async throws {

@@ -114,6 +114,7 @@ struct CompanionMessageRow: View {
             .accessibilityAction(named: Text(companionText("companion.im.reply", "引用回复"))) { onQuote(quotation) }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("companion.message.\(entry.id)")
+            if !isUser { Spacer(minLength: typeSize.isAccessibilitySize ? 8 : 30) }
         }
         .foregroundStyle(CompanionHomeStyle.ink)
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
