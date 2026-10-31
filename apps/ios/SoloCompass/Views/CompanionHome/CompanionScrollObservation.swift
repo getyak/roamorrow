@@ -181,9 +181,13 @@ private struct CompanionScrollExecutionContext {
     let trace: (String) -> Void
     var key: CompanionScrollExecutionKey { .init(revision: scrolling.request.revision, isActive: isActive) }
 
-    func perform(_ move: @MainActor (String) -> Void) async {
+    func perform(includingInitialLatest: Bool = false, _ move: @MainActor (String) -> Void) async {
         let captured = scrolling.request
-        guard captured.revision > 0 else { return }
+        // Modern native positioning needs an endpoint even before the first
+        // send/latest action. Keep legacy initial-offset behavior unchanged.
+        let initialLatest = includingInitialLatest && captured.revision == 0
+            && captured.kind == .following && captured.target == "stream-bottom"
+        guard captured.revision > 0 || initialLatest else { return }
         await Task.yield()
         guard !Task.isCancelled, isActive, let target = captured.target,
               scrolling.intent.permitsScroll(captured, current: scrolling.request) else {
@@ -204,7 +208,7 @@ private struct CompanionModernScrollExecution: ViewModifier {
     func body(content: Content) -> some View {
         content.scrollPosition($position)
             .task(id: execution.key) {
-                await execution.perform { target in
+                await execution.perform(includingInitialLatest: true) { target in
                     if target == "stream-bottom" {
                         position.scrollTo(edge: .bottom)
                     } else {
