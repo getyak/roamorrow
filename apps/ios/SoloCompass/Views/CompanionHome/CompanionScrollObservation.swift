@@ -204,19 +204,17 @@ private struct CompanionScrollExecutionContext {
 private struct CompanionModernScrollExecution: ViewModifier {
     let execution: CompanionScrollExecutionContext
     // Visible IDs already have a passive, ignored checkpoint owner. The
-    // default Never ID type keeps this binding for explicit commands only;
-    // scrollTo(id:) still retains a saved history target across later layout.
+    // default Never ID type disables automatic row-ID readback on this binding.
+    // Explicit IDs still retain history or the footer across later layout.
     @State private var position = ScrollPosition()
 
     func body(content: Content) -> some View {
         content.scrollPosition($position)
             .task(id: execution.key) {
                 await execution.perform(includingInitialLatest: true) { target in
-                    if target == "stream-bottom" {
-                        position.scrollTo(edge: .bottom)
-                    } else {
-                        position.scrollTo(id: target, anchor: .bottom)
-                    }
+                    // Resolve the actual footer/row in the lazy layout and
+                    // retain it through later row-height corrections.
+                    position.scrollTo(id: target, anchor: .bottom)
                 }
             }
     }

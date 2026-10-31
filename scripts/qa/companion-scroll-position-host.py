@@ -47,17 +47,18 @@ struct PositionContract {
         expect(position.edge == nil, "history does not retain an endpoint")
         expect(position.viewID(type: String.self) == "message:source", "history retains the requested stable row")
         apply("stream-bottom", to: &position)
-        expect(position.edge == .bottom, "latest is a native bottom-edge position")
-        expect(position.viewID == nil, "latest must not retain a virtual footer view identity")
+        expect(position.edge == nil, "latest resolves a concrete layout target rather than an estimated edge")
+        expect(position.viewID(type: String.self) == "stream-bottom", "latest replaces history with the stable footer target")
         apply("message:other-source", to: &position)
-        expect(position.edge == nil, "history releases the previous latest edge")
+        expect(position.edge == nil, "history retains ID-based positioning")
         expect(position.viewID(type: String.self) == "message:other-source", "history switches to the new source row")
         apply("stream-bottom", to: &position)
         apply("stream-bottom", to: &position)
-        expect(position.edge == .bottom && position.viewID == nil, "latest remains an endpoint after repeated semantic actions")
+        expect(position.edge == nil && position.viewID(type: String.self) == "stream-bottom",
+               "latest retains the stable footer after repeated semantic actions")
         apply("message:stream-bottom", to: &position)
         expect(position.viewID(type: String.self) == "message:stream-bottom" && position.edge == nil,
-               "only the exact endpoint marker selects edge positioning")
+               "a similarly named message remains a distinct history target")
 
         func context(_ state: CompanionScrollState, active: Bool = true) -> CompanionScrollExecutionContext {
             .init(scrolling: state, isActive: active, reduceMotion: true, trace: { _ in })
@@ -65,8 +66,8 @@ struct PositionContract {
         let initial = CompanionScrollState(reading: .init())
         var latestPosition = initialPosition()
         let initialMoves = await runModern(context(initial), position: &latestPosition)
-        expect(initialMoves == 1 && latestPosition.edge == .bottom,
-               "initial latest executes the native endpoint without a send or latest tap")
+        expect(initialMoves == 1 && latestPosition.viewID(type: String.self) == "stream-bottom",
+               "initial latest executes the stable footer without a send or latest tap")
         expect(initial.request.target == nil, "initial endpoint command is consumed")
         let repeatedMoves = await runModern(context(initial), position: &latestPosition)
         expect(repeatedMoves == 0, "consumed initial command is not replayed")
@@ -81,7 +82,7 @@ struct PositionContract {
         var historyPosition = initialPosition()
         let historyMoves = await runModern(context(history), position: &historyPosition)
         expect(historyMoves == 1 && historyPosition.viewID(type: String.self) == "message:saved" && historyPosition.edge == nil,
-               "saved history remains an ID command instead of the initial latest edge")
+               "saved history retains its own target instead of the latest footer")
         let missing = CompanionScrollState(reading: .init(anchorID: nil, followsLatest: false))
         var missingPosition = initialPosition()
         let missingMoves = await runModern(context(missing), position: &missingPosition)
@@ -94,7 +95,7 @@ struct PositionContract {
         expect(hiddenMoves == 0 && hidden.request.target != nil,
                "hidden initial latest neither moves nor consumes its command")
         let revealedMoves = await runModern(context(hidden), position: &hiddenPosition)
-        expect(revealedMoves == 1 && hiddenPosition.edge == .bottom,
+        expect(revealedMoves == 1 && hiddenPosition.viewID(type: String.self) == "stream-bottom",
                "initial latest can execute when the page becomes active")
 
         let gesture = CompanionScrollState(reading: .init())
