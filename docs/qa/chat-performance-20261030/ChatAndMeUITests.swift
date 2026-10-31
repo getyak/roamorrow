@@ -13,6 +13,19 @@ final class ChatAndMeUITests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
+        // Discovery readout happens after the original verdict, so these AX
+        // queries cannot make a failed keyboard-tail assertion pass.
+        if name.contains("testLongHistoryScrollAndSendRetainTheNewDraftAndKeyboard") {
+            let final = element("companion.message.\(lastID)")
+            let finalExists = final.exists
+            let streamExists = stream.exists
+            let keyboard = app.keyboards.firstMatch
+            let keyboardExists = keyboard.exists
+            let finalFrame = finalExists ? final.frame : .zero
+            let streamFrame = streamExists ? stream.frame : .zero
+            let keyboardFrame = keyboardExists ? keyboard.frame : .zero
+            print("GET345 boundary-frames finalExists=\(finalExists) finalFrame=\(finalFrame) streamFrame=\(streamFrame) keyboardFrame=\(keyboardFrame)")
+        }
         capture("final-screen")
         app.terminate()
     }

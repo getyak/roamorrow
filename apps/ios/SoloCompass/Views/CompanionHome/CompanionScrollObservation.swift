@@ -1,5 +1,8 @@
 import SwiftUI
 import UIKit
+#if DEBUG
+import OSLog
+#endif
 
 /// Modern visibility is an observation, never a two-way positioning command.
 /// iOS 17 retains the existing compatible binding path.
@@ -46,6 +49,7 @@ struct CompanionScrollInteractionObserver: ViewModifier {
                 } action: { _, near in
                     if isActive { onVisibility(near) }
                 }
+                .modifier(CompanionNativeLayoutTrace(isActive: isActive))
                 .onScrollPhaseChange { _, phase, context in
                     guard isActive else { return }
                     if context.geometry.contentSize.height > 0 {
@@ -54,6 +58,37 @@ struct CompanionScrollInteractionObserver: ViewModifier {
                     action(phase == .tracking || phase == .interacting || phase == .decelerating)
                 }
         } else { content }
+    }
+}
+
+/// Temporary read-only boundary probe. Geometry is in view points, never geo
+/// coordinates, message text or identifiers. It does not publish UI state.
+@available(iOS 18.0, *)
+@MainActor
+private struct CompanionNativeLayoutTrace: ViewModifier {
+    let isActive: Bool
+    #if DEBUG
+    private struct Sample: Equatable {
+        let content: CGSize
+        let container: CGSize
+        let insets: EdgeInsets
+        let offset: CGPoint
+        let visible: CGRect
+    }
+    private static let log = Logger(subsystem: "com.solocompass.chat-scroll", category: "native-layout")
+    #endif
+
+    func body(content: Content) -> some View {
+        #if DEBUG
+        content.onScrollGeometryChange(for: Sample.self) { geometry in
+            Sample(content: geometry.contentSize, container: geometry.containerSize,
+                insets: geometry.contentInsets, offset: geometry.contentOffset, visible: geometry.visibleRect)
+        } action: { _, value in
+            Self.log.debug("event=native-geometry active=\(self.isActive) contentH=\(Double(value.content.height)) contentW=\(Double(value.content.width)) containerH=\(Double(value.container.height)) containerW=\(Double(value.container.width)) insetTop=\(Double(value.insets.top)) insetBottom=\(Double(value.insets.bottom)) offsetY=\(Double(value.offset.y)) visibleMinY=\(Double(value.visible.minY)) visibleMaxY=\(Double(value.visible.maxY))")
+        }
+        #else
+        content
+        #endif
     }
 }
 

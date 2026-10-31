@@ -220,6 +220,10 @@ struct CompanionConversation: View {
 
     private func observeVisibleIDs(_ ids: [String]) {
         guard isActive else { return }
+        #if DEBUG
+        let hasFinal = store.timelineProjection.rows.last.map { ids.contains($0.id) } ?? false
+        Self.scrollLog.debug("event=native-targets empty=\(ids.isEmpty) bottom=\(ids.contains("stream-bottom")) final=\(hasFinal)")
+        #endif
         let anchor = store.timelineProjection.readingAnchor(visibleIDs: ids, retaining: store.readingState.anchorID)
         guard anchor != store.readingState.anchorID else { return }
         saveReading(visibleAnchor: anchor)

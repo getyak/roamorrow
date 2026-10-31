@@ -400,6 +400,60 @@ jobs:
           path: ${{ runner.temp }}/v4-native
           retention-days: 7
 
+  # Temporary discovery lane for this issue. It cannot replace or relax the
+  # original complete-App gate above, and never receives provider credentials.
+  keyboard-boundary:
+    name: Keyboard boundary discovery (not acceptance)
+    if: github.event_name == 'pull_request' && github.head_ref == 'codex/get-345-postmerge-ci' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Create credential-free configuration
+        run: |
+          printf 'DEEPSEEK_API_KEY=\nSENTRY_DSN=\nAMAP_API_KEY=\nFOURSQUARE_API_KEY=\nOPENWEATHER_API_KEY=\nDEVELOPMENT_TEAM=\n' > .env
+          bash scripts/generate_secrets.sh
+      - name: Select Xcode and owned iPhone
+        id: simulator
+        run: |
+          set -euo pipefail
+          XCODE_PATH=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE_PATH"
+          xcodebuild -version
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/keyboard-devices.json"
+          python3 scripts/ios/select-simulator.py --json-file "$RUNNER_TEMP/keyboard-devices.json" \
+            --preferred "iPhone 17 Pro" > "$RUNNER_TEMP/keyboard-device.json"
+          python3 - "$RUNNER_TEMP/keyboard-device.json" "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          from pathlib import Path
+          device = json.loads(Path(sys.argv[1]).read_text())
+          with open(sys.argv[2], "a") as output:
+              output.write(f"udid={device['udid']}\n")
+          PY
+      - name: Generate project
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          brew install xcodegen
+          cd apps/ios
+          xcodegen generate --spec project.yml
+      - name: Observe original chat cases on synthetic local history
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          CHAT_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/qa/keyboard-boundary-ci.sh
+      - name: Preserve boundary evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: keyboard-boundary-discovery
+          path: |
+            ${{ runner.temp }}/keyboard-boundary/*.log
+            ${{ runner.temp }}/keyboard-boundary/*/*.json
+            ${{ runner.temp }}/keyboard-boundary/*.xcresult
+          retention-days: 7
+
   lint:
     name: SwiftLint
     runs-on: macos-latest
