@@ -222,7 +222,7 @@ final class CompanionAudioSession {
 
     private func traceAudio(_ event: String) {
         #if DEBUG
-        Self.audioLog.debug("event=\(event, privacy: .public) recording=\(isRecording) playing=\(playingID != nil) paused=\(pausedID != nil) owns=\(activeSessionUse != nil)")
+        Self.audioLog.debug("event=\(event, privacy: .public) recording=\(self.isRecording) playing=\(self.playingID != nil) paused=\(self.pausedID != nil) owns=\(self.activeSessionUse != nil)")
         #endif
     }
     #if DEBUG

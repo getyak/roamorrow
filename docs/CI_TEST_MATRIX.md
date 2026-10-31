@@ -13,7 +13,7 @@ The helper checks the process path and records no message text or memory dump;
 the step always stops its owned watcher when testing ends. This diagnostic does
 not turn a timeout or failed UI assertion into a passing result.
 
-The macOS host audio regression compiles the shipping `CompanionAudioSession`
+The macOS host audio regression compiles the shipping Debug `CompanionAudioSession`
 controller with an inert audio-framework boundary. It checks that idle cleanup
 never initializes system audio, recording and playback release only their own
 successfully activated sessions, and failed activation/creation/cleanup preserve

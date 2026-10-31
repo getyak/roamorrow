@@ -15,9 +15,9 @@ start = source.index("@MainActor\n@Observable\nfinal class CompanionAudioSession
 end = source.index("/// Explicit transcription action;", start)
 args.output.mkdir(parents=True, exist_ok=True)
 controller = args.output / "ShippingAudioSession.swift"
-controller.write_text("import Foundation\nimport Observation\n" + source[start:end])
+controller.write_text("import Foundation\nimport Observation\nimport OSLog\n" + source[start:end])
 binary = args.output / "companion-audio-host"
-subprocess.run(["swiftc", "-strict-concurrency=complete", "-warnings-as-errors", "-swift-version", "5",
+subprocess.run(["swiftc", "-D", "DEBUG", "-strict-concurrency=complete", "-warnings-as-errors", "-swift-version", "5",
                 str(controller), str(Path(__file__).with_suffix(".swift")), "-o", str(binary)], check=True)
 result = subprocess.run([str(binary)], capture_output=True, text=True)
 (args.output / "results.log").write_text(result.stdout + result.stderr)
@@ -25,6 +25,7 @@ result = subprocess.run([str(binary)], capture_output=True, text=True)
     "source": "apps/ios/SoloCompass/Services/CompanionMediaService.swift:CompanionAudioSession",
     "controller_sha256": hashlib.sha256(controller.read_bytes()).hexdigest(),
     "boundary": "Inert audio framework; no microphone, playback device, or provider request",
+    "configuration": "Debug, Swift 5, complete concurrency checking, warnings as errors",
     "exit_code": result.returncode,
 }, indent=2) + "\n")
 print(result.stdout, end="")
