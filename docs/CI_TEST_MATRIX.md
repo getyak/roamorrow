@@ -6,6 +6,13 @@ Target CI: `.github/workflows/ios-ci.yml` (`macos-latest`) and
 
 ## Simulator policy and dependency gates
 
+Native long-history CI retains its existing pass/fail assertions. If XCTest
+reports that the app event loop never became idle, a CI-only diagnostic helper
+captures one bounded stack sample of the selected Simulator's application.
+The helper checks the process path and records no message text or memory dump;
+the step always stops its owned watcher when testing ends. This diagnostic does
+not turn a timeout or failed UI assertion into a passing result.
+
 | Workflow/job                     | Required checks                                                                                                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ci.yml` / build (Linux)         | Portable `scripts/ios/test_local_policy.py` suite, explicit skips for macOS-only tests, and `bash -n` for all five simulator entrypoint/library scripts. |
