@@ -13,6 +13,7 @@ struct CompanionIdentityHost {
         precondition(CompanionIdentity.normalizedName("  沿途\n小伴\t ") == "沿途 小伴")
         precondition(CompanionIdentity.normalizedName("小\u{0000}伴") == "小伴")
         precondition(CompanionIdentity.normalizedName(" \n ").isEmpty)
+        precondition(CompanionIdentity.normalizedName("\u{200D}\u{200C}\u{FE0F}").isEmpty)
         precondition(CompanionIdentity.normalizedName(String(repeating: "👨‍👩‍👧‍👦", count: 20)).count == 16)
         precondition(CompanionIdentity.normalizedName("👨‍👩‍👧‍👦") == "👨‍👩‍👧‍👦")
         precondition(CompanionIdentity.normalizedName("می\u{200C}روم") == "می\u{200C}روم")

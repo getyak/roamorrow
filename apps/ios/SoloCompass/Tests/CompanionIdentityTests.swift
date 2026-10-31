@@ -16,6 +16,7 @@ final class CompanionIdentityTests: XCTestCase {
         XCTAssertEqual(CompanionIdentity.normalizedName("  沿途\n小伴\t "), "沿途 小伴")
         XCTAssertEqual(CompanionIdentity.normalizedName("小\u{0000}伴"), "小伴")
         XCTAssertTrue(CompanionIdentity.normalizedName(" \n ").isEmpty)
+        XCTAssertTrue(CompanionIdentity.normalizedName("\u{200D}\u{200C}\u{FE0F}").isEmpty)
         XCTAssertEqual(CompanionIdentity.normalizedName(String(repeating: "👨‍👩‍👧‍👦", count: 20)).count, 16)
         XCTAssertEqual(CompanionIdentity.normalizedName("👨‍👩‍👧‍👦"), "👨‍👩‍👧‍👦")
         XCTAssertEqual(CompanionIdentity.normalizedName("می\u{200C}روم"), "می\u{200C}روم")

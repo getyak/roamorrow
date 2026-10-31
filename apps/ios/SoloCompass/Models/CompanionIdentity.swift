@@ -32,7 +32,9 @@ struct CompanionIdentity: Codable, Equatable {
             $0.value == 0x200C || $0.value == 0x200D
                 || !CharacterSet.controlCharacters.contains($0) || CharacterSet.whitespacesAndNewlines.contains($0)
         })
-        return String(printable.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").prefix(maximumNameLength))
+        let result = String(printable.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").prefix(maximumNameLength))
+        let invisible = CharacterSet.whitespacesAndNewlines.union(.controlCharacters).union(.nonBaseCharacters)
+        return result.rangeOfCharacter(from: invisible.inverted) == nil ? "" : result
     }
 
     private enum CodingKeys: String, CodingKey { case name, portraitRaw }

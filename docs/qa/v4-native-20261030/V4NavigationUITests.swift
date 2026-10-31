@@ -75,6 +75,7 @@ final class V4NavigationUITests: XCTestCase {
         for name in ["now", "nearby", "itinerary", "me"] {
             XCTAssertTrue(tab(name).exists)
             XCTAssertGreaterThanOrEqual(tab(name).frame.height, 44)
+            XCTAssertLessThanOrEqual(tab(name).frame.height, 50)
         }
         let marker = "V4 unsent draft stays with the conversation"
         try replaceDraft(marker)
@@ -104,6 +105,10 @@ final class V4NavigationUITests: XCTestCase {
         let originalStyle = try XCTUnwrap(styles.first {
             app.buttons["companion.identity.style.\($0)"].isSelected
         })
+        for style in styles {
+            app.buttons["companion.identity.style.\(style)"].tap()
+            capture("identity-style-\(style)")
+        }
         func editName(_ value: String) {
             let field = app.textFields["companion.identity.name"].firstMatch
             XCTAssertTrue(field.waitForExistence(timeout: 5))
@@ -135,6 +140,17 @@ final class V4NavigationUITests: XCTestCase {
         app.buttons["companion.identity.save"].tap()
         XCTAssertEqual(title.label, originalName)
         XCTAssertEqual(draft.value as? String, originalDraft)
+
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(title.waitForExistence(timeout: 25))
+        XCTAssertTrue(app.buttons["companion.identity.open"].isHittable)
+        capture("identity-large-type-header")
+        app.buttons["companion.identity.open"].tap()
+        XCTAssertTrue(app.textFields["companion.identity.name"].waitForExistence(timeout: 5))
+        capture("identity-large-type-editor")
+        app.buttons["取消"].tap()
     }
 
     func testSourceMapFavoriteScopeAndReadingReturn() throws {
