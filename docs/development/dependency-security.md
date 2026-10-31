@@ -3,6 +3,23 @@
 The dependency gate remains `pnpm audit --audit-level=low`. Security updates
 must preserve the frozen lockfile and the workspace supply-chain settings.
 
+## 2026-10-31 remediation
+
+The audit newly reported two moderate advisories on the existing lockfile:
+[glob cancellation](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)
+and [minimatch pattern amplification](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+The reviewed upstream fixes are glob 14.0.2 and minimatch 11.0.1. The root
+glob dependency and affected transitive copies use those releases. Existing
+Node 22 support, release-age restrictions, build permissions, the braces
+patch, and audit severity remain unchanged.
+
+The glob regression first reproduced continued directory reads after a
+cancelled walk rejected. It verifies that cancellation stops new traversal,
+ordinary synchronous globbing still finds nested files, and the actual
+ts-morph matcher retains its public matching behavior. The dependency-floor
+check covers every locked glob and minimatch copy; schema parity, lint and
+the production Web build exercise their real consumers in CI.
+
 ## 2026-10-24 remediation
 
 The follow-up audit reported 21 untriaged advisories: 3 critical, 5 high,

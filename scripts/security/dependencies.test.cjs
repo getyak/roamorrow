@@ -18,6 +18,8 @@ const floors = {
   zod: "4.6.6",
   undici: "7.30.1",
   "fast-uri": "3.1.9",
+  glob: "14.0.2",
+  minimatch: "11.0.1",
 };
 function versionParts(version) {
   assert.match(version, /^\d+\.\d+\.\d+$/, "security floors require stable releases");
