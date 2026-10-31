@@ -194,7 +194,17 @@ import Observation
         let repainted = CompanionTimeline.Projection(entries: entries + [changed], invites: [], previous: inserted, revision: 2)
         require(repainted.change.userActionRevision > projection.change.userActionRevision,
                 "coalesced status updates retain an unseen outgoing event")
-        require(repainted.rows.map(\.id) == repainted.events.map(\.id), "cached lazy-row IDs match stable event identities")
+        require(repainted.rowIDs == repainted.events.map(\.id), "cached lazy-row IDs match stable event identities")
+        require(repainted.rowIDs.compactMap { repainted.event(forID: $0) } == repainted.events,
+                "light row IDs resolve to the same frozen events in display order")
+        require(projection.rowIDs.count == Set(projection.rowIDs).count,
+                "long history has one stable lightweight ID per event")
+        require(projection.event(forID: outgoing.id.uuidString) == nil
+                && projection.event(forID: "message:\(outgoing.id)") == nil,
+                "old projection cannot resolve an event inserted into a newer snapshot")
+        require(inserted.event(forID: "message:\(outgoing.id)") == .message(outgoing)
+                && repainted.event(forID: "message:\(outgoing.id)") == .message(changed),
+                "status repaint cannot mutate an older projection's event lookup")
         var intent = CompanionScrollIntent(reading: .init())
         intent.interactionChanged(active: true)
         require(!intent.contentArrived(isUserAction: false) && intent.hasUnread, "incoming during finger/inertia never pulls reader")

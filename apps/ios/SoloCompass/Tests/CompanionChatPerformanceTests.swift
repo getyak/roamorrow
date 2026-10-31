@@ -387,7 +387,7 @@ final class CompanionChatPerformanceTests: XCTestCase {
         let reply = CompanionHomeEntry(role: .companion, text: "Fast reply", replyToID: user.id)
         let completed = CompanionTimeline.Projection(entries: [user, reply], invites: [], previous: started, revision: 3)
         XCTAssertGreaterThan(completed.change.userActionRevision, initial.change.userActionRevision)
-        XCTAssertEqual(completed.rows.map(\.id), ["message:\(user.id)", "message:\(reply.id)"])
+        XCTAssertEqual(completed.rowIDs, ["message:\(user.id)", "message:\(reply.id)"])
         XCTAssertNil(completed.replyContexts[reply.id])
     }
 

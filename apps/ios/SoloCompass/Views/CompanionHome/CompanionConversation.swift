@@ -49,27 +49,28 @@ struct CompanionConversation: View {
                             .id("stream-commitments")
                     }
                     if projection.events.isEmpty { introduction.id("stream-introduction") }
-                    ForEach(projection.rows) { row in
-                        let event = row.event
+                    ForEach(projection.rowIDs, id: \.self) { id in
                         VStack(alignment: .leading, spacing: 0) {
-                            switch event {
-                            case .message(let entry):
-                                if projection.timestampIDs.contains(entry.id) {
-                                    Text(entry.createdAt, format: .dateTime.month().day().hour().minute())
-                                        .font(.footnote).foregroundStyle(CompanionHomeStyle.secondaryInk)
-                                        .frame(maxWidth: .infinity).padding(.top, 14).padding(.bottom, 6)
+                            if let event = projection.event(forID: id) {
+                                switch event {
+                                case .message(let entry):
+                                    if projection.timestampIDs.contains(entry.id) {
+                                        Text(entry.createdAt, format: .dateTime.month().day().hour().minute())
+                                            .font(.footnote).foregroundStyle(CompanionHomeStyle.secondaryInk)
+                                            .frame(maxWidth: .infinity).padding(.top, 14).padding(.bottom, 6)
+                                    }
+                                    CompanionMessageRow(entry: entry,
+                                        replyContext: projection.replyContexts[entry.id],
+                                        onRetry: { Task { await store.retry(id: entry.id) } },
+                                        onSources: { onSources(entry) },
+                                        onPlace: { id in onPlace(entry, id) },
+                                        onMedia: onMedia, onQuote: { store.setDraftQuote($0) },
+                                        onReaction: { store.toggleReaction(entryID: entry.id) })
+                                case .invite(let invite):
+                                    CompanionInviteCard(invite: invite)
                                 }
-                                CompanionMessageRow(entry: entry,
-                                    replyContext: projection.replyContexts[entry.id],
-                                    onRetry: { Task { await store.retry(id: entry.id) } },
-                                    onSources: { onSources(entry) },
-                                    onPlace: { id in onPlace(entry, id) },
-                                    onMedia: onMedia, onQuote: { store.setDraftQuote($0) },
-                                    onReaction: { store.toggleReaction(entryID: entry.id) })
-                            case .invite(let invite):
-                                CompanionInviteCard(invite: invite)
                             }
-                        }.id(row.id)
+                        }.id(id)
                     }
                     if store.isWorking {
                         CompanionWorkingIndicator(store: store, scrolling: scrolling, isActive: isActive)
