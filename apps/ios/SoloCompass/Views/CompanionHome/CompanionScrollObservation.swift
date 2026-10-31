@@ -212,6 +212,15 @@ private struct CompanionScrollExecutionContext {
 
 @available(iOS 18.0, *)
 @MainActor
+private enum CompanionActiveScrollPosition {
+    static func binding(_ position: Binding<ScrollPosition>, isActive: Bool) -> Binding<ScrollPosition> {
+        if isActive { return position }
+        return .constant(ScrollPosition())
+    }
+}
+
+@available(iOS 18.0, *)
+@MainActor
 private struct CompanionModernScrollExecution: ViewModifier {
     let execution: CompanionScrollExecutionContext
     // Visible IDs already have a passive, ignored checkpoint owner. The
@@ -220,8 +229,12 @@ private struct CompanionModernScrollExecution: ViewModifier {
     @State private var position = ScrollPosition()
 
     func body(content: Content) -> some View {
-        content.scrollPosition($position)
+        content.scrollPosition(CompanionActiveScrollPosition.binding($position, isActive: execution.isActive))
             .task(id: execution.key) {
+                // The binding is already neutral during inactive layout.
+                // Clear its storage too, so reactivation starts with the saved
+                // reading request rather than a previously retained native ID.
+                if !Task.isCancelled, !execution.isActive { position = ScrollPosition() }
                 await execution.perform(includingInitialLatest: true) { target in
                     // Resolve the actual footer/row in the lazy layout and
                     // retain it through later row-height corrections.

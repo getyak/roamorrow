@@ -17,6 +17,8 @@ owner = source.index("private struct CompanionModernScrollExecution")
 initializer = re.search(r"@State private var position = ([^\n]+)", source[owner:]).group(1)
 invocation = re.search(r"await execution\.perform(?:\([^\n]*\))? \{ target in", source[owner:]).group()
 start = source.index(invocation, owner) + len(invocation)
+task_start = source.index(".task(id: execution.key) {", owner) + len(".task(id: execution.key) {")
+prelude = textwrap.dedent(source[task_start:source.index(invocation, task_start)]).strip()
 end = source.index("\n                }", start)
 adapter = textwrap.dedent(source[start:end]).strip()
 context = source[source.index("private struct CompanionScrollExecutionKey"):source.index("@available(iOS 18.0, *)\n@MainActor\nprivate struct CompanionModernScrollExecution")]
@@ -30,9 +32,13 @@ fixture.write_text("import SwiftUI\n" + reading + "\n" + context
                   + adapter + "\n}\n"
                   + "@MainActor func initialPosition() -> ScrollPosition { " + initializer + " }\n"
                   + "@MainActor private func runModern(_ execution: CompanionScrollExecutionContext, position: inout ScrollPosition) async -> Int {\nvar moves = 0\n"
+                  + prelude + "\n"
                   + invocation + "\nmoves += 1\n" + adapter + "\n}\nreturn moves\n}\n" + r'''
 @main @MainActor
 struct PositionContract {
+    @MainActor final class StoredPosition {
+        var value = ScrollPosition()
+    }
     static var failures = 0
     static var checks = 0
     static func expect(_ value: Bool, _ label: String) {
@@ -115,6 +121,48 @@ struct PositionContract {
         let cancelledMoves = await cancelledTask.value
         expect(cancelledMoves == 0 && cancelled.request.target != nil,
                "task cancellation prevents deferred initial positioning")
+
+        let stored = StoredPosition()
+        apply("message:visible-source", to: &stored.value)
+        let base = Binding(get: { stored.value }, set: { stored.value = $0 })
+        let inactive = CompanionActiveScrollPosition.binding(base, isActive: false)
+        expect(inactive.wrappedValue == ScrollPosition(), "inactive native layout sees no retained position target")
+        var unwanted = initialPosition()
+        apply("message:hidden-readback", to: &unwanted)
+        inactive.wrappedValue = unwanted
+        expect(stored.value.viewID(type: String.self) == "message:visible-source",
+               "inactive native readback cannot overwrite the stored position")
+        apply("message:visible-source", to: &stored.value)
+        let active = CompanionActiveScrollPosition.binding(base, isActive: true)
+        expect(active.wrappedValue.viewID(type: String.self) == "message:visible-source",
+               "active history retains its persistent source target")
+        var userPosition = stored.value
+        userPosition.isPositionedByUser = true
+        active.wrappedValue = userPosition
+        expect(stored.value.isPositionedByUser, "active native user-position readback remains enabled")
+
+        let reactivated = CompanionScrollState(reading: .init(anchorID: "message:saved-checkpoint", followsLatest: false))
+        var stalePosition = initialPosition()
+        apply("message:stale-before-hide", to: &stalePosition)
+        let backgroundMoves = await runModern(context(reactivated, active: false), position: &stalePosition)
+        expect(backgroundMoves == 0 && stalePosition == ScrollPosition(),
+               "inactive execution releases private native target state without moving")
+        expect(reactivated.request.target == "message:saved-checkpoint", "hiding does not consume pending restoration")
+        let restoredMoves = await runModern(context(reactivated), position: &stalePosition)
+        expect(restoredMoves == 1 && stalePosition.viewID(type: String.self) == "message:saved-checkpoint",
+               "reactivation restores the saved checkpoint through the queue instead of exposing stale state")
+        let cancelledBackground = CompanionScrollState(reading: .init(anchorID: "message:queued-restore", followsLatest: false))
+        let oldInactiveTask = Task { @MainActor in
+            var livePosition = initialPosition()
+            apply("message:new-active-source", to: &livePosition)
+            let count = await runModern(context(cancelledBackground, active: false), position: &livePosition)
+            return (count, livePosition)
+        }
+        oldInactiveTask.cancel()
+        let (oldMoves, livePosition) = await oldInactiveTask.value
+        expect(oldMoves == 0 && livePosition.viewID(type: String.self) == "message:new-active-source"
+               && cancelledBackground.request.target == "message:queued-restore",
+               "a cancelled inactive task cannot erase an active target or consume pending restoration")
         print("Native ScrollPosition value contract: \(checks) checks, \(failures) failures; no rendered lazy layout acceptance")
         if failures > 0 { exit(1) }
     }
@@ -133,6 +181,7 @@ result = subprocess.run([str(binary)], capture_output=True, text=True)
     "execution_context_sha256": hashlib.sha256(context.encode()).hexdigest(),
     "modern_invocation": invocation,
     "position_initializer": initializer,
+    "pre_execution": prelude,
     "scope": "Real SwiftUI ScrollPosition value semantics; not a native keyboard or frame-rate test",
     "exit_code": result.returncode,
 }, indent=2) + "\n")
