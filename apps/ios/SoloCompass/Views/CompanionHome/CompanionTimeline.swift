@@ -13,17 +13,20 @@ enum CompanionTimeline {
 
     /// Prepared when content changes, never in a scroll-driven view body.
     struct Projection: Sendable {
-        struct Row: Identifiable, Sendable {
-            let id: String
-            let event: Event
-        }
         let events: [Event]
-        let rows: [Row]
+        // Lazy layout scans identities when resolving native scroll positions.
+        // Keep that collection independent of the full message/media payload.
+        let rowIDs: [String]
         let eventIDs: Set<String>
         let replyContexts: [UUID: String]
         let timestampIDs: Set<UUID>
         let change: Change
         private let rowOrder: [String: Int]
+
+        func event(forID id: String) -> Event? {
+            guard let index = rowOrder[id] else { return nil }
+            return events[index]
+        }
 
         func readingAnchor(visibleIDs: [String], retaining previous: String?) -> String? {
             if let previous, visibleIDs.contains(previous) { return previous }
@@ -45,22 +48,21 @@ enum CompanionTimeline {
              previous: Projection? = nil, revision: UInt64 = 0, calendar: Calendar = .current) {
             let events = CompanionTimeline.events(entries: entries, invites: invites)
             self.events = events
-            let rows = events.map { Row(id: $0.id, event: $0) }
-            self.rows = rows
+            let rowIDs = events.map(\.id)
+            self.rowIDs = rowIDs
             var order: [String: Int] = [:]
-            order.reserveCapacity(rows.count)
-            for (index, row) in rows.enumerated() { order[row.id] = index }
+            order.reserveCapacity(rowIDs.count)
+            for (index, id) in rowIDs.enumerated() { order[id] = index }
             rowOrder = order
-            eventIDs = Set(rows.map(\.id))
+            eventIDs = Set(rowIDs)
             replyContexts = CompanionTimeline.replyContexts(in: events)
             let oldIDs = previous?.eventIDs ?? []
             var insertedCount = 0
             var userAction = false
             var timestampIDs: Set<UUID> = []
             var priorMessage: CompanionHomeEntry?
-            for row in rows {
-                let event = row.event
-                if !oldIDs.contains(row.id) {
+            for event in events {
+                if !oldIDs.contains(event.id) {
                     insertedCount += 1
                     userAction = userAction || event.isUserAction
                 }

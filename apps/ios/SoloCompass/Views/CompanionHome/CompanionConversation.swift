@@ -49,27 +49,28 @@ struct CompanionConversation: View {
                             .id("stream-commitments")
                     }
                     if projection.events.isEmpty { introduction.id("stream-introduction") }
-                    ForEach(projection.rows) { row in
-                        let event = row.event
+                    ForEach(projection.rowIDs, id: \.self) { id in
                         VStack(alignment: .leading, spacing: 0) {
-                            switch event {
-                            case .message(let entry):
-                                if projection.timestampIDs.contains(entry.id) {
-                                    Text(entry.createdAt, format: .dateTime.month().day().hour().minute())
-                                        .font(.footnote).foregroundStyle(CompanionHomeStyle.secondaryInk)
-                                        .frame(maxWidth: .infinity).padding(.top, 14).padding(.bottom, 6)
+                            if let event = projection.event(forID: id) {
+                                switch event {
+                                case .message(let entry):
+                                    if projection.timestampIDs.contains(entry.id) {
+                                        Text(entry.createdAt, format: .dateTime.month().day().hour().minute())
+                                            .font(.footnote).foregroundStyle(CompanionHomeStyle.secondaryInk)
+                                            .frame(maxWidth: .infinity).padding(.top, 14).padding(.bottom, 6)
+                                    }
+                                    CompanionMessageRow(entry: entry,
+                                        replyContext: projection.replyContexts[entry.id],
+                                        onRetry: { Task { await store.retry(id: entry.id) } },
+                                        onSources: { onSources(entry) },
+                                        onPlace: { id in onPlace(entry, id) },
+                                        onMedia: onMedia, onQuote: { store.setDraftQuote($0) },
+                                        onReaction: { store.toggleReaction(entryID: entry.id) })
+                                case .invite(let invite):
+                                    CompanionInviteCard(invite: invite)
                                 }
-                                CompanionMessageRow(entry: entry,
-                                    replyContext: projection.replyContexts[entry.id],
-                                    onRetry: { Task { await store.retry(id: entry.id) } },
-                                    onSources: { onSources(entry) },
-                                    onPlace: { id in onPlace(entry, id) },
-                                    onMedia: onMedia, onQuote: { store.setDraftQuote($0) },
-                                    onReaction: { store.toggleReaction(entryID: entry.id) })
-                            case .invite(let invite):
-                                CompanionInviteCard(invite: invite)
                             }
-                        }.id(row.id)
+                        }.id(id)
                     }
                     if store.isWorking {
                         CompanionWorkingIndicator(store: store, scrolling: scrolling, isActive: isActive)
@@ -117,18 +118,22 @@ struct CompanionConversation: View {
             .onPreferenceChange(CompanionConversationViewport.self) { value in
                 guard scrolling.viewport != value else { return }
                 let resized = scrolling.viewport.height > 0 && scrolling.viewport.size != value.size
-                scrolling.updateViewport(value, isActive: isActive)
-                // The execution channel follows real size changes only while
-                // idle at latest; history and native gestures retain ownership.
+                scrolling.updateViewport(value, isActive: isActive, nativeSizing: nativeSizingEnabled)
+                // Modern native sizing owns layout corrections. Legacy
+                // execution and explicit history/user commands stay separate.
                 if resized { traceScroll("viewport-resized") }
             }
             .contentMargins(.horizontal, CompanionHomeStyle.inset, for: .scrollContent)
             .scrollDismissesKeyboard(.interactively)
-            .modifier(CompanionInitialScrollAnchor())
+            .modifier(CompanionScrollAnchors(scrolling: scrolling, isActive: isActive))
             .modifier(CompanionReadingPositionObserver(legacyID: $legacyAnchorID, isActive: isActive,
                 onVisibleIDs: observeVisibleIDs))
             .modifier(CompanionScrollInteractionObserver(isActive: isActive,
-                onVisibility: observeNearLatest, action: observeInteraction))
+                onVisibility: observeNearLatest, onViewportSize: { size in
+                    let revision = scrolling.request.revision
+                    scrolling.updateNativeViewport(size, isActive: isActive)
+                    if scrolling.request.revision != revision { traceScroll("native-viewport-resized") }
+                }, action: observeInteraction))
             .onPreferenceChange(CompanionConversationBottom.self) { bottom in
                 if #available(iOS 18.0, *) { return }
                 guard isActive, scrolling.viewport.height > 0 else { return }
@@ -189,7 +194,8 @@ struct CompanionConversation: View {
     private func restoreAfterKeyboardLayout() {
         guard isActive else { return }
         traceScroll("keyboard-completed")
-        guard let target = scrolling.intent.keyboardRestorationTarget(reading: store.readingState) else { return }
+        guard let target = scrolling.intent.keyboardRestorationTarget(reading: store.readingState,
+            nativeSizing: nativeSizingEnabled) else { return }
         if scrolling.intent.followsLatest { requestLatest() }
         else {
             // The bound scroll position is also a command. Automatic layout
@@ -197,6 +203,11 @@ struct CompanionConversation: View {
             // scroll view report its new visible ID.
             scrolling.enqueue(target: target, kind: .restoration)
         }
+    }
+
+    private var nativeSizingEnabled: Bool {
+        if #available(iOS 18.0, *) { return true }
+        return false
     }
 
     private func requestLatest(force: Bool = false) {

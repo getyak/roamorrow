@@ -297,10 +297,10 @@ jobs:
           CHAT_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          # Only boolean intent/phase diagnostics from this owned CI device;
+          # Only boolean scroll/audio ownership diagnostics from this owned CI device;
           # never message text, anchor IDs, credentials or travel information.
           xcrun simctl spawn "$SIMULATOR_UDID" log stream --level debug --style compact \
-            --predicate 'subsystem == "com.solocompass.chat-scroll"' \
+            --predicate 'subsystem == "com.solocompass.chat-scroll" OR subsystem == "com.solocompass.audio-lifecycle"' \
             > "$RUNNER_TEMP/chat-native/scroll-intent.log" 2>&1 &
           CHAT_TRACE_PID=$!
           python3 scripts/qa/capture-chat-hang.py \
@@ -423,6 +423,12 @@ jobs:
           COMPANION_CHAT_ARTIFACT_DIR="$RUNNER_TEMP/chat-host" bash scripts/qa/companion-chat-host.sh
           python3 -m unittest discover -s scripts/qa -p test_chat_performance_fixture.py
           python3 -m unittest discover -s scripts/qa -p test_chat_hang_capture.py
+
+      - name: Test idle audio cleanup and session ownership (host)
+        run: python3 scripts/qa/companion-audio-host.py --output "$RUNNER_TEMP/chat-host/audio"
+
+      - name: Test native scroll-position value semantics (host)
+        run: python3 scripts/qa/companion-scroll-position-host.py --output "$RUNNER_TEMP/chat-host/position"
 
       - name: Upload chat host metrics
         if: always()

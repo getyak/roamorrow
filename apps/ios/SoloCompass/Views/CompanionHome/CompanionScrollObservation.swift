@@ -19,13 +19,18 @@ struct CompanionReadingPositionObserver: ViewModifier {
     }
 }
 
-/// Bottom placement is an initial condition. Re-anchoring every estimated
-/// content-size change fights variable-height lazy rows during native scrolling.
-struct CompanionInitialScrollAnchor: ViewModifier {
+/// Native sizing follows the bottom only for an active, idle latest intention.
+/// This also handles lazy height corrections after a keyboard command finishes.
+@MainActor
+struct CompanionScrollAnchors: ViewModifier {
+    let scrolling: CompanionScrollState
+    let isActive: Bool
+
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content.defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .alignment)
+                .defaultScrollAnchor(isActive && scrolling.pinsLatestDuringLayout ? .bottom : nil, for: .sizeChanges)
         } else {
             content.defaultScrollAnchor(.bottom)
         }
@@ -36,25 +41,35 @@ struct CompanionInitialScrollAnchor: ViewModifier {
 struct CompanionScrollInteractionObserver: ViewModifier {
     let isActive: Bool
     let onVisibility: (Bool) -> Void
+    let onViewportSize: (CGSize) -> Void
     let action: (Bool) -> Void
 
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content
-                .onScrollGeometryChange(for: Bool.self) { geometry in
-                    geometry.contentSize.height > 0 && geometry.visibleRect.maxY >= geometry.contentSize.height - 24
-                } action: { _, near in
-                    if isActive { onVisibility(near) }
+                .onScrollGeometryChange(for: CompanionNativeScrollLayout.self) { geometry in
+                    CompanionNativeScrollLayout(
+                        nearLatest: CompanionScrollVisibility.isNearLatest(contentHeight: geometry.contentSize.height,
+                            visibleRect: geometry.visibleRect),
+                        containerSize: geometry.containerSize)
+                } action: { _, layout in
+                    onViewportSize(layout.containerSize)
+                    if isActive { onVisibility(layout.nearLatest) }
                 }
                 .onScrollPhaseChange { _, phase, context in
                     guard isActive else { return }
-                    if context.geometry.contentSize.height > 0 {
-                        onVisibility(context.geometry.visibleRect.maxY >= context.geometry.contentSize.height - 24)
-                    }
+                    onVisibility(CompanionScrollVisibility.isNearLatest(contentHeight: context.geometry.contentSize.height,
+                        visibleRect: context.geometry.visibleRect))
                     action(phase == .tracking || phase == .interacting || phase == .decelerating)
                 }
         } else { content }
     }
+}
+
+/// Offset changes do not drive layout recovery; only the container's size does.
+private struct CompanionNativeScrollLayout: Equatable {
+    let nearLatest: Bool
+    let containerSize: CGSize
 }
 
 /// iOS 17 observes its existing scroll view, without replacing the delegate,
@@ -177,9 +192,13 @@ private struct CompanionScrollExecutionContext {
     let trace: (String) -> Void
     var key: CompanionScrollExecutionKey { .init(revision: scrolling.request.revision, isActive: isActive) }
 
-    func perform(_ move: @MainActor (String) -> Void) async {
+    func perform(includingInitialLatest: Bool = false, _ move: @MainActor (String) -> Void) async {
         let captured = scrolling.request
-        guard captured.revision > 0 else { return }
+        // Modern native positioning needs an endpoint even before the first
+        // send/latest action. Keep legacy initial-offset behavior unchanged.
+        let initialLatest = includingInitialLatest && captured.revision == 0
+            && captured.kind == .following && captured.target == "stream-bottom"
+        guard captured.revision > 0 || initialLatest else { return }
         await Task.yield()
         guard !Task.isCancelled, isActive, let target = captured.target,
               scrolling.intent.permitsScroll(captured, current: scrolling.request) else {
@@ -195,12 +214,17 @@ private struct CompanionScrollExecutionContext {
 @MainActor
 private struct CompanionModernScrollExecution: ViewModifier {
     let execution: CompanionScrollExecutionContext
-    @State private var position = ScrollPosition(idType: String.self)
+    // Visible IDs already have a passive, ignored checkpoint owner. The
+    // default Never ID type disables automatic row-ID readback on this binding.
+    // Explicit IDs still retain history or the footer across later layout.
+    @State private var position = ScrollPosition()
 
     func body(content: Content) -> some View {
         content.scrollPosition($position)
             .task(id: execution.key) {
-                await execution.perform { target in
+                await execution.perform(includingInitialLatest: true) { target in
+                    // Resolve the actual footer/row in the lazy layout and
+                    // retain it through later row-height corrections.
                     position.scrollTo(id: target, anchor: .bottom)
                 }
             }

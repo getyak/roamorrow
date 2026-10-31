@@ -13,6 +13,47 @@ The helper checks the process path and records no message text or memory dump;
 the step always stops its owned watcher when testing ends. This diagnostic does
 not turn a timeout or failed UI assertion into a passing result.
 
+The macOS host audio regression compiles the shipping Debug `CompanionAudioSession`
+controller with an inert audio-framework boundary. It checks that idle cleanup
+never initializes system audio, recording and playback release only their own
+successfully activated sessions, and failed activation/creation/cleanup preserve
+the ownership rules. Apple's legacy `isBusy` deactivation result means the session
+is already inactive, so only unknown failures retain retry ownership; the check
+also distinguishes an unrelated error domain with the same code. See
+[Apple's deactivation documentation](<https://developer.apple.com/documentation/avfaudio/avaudiosession/setactive(_:options:)>).
+The host check never requests microphone access or plays audio. The
+existing complete-App long-history, keyboard, send and navigation UI gates remain
+required separately.
+
+The owned native-device trace also retains Debug-only audio lifecycle markers
+with recording/playing/paused/ownership booleans. It never records attachment
+identities, audio, transcripts, message text or location.
+
+Latest-layout ownership is a separate observable projection. On iOS 18+, the
+active conversation uses the native `.sizeChanges` bottom anchor only while
+idle and following latest. Real native container-size changes use the existing
+following queue while active, idle and logically at latest. Initial measurements,
+same-size/offset-only updates, hidden pages, gestures and history do not dispatch;
+an ignored size cache leaves the parent lazy list unsubscribed. Keyboard completion
+reasserts latest only when the tail has not been confirmed visible. The surrounding
+SwiftUI frame remains the legacy sizing source and modern progress cache. History
+restoration and explicit send/latest actions keep their command semantics; iOS 17
+retains the legacy fallback.
+Modern near-tail readback also requires a finite, nonempty viewport to overlap
+the reported content, so an entire window beyond EOF cannot resume following.
+Latest semantic requests retain the stable footer ID; saved history retains its
+own row ID. The default `Never` ID type avoids duplicating automatic row-ID
+readback in this command binding. A host check copies the shipping initializer,
+execution context and adapter into real SwiftUI value/queue tests, including
+initial latest, history, cancellation and hidden-page behavior. This validates
+position semantics, not rendered keyboard/lazy layout. See
+[Apple's ScrollPosition contract](https://developer.apple.com/documentation/swiftui/scrollposition).
+Host and XCTest checks cover gesture release before control visibility changes,
+geometry-only readback, history ownership and pending explicit requests. The
+original native 5,000-message keyboard/navigation cases remain the acceptance
+gate after removing the temporary geometry discovery probe. See
+[Apple's sizing-anchor role](https://developer.apple.com/documentation/swiftui/scrollanchorrole/sizechanges).
+
 | Workflow/job                     | Required checks                                                                                                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ci.yml` / build (Linux)         | Portable `scripts/ios/test_local_policy.py` suite, explicit skips for macOS-only tests, and `bash -n` for all five simulator entrypoint/library scripts. |
