@@ -93,6 +93,50 @@ final class V4NavigationUITests: XCTestCase {
         add(screenshot)
     }
 
+    func testAgentNameAndStyleSurviveRestartAndCancelledEdits() throws {
+        guard originalDraft == "V4 fixture draft" else {
+            throw XCTSkip("Identity editing requires the isolated CI UI fixture")
+        }
+        let title = app.buttons["companion.keyboard.dismiss"].firstMatch
+        let originalName = title.label
+        app.buttons["companion.identity.open"].tap()
+        let styles = ["moss", "pixel", "moon", "landscape"]
+        let originalStyle = try XCTUnwrap(styles.first {
+            app.buttons["companion.identity.style.\($0)"].isSelected
+        })
+        func editName(_ value: String) {
+            let field = app.textFields["companion.identity.name"].firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            field.tap()
+            let old = field.value as? String ?? ""
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count) + value)
+        }
+        editName("沿途小伴")
+        app.buttons["companion.identity.style.pixel"].tap()
+        capture("identity-pixel-editor")
+        app.buttons["companion.identity.save"].tap()
+        XCTAssertEqual(title.label, "沿途小伴")
+        XCTAssertEqual(draft.value as? String, originalDraft)
+        capture("identity-compact-header")
+
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(title.waitForExistence(timeout: 25))
+        XCTAssertEqual(title.label, "沿途小伴")
+        app.buttons["companion.identity.open"].tap()
+        XCTAssertTrue(app.buttons["companion.identity.style.pixel"].isSelected)
+        editName("取消这次")
+        app.buttons["取消"].tap()
+        XCTAssertEqual(title.label, "沿途小伴")
+
+        app.buttons["companion.identity.open"].tap()
+        editName(originalName)
+        app.buttons["companion.identity.style.\(originalStyle)"].tap()
+        app.buttons["companion.identity.save"].tap()
+        XCTAssertEqual(title.label, originalName)
+        XCTAssertEqual(draft.value as? String, originalDraft)
+    }
+
     func testSourceMapFavoriteScopeAndReadingReturn() throws {
         guard originalDraft == "V4 fixture draft" else {
             throw XCTSkip("Source round trip requires the explicitly seeded public CI UI fixture")

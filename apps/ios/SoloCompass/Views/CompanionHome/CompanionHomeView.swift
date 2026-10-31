@@ -74,6 +74,7 @@ struct CompanionHomeView: View {
             if shouldRecord && store.canStartRecording { Task { await mediaAudio.startRecording() } }
         }) { destination in
             switch destination {
+            case .identity: CompanionIdentitySheet()
             case .addMedia:
                 CompanionAttachmentPicker(store: store, onRecord: { recordAfterDismiss = true })
             case .media(let attachment): CompanionMediaPreview(attachment: attachment)
@@ -165,31 +166,42 @@ struct CompanionHomeView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            headerActions
-            Spacer(minLength: 0)
-            Button { dismissKeyboard() } label: {
-                HStack(spacing: 8) {
-                    CompanionCharacter(size: 42)
-                    Text("Roamorrow").font(.subheadline.weight(.semibold))
-                }.frame(minHeight: 48)
-            }
-            .buttonStyle(.plain).accessibilityIdentifier("companion.keyboard.dismiss")
-            Spacer(minLength: 0)
+            HStack(spacing: 0) {
+                headerActions
+                Button { dismissKeyboard() } label: {
+                    Text(preferences.agentIdentity.displayName)
+                        .font(.subheadline.weight(.medium)).lineLimit(1)
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).accessibilityIdentifier("companion.keyboard.dismiss")
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Button { openIdentity() } label: {
+                CompanionPortrait(style: preferences.agentIdentity.portrait, size: 26)
+                    .frame(width: 36, height: 36).companionGlass(in: Circle())
+                    .frame(width: 44, height: 44).contentShape(Circle())
+            }.buttonStyle(.plain)
+                .accessibilityLabel(companionText("companion.identity.edit", "我的旅伴"))
+                .accessibilityValue(preferences.agentIdentity.displayName)
+                .accessibilityIdentifier("companion.identity.open")
             Button {
+                dismissKeyboard()
                 if let model = mapModel { sheet = .cities(model, onSelect: {}) }
             } label: {
                 Text(mapModel?.currentDisplayCityName ?? companionText("companion.city.choose", "选择城市"))
-                    .font(.caption.weight(.medium)).lineLimit(1).frame(maxWidth: 82, minHeight: 44)
-                    .padding(.horizontal, 9).companionGlass(in: Capsule())
+                    .font(.caption.weight(.medium)).lineLimit(1)
+                    .frame(minHeight: 44).padding(.horizontal, 4).contentShape(Rectangle())
             }.buttonStyle(.plain).disabled(mapModel == nil)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .foregroundStyle(CompanionHomeStyle.ink)
-        .padding(.horizontal, 16).padding(.vertical, 4)
+        .padding(.horizontal, 12).padding(.vertical, 2)
         .accessibilityElement(children: .contain).accessibilityIdentifier("companion.header")
     }
 
     private var headerActions: some View {
         Menu {
+            Button(companionText("companion.identity.edit", "我的旅伴"), systemImage: "pencil") { openIdentity() }
+            Button(companionText("companion.keyboard.hide", "收起键盘"), systemImage: "keyboard.chevron.compact.down") { dismissKeyboard() }
             Button(companionText("companion.people.open", "选择这次的同行人"), systemImage: "person.2") { sheet = .people }
             if let active = routeSession.active {
                 Button(active.placeName, systemImage: "figure.walk") { selectTab(.nearby); routeSession.reveal() }
@@ -198,7 +210,7 @@ struct CompanionHomeView: View {
             Button(companionText("companion.settings.open", "偏好与设置"), systemImage: "slider.horizontal.3") { sheet = .settings }
         } label: {
             Image(systemName: "line.3.horizontal").font(.system(size: 20, weight: .medium))
-                .frame(width: 44, height: 44).contentShape(Rectangle()).companionGlass(in: Circle())
+                .frame(width: 44, height: 44).contentShape(Rectangle())
         }
         .accessibilityLabel(companionText("companion.more", "更多")).accessibilityIdentifier("companion.more")
     }
@@ -212,6 +224,11 @@ struct CompanionHomeView: View {
         visitedTabs.insert(value)
         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { surface = value }
         if value == .now { store.restorePresentation() }
+    }
+
+    private func openIdentity() {
+        dismissKeyboard()
+        sheet = .identity
     }
 
     private func dismissKeyboard() {

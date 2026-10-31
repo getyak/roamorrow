@@ -410,6 +410,10 @@ jobs:
 
       - name: Long conversation production Store regressions (host)
         run: |
+          swiftc -swift-version 5 -strict-concurrency=complete -warnings-as-errors -parse-as-library \
+            apps/ios/SoloCompass/Models/CompanionIdentity.swift scripts/qa/companion-identity-host.swift \
+            -o "$RUNNER_TEMP/companion-identity-host"
+          "$RUNNER_TEMP/companion-identity-host"
           COMPANION_CHAT_ARTIFACT_DIR="$RUNNER_TEMP/chat-host" bash scripts/qa/companion-chat-host.sh
           python3 -m unittest discover -s scripts/qa -p test_chat_performance_fixture.py
 

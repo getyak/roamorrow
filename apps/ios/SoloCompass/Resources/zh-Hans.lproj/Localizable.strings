@@ -3304,3 +3304,16 @@
 "me.archive.detail" = "走过的城市与体验";
 "me.empty.note" = "喜欢的体验可以先收藏，留给下一次出发。";
 "me.empty.explore" = "去附近看看";
+
+// Companion identity
+"companion.identity.save" = "保存";
+"companion.identity.defaultName" = "漫游搭子";
+"companion.identity.edit" = "我的旅伴";
+"companion.identity.name" = "名称";
+"companion.identity.nameHint" = "四个字就很好，最多 16 个字。";
+"companion.identity.appearance" = "形象风格";
+"companion.identity.style.moss" = "苔绿伙伴";
+"companion.identity.style.pixel" = "晴日像素";
+"companion.identity.style.moon" = "月光星球";
+"companion.identity.style.landscape" = "纸上山丘";
+"companion.keyboard.hide" = "收起键盘";
