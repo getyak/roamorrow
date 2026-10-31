@@ -48,6 +48,13 @@ execution context and adapter into real SwiftUI value/queue tests, including
 initial latest, history, cancellation and hidden-page behavior. This validates
 position semantics, not rendered keyboard/lazy layout. See
 [Apple's ScrollPosition contract](https://developer.apple.com/documentation/swiftui/scrollposition).
+The native position binding also follows the active page's lifetime. Hidden
+conversation layout receives a constant neutral position and cannot write native
+readback into the stored target. A noncancelled inactive task clears old private
+state; returning to chat restores the saved checkpoint through the existing
+queue. The same modifier/content node remains mounted, and active history keeps
+its persistent ID across later size changes. Host binding/queue tests also cover
+a cancelled inactive task arriving after a newer active position.
 Host and XCTest checks cover gesture release before control visibility changes,
 geometry-only readback, history ownership and pending explicit requests. The
 original native 5,000-message keyboard/navigation cases remain the acceptance
