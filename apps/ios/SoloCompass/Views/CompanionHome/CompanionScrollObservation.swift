@@ -41,15 +41,20 @@ struct CompanionScrollAnchors: ViewModifier {
 struct CompanionScrollInteractionObserver: ViewModifier {
     let isActive: Bool
     let onVisibility: (Bool) -> Void
+    let onViewportSize: (CGSize) -> Void
     let action: (Bool) -> Void
 
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content
-                .onScrollGeometryChange(for: Bool.self) { geometry in
-                    CompanionScrollVisibility.isNearLatest(contentHeight: geometry.contentSize.height, visibleRect: geometry.visibleRect)
-                } action: { _, near in
-                    if isActive { onVisibility(near) }
+                .onScrollGeometryChange(for: CompanionNativeScrollLayout.self) { geometry in
+                    CompanionNativeScrollLayout(
+                        nearLatest: CompanionScrollVisibility.isNearLatest(contentHeight: geometry.contentSize.height,
+                            visibleRect: geometry.visibleRect),
+                        containerSize: geometry.containerSize)
+                } action: { _, layout in
+                    onViewportSize(layout.containerSize)
+                    if isActive { onVisibility(layout.nearLatest) }
                 }
                 .onScrollPhaseChange { _, phase, context in
                     guard isActive else { return }
@@ -59,6 +64,12 @@ struct CompanionScrollInteractionObserver: ViewModifier {
                 }
         } else { content }
     }
+}
+
+/// Offset changes do not drive layout recovery; only the container's size does.
+private struct CompanionNativeScrollLayout: Equatable {
+    let nearLatest: Bool
+    let containerSize: CGSize
 }
 
 /// iOS 17 observes its existing scroll view, without replacing the delegate,

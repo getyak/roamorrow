@@ -264,12 +264,45 @@ import Observation
         let semanticRequest = native.request
         native.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 500), nativeSizing: true)
         native.updateViewport(CGRect(x: 0, y: 80, width: 390, height: 300), nativeSizing: true)
-        require(native.request == semanticRequest, "native resizing neither duplicates nor consumes an explicit latest command")
+        require(native.request == semanticRequest, "SwiftUI frame caching leaves a modern explicit command unchanged")
         require(native.viewport.height == 300, "native sizing still records the real viewport cache")
         require(native.intent.keyboardRestorationTarget(reading: .init(), nativeSizing: true) == nil,
             "native sizing owns latest keyboard layout without another ID command")
         require(native.intent.keyboardRestorationTarget(reading: .init()) == "stream-bottom",
             "legacy keyboard layout retains the queued latest fallback")
+        native.setNearLatest(false)
+        require(native.intent.keyboardRestorationTarget(reading: .init(), nativeSizing: true) == "stream-bottom",
+            "keyboard completion repairs latest when native layout has not retained the tail")
+        let physical = CompanionScrollState(reading: .init())
+        let physicalObserver = ObservationProbe()
+        withObservationTracking { _ = physical.pinsLatestDuringLayout; _ = physical.presentation } onChange: { physicalObserver.mark() }
+        physical.updateNativeViewport(CGSize(width: 390, height: 607))
+        require(physical.request.revision == 0, "initial native container measurement does not dispatch")
+        physical.enqueue(kind: .explicit)
+        let physicalExplicit = physical.request
+        physical.updateNativeViewport(CGSize(width: 390, height: 361))
+        require(physical.request.revision > physicalExplicit.revision && physical.request.kind == .explicit,
+            "native keyboard resize coalesces without downgrading a pending explicit send")
+        physical.consume(revision: physical.request.revision)
+        physical.updateNativeViewport(CGSize(width: 390, height: 333))
+        require(physical.request.kind == .following && physical.request.target == "stream-bottom",
+            "real native container shrink follows latest even when the SwiftUI frame cache never changed")
+        require(!physicalObserver.wasMarked, "native size recovery does not publish control or sizing ownership")
+        physical.consume(revision: physical.request.revision)
+        let unchangedNative = physical.request
+        physical.updateNativeViewport(CGSize(width: 390, height: 333))
+        physical.updateNativeViewport(CGSize(width: 390, height: 300), isActive: false)
+        require(physical.request == unchangedNative, "same size and hidden native resize never dispatch")
+        physical.setInteraction(true)
+        physical.updateNativeViewport(CGSize(width: 390, height: 280))
+        require(physical.request == unchangedNative, "native resizing cannot override a user gesture")
+        physical.setNearLatest(false); physical.setInteraction(false)
+        physical.updateNativeViewport(CGSize(width: 390, height: 250))
+        require(physical.request == unchangedNative, "native resizing preserves manual history after deceleration")
+        physical.revealLatest()
+        physical.updateNativeViewport(CGSize(width: CGFloat.infinity, height: 250))
+        physical.updateNativeViewport(CGSize(width: 390, height: 230))
+        require(physical.request == unchangedNative, "invalid native bounds reset measurement without dispatching recovery")
         var nativeHistory = CompanionScrollIntent(reading: .init(anchorID: "source", followsLatest: false))
         require(nativeHistory.keyboardRestorationTarget(reading: .init(anchorID: "source", followsLatest: false), nativeSizing: true) == "source",
             "native sizing does not disable explicit saved history restoration")

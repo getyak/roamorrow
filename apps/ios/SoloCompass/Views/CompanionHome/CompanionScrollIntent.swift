@@ -108,7 +108,7 @@ struct CompanionScrollIntent: Equatable {
 
     func keyboardRestorationTarget(reading: CompanionConversationReadingState, nativeSizing: Bool = false) -> String? {
         guard !isInteracting else { return nil }
-        if followsLatest { return nativeSizing ? nil : "stream-bottom" }
+        if followsLatest { return nativeSizing && nearLatest ? nil : "stream-bottom" }
         // A row ID does not encode a reader's position inside a tall message.
         // Native manual scrolling relinquishes layout restoration until the
         // next explicit map/tab restore constructs a fresh intent.
@@ -141,6 +141,7 @@ final class CompanionScrollState {
     private(set) var presentation: Presentation
     private(set) var pinsLatestDuringLayout: Bool
     private(set) var viewport = CGRect.zero
+    @ObservationIgnored private var nativeViewportSize = CGSize.zero
 
     init(reading: CompanionConversationReadingState) {
         let intent = CompanionScrollIntent(reading: reading)
@@ -191,12 +192,26 @@ final class CompanionScrollState {
         guard viewport != value else { return }
         let resized = viewport.height > 0 && viewport.size != value.size
         viewport = value
-        // Legacy layout uses the command channel. Modern latest sizing is
-        // native-owned; never replace or consume a semantic pending command.
+        // Legacy follows the SwiftUI frame; modern native container bounds
+        // arrive through their own size-only channel.
         if !nativeSizing, resized, value.height > 0, value.width > 0, isActive,
            intent.followsLatest, !intent.isInteracting {
             request.enqueue(kind: .following)
         }
+    }
+
+    /// Native scroll bounds can shrink while the surrounding SwiftUI frame
+    /// stays unchanged. Size changes are layout events, never reading intent.
+    func updateNativeViewport(_ size: CGSize, isActive: Bool = true) {
+        guard size.width.isFinite, size.height.isFinite, size.width > 0, size.height > 0 else {
+            nativeViewportSize = .zero
+            return
+        }
+        let previous = nativeViewportSize
+        nativeViewportSize = size
+        guard previous.width > 0, previous.height > 0, previous != size, isActive,
+              intent.followsLatest, !intent.isInteracting else { return }
+        request.enqueue(kind: .following)
     }
 
     private func publishPresentation() {

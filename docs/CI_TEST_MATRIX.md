@@ -31,9 +31,14 @@ identities, audio, transcripts, message text or location.
 
 Latest-layout ownership is a separate observable projection. On iOS 18+, the
 active conversation uses the native `.sizeChanges` bottom anchor only while
-idle and following latest. Keyboard/viewport layout notifications do not also
-issue latest-ID commands. History restoration and explicit send/latest actions
-keep their existing command semantics; iOS 17 retains the legacy fallback.
+idle and following latest. Real native container-size changes use the existing
+following queue while active, idle and logically at latest. Initial measurements,
+same-size/offset-only updates, hidden pages, gestures and history do not dispatch;
+an ignored size cache leaves the parent lazy list unsubscribed. Keyboard completion
+reasserts latest only when the tail has not been confirmed visible. The surrounding
+SwiftUI frame remains the legacy sizing source and modern progress cache. History
+restoration and explicit send/latest actions keep their command semantics; iOS 17
+retains the legacy fallback.
 Modern near-tail readback also requires a finite, nonempty viewport to overlap
 the reported content, so an entire window beyond EOF cannot resume following.
 Latest semantic requests retain the stable footer ID; saved history retains its

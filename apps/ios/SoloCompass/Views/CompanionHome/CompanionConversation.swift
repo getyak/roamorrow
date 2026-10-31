@@ -129,7 +129,11 @@ struct CompanionConversation: View {
             .modifier(CompanionReadingPositionObserver(legacyID: $legacyAnchorID, isActive: isActive,
                 onVisibleIDs: observeVisibleIDs))
             .modifier(CompanionScrollInteractionObserver(isActive: isActive,
-                onVisibility: observeNearLatest, action: observeInteraction))
+                onVisibility: observeNearLatest, onViewportSize: { size in
+                    let revision = scrolling.request.revision
+                    scrolling.updateNativeViewport(size, isActive: isActive)
+                    if scrolling.request.revision != revision { traceScroll("native-viewport-resized") }
+                }, action: observeInteraction))
             .onPreferenceChange(CompanionConversationBottom.self) { bottom in
                 if #available(iOS 18.0, *) { return }
                 guard isActive, scrolling.viewport.height > 0 else { return }

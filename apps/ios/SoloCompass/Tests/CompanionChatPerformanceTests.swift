@@ -501,7 +501,7 @@ final class CompanionChatPerformanceTests: XCTestCase {
         XCTAssertTrue(state.pinsLatestDuringLayout)
     }
 
-    func testNativeSizingDoesNotDuplicateOrConsumeSemanticScrollCommands() {
+    func testModernSwiftUIFrameCacheDoesNotDuplicateSemanticScrollCommands() {
         let state = CompanionScrollState(reading: .init())
         state.enqueue(kind: .explicit)
         let semanticRequest = state.request
@@ -516,6 +516,42 @@ final class CompanionChatPerformanceTests: XCTestCase {
             "message:history")
         history.interactionChanged(active: true); history.interactionChanged(active: false)
         XCTAssertNil(history.keyboardRestorationTarget(reading: .init(anchorID: "message:history", followsLatest: false), nativeSizing: true))
+    }
+
+    func testNativeContainerResizeFollowsLatestWithoutAChangedSwiftUIFrame() {
+        let state = CompanionScrollState(reading: .init())
+        state.updateNativeViewport(CGSize(width: 390, height: 607))
+        XCTAssertEqual(state.request.revision, 0)
+        state.enqueue(kind: .explicit)
+        state.updateNativeViewport(CGSize(width: 390, height: 361))
+        XCTAssertEqual(state.request.kind, .explicit)
+        state.consume(revision: state.request.revision)
+        state.updateNativeViewport(CGSize(width: 390, height: 333))
+        XCTAssertEqual(state.request.kind, .following)
+        XCTAssertEqual(state.request.target, "stream-bottom")
+        let pending = state.request
+        state.updateNativeViewport(CGSize(width: 390, height: 333))
+        state.updateNativeViewport(CGSize(width: 390, height: 300), isActive: false)
+        XCTAssertEqual(state.request, pending)
+        state.setInteraction(true)
+        XCTAssertNil(state.request.target)
+        state.updateNativeViewport(CGSize(width: 390, height: 280))
+        XCTAssertNil(state.request.target)
+        state.setNearLatest(false); state.setInteraction(false)
+        state.updateNativeViewport(CGSize(width: 390, height: 260))
+        XCTAssertNil(state.request.target)
+    }
+
+    func testKeyboardCompletionRecoversOnlyUnconfirmedLatest() {
+        var latest = CompanionScrollIntent(reading: .init())
+        XCTAssertNil(latest.keyboardRestorationTarget(reading: .init(), nativeSizing: true))
+        latest.visibilityChanged(nearLatest: false)
+        XCTAssertEqual(latest.keyboardRestorationTarget(reading: .init(), nativeSizing: true), "stream-bottom")
+        latest.interactionChanged(active: true)
+        XCTAssertNil(latest.keyboardRestorationTarget(reading: .init(), nativeSizing: true))
+        latest.interactionChanged(active: false)
+        XCTAssertFalse(latest.followsLatest)
+        XCTAssertNil(latest.keyboardRestorationTarget(reading: .init(), nativeSizing: true))
     }
 
     func testNativeTailVisibilityRequiresFiniteContentIntersection() {
