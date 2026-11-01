@@ -156,9 +156,13 @@ struct CompanionHomeView: View {
                     CompanionIconButton(symbol: "xmark", label: companionText("companion.dismiss_notice", "关闭提示")) { self.returnNotice = nil }
                 }.padding(.leading, 16).background(CompanionHomeStyle.incoming)
             }
-            CompanionConversation(store: store, isActive: surface == .now, onSources: { sheet = .sources($0) },
-                onPlace: showMessageOnMap, onCommitments: { sheet = .journey }, onMedia: openMedia)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Keep long-history layout inside the space left by the header and composer.
+            GeometryReader { viewport in
+                CompanionConversation(store: store, isActive: surface == .now, onSources: { sheet = .sources($0) },
+                    onPlace: showMessageOnMap, onCommitments: { sheet = .journey }, onMedia: openMedia)
+                    .frame(width: viewport.size.width, height: viewport.size.height)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             CompanionComposer(text: $store.composerDraft, isWorking: store.isWorking, isActive: surface == .now && sheet == nil,
                 onSend: { Task { await store.send() } }, onCancel: { store.cancel() }, store: store,
                 onAddMedia: { sheet = .addMedia }, onOpenMedia: openMedia,
