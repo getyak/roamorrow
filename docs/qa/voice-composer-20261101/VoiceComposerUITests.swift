@@ -78,10 +78,22 @@ final class VoiceComposerUITests: XCTestCase {
         button("companion.audio.pause").tap()
         let alert = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
         XCTAssertTrue(alert.waitForExistence(timeout: 10), "This case must exercise an explicit speech permission denial")
+        let speechPrompt = alert.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS %@", "Speech Recognition", "语音识别")).firstMatch
+        XCTAssertTrue(speechPrompt.exists, "Only handle the expected speech recognition permission")
+        let speechAlert = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.containing(.staticText, identifier: speechPrompt.label).firstMatch
         // The system uses a typographic apostrophe on current English iOS.
-        let deny = alert.buttons.matching(NSPredicate(format: "label IN %@", ["不允许", "Don't Allow", "Don’t Allow"])).firstMatch
+        let deny = speechAlert.buttons.matching(NSPredicate(format: "label IN %@", ["不允许", "Don't Allow", "Don’t Allow"])).firstMatch
         XCTAssertTrue(deny.exists, "Handle the expected speech permission alert explicitly")
+        XCTAssertTrue(deny.isHittable)
         deny.tap()
+        if !waitForDismissal(of: speechAlert, timeout: 3) {
+            // A system prompt can remain visible after a synthesized tap.
+            // Keep the query bound to its original speech title before retrying.
+            XCTAssertTrue(speechAlert.exists && deny.isHittable)
+            print("Speech permission alert remains after first deny tap; retrying that control")
+            deny.tap()
+        }
+        XCTAssertTrue(waitForDismissal(of: speechAlert, timeout: 5), "Complete the explicit denial before checking app recovery")
         XCTAssertTrue(composer.waitForExistence(timeout: 12))
         XCTAssertTrue(composer.isHittable)
         XCTAssertTrue(draftMedia.waitForExistence(timeout: 5))
@@ -90,6 +102,11 @@ final class VoiceComposerUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(retainedVoice.frame.height, 44)
         XCTAssertFalse(button("companion.audio.pause").exists)
         capture("paused-original-retained")
+    }
+
+    private func waitForDismissal(of alert: XCUIElement, timeout: TimeInterval) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: alert)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 
     func testLargeTypeNavigationStopsCaptureAndRetainsOriginal() {
