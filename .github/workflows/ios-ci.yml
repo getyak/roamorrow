@@ -370,7 +370,6 @@ jobs:
           xcrun simctl ui "$SIMULATOR_UDID" appearance light
           xcrun simctl ui "$SIMULATOR_UDID" content_size large
           xcrun simctl privacy "$SIMULATOR_UDID" grant microphone com.solocompass.app
-          xcrun simctl privacy "$SIMULATOR_UDID" revoke speech-recognition com.solocompass.app
           cd apps/ios
           xcodebuild test-without-building \
             -project SoloCompass.xcodeproj -scheme AccountAcceptance \
