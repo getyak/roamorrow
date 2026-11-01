@@ -29,3 +29,11 @@ The linked PR records the latest native execution and visual-inspection evidence
 Scroll policy is ignored observation state; only the latest/unread projection, execution request, and working viewport/progress have separate child observers. Phase and request updates do not invalidate the root lazy list. Three observation-channel XCTest cases reproduce the old policy-shaped invalidation and guard this separation. The exact local native CPU/memory/signpost measurement and real-composer keyboard/wrapping tests passed three recorded runs each with the stable bottom marker. These controlled results still require the final full-App CI gate.
 
 Real viewport size changes (keyboard, composer wrapping) enqueue a coalesced following request only while the visible page is idle at latest. Initial measurement, origin-only changes, hidden pages, gestures and manual history never dispatch that following request; an existing explicit latest action retains priority. A behavioral XCTest first reproduced the missing wrap-follow request, then verified each exclusion.
+
+## Follow-up diagnostics for the merged native failures
+
+[iOS CI at merged revision `764b081`](https://github.com/getyak/roamorrow/actions/runs/41303240659) failed the software-keyboard visibility wait and the cold-history round trip through Me. These failures remain unresolved. The new observations describe input and layout events; they do not establish a fix.
+
+DEBUG builds retain `keyboard-completed` and add its `did-show` or `did-hide` source and keyboard end-frame metadata. Focus-revocation and Home dismissal calls have fixed cause labels. Passive native editing notifications record only view class, type and responder/window booleans, including whether the direct identifier matches the fixed composer identifier. They do not record text, identifiers, accounts, messages or location. An identifier mismatch does not exclude a wrapped composer; a frame height alone does not prove software-keyboard visibility. The probe does not cover every dismissal elsewhere in the app.
+
+The entire five-method native test file, its existing four-plus-one fixture selections, assertions, idle requirements and timeouts remain unchanged. Logs and subscriptions may affect DEBUG timing, so a later passing run is a separate result rather than proof of the original failure's cause.

@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import OSLog
 
 /// One persistent conversation and one map, with four independently reachable surfaces.
 @MainActor
@@ -118,8 +120,14 @@ struct CompanionHomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: RouteStore.didChange)) { _ in
             Task { await routeSession.refresh(experiences: experiences.allExperiences) }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            keyboardVisible = true
+            traceKeyboardFrame("keyboard-will-show", notification: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+            keyboardVisible = false
+            traceKeyboardFrame("keyboard-will-hide", notification: notification)
+        }
         .onChange(of: mediaAudio.completedRecording?.id) { _, id in
             if id != nil, let recording = mediaAudio.takeCompletedRecording() { _ = store.stageAttachment(recording) }
         }
@@ -176,7 +184,7 @@ struct CompanionHomeView: View {
         HStack(spacing: 8) {
             HStack(spacing: 0) {
                 headerActions
-                Button { dismissKeyboard() } label: {
+                Button { dismissKeyboard(reason: "header-title") } label: {
                     Text(preferences.agentIdentity.displayName)
                         .font(.subheadline.weight(.medium)).lineLimit(1)
                         .frame(minHeight: 44).contentShape(Rectangle())
@@ -192,7 +200,7 @@ struct CompanionHomeView: View {
                 .accessibilityValue(preferences.agentIdentity.displayName)
                 .accessibilityIdentifier("companion.identity.open")
             Button {
-                dismissKeyboard()
+                dismissKeyboard(reason: "city-picker")
                 if let model = mapModel { sheet = .cities(model, onSelect: {}) }
             } label: {
                 Text(mapModel?.currentDisplayCityName ?? companionText("companion.city.choose", "选择城市"))
@@ -209,7 +217,7 @@ struct CompanionHomeView: View {
     private var headerActions: some View {
         Menu {
             Button(companionText("companion.identity.edit", "我的旅伴"), systemImage: "pencil") { openIdentity() }
-            Button(companionText("companion.keyboard.hide", "收起键盘"), systemImage: "keyboard.chevron.compact.down") { dismissKeyboard() }
+            Button(companionText("companion.keyboard.hide", "收起键盘"), systemImage: "keyboard.chevron.compact.down") { dismissKeyboard(reason: "menu-hide") }
             Button(companionText("companion.people.open", "选择这次的同行人"), systemImage: "person.2") { sheet = .people }
             if let active = routeSession.active {
                 Button(active.placeName, systemImage: "figure.walk") { selectTab(.nearby); routeSession.reveal() }
@@ -225,23 +233,50 @@ struct CompanionHomeView: View {
 
     private func selectTab(_ value: CompanionPrimaryTab) {
         guard value != surface else { return }
-        Task { _ = await store.savePresentationAsynchronously() }
-        dismissKeyboard()
+        traceHomeInput("select-tab-begin")
+        Task {
+            traceHomeInput("presentation-save-begin")
+            _ = await store.savePresentationAsynchronously()
+            traceHomeInput("presentation-save-end")
+        }
+        dismissKeyboard(reason: "select-tab")
         focusComposer = false
         mediaAudio.stopPlayback()
         visitedTabs.insert(value)
         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { surface = value }
         if value == .now { store.restorePresentation() }
+        traceHomeInput("select-tab-end")
     }
 
     private func openIdentity() {
-        dismissKeyboard()
+        dismissKeyboard(reason: "open-identity")
         sheet = .identity
     }
 
-    private func dismissKeyboard() {
+    private func dismissKeyboard(reason: String) {
+        traceHomeInput("dismiss-keyboard-" + reason)
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
+
+    private func traceHomeInput(_ event: String) {
+        #if DEBUG
+        Self.inputLog.debug("event=\(event, privacy: .public) surface=\(String(describing: surface), privacy: .public) sheetPresent=\(sheet != nil) keyboardVisible=\(keyboardVisible)")
+        #endif
+    }
+
+    private func traceKeyboardFrame(_ event: String, notification: Notification) {
+        #if DEBUG
+        let frame = (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
+        let known = frame != nil
+        let height = Double(frame?.height ?? -1)
+        let width = Double(frame?.width ?? -1)
+        let minY = Double(frame?.minY ?? -1)
+        Self.inputLog.debug("event=\(event, privacy: .public) endFrameKnown=\(known) endHeight=\(height) endWidth=\(width) endMinY=\(minY) surface=\(String(describing: surface), privacy: .public) keyboardVisible=\(keyboardVisible)")
+        #endif
+    }
+    #if DEBUG
+    private static let inputLog = Logger(subsystem: "com.solocompass.voice-composer", category: "focus")
+    #endif
 
     private func openMedia(_ attachment: CompanionMediaAttachment) {
         if let place = attachment.place { showPlace(place.experienceID) }
