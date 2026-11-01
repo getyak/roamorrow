@@ -324,8 +324,6 @@ schemes:
         CompanionAcceptanceUITests: [test]
     test:
       config: Debug
-      environmentVariables:
-        VOICE_COMPOSER_OWNED_CONTAINER: "$(VOICE_COMPOSER_OWNED_CONTAINER)"
       targets:
         - AccountRegressionTests
         - CompanionAcceptanceUITests
@@ -336,8 +334,6 @@ schemes:
         CompanionAcceptanceUITests: [test]
     test:
       config: Debug
-      environmentVariables:
-        VOICE_COMPOSER_OWNED_CONTAINER: "$(VOICE_COMPOSER_OWNED_CONTAINER)"
       targets:
         - CompanionAcceptanceUITests
   CompanionRegression:

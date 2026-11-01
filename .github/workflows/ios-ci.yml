@@ -363,6 +363,7 @@ jobs:
         shell: bash
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          TEST_RUNNER_VOICE_COMPOSER_OWNED_CONTAINER: "1"
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/voice-composer"
@@ -379,7 +380,7 @@ jobs:
             -test-timeouts-enabled YES -default-test-execution-time-allowance 75 \
             -maximum-test-execution-time-allowance 90 \
             -resultBundlePath "$RUNNER_TEMP/voice-composer/voice.xcresult" \
-            -configuration Debug CODE_SIGNING_ALLOWED=NO VOICE_COMPOSER_OWNED_CONTAINER=1 \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee "$RUNNER_TEMP/voice-composer/test.log"
           xcrun xcresulttool get test-results summary \
             --path "$RUNNER_TEMP/voice-composer/voice.xcresult" \
