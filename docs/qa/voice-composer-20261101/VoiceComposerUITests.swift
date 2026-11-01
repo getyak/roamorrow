@@ -7,6 +7,9 @@ final class VoiceComposerUITests: XCTestCase {
     private var app: XCUIApplication!
 
     override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["VOICE_COMPOSER_OWNED_CONTAINER"] == "1" else {
+            throw XCTSkip("Voice UI tests require an explicitly owned Simulator app container.")
+        }
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["-devSkipOnboarding", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
@@ -19,10 +22,17 @@ final class VoiceComposerUITests: XCTestCase {
         // Previous cases leave only this owned suite's drafts.
         let removals = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'companion.media.remove.'"))
         for _ in 0..<4 where removals.firstMatch.exists { removals.firstMatch.tap() }
+        if let draft = composer.value as? String, !draft.isEmpty, draft != composer.placeholderValue {
+            composer.tap()
+            composer.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: draft.utf16.count + 1))
+            let dismiss = button("companion.keyboard.dismiss")
+            if dismiss.isHittable { dismiss.tap() }
+        }
         XCTAssertTrue(button("companion.audio.record").waitForExistence(timeout: 8))
     }
 
     override func tearDown() async throws {
+        guard app != nil else { return }
         capture("final")
         app.terminate()
     }
