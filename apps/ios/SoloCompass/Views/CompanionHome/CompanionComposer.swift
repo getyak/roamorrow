@@ -1,4 +1,5 @@
 import SwiftUI
+import OSLog
 
 @MainActor
 struct CompanionComposer: View {
@@ -119,17 +120,25 @@ struct CompanionComposer: View {
         }
         .foregroundStyle(CompanionHomeStyle.ink)
         .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 8)
-        .onAppear { if focusOnAppear && isActive { isFocused = true } }
+        .onAppear {
+            if focusOnAppear && isActive { isFocused = true }
+            traceComposer("appeared")
+        }
         .onChange(of: focusOnAppear) { _, requested in if requested && isActive { isFocused = true } }
-        .onChange(of: isFocused) { _, focused in onFocusChange?(focused) }
+        .onChange(of: isFocused) { _, focused in
+            onFocusChange?(focused)
+            traceComposer("focus-changed")
+        }
         .onChange(of: isActive) { _, active in
             if !active { stopCapture() }
             else if focusOnAppear { isFocused = true }
+            traceComposer("activity-changed")
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background || (phase == .inactive && audio.isRecording) { stopCapture() }
+            traceComposer("scene-changed")
         }
-        .onDisappear { stopCapture() }
+        .onDisappear { stopCapture(); traceComposer("disappeared") }
         .accessibilityElement(children: .contain).accessibilityIdentifier("companion.input.area")
         .disabled(!isActive)
     }
@@ -254,6 +263,22 @@ struct CompanionComposer: View {
             }
         }
     }
+
+    /// Diagnose focus ownership without recording text, media, IDs or location.
+    private func traceComposer(_ event: String) {
+        #if DEBUG
+        let focused = isFocused
+        let active = isActive
+        let phase = String(describing: scenePhase)
+        let recording = audio.isRecording
+        let requesting = recordTask != nil
+        let transcribing = transcribingID != nil
+        Self.composerLog.debug("event=\(event, privacy: .public) focused=\(focused) active=\(active) scene=\(phase, privacy: .public) recording=\(recording) requesting=\(requesting) transcribing=\(transcribing)")
+        #endif
+    }
+    #if DEBUG
+    private static let composerLog = Logger(subsystem: "com.solocompass.voice-composer", category: "focus")
+    #endif
 }
 
 /// Only this small view observes the live meter, keeping the conversation still.

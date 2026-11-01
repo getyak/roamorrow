@@ -300,7 +300,7 @@ jobs:
           # Only boolean scroll/audio ownership diagnostics from this owned CI device;
           # never message text, anchor IDs, credentials or travel information.
           xcrun simctl spawn "$SIMULATOR_UDID" log stream --level debug --style compact \
-            --predicate 'subsystem == "com.solocompass.chat-scroll" OR subsystem == "com.solocompass.audio-lifecycle"' \
+            --predicate 'subsystem == "com.solocompass.chat-scroll" OR subsystem == "com.solocompass.audio-lifecycle" OR subsystem == "com.solocompass.voice-composer"' \
             > "$RUNNER_TEMP/chat-native/scroll-intent.log" 2>&1 &
           CHAT_TRACE_PID=$!
           python3 scripts/qa/capture-chat-hang.py \
@@ -360,6 +360,7 @@ jobs:
       # Run after the guarded fixture writers: these cases create genuine local
       # recordings in this job's disposable container, never a personal device.
       - name: Inline voice recording, send and speech-denial UI tests
+        if: ${{ always() && !cancelled() && steps.chat_populated_fixture.outcome == 'success' }}
         shell: bash
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}

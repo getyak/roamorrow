@@ -61,16 +61,19 @@ def watch(device, log, output):
                 if expected not in command or not re.search(r"/SoloCompass\.app/SoloCompass(?:\s|$)", command):
                     raise ValueError("Refusing to sample a process outside the selected CI app")
                 with (output / "sample-command.log").open("w") as stream:
-                    active = subprocess.Popen(["sample", str(pid), "5", "10", "-file", str(output / "app-main-thread.txt")],
+                    active = subprocess.Popen(["sample", str(pid), "1", "10", "-file", str(output / "app-main-thread.txt")],
                                               stdout=stream, stderr=subprocess.STDOUT, start_new_session=True)
                     try:
-                        status = active.wait(timeout=15)
+                        # Sampling completes quickly; cold SDK symbol processing
+                        # can take longer than the original 15-second budget.
+                        status = active.wait(timeout=45)
                     except subprocess.TimeoutExpired:
                         os.killpg(active.pid, signal.SIGKILL)
                         active.wait()
                         status = -9
                 (output / "capture.json").write_text(json.dumps({"pid": pid, "device": device,
                     "head": os.environ.get("CHAT_PR_HEAD_SHA"), "sample_exit": status,
+                    "sample_seconds": 1, "symbolication_timeout_seconds": 45,
                     "trigger": "XCTest reported missing app-idle notification",
                     "scope": "CI app stack symbols only; no message content or memory dump"}, indent=2) + "\n")
                 captured = True
