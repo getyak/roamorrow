@@ -83,7 +83,11 @@ final class VoiceComposerUITests: XCTestCase {
         XCTAssertTrue(deny.exists, "Handle the expected speech permission alert explicitly")
         deny.tap()
         XCTAssertTrue(composer.waitForExistence(timeout: 12))
+        XCTAssertTrue(composer.isHittable)
         XCTAssertTrue(draftMedia.waitForExistence(timeout: 5))
+        let retainedVoice = draftMedia.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'companion.audio.play.'")).firstMatch
+        XCTAssertTrue(retainedVoice.isHittable, "The retained recording remains available to play")
+        XCTAssertGreaterThanOrEqual(retainedVoice.frame.height, 44)
         XCTAssertFalse(button("companion.audio.pause").exists)
         capture("paused-original-retained")
     }

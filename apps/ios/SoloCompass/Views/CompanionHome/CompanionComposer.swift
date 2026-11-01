@@ -49,7 +49,9 @@ struct CompanionComposer: View {
                     CompanionIconButton(symbol: "xmark", label: companionText("companion.im.cancelReply", "取消引用")) { store?.setDraftQuote(nil) }
                 }.padding(.leading, 12).background(CompanionHomeStyle.incoming, in: RoundedRectangle(cornerRadius: 14))
             }
-            if let attachments = store?.draftAttachments.filter({ $0.id != transcribingID }), !attachments.isEmpty {
+            // Keep the original visible during transcription. Inserting this section
+            // on permission dismissal can stall a long lazy conversation's layout.
+            if let attachments = store?.draftAttachments, !attachments.isEmpty {
                 if isFocused && typeSize.isAccessibilitySize {
                     Button {
                         isFocused = false
