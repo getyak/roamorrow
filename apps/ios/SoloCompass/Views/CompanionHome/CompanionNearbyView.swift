@@ -1,5 +1,8 @@
 import MapKit
 import SwiftUI
+#if DEBUG
+import OSLog
+#endif
 
 /// Map, camera and browsing state stay mounted across the four primary tabs.
 @MainActor
@@ -148,7 +151,13 @@ private struct CompanionNearbyMap: View {
                     if model.cameraPosition.positionedByUser, let lastCamera {
                         model.cameraPosition = .camera(lastCamera)
                     }
+                    #if DEBUG
+                    traceGlobalResign("inactive", phase: "before")
+                    #endif
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    #if DEBUG
+                    traceGlobalResign("inactive", phase: "after")
+                    #endif
                     restoreControls?.cancel()
                     controlsVisible = true
                     if sheet?.isMapTask == true { sheet = nil }
@@ -275,7 +284,13 @@ private struct CompanionNearbyMap: View {
                 Button {
                     showsSearch.toggle()
                     if !showsSearch {
+                        #if DEBUG
+                        traceGlobalResign("search-toggle-close", phase: "before")
+                        #endif
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        #if DEBUG
+                        traceGlobalResign("search-toggle-close", phase: "after")
+                        #endif
                     }
                 } label: {
                     Image(systemName: "magnifyingglass").font(.system(size: 20))
@@ -314,7 +329,13 @@ private struct CompanionNearbyMap: View {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty, let origin = model.agentSearchOrigin else { return }
         model.searchThisArea()
+        #if DEBUG
+        traceGlobalResign("search-submit", phase: "before")
+        #endif
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #if DEBUG
+        traceGlobalResign("search-submit", phase: "after")
+        #endif
         let previous = searchTask
         previous?.cancel()
         searchTask = Task {
@@ -664,8 +685,20 @@ private struct CompanionNearbyMap: View {
         selectedPlaceID = experience.id; page = .place; expand()
     }
     private func expand() { withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.94)) { level = .expanded } }
+    #if DEBUG
+    private func traceGlobalResign(_ reason: String, phase: String) {
+        Self.inputLog.debug("event=nearby-global-resign reason=\(reason, privacy: .public) phase=\(phase, privacy: .public) active=\(isActive)")
+    }
+    private static let inputLog = Logger(subsystem: "com.solocompass.voice-composer", category: "focus")
+    #endif
     private func collapse() {
+        #if DEBUG
+        traceGlobalResign("collapse", phase: "before")
+        #endif
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #if DEBUG
+        traceGlobalResign("collapse", phase: "after")
+        #endif
         withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.94)) { level = .collapsed }
     }
     private func sourceStatus(_ experience: Experience) -> String {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import OSLog
 
 @MainActor
@@ -54,6 +55,7 @@ struct CompanionComposer: View {
             if let attachments = store?.draftAttachments, !attachments.isEmpty {
                 if isFocused && typeSize.isAccessibilitySize {
                     Button {
+                        traceComposer("focus-revoke-attachment-collapse")
                         isFocused = false
                     } label: {
                         Label(String(format: companionText("companion.media.draftCount", "%d 个附件 · 查看"), attachments.count), systemImage: "paperclip")
@@ -126,21 +128,37 @@ struct CompanionComposer: View {
             if focusOnAppear && isActive { isFocused = true }
             traceComposer("appeared")
         }
+        #if DEBUG
+        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) {
+            traceNativeEditing("native-field-begin", notification: $0)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidEndEditingNotification)) {
+            traceNativeEditing("native-field-end", notification: $0)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UITextView.textDidBeginEditingNotification)) {
+            traceNativeEditing("native-view-begin", notification: $0)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UITextView.textDidEndEditingNotification)) {
+            traceNativeEditing("native-view-end", notification: $0)
+        }
+        #endif
         .onChange(of: focusOnAppear) { _, requested in if requested && isActive { isFocused = true } }
         .onChange(of: isFocused) { _, focused in
             onFocusChange?(focused)
             traceComposer("focus-changed")
         }
         .onChange(of: isActive) { _, active in
-            if !active { stopCapture() }
+            if !active { stopCapture(reason: "inactive") }
             else if focusOnAppear { isFocused = true }
             traceComposer("activity-changed")
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background || (phase == .inactive && audio.isRecording) { stopCapture() }
+            if phase == .background || (phase == .inactive && audio.isRecording) {
+                stopCapture(reason: phase == .background ? "scene-background" : "scene-inactive-recording")
+            }
             traceComposer("scene-changed")
         }
-        .onDisappear { stopCapture(); traceComposer("disappeared") }
+        .onDisappear { stopCapture(reason: "disappear"); traceComposer("disappeared") }
         .accessibilityElement(children: .contain).accessibilityIdentifier("companion.input.area")
         .disabled(!isActive)
     }
@@ -148,6 +166,7 @@ struct CompanionComposer: View {
     private var textInput: some View {
         HStack(alignment: .bottom, spacing: 2) {
             CompanionIconButton(symbol: "plus", label: companionText("companion.media.add", "添加内容")) {
+                traceComposer("focus-revoke-add-media")
                 isFocused = false; finishRecording(); onAddMedia?()
             }.disabled(onAddMedia == nil || transcribingID != nil)
                 .accessibilityIdentifier("companion.media.add")
@@ -197,6 +216,7 @@ struct CompanionComposer: View {
             notice = companionText("companion.media.recordLimit", "请先移除一份附件，或导出本机媒体后再录音。")
             return
         }
+        traceComposer("focus-revoke-record-start")
         isFocused = false
         notice = nil
         recordTask = Task {
@@ -229,7 +249,8 @@ struct CompanionComposer: View {
         }
         onSend()
     }
-    private func stopCapture() {
+    private func stopCapture(reason: String) {
+        traceComposer("focus-revoke-" + reason)
         finishRecording(); cancelTranscription(); isFocused = false
     }
     private func cancelTranscription() {
@@ -280,6 +301,18 @@ struct CompanionComposer: View {
         #endif
     }
     #if DEBUG
+    /// Observe notification objects only; never request focus, read text or force layout.
+    private func traceNativeEditing(_ event: String, notification: Notification) {
+        guard let view = notification.object as? UIView else { return }
+        let isField = view is UITextField
+        let isTextView = view is UITextView
+        guard isField || isTextView else { return }
+        let className = NSStringFromClass(type(of: view))
+        let isResponder = view.isFirstResponder
+        let attached = view.window != nil
+        let identifierMatches = view.accessibilityIdentifier == "companion.composer"
+        Self.composerLog.debug("event=\(event, privacy: .public) class=\(className, privacy: .public) field=\(isField) textView=\(isTextView) firstResponder=\(isResponder) windowAttached=\(attached) composerIdentifierMatches=\(identifierMatches) focused=\(isFocused) active=\(isActive)")
+    }
     private static let composerLog = Logger(subsystem: "com.solocompass.voice-composer", category: "focus")
     #endif
 }

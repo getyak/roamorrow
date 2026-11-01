@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 #if DEBUG
 import OSLog
 #endif
@@ -160,8 +161,8 @@ struct CompanionConversation: View {
                 if scrolling.intent.followsLatest && !scrolling.intent.isInteracting { requestLatest() }
             }
             .onChange(of: isActive) { _, active in if active { restoreReading() } }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in restoreAfterKeyboardLayout() }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in restoreAfterKeyboardLayout() }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in restoreAfterKeyboardLayout(source: "did-show", notification: notification) }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { notification in restoreAfterKeyboardLayout(source: "did-hide", notification: notification) }
             .modifier(CompanionScrollExecution(scrolling: scrolling,
                 isActive: isActive, reduceMotion: reduceMotion, trace: traceScroll))
             .overlay(alignment: .bottom) {
@@ -191,9 +192,17 @@ struct CompanionConversation: View {
         traceScroll("restore-presentation")
     }
 
-    private func restoreAfterKeyboardLayout() {
+    private func restoreAfterKeyboardLayout(source: String, notification: Notification) {
         guard isActive else { return }
         traceScroll("keyboard-completed")
+        #if DEBUG
+        let frame = (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
+        let frameKnown = frame != nil
+        let height = Double(frame?.height ?? -1)
+        let width = Double(frame?.width ?? -1)
+        let minY = Double(frame?.minY ?? -1)
+        Self.scrollLog.debug("event=keyboard-completed-detail source=\(source, privacy: .public) endFrameKnown=\(frameKnown) endHeight=\(height) endWidth=\(width) endMinY=\(minY) active=\(isActive)")
+        #endif
         guard let target = scrolling.intent.keyboardRestorationTarget(reading: store.readingState,
             nativeSizing: nativeSizingEnabled) else { return }
         if scrolling.intent.followsLatest { requestLatest() }
