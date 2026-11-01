@@ -62,18 +62,15 @@ final class VoiceComposerUITests: XCTestCase {
         capture("sent")
     }
 
-    func testPauseCanCancelTranscriptionWithoutSendingOrLosingAudio() {
+    func testPauseRetainsRecordingWhenSpeechPermissionIsDenied() {
         record()
-        addUIInterruptionMonitor(withDescription: "Speech recognition permission") { alert in
-            let deny = alert.buttons.matching(NSPredicate(format: "label IN %@", ["不允许", "Don't Allow"])).firstMatch
-            guard deny.exists else { return false }
-            deny.tap()
-            return true
-        }
         button("companion.audio.pause").tap()
-        let cancel = app.buttons["取消转写"].firstMatch
-        if cancel.waitForExistence(timeout: 2) { cancel.tap() }
-        else { app.tap() }
+        let alert = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        if alert.waitForExistence(timeout: 2) {
+            let deny = alert.buttons.matching(NSPredicate(format: "label IN %@", ["不允许", "Don't Allow"])).firstMatch
+            XCTAssertTrue(deny.exists, "Handle the expected speech permission alert explicitly")
+            deny.tap()
+        }
         XCTAssertTrue(composer.waitForExistence(timeout: 12))
         XCTAssertTrue(draftMedia.waitForExistence(timeout: 5))
         XCTAssertFalse(button("companion.audio.pause").exists)
