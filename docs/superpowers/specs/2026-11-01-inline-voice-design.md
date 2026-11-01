@@ -1,0 +1,9 @@
+# Inline voice composer — GET-354
+
+The user wants one-tap voice capture inside the iOS companion's existing chat input. The input becomes a live waveform chain with duration, pause and send controls. Send finishes, durably stages and immediately submits the actual recording. Pause finishes and stages the recording, then uses the existing on-device recognizer to place editable text in the input. Successful conversion atomically replaces only that recording with text; other draft text, attachments, quote and scope survive.
+
+Use the existing SwiftUI composer and audio session. A separate recording sheet adds a step; keeping the current extra recording row leaves two competing input surfaces. The inline approach follows the user's specified interaction and adds no dependencies. Interpret the user's earlier “赞同” as “暂停”, as specified later in their message. These implementation choices are agent decisions under the repository's autonomous-work instruction.
+
+Keep iOS 17.0+, Swift 5.10, complete concurrency checking, English/Simplified Chinese localization, 44pt controls and Reduce Motion support. Waveforms reflect recorded samples, never invented activity. Isolate sample observation to the recording subview. Permission requests and transcription show explicit pending/cancel states. Transcription failure, cancellation, backgrounding, hidden chat and automatic recording timeout preserve the original audio without sending it. A recording too short to save explains why and never sends an older draft. Late transcription cannot modify a different draft or cleared attachment.
+
+Validate durable conversion/restart, existing draft and attachment preservation, empty/missing/duplicate results, failed storage, audio ownership, native build, live recording controls and compact layout. Simulator audio and controlled recognition checks do not establish real-device speech recognition or model-provider acceptance.

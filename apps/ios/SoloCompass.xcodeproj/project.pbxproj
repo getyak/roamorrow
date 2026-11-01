@@ -150,6 +150,7 @@
 		3253E70A5F98389A985CA7B9 /* RouteCardRecruitMiniTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EAB2E028C69B7C63DCAF860 /* RouteCardRecruitMiniTest.swift */; };
 		32C5B270129CEC0562C6D640 /* RouteShareCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF934B8ECFB7BB99C9C4791 /* RouteShareCardView.swift */; };
 		332AAC0899F63CC4CDBEAB7C /* CompanionIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA267A7059E0780C4F85A743 /* CompanionIdentityTests.swift */; };
+		333F5B286F06CCA137B40616 /* VoiceComposerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 548A90C76A6B878B67E796F1 /* VoiceComposerUITests.swift */; };
 		337CAFC8B35CF36D175B27CF /* CompareTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F836182A03FC067C4A9AB9 /* CompareTokens.swift */; };
 		340DCB97DFB31F8FB562736F /* ChatDisplayType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11A51666D1564BE942593139 /* ChatDisplayType.swift */; };
 		344AA4D02D20133A5BC7562D /* TasteUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D194A2740848FA0C9D4BA3D /* TasteUpdateService.swift */; };
@@ -1062,6 +1063,7 @@
 		53F836182A03FC067C4A9AB9 /* CompareTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompareTokens.swift; sourceTree = "<group>"; };
 		5412FB6AAA82A158A8D3F499 /* RouteChatAccessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteChatAccessTests.swift; sourceTree = "<group>"; };
 		542C0D57002828AF85367C94 /* DiscoverPostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverPostDetailView.swift; sourceTree = "<group>"; };
+		548A90C76A6B878B67E796F1 /* VoiceComposerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceComposerUITests.swift; sourceTree = "<group>"; };
 		54C6B8684C2A7737474A182A /* IslandComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandComponents.swift; sourceTree = "<group>"; };
 		54EB574CC4181A502707AC56 /* ItineraryCreationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItineraryCreationTests.swift; sourceTree = "<group>"; };
 		54F3FDE4BC9458E490AEA67A /* MarkdownExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownExporter.swift; sourceTree = "<group>"; };
@@ -2461,6 +2463,7 @@
 				E8145B11DE65BF09C059E7B9 /* SoloCompassWidgets */,
 				2CEE9F7CC15A1F0742A0CDDF /* Tests */,
 				D73C385D736C0337EB03AC7F /* v4-native-20261030 */,
+				A9D7069FD384EB5C5BF838E7 /* voice-composer-20261101 */,
 				501EF6E4D08477F134FAED1E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -2570,6 +2573,15 @@
 				E71DE291BE5569E719413B74 /* SoloCompassApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		A9D7069FD384EB5C5BF838E7 /* voice-composer-20261101 */ = {
+			isa = PBXGroup;
+			children = (
+				548A90C76A6B878B67E796F1 /* VoiceComposerUITests.swift */,
+			);
+			name = "voice-composer-20261101";
+			path = "../../docs/qa/voice-composer-20261101";
 			sourceTree = "<group>";
 		};
 		AF2168B6372E0B357D17732C /* Resources */ = {
@@ -3076,6 +3088,7 @@
 				6C2B893D0833AE00D497E227 /* CompanionMapPanelUITests.swift in Sources */,
 				D79EEABC9D227B7B587B94ED /* CompanionTravelIMUITests.swift in Sources */,
 				C4A4A0FC2598E60C60328DBF /* V4NavigationUITests.swift in Sources */,
+				333F5B286F06CCA137B40616 /* VoiceComposerUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

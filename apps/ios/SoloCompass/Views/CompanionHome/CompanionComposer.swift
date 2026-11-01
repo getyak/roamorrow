@@ -15,10 +15,12 @@ struct CompanionComposer: View {
     @Environment(CompanionAudioSession.self) private var audio
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var recordTask: Task<Void, Never>?
     @State private var transcriber = CompanionAudioTranscriber()
     @State private var transcriptionTask: Task<Void, Never>?
     @State private var transcribingID: UUID?
+    @State private var transcriptionToken = UUID()
     @State private var notice: String?
     @FocusState private var isFocused: Bool
 
@@ -46,7 +48,7 @@ struct CompanionComposer: View {
                     CompanionIconButton(symbol: "xmark", label: companionText("companion.im.cancelReply", "取消引用")) { store?.setDraftQuote(nil) }
                 }.padding(.leading, 12).background(CompanionHomeStyle.incoming, in: RoundedRectangle(cornerRadius: 14))
             }
-            if let attachments = store?.draftAttachments, !attachments.isEmpty {
+            if let attachments = store?.draftAttachments.filter({ $0.id != transcribingID }), !attachments.isEmpty {
                 if isFocused && typeSize.isAccessibilitySize {
                     Button {
                         isFocused = false
@@ -97,48 +99,23 @@ struct CompanionComposer: View {
                     CompanionIconButton(symbol: "xmark", label: companionText("companion.dismiss_notice", "关闭提示")) { notice = nil; audio.clearError() }
                 }.padding(.horizontal, 8)
             }
-            if audio.isRecording {
-                HStack(spacing: 10) {
-                    Image(systemName: "mic.fill").foregroundStyle(.red).accessibilityHidden(true)
-                    Text(companionText("companion.media.recording", "录音中") + " " + CompanionMediaTile.duration(audio.elapsed))
-                        .font(.subheadline.monospacedDigit())
-                    Spacer(minLength: 0)
-                    Button { finishRecording() } label: {
-                        Text(companionText("companion.media.finishRecording", "完成录音"))
-                            .frame(minHeight: 44).contentShape(Rectangle())
-                    }.accessibilityIdentifier("companion.audio.finish")
-                }.padding(.horizontal, 12)
-            }
-            HStack(alignment: .bottom, spacing: 2) {
-                CompanionIconButton(symbol: "plus", label: companionText("companion.media.add", "添加内容")) {
-                    isFocused = false; finishRecording(); onAddMedia?()
-                }.disabled(onAddMedia == nil || transcribingID != nil)
-                    .accessibilityIdentifier("companion.media.add")
-                TextField(companionText("companion.im.placeholder", "和旅伴说说…"), text: $text,
-                    prompt: Text(companionText("companion.im.placeholder", "和旅伴说说…")).foregroundColor(CompanionHomeStyle.secondaryInk), axis: .vertical)
-                    .font(.body).lineLimit(1...(typeSize.isAccessibilitySize ? 1 : 5)).fixedSize(horizontal: false, vertical: true)
-                    .padding(.vertical, 12).focused($isFocused).submitLabel(.return)
-                    .accessibilityIdentifier("companion.composer")
-                if isWorking {
-                    CompanionIconButton(symbol: "stop.fill", label: companionText("companion.cancel_response", "停止回应"), action: onCancel)
-                } else if hasContent {
-                    Button {
-                        finishRecording(); cancelTranscription(); onSend()
-                    } label: {
-                        Image(systemName: "arrow.up").font(.system(size: 18, weight: .semibold))
-                            .frame(width: 34, height: 34).foregroundStyle(CompanionHomeStyle.paper)
-                            .background(CompanionHomeStyle.ink, in: Circle()).frame(width: 44, height: 44).contentShape(Rectangle())
-                    }.accessibilityLabel(companionText("companion.send", "发送"))
-                        .accessibilityIdentifier("companion.send").disabled(audio.isRecording || transcribingID != nil)
+            Group {
+                if audio.isRecording {
+                    CompanionVoiceRecordingBar(canSend: !isWorking, onPause: pauseRecording, onSend: sendRecording)
+                } else if recordTask != nil {
+                    pendingInput(companionText("companion.media.startingRecording", "正在开启麦克风…"),
+                        cancelLabel: companionText("companion.media.cancelRecording", "取消录音")) { finishRecording() }
+                } else if transcribingID != nil {
+                    pendingInput(companionText("companion.media.transcribing", "正在转成文字…"),
+                        cancelLabel: companionText("companion.media.cancelTranscribe", "取消转写"), action: cancelTranscription)
                 } else {
-                    CompanionIconButton(symbol: audio.isRecording ? "stop.circle" : "mic", label: companionText("companion.media.recordVoice", "录制语音消息")) {
-                        if audio.isRecording { finishRecording() } else { startRecording() }
-                    }.accessibilityIdentifier("companion.audio.record")
+                    textInput
                 }
             }
             .padding(.horizontal, 5).padding(.vertical, 3)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 27))
             .overlay(RoundedRectangle(cornerRadius: 27).strokeBorder(CompanionHomeStyle.line, lineWidth: 0.5))
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: audio.isRecording)
         }
         .foregroundStyle(CompanionHomeStyle.ink)
         .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 8)
@@ -156,6 +133,44 @@ struct CompanionComposer: View {
         .accessibilityElement(children: .contain).accessibilityIdentifier("companion.input.area")
         .disabled(!isActive)
     }
+
+    private var textInput: some View {
+        HStack(alignment: .bottom, spacing: 2) {
+            CompanionIconButton(symbol: "plus", label: companionText("companion.media.add", "添加内容")) {
+                isFocused = false; finishRecording(); onAddMedia?()
+            }.disabled(onAddMedia == nil || transcribingID != nil)
+                .accessibilityIdentifier("companion.media.add")
+            TextField(companionText("companion.im.placeholder", "和旅伴说说…"), text: $text,
+                prompt: Text(companionText("companion.im.placeholder", "和旅伴说说…")).foregroundColor(CompanionHomeStyle.secondaryInk), axis: .vertical)
+                .font(.body).lineLimit(1...(typeSize.isAccessibilitySize ? 1 : 5)).fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 12).focused($isFocused).submitLabel(.return)
+                .accessibilityIdentifier("companion.composer")
+            if isWorking {
+                CompanionIconButton(symbol: "stop.fill", label: companionText("companion.cancel_response", "停止回应"), action: onCancel)
+            } else if hasContent {
+                Button {
+                    finishRecording(); cancelTranscription(); onSend()
+                } label: {
+                    Image(systemName: "arrow.up").font(.system(size: 18, weight: .semibold))
+                        .frame(width: 34, height: 34).foregroundStyle(CompanionHomeStyle.paper)
+                        .background(CompanionHomeStyle.ink, in: Circle()).frame(width: 44, height: 44).contentShape(Rectangle())
+                }.accessibilityLabel(companionText("companion.send", "发送"))
+                    .accessibilityIdentifier("companion.send").disabled(audio.isRecording || transcribingID != nil)
+            } else {
+                CompanionIconButton(symbol: "mic", label: companionText("companion.media.recordVoice", "录制语音消息"), action: startRecording)
+                    .accessibilityIdentifier("companion.audio.record")
+            }
+        }
+    }
+
+    private func pendingInput(_ label: String, cancelLabel: String, action: @escaping () -> Void) -> some View {
+        HStack(spacing: 10) {
+            ProgressView().padding(.leading, 12)
+            Text(label).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
+            CompanionIconButton(symbol: "xmark", label: cancelLabel, action: action)
+        }
+        .frame(minHeight: 44).accessibilityIdentifier("companion.audio.pending")
+    }
     private var scopeName: String? {
         if let place = store?.nextTurnPlace { return place.name }
         guard let scope = store?.nextTurnArea else { return nil }
@@ -166,43 +181,126 @@ struct CompanionComposer: View {
     }
 
     private func startRecording() {
-        guard isActive else { return }
+        guard isActive, recordTask == nil else { return }
         guard store?.canStartRecording == true else {
             notice = companionText("companion.media.recordLimit", "请先移除一份附件，或导出本机媒体后再录音。")
             return
         }
         isFocused = false
-        recordTask?.cancel()
-        recordTask = Task { await audio.startRecording() }
+        notice = nil
+        recordTask = Task {
+            await audio.startRecording()
+            if !Task.isCancelled { recordTask = nil }
+        }
     }
-    private func finishRecording() {
+    @discardableResult
+    private func finishRecording() -> CompanionMediaAttachment? {
         recordTask?.cancel(); recordTask = nil
         audio.cancelPendingPermission()
         if audio.isRecording, let recording = audio.finishRecording() {
-            if store?.stageAttachment(recording) != true { notice = store?.errorMessage }
+            guard store?.stageAttachment(recording) == true else { notice = store?.errorMessage; return nil }
+            return recording
         }
+        return nil
+    }
+    private func pauseRecording() {
+        guard let recording = finishRecording() else {
+            notice = notice ?? companionText("companion.media.recordingTooShort", "录音太短，请再说一次。")
+            return
+        }
+        transcribe(recording)
+    }
+    private func sendRecording() {
+        guard !isWorking else { return }
+        guard finishRecording() != nil else {
+            notice = notice ?? companionText("companion.media.recordingTooShort", "录音太短，请再说一次。")
+            return
+        }
+        onSend()
     }
     private func stopCapture() {
         finishRecording(); cancelTranscription(); isFocused = false
     }
     private func cancelTranscription() {
+        transcriptionToken = UUID()
         transcriptionTask?.cancel(); transcriptionTask = nil
         transcriber.cancel(); transcribingID = nil
     }
     private func transcribe(_ attachment: CompanionMediaAttachment) {
         cancelTranscription()
+        let token = UUID(); transcriptionToken = token
         transcribingID = attachment.id
         transcriptionTask = Task {
-            defer { if transcribingID == attachment.id { transcribingID = nil; transcriptionTask = nil } }
+            defer { if transcriptionToken == token { transcribingID = nil; transcriptionTask = nil } }
             do {
                 let transcript = try await transcriber.transcribe(attachment)
                 try Task.checkCancellation()
-                guard isActive, store?.draftAttachments.contains(where: { $0.id == attachment.id }) == true else { return }
-                _ = store?.setAttachmentTranscript(id: attachment.id, text: transcript)
-                notice = companionText("companion.media.transcriptReady", "转写已附在语音下，发送前请核对。")
+                guard isActive, transcriptionToken == token,
+                      store?.draftAttachments.contains(where: { $0.id == attachment.id }) == true else { return }
+                guard !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    notice = companionText("companion.media.transcriptEmpty", "没有识别到文字，录音已保留，可以重试或直接发送。")
+                    return
+                }
+                guard store?.useVoiceTranscript(id: attachment.id, text: transcript) == true else {
+                    notice = store?.errorMessage
+                    return
+                }
+                notice = nil
+                isFocused = true
             } catch {
-                if !Task.isCancelled { notice = companionText("companion.media.transcriptFailed", "暂时无法转写，原始录音仍已保留，可以直接发送或打字补充。") }
+                if !Task.isCancelled, transcriptionToken == token {
+                    notice = companionText("companion.media.transcriptFailed", "暂时无法转写，原始录音仍已保留，可以直接发送或打字补充。")
+                }
             }
+        }
+    }
+}
+
+/// Only this small view observes the live meter, keeping the conversation still.
+@MainActor
+private struct CompanionVoiceRecordingBar: View {
+    let canSend: Bool
+    let onPause: () -> Void
+    let onSend: () -> Void
+    @Environment(CompanionAudioSession.self) private var audio
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(CompanionMediaTile.duration(audio.elapsed))
+                .font(.subheadline.monospacedDigit()).lineLimit(1).minimumScaleFactor(0.75)
+                .frame(minWidth: 42).padding(.leading, 10)
+                .accessibilityLabel(companionText("companion.media.recording", "录音中"))
+                .accessibilityValue(CompanionMediaTile.duration(audio.elapsed))
+                .accessibilityIdentifier("companion.audio.duration")
+            waveform.frame(maxWidth: .infinity).frame(height: 32).accessibilityHidden(true)
+            CompanionIconButton(symbol: "pause.fill", label: companionText("companion.media.pauseToText", "暂停并转成文字"), action: onPause)
+                .accessibilityIdentifier("companion.audio.pause")
+            Button(action: onSend) {
+                Image(systemName: "arrow.up").font(.system(size: 18, weight: .semibold))
+                    .frame(width: 34, height: 34).foregroundStyle(CompanionHomeStyle.paper)
+                    .background(CompanionHomeStyle.ink, in: Circle())
+                    .frame(width: 44, height: 44).contentShape(Rectangle())
+            }.buttonStyle(.plain).disabled(!canSend)
+                .accessibilityLabel(companionText("companion.media.sendVoice", "发送语音"))
+                .accessibilityIdentifier("companion.audio.send")
+        }.frame(minHeight: 44).accessibilityIdentifier("companion.audio.recording")
+    }
+
+    private var waveform: some View {
+        let samples = Array(audio.recordingSamples.suffix(32))
+        return GeometryReader { geometry in
+            let count = max(1, min(32, Int(geometry.size.width / 5)))
+            let visible = Array(samples.suffix(count))
+            HStack(spacing: 2) {
+                ForEach(0..<count, id: \.self) { index in
+                    let sampleIndex = index - (count - visible.count)
+                    let level = sampleIndex >= 0 ? CGFloat(visible[sampleIndex]) : 0
+                    Capsule().fill(CompanionHomeStyle.accent)
+                        .frame(maxWidth: .infinity).frame(height: max(3, min(1, level) * 30))
+                }
+            }.frame(height: geometry.size.height)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: audio.elapsed)
         }
     }
 }
