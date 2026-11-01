@@ -45,7 +45,8 @@ final class VoiceComposerUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(button("companion.audio.send").frame.width, 44)
         let duration = app.staticTexts["companion.audio.duration"].firstMatch
         XCTAssertTrue(duration.exists)
-        expectation(for: NSPredicate(format: "value != '0:00'"), evaluatedWith: duration)
+        let savedDuration = "([1-9][0-9]*:[0-5][0-9]|0:(0[1-9]|[1-5][0-9]))"
+        expectation(for: NSPredicate(format: "value MATCHES %@", savedDuration), evaluatedWith: duration)
         waitForExpectations(timeout: 5)
         capture("recording")
     }
