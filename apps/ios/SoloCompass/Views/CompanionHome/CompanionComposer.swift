@@ -256,6 +256,7 @@ struct CompanionComposer: View {
                     notice = store?.errorMessage
                     return
                 }
+                if audio.playbackAttachmentID == attachment.id { audio.stopPlayback() }
                 notice = nil
                 isFocused = true
             } catch {
