@@ -77,11 +77,11 @@ final class VoiceComposerUITests: XCTestCase {
         record()
         button("companion.audio.pause").tap()
         let alert = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
-        if alert.waitForExistence(timeout: 2) {
-            let deny = alert.buttons.matching(NSPredicate(format: "label IN %@", ["不允许", "Don't Allow"])).firstMatch
-            XCTAssertTrue(deny.exists, "Handle the expected speech permission alert explicitly")
-            deny.tap()
-        }
+        XCTAssertTrue(alert.waitForExistence(timeout: 10), "This case must exercise an explicit speech permission denial")
+        // The system uses a typographic apostrophe on current English iOS.
+        let deny = alert.buttons.matching(NSPredicate(format: "label IN %@", ["不允许", "Don't Allow", "Don’t Allow"])).firstMatch
+        XCTAssertTrue(deny.exists, "Handle the expected speech permission alert explicitly")
+        deny.tap()
         XCTAssertTrue(composer.waitForExistence(timeout: 12))
         XCTAssertTrue(draftMedia.waitForExistence(timeout: 5))
         XCTAssertFalse(button("companion.audio.pause").exists)
