@@ -300,7 +300,7 @@ jobs:
           # Only boolean scroll/audio ownership diagnostics from this owned CI device;
           # never message text, anchor IDs, credentials or travel information.
           xcrun simctl spawn "$SIMULATOR_UDID" log stream --level debug --style compact \
-            --predicate 'subsystem == "com.solocompass.chat-scroll" OR subsystem == "com.solocompass.audio-lifecycle"' \
+            --predicate 'subsystem == "com.solocompass.chat-scroll" OR subsystem == "com.solocompass.audio-lifecycle" OR subsystem == "com.solocompass.voice-composer"' \
             > "$RUNNER_TEMP/chat-native/scroll-intent.log" 2>&1 &
           CHAT_TRACE_PID=$!
           python3 scripts/qa/capture-chat-hang.py \
@@ -356,6 +356,52 @@ jobs:
             -maximum-test-execution-time-allowance 240 \
             -resultBundlePath "$RUNNER_TEMP/chat-native/me-accessibility.xcresult" \
             -configuration Debug CODE_SIGNING_ALLOWED=NO 2>&1 | tee me-accessibility.log
+
+      # Run after the guarded fixture writers: these cases create genuine local
+      # recordings in this job's disposable container, never a personal device.
+      - name: Inline voice recording, send and speech-denial UI tests
+        if: ${{ always() && !cancelled() && steps.chat_populated_fixture.outcome == 'success' }}
+        shell: bash
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          TEST_RUNNER_VOICE_COMPOSER_OWNED_CONTAINER: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/voice-composer"
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          xcrun simctl ui "$SIMULATOR_UDID" appearance light
+          xcrun simctl ui "$SIMULATOR_UDID" content_size large
+          xcrun simctl privacy "$SIMULATOR_UDID" grant microphone com.solocompass.app
+          cd apps/ios
+          xcodebuild test-without-building \
+            -project SoloCompass.xcodeproj -scheme AccountAcceptance \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -only-testing:CompanionAcceptanceUITests/VoiceComposerUITests \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 75 \
+            -maximum-test-execution-time-allowance 90 \
+            -resultBundlePath "$RUNNER_TEMP/voice-composer/voice.xcresult" \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$RUNNER_TEMP/voice-composer/test.log"
+          xcrun xcresulttool get test-results summary \
+            --path "$RUNNER_TEMP/voice-composer/voice.xcresult" \
+            > "$RUNNER_TEMP/voice-composer/summary.json"
+          python3 - "$RUNNER_TEMP/voice-composer/summary.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          result = json.loads(Path(sys.argv[1]).read_text())
+          assert result["passedTests"] == 3, result
+          assert result["failedTests"] == 0 and result["skippedTests"] == 0, result
+          print("Inline voice UI: 3 passed, 0 failed, 0 skipped")
+          PY
+
+      - name: Upload inline voice UI evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: voice-composer-native
+          path: ${{ runner.temp }}/voice-composer
+          retention-days: 7
 
       - name: Upload chat performance and Me evidence
         if: always()

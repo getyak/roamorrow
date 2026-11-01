@@ -3138,6 +3138,13 @@
 "companion.media.previewFailed" = "暂时无法预览";
 "companion.media.recordFailed" = "这次未能开始录音，草稿仍在。";
 "companion.media.recordVoice" = "录制语音消息";
+"companion.media.startingRecording" = "正在开启麦克风…";
+"companion.media.cancelRecording" = "取消录音";
+"companion.media.pauseToText" = "暂停并转成文字";
+"companion.media.sendVoice" = "发送语音";
+"companion.media.transcribing" = "正在转成文字…";
+"companion.media.recordingTooShort" = "录音太短，请再说一次。";
+"companion.media.transcriptEmpty" = "没有识别到文字，录音已保留，可以重试或直接发送。";
 "companion.media.recording" = "录音中";
 "companion.media.recordingName" = "语音消息";
 "companion.media.remove" = "移除附件";

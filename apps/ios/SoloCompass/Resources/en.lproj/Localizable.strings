@@ -3127,6 +3127,13 @@
 "companion.media.previewFailed" = "Preview unavailable";
 "companion.media.recordFailed" = "Recording could not start. Your draft is safe.";
 "companion.media.recordVoice" = "Record a voice message";
+"companion.media.startingRecording" = "Opening microphone…";
+"companion.media.cancelRecording" = "Cancel recording";
+"companion.media.pauseToText" = "Pause and convert to text";
+"companion.media.sendVoice" = "Send voice message";
+"companion.media.transcribing" = "Converting to text…";
+"companion.media.recordingTooShort" = "That recording was too short. Please try again.";
+"companion.media.transcriptEmpty" = "No speech was recognized. Your recording is safe; try again or send the audio.";
 "companion.media.recording" = "Recording";
 "companion.media.recordingName" = "Voice message";
 "companion.media.remove" = "Remove attachment";

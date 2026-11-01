@@ -331,6 +331,32 @@ final class CompanionHomeStore: AgentExecutionJournal {
         return true
     }
 
+    /// Replace one staged voice message only after its editable text is durable.
+    @discardableResult
+    func useVoiceTranscript(id: UUID, text: String) -> Bool {
+        let transcript = String(text.prefix(12_000)).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !transcript.isEmpty, draftAttachments.contains(where: { $0.id == id && $0.kind == .audio }) else { return false }
+        let previousText = composerDraft
+        let previousRevision = draftRevision
+        let previousAttachments = draftAttachments
+        // Commit text and removed audio together. Suppress the lightweight text
+        // sidecar until the full snapshot can represent the same conversion.
+        isLoading = true
+        composerDraft += (composerDraft.isEmpty || composerDraft.hasSuffix("\n") ? "" : "\n") + transcript
+        draftRevision &+= 1
+        draftAttachments.removeAll { $0.id == id }
+        isLoading = false
+        guard persist() else {
+            isLoading = true
+            composerDraft = previousText
+            draftRevision = previousRevision
+            draftAttachments = previousAttachments
+            isLoading = false
+            return false
+        }
+        return true
+    }
+
     func toggleReaction(entryID: UUID) {
         guard let index = entries.firstIndex(where: { $0.id == entryID }) else { return }
         let previous = entries[index].reaction

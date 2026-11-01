@@ -38,7 +38,7 @@ class ChatHangCaptureTests(unittest.TestCase):
             handlers = {}
             if terminate:
                 def wait(**kwargs):
-                    if kwargs.get("timeout") == 15:
+                    if kwargs.get("timeout") == 45:
                         handlers[signal.SIGTERM]()
                     return 0
 
@@ -71,13 +71,14 @@ class ChatHangCaptureTests(unittest.TestCase):
 
     def test_sample_timeout_kills_and_reaps_only_owned_group(self):
         sample = Mock(pid=81)
-        sample.wait.side_effect = [subprocess.TimeoutExpired("sample", 15), 0]
+        sample.wait.side_effect = [subprocess.TimeoutExpired("sample", 45), 0]
         popen, killpg, error = self.run_watcher(
             "/CoreSimulator/Devices/02B4F0C1-A92F-469D-9DCC-5ED13F119507/data/SoloCompass.app/SoloCompass", sample)
         self.assertIsInstance(error, SystemExit)
         self.assertTrue(popen.call_args.kwargs["start_new_session"])
+        self.assertEqual(popen.call_args.args[0][2:4], ["1", "10"])
         killpg.assert_called_once_with(81, signal.SIGKILL)
-        self.assertEqual(sample.wait.call_args_list, [call(timeout=15), call()])
+        self.assertEqual(sample.wait.call_args_list, [call(timeout=45), call()])
 
     def test_parent_termination_stops_and_reaps_owned_sample(self):
         sample = Mock(pid=81)
@@ -87,7 +88,7 @@ class ChatHangCaptureTests(unittest.TestCase):
             sample, terminate=True)
         self.assertIsInstance(error, SystemExit)
         killpg.assert_called_once_with(81, signal.SIGTERM)
-        self.assertEqual(sample.wait.call_args_list, [call(timeout=15), call(timeout=3)])
+        self.assertEqual(sample.wait.call_args_list, [call(timeout=45), call(timeout=3)])
 
 
 if __name__ == "__main__":

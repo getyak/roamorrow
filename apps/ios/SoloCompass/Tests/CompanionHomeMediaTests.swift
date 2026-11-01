@@ -146,6 +146,58 @@ final class CompanionHomeMediaTests: XCTestCase {
             place: .init(experienceID: "existing", name: "地点", latitude: 200, longitude: 0))
         XCTAssertFalse(place.isValid)
     }
+
+    func testVoiceTranscriptReplacesOnlyItsRecordingAndRestoresEditableDraft() throws {
+        let url = location()
+        let store = CompanionHomeStore(url: url)
+        let voice = CompanionMediaAttachment(kind: .audio, name: "Voice.m4a", mimeType: "audio/mp4", data: Data([1, 2, 3]), duration: 2)
+        let other = file()
+        let quote = CompanionQuotedMessage(entryID: UUID(), role: .companion, text: "引用原话")
+        store.composerDraft = "已有草稿"
+        store.setDraftQuote(quote)
+        XCTAssertTrue(store.stageAttachment(voice))
+        XCTAssertTrue(store.stageAttachment(other))
+        XCTAssertTrue(store.useVoiceTranscript(id: voice.id, text: "  想去喝咖啡。\n"))
+        XCTAssertEqual(store.composerDraft, "已有草稿\n想去喝咖啡。")
+        XCTAssertEqual(store.draftAttachments, [other])
+        XCTAssertEqual(store.draftQuote, quote)
+        let restored = CompanionHomeStore(url: url)
+        XCTAssertEqual(restored.composerDraft, store.composerDraft)
+        XCTAssertEqual(restored.draftAttachments, [other])
+        XCTAssertEqual(restored.draftQuote, quote)
+        XCTAssertFalse(store.useVoiceTranscript(id: voice.id, text: "重复结果"))
+        XCTAssertEqual(store.composerDraft, restored.composerDraft)
+    }
+
+    func testEmptyMissingAndNonAudioTranscriptsPreserveDrafts() {
+        let store = CompanionHomeStore(url: location())
+        let voice = CompanionMediaAttachment(kind: .audio, name: "Voice.m4a", mimeType: "audio/mp4", data: Data([1, 2, 3]), duration: 2)
+        let other = file()
+        store.composerDraft = "保持原样"
+        XCTAssertTrue(store.stageAttachment(voice))
+        XCTAssertTrue(store.stageAttachment(other))
+        XCTAssertFalse(store.useVoiceTranscript(id: voice.id, text: " \n "))
+        XCTAssertFalse(store.useVoiceTranscript(id: UUID(), text: "过期结果"))
+        XCTAssertFalse(store.useVoiceTranscript(id: other.id, text: "文件不可转为语音文字"))
+        XCTAssertEqual(store.composerDraft, "保持原样")
+        XCTAssertEqual(store.draftAttachments, [voice, other])
+        XCTAssertTrue(store.entries.isEmpty)
+    }
+
+    func testVoiceConversionWriteFailureKeepsOriginalDraftAndRecording() throws {
+        let url = location()
+        let store = CompanionHomeStore(url: url)
+        let voice = CompanionMediaAttachment(kind: .audio, name: "Voice.m4a", mimeType: "audio/mp4", data: Data([1, 2, 3]), duration: 2)
+        store.composerDraft = "不能丢"
+        XCTAssertTrue(store.stageAttachment(voice))
+        let directory = url.deletingLastPathComponent()
+        try FileManager.default.moveItem(at: directory, to: directory.appendingPathExtension("preserved"))
+        try Data().write(to: directory)
+        XCTAssertFalse(store.useVoiceTranscript(id: voice.id, text: "转写结果"))
+        XCTAssertEqual(store.composerDraft, "不能丢")
+        XCTAssertEqual(store.draftAttachments, [voice])
+        XCTAssertNotNil(store.errorMessage)
+    }
     func testModelContextContainsExtractedTextButNoBinaryAndNeverInventsContents() {
         let item = file()
         let entry = CompanionHomeEntry(role: .user, text: "看看", attachments: [item])

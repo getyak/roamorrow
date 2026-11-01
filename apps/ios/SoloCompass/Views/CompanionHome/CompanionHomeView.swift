@@ -27,39 +27,43 @@ struct CompanionHomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                CompanionHomeStyle.paper.ignoresSafeArea()
-                // The same view/model stay mounted through every tab switch.
-                CompanionNearbyView(sheet: $sheet, store: store, routeSession: routeSession,
-                    isActive: surface == .nearby, onModelReady: configureTools,
-                    onConversation: { selectTab(.now) }, onReturnToSource: returnToSource,
-                    onAskPlace: askAboutPlace, onAskArea: askAboutArea, messageRevealToken: mapRevealToken)
-                    .opacity(surface == .nearby ? 1 : 0)
-                    .allowsHitTesting(surface == .nearby)
-                    .accessibilityHidden(surface != .nearby)
-                conversationSurface
-                    .opacity(surface == .now ? 1 : 0)
-                    .allowsHitTesting(surface == .now)
-                    .accessibilityHidden(surface != .now)
-                if visitedTabs.contains(.itinerary) {
-                    ItineraryListView(sourceCityCode: mapModel?.selectedCity)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarLeading) {
-                                Button(companionText("companion.journey.open", "行程与约定")) { sheet = .journey }
+            // Hidden tabs keep their state, but must not determine the host's
+            // ideal height through a long lazy conversation during tab changes.
+            GeometryReader { viewport in
+                ZStack {
+                    CompanionHomeStyle.paper.ignoresSafeArea()
+                    // The same view/model stay mounted through every tab switch.
+                    CompanionNearbyView(sheet: $sheet, store: store, routeSession: routeSession,
+                        isActive: surface == .nearby, onModelReady: configureTools,
+                        onConversation: { selectTab(.now) }, onReturnToSource: returnToSource,
+                        onAskPlace: askAboutPlace, onAskArea: askAboutArea, messageRevealToken: mapRevealToken)
+                        .opacity(surface == .nearby ? 1 : 0)
+                        .allowsHitTesting(surface == .nearby)
+                        .accessibilityHidden(surface != .nearby)
+                    conversationSurface
+                        .opacity(surface == .now ? 1 : 0)
+                        .allowsHitTesting(surface == .now)
+                        .accessibilityHidden(surface != .now)
+                    if visitedTabs.contains(.itinerary) {
+                        ItineraryListView(sourceCityCode: mapModel?.selectedCity)
+                            .toolbar {
+                                ToolbarItem(placement: .topBarLeading) {
+                                    Button(companionText("companion.journey.open", "行程与约定")) { sheet = .journey }
+                                }
                             }
-                        }
-                        .opacity(surface == .itinerary ? 1 : 0)
-                        .allowsHitTesting(surface == .itinerary)
-                        .accessibilityHidden(surface != .itinerary)
+                            .opacity(surface == .itinerary ? 1 : 0)
+                            .allowsHitTesting(surface == .itinerary)
+                            .accessibilityHidden(surface != .itinerary)
+                    }
+                    if visitedTabs.contains(.me) {
+                        MeSheet(embedded: true, onOpenSettings: { sheet = .settings }, onExplore: { selectTab(.nearby) })
+                            .opacity(surface == .me ? 1 : 0)
+                            .allowsHitTesting(surface == .me)
+                            .accessibilityHidden(surface != .me)
+                    }
                 }
-                if visitedTabs.contains(.me) {
-                    MeSheet(embedded: true, onOpenSettings: { sheet = .settings }, onExplore: { selectTab(.nearby) })
-                        .opacity(surface == .me ? 1 : 0)
-                        .allowsHitTesting(surface == .me)
-                        .accessibilityHidden(surface != .me)
-                }
+                .frame(width: viewport.size.width, height: viewport.size.height)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             if !keyboardVisible {
                 CompanionNavigationBar(selection: surface, onSelect: selectTab)
                     .background(surface == .nearby ? Color.clear : CompanionHomeStyle.paper)
@@ -152,9 +156,13 @@ struct CompanionHomeView: View {
                     CompanionIconButton(symbol: "xmark", label: companionText("companion.dismiss_notice", "关闭提示")) { self.returnNotice = nil }
                 }.padding(.leading, 16).background(CompanionHomeStyle.incoming)
             }
-            CompanionConversation(store: store, isActive: surface == .now, onSources: { sheet = .sources($0) },
-                onPlace: showMessageOnMap, onCommitments: { sheet = .journey }, onMedia: openMedia)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Keep long-history layout inside the space left by the header and composer.
+            GeometryReader { viewport in
+                CompanionConversation(store: store, isActive: surface == .now, onSources: { sheet = .sources($0) },
+                    onPlace: showMessageOnMap, onCommitments: { sheet = .journey }, onMedia: openMedia)
+                    .frame(width: viewport.size.width, height: viewport.size.height)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             CompanionComposer(text: $store.composerDraft, isWorking: store.isWorking, isActive: surface == .now && sheet == nil,
                 onSend: { Task { await store.send() } }, onCancel: { store.cancel() }, store: store,
                 onAddMedia: { sheet = .addMedia }, onOpenMedia: openMedia,

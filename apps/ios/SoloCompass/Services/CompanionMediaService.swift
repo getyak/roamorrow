@@ -85,7 +85,7 @@ final class CompanionAudioSession {
     @ObservationIgnored private var recorder: AVAudioRecorder?
     @ObservationIgnored private var recordingURL: URL?
     @ObservationIgnored private var player: AVAudioPlayer?
-    @ObservationIgnored private var samples: [Float] = []
+    private(set) var recordingSamples: [Float] = []
     @ObservationIgnored private var meterTask: Task<Void, Never>?
     @ObservationIgnored private var playbackTask: Task<Void, Never>?
     @ObservationIgnored private var generation = UUID()
@@ -113,7 +113,7 @@ final class CompanionAudioSession {
             recording.isMeteringEnabled = true
             guard recording.record() else { throw CompanionMediaPreparation.Failure.invalidFile }
             recordingURL = url; recorder = recording
-            isRecording = true; elapsed = 0; samples = []; errorMessage = nil
+            isRecording = true; elapsed = 0; recordingSamples = []; errorMessage = nil
             meterTask = Task { [weak self] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(200))
@@ -121,7 +121,7 @@ final class CompanionAudioSession {
                     recorder.updateMeters()
                     self.elapsed = recorder.currentTime
                     self.meter = min(1, max(0, pow(10, recorder.averagePower(forChannel: 0) / 30)))
-                    self.samples.append(self.meter)
+                    self.recordingSamples.append(self.meter)
                     if !recorder.isRecording || self.elapsed >= 120 { self.completedRecording = self.finishRecording(); return }
                 }
             }
@@ -139,7 +139,7 @@ final class CompanionAudioSession {
         defer { removeRecordingFile(); releaseSession(for: .recording) }
         guard duration > 0.25, let url = recordingURL, let bytes = try? Data(contentsOf: url), !bytes.isEmpty else { return nil }
         return .init(kind: .audio, name: companionText("companion.media.recordingName", "语音消息") + ".m4a", mimeType: "audio/mp4",
-                     data: bytes, duration: duration, samples: samples)
+                     data: bytes, duration: duration, samples: recordingSamples)
     }
 
     func clearError() { errorMessage = nil }

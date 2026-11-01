@@ -403,9 +403,37 @@ import Observation
         require(store.mapSource?.readingAnchorID == "message:\(sourceID)", "map source pins its own ID instead of a neighboring visible row")
         require(store.restoreMapSource() && store.readingState.anchorID == "message:\(sourceID)",
             "map return restores the actual source while keeping history intention")
+        try voiceTranscriptChecks(root: root)
         try await persistenceChecks(root: root)
         scrollChecks(entries: entries)
         print("Companion chat host: \(checks) checks, \(failures) failures")
         if failures > 0 { exit(1) }
+    }
+
+    @MainActor static func voiceTranscriptChecks(root: URL) throws {
+        let url = root.appendingPathComponent("voice-transcript.json")
+        let store = CompanionHomeStore(url: url)
+        let voice = CompanionMediaAttachment(kind: .audio, name: "Voice.m4a", mimeType: "audio/mp4", data: Data([1, 2, 3]), duration: 2)
+        let other = CompanionMediaAttachment(kind: .file, name: "Plan.txt", mimeType: "text/plain", data: Data("plan".utf8))
+        store.composerDraft = "Existing draft"
+        require(store.stageAttachment(voice) && store.stageAttachment(other), "voice conversion stages genuine originals")
+        require(!store.useVoiceTranscript(id: voice.id, text: " \n "), "empty speech keeps audio and draft")
+        require(store.draftAttachments.count == 2 && store.composerDraft == "Existing draft", "empty speech is non-destructive")
+        require(store.useVoiceTranscript(id: voice.id, text: "  去喝杯咖啡。  "), "pause converts the selected recording")
+        require(store.composerDraft == "Existing draft\n去喝杯咖啡。", "voice text appends to existing draft")
+        require(store.draftAttachments == [other], "conversion removes only its audio")
+        let restored = CompanionHomeStore(url: url)
+        require(restored.composerDraft == store.composerDraft && restored.draftAttachments == [other], "text conversion survives restart")
+        require(!store.useVoiceTranscript(id: voice.id, text: "duplicate"), "late duplicate transcription is rejected")
+        require(!store.useVoiceTranscript(id: other.id, text: "wrong kind"), "transcription cannot replace a non-audio attachment")
+
+        let folder = root.appendingPathComponent("voice-write-failure")
+        let failed = CompanionHomeStore(url: folder.appendingPathComponent("v1.json"))
+        failed.composerDraft = "Keep this"
+        require(failed.stageAttachment(voice), "failure case starts with a durable original")
+        try FileManager.default.moveItem(at: folder, to: folder.appendingPathExtension("preserved"))
+        try Data().write(to: folder)
+        require(!failed.useVoiceTranscript(id: voice.id, text: "Cannot save yet"), "failed conversion reports persistence failure")
+        require(failed.composerDraft == "Keep this" && failed.draftAttachments == [voice], "failed conversion restores draft and original")
     }
 }

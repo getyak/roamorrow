@@ -289,6 +289,7 @@ targets:
       - path: ../../docs/qa/harness-ios-20261024/AccountOnboardingUITests.swift
       - path: ../../docs/qa/v4-native-20261030/V4NavigationUITests.swift
       - path: ../../docs/qa/chat-performance-20261030/ChatAndMeUITests.swift
+      - path: ../../docs/qa/voice-composer-20261101/VoiceComposerUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round2/CompanionAcceptanceUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round3/CompanionMapPanelUITests.swift
       - path: ../../docs/qa/companion-ios-20261023/round4/CompanionTravelIMUITests.swift
