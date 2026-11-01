@@ -309,7 +309,7 @@ private struct CompanionVoiceRecordingBar: View {
             }.buttonStyle(.plain).disabled(!canSend)
                 .accessibilityLabel(companionText("companion.media.sendVoice", "发送语音"))
                 .accessibilityIdentifier("companion.audio.send")
-        }.frame(minHeight: 44).accessibilityIdentifier("companion.audio.recording")
+        }.frame(minHeight: 44)
     }
 
     private var waveform: some View {
